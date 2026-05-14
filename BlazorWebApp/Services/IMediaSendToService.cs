@@ -14,7 +14,7 @@ public interface IMediaSendToService
     string GetWorkflowIcon(ModeType mode);
     string GetWorkflowModeClass(ModeType mode);
     string GetMediaIcon(SendToMediaType mediaType);
-    void SendSourceToTarget(ImageEntity asset, MediaSendToTarget target);
+    Task SendSourceToTargetAsync(ImageEntity asset, MediaSendToTarget target);
     List<Workflow> GetParameterWorkflows();
     Task SendParametersToWorkflow(ImageEntity asset, Workflow workflow, IReadOnlyCollection<string> selectedParams);
 }

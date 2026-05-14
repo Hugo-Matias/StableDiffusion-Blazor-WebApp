@@ -1,6 +1,7 @@
 ﻿using BlazorWebApp.Data.Converters;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.CharacterCreator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -383,8 +384,22 @@ namespace BlazorWebApp.Data
                 .HasConversion(odditariumBodyConverter);
 
             // No FK constraint - SessionId is a soft reference only.
+
+            var characterBodyConverter = new ValueConverter<CharacterBody, string>(
+                v => JsonSerializer.Serialize(v ?? CharacterBody.CreateDefault(null), CharacterCreatorJsonOptions.Compact),
+                v => string.IsNullOrWhiteSpace(v)
+                    ? CharacterBody.CreateDefault(null)
+                    : JsonSerializer.Deserialize<CharacterBody>(v, CharacterCreatorJsonOptions.Compact) ?? CharacterBody.CreateDefault(null));
+
+            modelBuilder.Entity<CharacterEntity>()
+                .HasIndex(c => c.Name);
+
+            modelBuilder.Entity<CharacterEntity>()
+                .Property(c => c.Body)
+                .HasConversion(characterBodyConverter);
         }
 
+        public DbSet<CharacterEntity> Characters { get; set; }
         public DbSet<Image> Images { get; set; }
         public DbSet<CleanupImageIndex> CleanupImageIndexes { get; set; }
         public DbSet<CleanupImageEmbedding> CleanupImageEmbeddings { get; set; }

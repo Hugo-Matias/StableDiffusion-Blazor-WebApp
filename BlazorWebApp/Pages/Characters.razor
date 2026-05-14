@@ -1,29 +1,296 @@
 @page "/characters"
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Repositories
+@using BlazorWebApp.Models
+@using BlazorWebApp.Models.CharacterCreator
+@using System.Text.Json
 @using ImageEntity = BlazorWebApp.Data.Entities.Image
 @inject IStateService State
+@inject ICharacterRepository CharacterRepository
+@inject ICharacterCreatorCatalogService CharacterCatalogs
+@inject ICharacterPromptCompilerService PromptCompiler
+@inject ICharacterLlmAuthoringService CharacterAuthoring
+@inject ICharacterImageDraftService CharacterImageDrafts
+@inject ICharacterImportExportService CharacterImports
 @inject ICharacterReferenceRunService CharacterRuns
+@inject IPromptSendToService PromptSendTo
+@inject OllamaService Ollama
 @inject IDatabaseService Database
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <TabbedPageShell ActivePanelIndex="@Character.ActiveTabIndex" ActivePanelIndexChanged="HandleTabChanged">
-    <MudTabPanel Text="Reference Sheet">
+    <MudTabPanel Text="Character">
         <TwoColumnLayout>
             <Sidebar>
-                <CharacterReferenceSettings Character="Character"
-                                            IsRunning="_isRunning"
-                                            OnChanged="SaveCharacterState"
-                                            OnRunEnabled="RunEnabledSlots" />
+                <MudStack Spacing="2" Class="character-catalog-panel">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.subtitle2">Characters</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@CharacterCountSummary</MudText>
+                    </MudStack>
+
+                    <MudTextField T="string" Value="@_newCharacterName" ValueChanged="value => _newCharacterName = value ?? string.Empty"
+                                  Label="New Character" Dense="true" Variant="Variant.Text" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                               Disabled="@_isLoadingCharacters" OnClick="CreateCharacter">
+                        Create Character
+                    </MudButton>
+
+                    <div class="send-to-section character-library-actions">
+                        <MudText Typo="Typo.subtitle2">Library</MudText>
+                        <div class="send-to-buttons">
+                            <label class="send-to-btn" for="character-import-input">
+                                <MudIcon Icon="fa-solid fa-file-import" Size="Size.Small" />
+                                <span>Import</span>
+                            </label>
+                            <InputFile id="character-import-input" OnChange="ImportCharacterFile" accept=".json" hidden />
+                            <button type="button" class="send-to-btn mode-extras" disabled="@(_selectedCharacter is null)" @onclick="ExportSelectedCharacter">
+                                <MudIcon Icon="fa-solid fa-file-export" Size="Size.Small" />
+                                <span>Export</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <MudDivider />
+
+                    <div class="character-catalog-report">
+                        <div class="character-detail-header">
+                            <div>
+                                <MudText Typo="Typo.subtitle2">Catalog</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@CatalogSummary</MudText>
+                            </div>
+                            <button type="button" class="send-to-btn" @onclick="ReloadCatalog">
+                                <MudIcon Icon="fa-solid fa-rotate-right" Size="Size.Small" />
+                                <span>Reload</span>
+                            </button>
+                        </div>
+                        @if (_catalog.Warnings.Count > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                                @_catalog.Warnings.Count catalog warning@(_catalog.Warnings.Count == 1 ? string.Empty : "s")
+                            </MudAlert>
+                            <div class="character-catalog-warning-list">
+                                @foreach (var warning in _catalog.Warnings.Take(4))
+                                {
+                                    <div class="character-catalog-warning">
+                                        <strong>@warning.FileName</strong>
+                                        <span>@warning.Message</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (Character.PendingSourceImage is not null)
+                    {
+                        <MudDivider />
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                            A source image is waiting for a character.
+                        </MudAlert>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                   Disabled="@(_selectedCharacter is null)" OnClick="AttachPendingSourceImage">
+                            Attach Source Image
+                        </MudButton>
+                    }
+
+                    <MudDivider />
+
+                    <div class="character-list" role="list" aria-label="Saved characters">
+                        @foreach (var summary in _characters)
+                        {
+                            <button type="button"
+                                    class="character-list-item @(summary.Id == Character.SelectedCharacterId ? "character-list-item--active" : null)"
+                                    @onclick="() => SelectCharacter(summary.Id)">
+                                <span class="character-list-item-title">@summary.Name</span>
+                                <span class="character-list-item-meta">@summary.ReferenceSheetCount sheet@(summary.ReferenceSheetCount == 1 ? string.Empty : "s")</span>
+                            </button>
+                        }
+                    </div>
+                </MudStack>
             </Sidebar>
             <Content>
-                <CharacterShotGrid Slots="Character.Slots"
-                                   IsRunning="_isRunning"
-                                   OnSlotChanged="SaveCharacterState"
-                                   OnAddSlot="AddSlot"
-                                   OnRemoveSlot="RemoveSlot"
-                                   OnRunSlot="RunSingleSlot"
-                                   OnViewSlot="OpenSlotViewer" />
+                @if (_selectedCharacter is null)
+                {
+                    <div class="character-empty-state">
+                        <MudIcon Icon="fa-solid fa-user-plus" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Create or select a character</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Characters hold reusable identity details and their reference sheets.</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudStack Spacing="2" Class="character-detail-panel">
+                        <div class="character-detail-header">
+                            <div>
+                                <MudText Typo="Typo.h6">@_selectedCharacter.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Updated @_selectedCharacter.UpdatedAt.ToLocalTime().ToString("g")</MudText>
+                            </div>
+                            <div class="send-to-buttons character-detail-actions">
+                                <button type="button" class="send-to-btn" @onclick="DuplicateCharacter">
+                                    <MudIcon Icon="fa-solid fa-copy" Size="Size.Small" />
+                                    <span>Duplicate</span>
+                                </button>
+                                <button type="button" class="send-to-btn" @onclick="DeleteCharacter">
+                                    <MudIcon Icon="fa-solid fa-trash" Size="Size.Small" />
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudTextField T="string" Value="@_editName" ValueChanged="value => _editName = value ?? string.Empty"
+                                              Label="Name" Dense="true" Variant="Variant.Text" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField T="string" Value="@_editSummary" ValueChanged="value => _editSummary = value ?? string.Empty"
+                                              Label="Summary" Dense="true" Variant="Variant.Text" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField T="string" Value="@_editDescription" ValueChanged="value => _editDescription = value ?? string.Empty"
+                                              Label="Description" Lines="3" Dense="true" Variant="Variant.Text" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <div class="send-to-buttons character-detail-actions">
+                            <button type="button" class="send-to-btn mode-extras" @onclick="SaveCharacterDetails">
+                                <MudIcon Icon="fa-solid fa-floppy-disk" Size="Size.Small" />
+                                <span>Save Character</span>
+                            </button>
+                            <button type="button" class="send-to-btn" @onclick="CreateSheetFromCurrentSource" disabled="@(!HasCurrentSourceImage)">
+                                <MudIcon Icon="fa-solid fa-image" Size="Size.Small" />
+                                <span>Create Sheet From Source</span>
+                            </button>
+                        </div>
+
+                        <MudDivider />
+
+                        <CharacterCreatorWorkspace Character="_selectedCharacter"
+                                                   Catalog="_catalog"
+                                                   Compilation="_compiledPrompt"
+                                                   BaselineCompilation="_baselineCompiledPrompt"
+                                                   AuthoringSuggestion="_authoringSuggestion"
+                                                   ImageDraft="_imageDraft"
+                                                   ImageDraftDataUri="_imageDraftDataUri"
+                                                   ImageDraftModels="_imageDraftModels"
+                                                   SelectedImageDraftModel="_imageDraftModel"
+                                                   IsAuthoringBusy="_isAuthoringBusy"
+                                                   IsImageDraftBusy="_isImageDraftBusy"
+                                                   SelectedRegionId="@Character.SelectedCreatorRegionId"
+                                                   SelectedPromptProfileId="@SelectedPromptProfileId"
+                                                   SelectedWardrobeId="@Character.SelectedWardrobeId"
+                                                   ApplicationContext="@Character.PromptApplicationContext"
+                                                   ApplicationMode="@Character.PromptApplicationMode"
+                                                   IncludeNegativePromptOnSend="@Character.IncludeNegativePromptOnSend"
+                                                   PromptWorkflows="@PromptWorkflows"
+                                                   IsDirty="_isCharacterDirty"
+                                                   OnChanged="HandleCreatorChanged"
+                                                   OnRegionSelected="SelectCreatorRegion"
+                                                   OnPromptProfileChanged="SelectPromptProfile"
+                                                   OnWardrobeChanged="SelectWardrobe"
+                                                   OnApplicationContextChanged="HandleApplicationContextChanged"
+                                                   OnApplicationModeChanged="SelectApplicationMode"
+                                                   OnIncludeNegativePromptChanged="SetIncludeNegativePromptOnSend"
+                                                   OnSendPromptToWorkflow="SendCompiledPromptToWorkflow"
+                                                   OnCopyPrompt="CopyCompiledPrompt"
+                                                   OnSave="SaveCharacterDetails"
+                                                   OnReload="ReloadCharacterDetails"
+                                                   OnExpandSummary="RequestExpandSummary"
+                                                   OnRewriteRegion="RequestRewriteRegion"
+                                                   OnFillMissing="RequestFillMissing"
+                                                   OnAcceptSuggestion="AcceptAuthoringSuggestion"
+                                                   OnRejectSuggestion="RejectAuthoringSuggestion"
+                                                   OnImageDraftDataChanged="HandleImageDraftDataChanged"
+                                                   OnImageDraftModelChanged="SelectImageDraftModel"
+                                                   OnCreateImageDraft="RequestImageDraft"
+                                                   OnImageDraftEdited="HandleImageDraftEdited"
+                                                   OnAcceptImageDraft="AcceptImageDraft"
+                                                   OnRejectImageDraft="RejectImageDraft" />
+
+                        <MudDivider />
+
+                        <MudStack Spacing="1">
+                            <div class="character-detail-header">
+                                <MudText Typo="Typo.subtitle2">Reference Sheets</MudText>
+                                <div class="send-to-buttons character-detail-actions">
+                                    <label class="send-to-btn" for="sheet-import-input">
+                                        <MudIcon Icon="fa-solid fa-file-import" Size="Size.Small" />
+                                        <span>Import Sheet</span>
+                                    </label>
+                                    <InputFile id="sheet-import-input" OnChange="ImportReferenceSheetFile" accept=".json" hidden />
+                                    <button type="button" class="send-to-btn mode-extras" disabled="@(CurrentSheet is null)" @onclick="ExportCurrentReferenceSheet">
+                                        <MudIcon Icon="fa-solid fa-file-export" Size="Size.Small" />
+                                        <span>Export Sheet</span>
+                                    </button>
+                                </div>
+                            </div>
+                            @if (_selectedCharacter.Body.ReferenceSheets.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No reference sheets yet.</MudText>
+                            }
+                            else
+                            {
+                                <div class="character-sheet-list" role="list" aria-label="Character reference sheets">
+                                    @foreach (var sheet in _selectedCharacter.Body.ReferenceSheets.OrderByDescending(sheet => sheet.UpdatedAt))
+                                    {
+                                        <button type="button"
+                                                class="character-sheet-item @(sheet.Id == Character.SelectedReferenceSheetId ? "character-sheet-item--active" : null)"
+                                                @onclick="() => SelectReferenceSheet(sheet.Id)">
+                                            <span class="character-list-item-title">@sheet.Label</span>
+                                            <span class="character-list-item-meta">@sheet.SourceImage.SourceFingerprint</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </MudStack>
+                    </MudStack>
+                }
             </Content>
         </TwoColumnLayout>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Reference Sheets">
+        @if (_selectedCharacter is null)
+        {
+            <ContentOnlyLayout>
+                <div class="character-empty-state">
+                    <MudIcon Icon="fa-solid fa-user" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Select a character first</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => HandleTabChanged(0)">Go To Character</MudButton>
+                </div>
+            </ContentOnlyLayout>
+        }
+        else if (CurrentSheet is null)
+        {
+            <ContentOnlyLayout>
+                <div class="character-empty-state">
+                    <MudIcon Icon="fa-solid fa-images" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Create or select a reference sheet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Reference sheet settings are saved inside the selected character.</MudText>
+                </div>
+            </ContentOnlyLayout>
+        }
+        else
+        {
+            <TwoColumnLayout>
+                <Sidebar>
+                    <CharacterReferenceSettings Character="Character"
+                                                IsRunning="_isRunning"
+                                                OnChanged="SaveCharacterState"
+                                                OnRunEnabled="RunEnabledSlots" />
+                </Sidebar>
+                <Content>
+                    <CharacterShotGrid Slots="Character.Slots"
+                                       IsRunning="_isRunning"
+                                       OnSlotChanged="SaveCharacterState"
+                                       OnAddSlot="AddSlot"
+                                       OnRemoveSlot="RemoveSlot"
+                                       OnRunSlot="RunSingleSlot"
+                                       OnViewSlot="OpenSlotViewer" />
+                </Content>
+            </TwoColumnLayout>
+        }
     </MudTabPanel>
 </TabbedPageShell>
 
@@ -36,22 +303,763 @@
 
 @code {
     private bool _isRunning;
+    private bool _isLoadingCharacters;
     private bool _showViewer;
     private int _viewerStartIndex;
     private List<ImageEntity> _viewerAssets = new();
+    private IReadOnlyList<CharacterSummary> _characters = [];
+    private CharacterEntity? _selectedCharacter;
+    private CharacterCreatorCatalog _catalog = CharacterCreatorCatalog.CreateFallback();
+    private CharacterPromptCompilation? _compiledPrompt;
+    private CharacterPromptCompilation? _baselineCompiledPrompt;
+    private CharacterLlmAuthoringSuggestion? _authoringSuggestion;
+    private CharacterImageDraft? _imageDraft;
+    private IReadOnlyList<string> _imageDraftModels = [];
+    private bool _isCharacterDirty;
+    private bool _isAuthoringBusy;
+    private bool _isImageDraftBusy;
+    private string _imageDraftDataUri = string.Empty;
+    private string _imageDraftModel = string.Empty;
+    private string _newCharacterName = "Untitled Character";
+    private string _editName = string.Empty;
+    private string _editDescription = string.Empty;
+    private string _editSummary = string.Empty;
+    private const long MaxImportFileSize = 4 * 1024 * 1024;
 
     private AppStateCharacter Character => State.State.Character;
+    private string CharacterCountSummary => _characters.Count == 1 ? "1 saved character" : $"{_characters.Count} saved characters";
+    private string CatalogSummary => $"{_catalog.Regions.Count} regions, {_catalog.TraitDefinitions.Count} traits";
+    private CharacterReferenceSheetBody? CurrentSheet => _selectedCharacter?.Body.ReferenceSheets.FirstOrDefault(sheet => sheet.Id == Character.SelectedReferenceSheetId);
+    private bool HasCurrentSourceImage => !string.IsNullOrWhiteSpace(Character.SourceImage.ImagePath) || !string.IsNullOrWhiteSpace(Character.SourceImage.ImageDataUri);
+    private IReadOnlyList<Workflow> PromptWorkflows => PromptSendTo.GetParameterWorkflows();
+    private string SelectedPromptProfileId => Character.SelectedPromptProfileId
+        ?? _selectedCharacter?.Body.PromptProfiles.FirstOrDefault(profile => profile.IsDefault)?.Id
+        ?? _selectedCharacter?.Body.PromptProfiles.FirstOrDefault()?.Id
+        ?? "identity_plus_wardrobe";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _catalog = await CharacterCatalogs.LoadAsync();
+        await LoadImageDraftModels();
+        await LoadCharacters();
+    }
+
+    private async Task LoadImageDraftModels()
+    {
+        try
+        {
+            var models = await Ollama.GetModels();
+            _imageDraftModels = models.Select(model => model.Name).OrderBy(name => name).ToList();
+            _imageDraftModel = string.IsNullOrWhiteSpace(State.State.Generation.LLM.Model)
+                ? _imageDraftModels.FirstOrDefault(model => OllamaService.IsLikelyMultimodal(model)) ?? _imageDraftModels.FirstOrDefault() ?? string.Empty
+                : State.State.Generation.LLM.Model;
+
+            if (!string.IsNullOrWhiteSpace(_imageDraftModel) && !_imageDraftModels.Contains(_imageDraftModel))
+            {
+                _imageDraftModel = _imageDraftModels.FirstOrDefault(model => OllamaService.IsLikelyMultimodal(model)) ?? string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load Ollama models: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task ReloadCatalog()
+    {
+        _catalog = await CharacterCatalogs.LoadAsync();
+        EnsureCreatorSelections();
+        RecompileCharacterPrompt();
+        Snackbar.Add(_catalog.Warnings.Count == 0
+            ? "Character catalog reloaded."
+            : $"Character catalog reloaded with {_catalog.Warnings.Count} warning{(_catalog.Warnings.Count == 1 ? string.Empty : "s")}." ,
+            _catalog.Warnings.Count == 0 ? Severity.Success : Severity.Warning);
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task HandleTabChanged(int activeIndex)
     {
         Character.ActiveTabIndex = activeIndex;
-        await SaveCharacterState();
+        await State.SaveState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCharacters()
+    {
+        _isLoadingCharacters = true;
+        try
+        {
+            _characters = await CharacterRepository.ListAsync();
+            var selectedId = Character.SelectedCharacterId;
+            if (selectedId is null && _characters.Count > 0)
+            {
+                selectedId = _characters[0].Id;
+            }
+
+            if (selectedId is { } id)
+            {
+                await LoadCharacter(id, loadSheet: true);
+            }
+        }
+        finally
+        {
+            _isLoadingCharacters = false;
+        }
+    }
+
+    private async Task SelectCharacter(int id)
+    {
+        await SaveCurrentSheet();
+        await LoadCharacter(id, loadSheet: true);
+        await State.SaveState();
+    }
+
+    private async Task LoadCharacter(int id, bool loadSheet)
+    {
+        _selectedCharacter = await CharacterRepository.GetByIdAsync(id);
+        if (_selectedCharacter is null)
+        {
+            Character.SelectedCharacterId = null;
+            Character.SelectedReferenceSheetId = null;
+            return;
+        }
+
+        Character.SelectedCharacterId = _selectedCharacter.Id;
+        EnsureCreatorSelections();
+        _editName = _selectedCharacter.Name;
+        _editDescription = _selectedCharacter.Description;
+        _editSummary = _selectedCharacter.Body.Identity.Summary;
+        _isCharacterDirty = false;
+        _authoringSuggestion = null;
+        _imageDraft = null;
+        RecompileCharacterPrompt();
+        _baselineCompiledPrompt = _compiledPrompt;
+
+        if (!loadSheet)
+        {
+            return;
+        }
+
+        var preferredSheetId = Character.SelectedReferenceSheetId ?? _selectedCharacter.Body.ActiveReferenceSheetId;
+        var sheet = _selectedCharacter.Body.ReferenceSheets.FirstOrDefault(sheet => sheet.Id == preferredSheetId)
+            ?? _selectedCharacter.Body.ReferenceSheets.FirstOrDefault();
+        if (sheet is null)
+        {
+            Character.SelectedReferenceSheetId = null;
+            return;
+        }
+
+        sheet.ApplyToAppState(Character);
+        await CharacterRepository.SetActiveReferenceSheetAsync(_selectedCharacter.Id, sheet.Id);
+    }
+
+    private async Task CreateCharacter()
+    {
+        var character = await CharacterRepository.CreateAsync(_newCharacterName);
+        _newCharacterName = "Untitled Character";
+        await LoadCharacters();
+        await SelectCharacter(character.Id);
+    }
+
+    private async Task DuplicateCharacter()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        var duplicate = await CharacterRepository.DuplicateAsync(_selectedCharacter.Id);
+        await LoadCharacters();
+        await SelectCharacter(duplicate.Id);
+    }
+
+    private async Task DeleteCharacter()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        var deletedId = _selectedCharacter.Id;
+        await CharacterRepository.DeleteAsync(deletedId);
+        if (Character.SelectedCharacterId == deletedId)
+        {
+            Character.SelectedCharacterId = null;
+            Character.SelectedReferenceSheetId = null;
+        }
+
+        _selectedCharacter = null;
+        await LoadCharacters();
+        await State.SaveState();
+    }
+
+    private async Task ExportSelectedCharacter()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        var snapshot = CreateCharacterExportSnapshot();
+        var json = CharacterImports.ExportCharacter(snapshot);
+        await JS.InvokeVoidAsync("downloadFile", $"{CreateSafeFileName(snapshot.Name)}.character.json", json, "application/json");
+        Snackbar.Add("Character export ready.", Severity.Success);
+    }
+
+    private async Task ExportCurrentReferenceSheet()
+    {
+        if (_selectedCharacter is null || CurrentSheet is null)
+        {
+            return;
+        }
+
+        await SaveCurrentSheet();
+        var sheet = CurrentSheet;
+        var json = CharacterImports.ExportReferenceSheet(_selectedCharacter, sheet);
+        await JS.InvokeVoidAsync("downloadFile", $"{CreateSafeFileName(_selectedCharacter.Name)}-{CreateSafeFileName(sheet.Label)}.sheet.json", json, "application/json");
+        Snackbar.Add("Reference sheet export ready.", Severity.Success);
+    }
+
+    private async Task ImportCharacterFile(InputFileChangeEventArgs args)
+    {
+        try
+        {
+            var json = await ReadImportFileAsync(args);
+            var result = await CharacterImports.ImportCharacterAsync(json);
+            await LoadCharacters();
+            if (result.CharacterId is { } id)
+            {
+                await SelectCharacter(id);
+            }
+
+            Snackbar.Add(result.Message, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Character import failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ImportReferenceSheetFile(InputFileChangeEventArgs args)
+    {
+        if (_selectedCharacter is null)
+        {
+            Snackbar.Add("Select a character before importing a reference sheet.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await SaveCurrentSheet();
+            var json = await ReadImportFileAsync(args);
+            var result = await CharacterImports.ImportReferenceSheetAsync(_selectedCharacter.Id, json);
+            await ReloadSelectedCharacter(loadSheet: false);
+            if (result.ReferenceSheetId is { } sheetId)
+            {
+                await SelectReferenceSheet(sheetId);
+            }
+
+            Snackbar.Add(result.Message, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Reference sheet import failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private CharacterEntity CreateCharacterExportSnapshot()
+    {
+        if (_selectedCharacter is null)
+        {
+            throw new InvalidOperationException("A selected character is required for export.");
+        }
+
+        var json = JsonSerializer.Serialize(_selectedCharacter, CharacterCreatorJsonOptions.Compact);
+        var snapshot = JsonSerializer.Deserialize<CharacterEntity>(json, CharacterCreatorJsonOptions.Compact)
+            ?? throw new InvalidOperationException("Could not create character export snapshot.");
+        snapshot.Name = _editName;
+        snapshot.Description = _editDescription;
+        snapshot.Body.Identity.DisplayName = _editName;
+        snapshot.Body.Identity.Summary = _editSummary;
+        return snapshot;
+    }
+
+    private static async Task<string> ReadImportFileAsync(InputFileChangeEventArgs args)
+    {
+        using var reader = new StreamReader(args.File.OpenReadStream(MaxImportFileSize));
+        return await reader.ReadToEndAsync();
+    }
+
+    private static string CreateSafeFileName(string value)
+    {
+        var safe = string.IsNullOrWhiteSpace(value) ? "character" : value.Trim();
+        foreach (var invalid in Path.GetInvalidFileNameChars())
+        {
+            safe = safe.Replace(invalid, '-');
+        }
+
+        return safe.Replace(' ', '-').ToLowerInvariant();
+    }
+
+    private async Task SaveCharacterDetails()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        _selectedCharacter.Name = _editName;
+        _selectedCharacter.Description = _editDescription;
+        _selectedCharacter.Body.Identity.DisplayName = _editName;
+        _selectedCharacter.Body.Identity.Summary = _editSummary;
+        _selectedCharacter = await CharacterRepository.UpdateAsync(_selectedCharacter);
+        _isCharacterDirty = false;
+        _authoringSuggestion = null;
+        _imageDraft = null;
+        await LoadCharacters();
+        RecompileCharacterPrompt();
+        _baselineCompiledPrompt = _compiledPrompt;
+        Snackbar.Add("Character saved.", Severity.Success);
+    }
+
+    private async Task ReloadCharacterDetails()
+    {
+        if (Character.SelectedCharacterId is not { } selectedId)
+        {
+            return;
+        }
+
+        await LoadCharacter(selectedId, loadSheet: false);
+        _authoringSuggestion = null;
+        _imageDraft = null;
+        _baselineCompiledPrompt = _compiledPrompt;
+        await State.SaveState();
+        Snackbar.Add("Character reloaded.", Severity.Info);
+    }
+
+    private async Task HandleCreatorChanged()
+    {
+        _isCharacterDirty = true;
+        RecompileCharacterPrompt();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectCreatorRegion(string regionId)
+    {
+        Character.SelectedCreatorRegionId = string.IsNullOrWhiteSpace(regionId) ? "body" : regionId;
+        await State.SaveState();
+    }
+
+    private async Task SelectPromptProfile(string profileId)
+    {
+        Character.SelectedPromptProfileId = string.IsNullOrWhiteSpace(profileId) ? null : profileId;
+        RecompileCharacterPrompt();
+        await State.SaveState();
+    }
+
+    private async Task SelectWardrobe(string? wardrobeId)
+    {
+        Character.SelectedWardrobeId = string.IsNullOrWhiteSpace(wardrobeId) ? null : wardrobeId;
+        RecompileCharacterPrompt();
+        await State.SaveState();
+    }
+
+    private async Task RequestExpandSummary()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        await RequestAuthoringSuggestion(() => CharacterAuthoring.ExpandSummaryAsync(_selectedCharacter.Body, _catalog, _compiledPrompt));
+    }
+
+    private async Task RequestRewriteRegion()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        await RequestAuthoringSuggestion(() => CharacterAuthoring.RewriteRegionAsync(_selectedCharacter.Body, _catalog, Character.SelectedCreatorRegionId));
+    }
+
+    private async Task RequestFillMissing()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        await RequestAuthoringSuggestion(() => CharacterAuthoring.FillMissingAsync(_selectedCharacter.Body, _catalog));
+    }
+
+    private async Task RequestAuthoringSuggestion(Func<Task<CharacterLlmAuthoringSuggestion?>> request)
+    {
+        if (_isAuthoringBusy)
+        {
+            return;
+        }
+
+        _isAuthoringBusy = true;
+        try
+        {
+            _authoringSuggestion = await request();
+            Snackbar.Add(_authoringSuggestion is null
+                ? "No LLM suggestion was returned. Check the selected LLM model and try again."
+                : "LLM suggestion ready for review.",
+                _authoringSuggestion is null ? Severity.Warning : Severity.Success);
+        }
+        finally
+        {
+            _isAuthoringBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AcceptAuthoringSuggestion()
+    {
+        if (_selectedCharacter is null || _authoringSuggestion is null)
+        {
+            return;
+        }
+
+        var result = CharacterAuthoring.ApplySuggestion(_selectedCharacter.Body, _authoringSuggestion);
+        _editSummary = _selectedCharacter.Body.Identity.Summary;
+        _isCharacterDirty = true;
+        _authoringSuggestion = null;
+        RecompileCharacterPrompt();
+        await InvokeAsync(StateHasChanged);
+
+        var message = result.Messages.Count == 0
+            ? "LLM suggestion applied."
+            : string.Join(" ", result.Messages);
+        Snackbar.Add(message, result.SkippedTraitCount > 0 ? Severity.Warning : Severity.Success);
+    }
+
+    private Task RejectAuthoringSuggestion()
+    {
+        _authoringSuggestion = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task HandleImageDraftDataChanged(string dataUri)
+    {
+        _imageDraftDataUri = dataUri ?? string.Empty;
+        _imageDraft = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task SelectImageDraftModel(string modelName)
+    {
+        _imageDraftModel = modelName ?? string.Empty;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task HandleImageDraftEdited()
+    {
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RequestImageDraft()
+    {
+        if (_selectedCharacter is null || _isImageDraftBusy)
+        {
+            return;
+        }
+
+        var imageBytes = ExtractImageBytes(_imageDraftDataUri);
+        if (imageBytes is not { Length: > 0 })
+        {
+            Snackbar.Add("Choose a source image before creating a draft.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_imageDraftModel))
+        {
+            Snackbar.Add("Choose a vision-language model before creating a draft.", Severity.Warning);
+            return;
+        }
+
+        _isImageDraftBusy = true;
+        try
+        {
+            _imageDraft = await CharacterImageDrafts.CreateDraftAsync(new CharacterImageDraftRequest
+            {
+                ModelName = _imageDraftModel,
+                ImageBytes = imageBytes,
+                SourceLabel = $"{_selectedCharacter.Name} source image",
+                Catalog = _catalog
+            });
+
+            Snackbar.Add(_imageDraft is null
+                ? "No image draft was returned. Check the selected VL model and try again."
+                : "Image draft ready for review.",
+                _imageDraft is null ? Severity.Warning : Severity.Success);
+        }
+        finally
+        {
+            _isImageDraftBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AcceptImageDraft()
+    {
+        if (_selectedCharacter is null || _imageDraft is null)
+        {
+            return;
+        }
+
+        var result = CharacterImageDrafts.ApplyDraft(_selectedCharacter.Body, _imageDraft);
+        _editSummary = _selectedCharacter.Body.Identity.Summary;
+        if (_imageDraft.SourceImage is not null)
+        {
+            Character.SourceImage = new CharacterSourceImageState
+            {
+                ImagePath = _imageDraft.SourceImage.ImagePath,
+                ImageDataUri = _imageDraftDataUri,
+                SourceLabel = _imageDraft.SourceLabel
+            };
+            Character.SelectedReferenceSheetId = _selectedCharacter.Body.ActiveReferenceSheetId;
+        }
+
+        _imageDraft = null;
+        _isCharacterDirty = true;
+        RecompileCharacterPrompt();
+        await InvokeAsync(StateHasChanged);
+
+        var message = result.Messages.Count == 0
+            ? "Image draft applied."
+            : string.Join(" ", result.Messages);
+        Snackbar.Add(message, result.SkippedTraitCount > 0 ? Severity.Warning : Severity.Success);
+    }
+
+    private Task RejectImageDraft()
+    {
+        _imageDraft = null;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static byte[]? ExtractImageBytes(string? dataUri)
+    {
+        if (string.IsNullOrWhiteSpace(dataUri))
+        {
+            return null;
+        }
+
+        var commaIndex = dataUri.IndexOf(',', StringComparison.Ordinal);
+        var payload = commaIndex >= 0 ? dataUri[(commaIndex + 1)..] : dataUri;
+        try
+        {
+            return Convert.FromBase64String(payload);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void EnsureCreatorSelections()
+    {
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        if (!_catalog.Regions.Any(region => string.Equals(region.Id, Character.SelectedCreatorRegionId, StringComparison.Ordinal)))
+        {
+            Character.SelectedCreatorRegionId = _catalog.Regions.FirstOrDefault()?.Id ?? "body";
+        }
+
+        Character.PromptApplicationContext ??= new CharacterPromptApplicationContext();
+
+        if (string.IsNullOrWhiteSpace(Character.SelectedPromptProfileId)
+            || !_selectedCharacter.Body.PromptProfiles.Any(profile => string.Equals(profile.Id, Character.SelectedPromptProfileId, StringComparison.Ordinal)))
+        {
+            Character.SelectedPromptProfileId = _selectedCharacter.Body.PromptProfiles.FirstOrDefault(profile => profile.IsDefault)?.Id
+                ?? _selectedCharacter.Body.PromptProfiles.FirstOrDefault()?.Id;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Character.SelectedWardrobeId)
+            && !_selectedCharacter.Body.Wardrobes.Any(wardrobe => string.Equals(wardrobe.Id, Character.SelectedWardrobeId, StringComparison.Ordinal)))
+        {
+            Character.SelectedWardrobeId = null;
+        }
+    }
+
+    private void RecompileCharacterPrompt()
+    {
+        if (_selectedCharacter is null)
+        {
+            _compiledPrompt = null;
+            return;
+        }
+
+        _compiledPrompt = PromptCompiler.Compile(_selectedCharacter.Body, _catalog, new CharacterPromptCompileOptions
+        {
+            ProfileId = SelectedPromptProfileId,
+            WardrobeId = Character.SelectedWardrobeId,
+            ApplicationContext = Character.PromptApplicationContext,
+            CompositionMode = Character.PromptApplicationMode
+        });
+    }
+
+    private async Task HandleApplicationContextChanged()
+    {
+        RecompileCharacterPrompt();
+        await State.SaveState();
+    }
+
+    private async Task SelectApplicationMode(CharacterPromptCompositionMode mode)
+    {
+        Character.PromptApplicationMode = mode;
+        RecompileCharacterPrompt();
+        await State.SaveState();
+    }
+
+    private async Task SetIncludeNegativePromptOnSend(bool include)
+    {
+        Character.IncludeNegativePromptOnSend = include;
+        await State.SaveState();
+    }
+
+    private async Task SendCompiledPromptToWorkflow(Workflow workflow)
+    {
+        if (_compiledPrompt is null)
+        {
+            Snackbar.Add("Compile a character prompt before sending it.", Severity.Warning);
+            return;
+        }
+
+        await PromptSendTo.SendPromptToWorkflowAsync(new PromptSendToRequest
+        {
+            PositivePrompt = _compiledPrompt.PositivePrompt,
+            NegativePrompt = _compiledPrompt.NegativePrompt,
+            Mode = ToPromptApplicationMode(Character.PromptApplicationMode),
+            IncludeNegativePrompt = Character.IncludeNegativePromptOnSend
+        }, workflow);
+    }
+
+    private async Task CopyCompiledPrompt()
+    {
+        if (_compiledPrompt is null)
+        {
+            Snackbar.Add("Compile a character prompt before copying it.", Severity.Warning);
+            return;
+        }
+
+        var text = Character.IncludeNegativePromptOnSend && !string.IsNullOrWhiteSpace(_compiledPrompt.NegativePrompt)
+            ? $"Positive:\n{_compiledPrompt.PositivePrompt}\n\nNegative:\n{_compiledPrompt.NegativePrompt}"
+            : _compiledPrompt.PositivePrompt;
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Snackbar.Add("Character prompt copied.", Severity.Success);
+    }
+
+    private static PromptApplicationMode ToPromptApplicationMode(CharacterPromptCompositionMode mode) => mode switch
+    {
+        CharacterPromptCompositionMode.Prepend => PromptApplicationMode.Prepend,
+        CharacterPromptCompositionMode.Append => PromptApplicationMode.Append,
+        _ => PromptApplicationMode.Replace
+    };
+
+    private async Task SelectReferenceSheet(string sheetId)
+    {
+        await SaveCurrentSheet();
+        if (_selectedCharacter is null)
+        {
+            return;
+        }
+
+        var sheet = _selectedCharacter.Body.ReferenceSheets.FirstOrDefault(sheet => sheet.Id == sheetId);
+        if (sheet is null)
+        {
+            return;
+        }
+
+        sheet.ApplyToAppState(Character);
+        await CharacterRepository.SetActiveReferenceSheetAsync(_selectedCharacter.Id, sheet.Id);
+        await State.SaveState();
+    }
+
+    private async Task AttachPendingSourceImage()
+    {
+        if (_selectedCharacter is null || Character.PendingSourceImage is null)
+        {
+            return;
+        }
+
+        var pending = Character.PendingSourceImage;
+        var sheet = await CharacterRepository.AddOrGetReferenceSheetAsync(
+            _selectedCharacter.Id,
+            pending.ToReferenceSourceImage(),
+            pending.SourceLabel);
+        sheet.ApplyToAppState(Character, pending.ImageDataUri);
+        Character.PendingSourceImage = null;
+        await ReloadSelectedCharacter(loadSheet: false);
+        await State.SaveState();
+        Snackbar.Add("Source image attached to character.", Severity.Success);
+    }
+
+    private async Task CreateSheetFromCurrentSource()
+    {
+        if (_selectedCharacter is null || !HasCurrentSourceImage)
+        {
+            return;
+        }
+
+        var source = CreateSourceImageFromCurrentState();
+        var sheet = await CharacterRepository.AddOrGetReferenceSheetAsync(_selectedCharacter.Id, source, Character.SourceImage.SourceLabel);
+        sheet.ApplyToAppState(Character, Character.SourceImage.ImageDataUri);
+        await ReloadSelectedCharacter(loadSheet: false);
+        await State.SaveState();
+        Snackbar.Add("Reference sheet selected.", Severity.Success);
+    }
+
+    private CharacterReferenceSourceImage CreateSourceImageFromCurrentState()
+    {
+        if (!string.IsNullOrWhiteSpace(Character.SourceImage.ImagePath))
+        {
+            return CharacterReferenceSourceImage.FromPath(Character.SourceImage.ImagePath, Character.SourceImage.SourceLabel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Character.SourceImage.ImageDataUri))
+        {
+            var commaIndex = Character.SourceImage.ImageDataUri.IndexOf(',', StringComparison.Ordinal);
+            var base64 = commaIndex >= 0 ? Character.SourceImage.ImageDataUri[(commaIndex + 1)..] : Character.SourceImage.ImageDataUri;
+            return CharacterReferenceSourceImage.FromBytes(Convert.FromBase64String(base64), Character.SourceImage.SourceLabel, Character.SourceImage.SourceLabel);
+        }
+
+        throw new InvalidOperationException("A source image is required before creating a reference sheet.");
     }
 
     private async Task SaveCharacterState()
     {
+        await SaveCurrentSheet();
         await State.SaveState();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveCurrentSheet()
+    {
+        if (_selectedCharacter is null || CurrentSheet is null)
+        {
+            return;
+        }
+
+        var sheet = CharacterReferenceSheetBody.FromAppState(Character, CurrentSheet);
+        await CharacterRepository.UpdateReferenceSheetAsync(_selectedCharacter.Id, sheet);
+        await ReloadSelectedCharacter(loadSheet: false);
+    }
+
+    private async Task ReloadSelectedCharacter(bool loadSheet)
+    {
+        if (Character.SelectedCharacterId is { } selectedId)
+        {
+            await LoadCharacter(selectedId, loadSheet);
+            _characters = await CharacterRepository.ListAsync();
+        }
     }
 
     private async Task AddSlot(CharacterReferenceSlotPresetKey presetKey)
@@ -106,6 +1114,8 @@
                 var message = result.ErrorMessage ?? $"Generated {succeeded} slot{(succeeded == 1 ? string.Empty : "s")}; {failed} failed.";
                 Snackbar.Add(message, failed > 0 || succeeded == 0 ? Severity.Warning : Severity.Info);
             }
+
+            await SaveCurrentSheet();
         }
         finally
         {

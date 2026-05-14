@@ -1,0 +1,808 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
+@using BlazorWebApp.Models.CharacterCreator
+
+<MudStack Spacing="2" Class="creator-workspace">
+    <div class="creator-toolbar">
+        <div>
+            <MudText Typo="Typo.subtitle2">Creator</MudText>
+            <MudText Typo="Typo.caption" Color="@(IsDirty? Color.Warning: Color.Secondary)">@(IsDirty ? "Unsaved changes" : "Saved")</MudText>
+        </div>
+        <div class="send-to-buttons creator-actions">
+            <button type="button" class="send-to-btn mode-extras" @onclick="OnSave">
+                <MudIcon Icon="fa-solid fa-floppy-disk" Size="Size.Small" />
+                <span>Save</span>
+            </button>
+            <button type="button" class="send-to-btn" @onclick="OnReload">
+                <MudIcon Icon="fa-solid fa-rotate-right" Size="Size.Small" />
+                <span>Reload</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="send-to-section creator-authoring-actions">
+        <MudText Typo="Typo.subtitle2">LLM Assist</MudText>
+        <div class="send-to-buttons">
+            <button type="button" class="send-to-btn" disabled="@IsAuthoringBusy" @onclick="OnExpandSummary">
+                <MudIcon Icon="fa-solid fa-wand-magic-sparkles" Size="Size.Small" />
+                <span>Expand Summary</span>
+            </button>
+            <button type="button" class="send-to-btn" disabled="@IsAuthoringBusy" @onclick="OnRewriteRegion">
+                <MudIcon Icon="fa-solid fa-pen-nib" Size="Size.Small" />
+                <span>Rewrite Region</span>
+            </button>
+            <button type="button" class="send-to-btn" disabled="@IsAuthoringBusy" @onclick="OnFillMissing">
+                <MudIcon Icon="fa-solid fa-list-check" Size="Size.Small" />
+                <span>Fill Missing</span>
+            </button>
+        </div>
+    </div>
+
+    @if (AuthoringSuggestion is not null)
+    {
+        <div class="creator-authoring-preview">
+            <div class="creator-section-heading">
+                <div>
+                    <MudText Typo="Typo.subtitle2">@AuthoringSuggestionTitle</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Preview before applying</MudText>
+                </div>
+                <div class="send-to-buttons creator-actions">
+                    <button type="button" class="send-to-btn mode-extras" @onclick="OnAcceptSuggestion">
+                        <MudIcon Icon="fa-solid fa-check" Size="Size.Small" />
+                        <span>Accept</span>
+                    </button>
+                    <button type="button" class="send-to-btn" @onclick="OnRejectSuggestion">
+                        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
+                        <span>Reject</span>
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(AuthoringSuggestion.Summary))
+            {
+                <div class="creator-suggestion-block">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Summary</MudText>
+                    <p>@AuthoringSuggestion.Summary</p>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(AuthoringSuggestion.RegionNotes))
+            {
+                <div class="creator-suggestion-block">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Region Notes</MudText>
+                    <p>@AuthoringSuggestion.RegionNotes</p>
+                </div>
+            }
+
+            @if (AuthoringSuggestion.TraitUpdates.Count > 0)
+            {
+                <div class="creator-suggestion-traits">
+                    @foreach (var update in AuthoringSuggestion.TraitUpdates)
+                    {
+                        <div class="creator-suggestion-trait">
+                            <span>@update.RegionId</span>
+                            <strong>@update.TraitId</strong>
+                            <span>@update.Value</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="creator-image-draft-panel">
+        <div class="creator-section-heading">
+            <div>
+                <MudText Typo="Typo.subtitle2">Create From Image</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Draft visible traits from a reference image
+                </MudText>
+            </div>
+            <button type="button" class="send-to-btn mode-extras" disabled="@(!CanRunImageDraft)"
+                    @onclick="OnCreateImageDraft">
+                <MudIcon Icon="fa-solid fa-image-portrait" Size="Size.Small" />
+                <span>Draft</span>
+            </button>
+        </div>
+
+        <MudSelect T="string" Value="@SelectedImageDraftModel" ValueChanged="OnImageDraftModelChanged" Label="VL Model"
+                   Dense="true" Variant="Variant.Text" Clearable="true">
+            @foreach (var model in ImageDraftModels)
+            {
+                <MudSelectItem T="string" Value="@model">@model</MudSelectItem>
+            }
+        </MudSelect>
+
+        <ImageInput ImageData="@ImageDraftDataUri" ImageDataChanged="OnImageDraftDataChanged" Title="Source image"
+                    Class="creator-image-draft-input" />
+    </div>
+
+    @if (ImageDraft is not null)
+    {
+        <div class="creator-image-draft-preview">
+            <div class="creator-section-heading">
+                <div>
+                    <MudText Typo="Typo.subtitle2">Image Draft</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Edit before accepting</MudText>
+                </div>
+                <div class="send-to-buttons creator-actions">
+                    <button type="button" class="send-to-btn mode-extras" @onclick="OnAcceptImageDraft">
+                        <MudIcon Icon="fa-solid fa-check" Size="Size.Small" />
+                        <span>Accept</span>
+                    </button>
+                    <button type="button" class="send-to-btn" @onclick="OnRejectImageDraft">
+                        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
+                        <span>Discard</span>
+                    </button>
+                </div>
+            </div>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string" Value="@ImageDraft.Species" ValueChanged="SetImageDraftSpecies" Label="Species"
+                                  Dense="true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string" Value="@ImageDraft.Archetype" ValueChanged="SetImageDraftArchetype"
+                                  Label="Archetype" Dense="true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" Value="@ImageDraft.Summary" ValueChanged="SetImageDraftSummary" Label="Summary"
+                                  Lines="2" Dense="true" Variant="Variant.Text" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" Value="@ImageDraft.Notes" ValueChanged="SetImageDraftNotes" Label="Notes"
+                                  Lines="2" Dense="true" Variant="Variant.Text" />
+                </MudItem>
+            </MudGrid>
+
+            @foreach (var region in ImageDraft.Regions)
+            {
+                <div class="creator-image-draft-region">
+                    <MudText Typo="Typo.subtitle2">@ResolveRegionLabel(region.RegionId)</MudText>
+                    <MudTextField T="string" Value="@region.Notes"
+                                  ValueChanged="value => SetImageDraftRegionNotes(region, value)" Label="Region Notes" Dense="true"
+                                  Variant="Variant.Text" />
+                    @foreach (var trait in region.Traits)
+                    {
+                        <div class="creator-image-draft-trait">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@ResolveTraitLabel(trait.TraitId)</MudText>
+                            <MudTextField T="string" Value="@trait.Value"
+                                          ValueChanged="value => SetImageDraftTraitValue(trait, value)" Label="Value" Dense="true"
+                                          Variant="Variant.Text" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@trait.Confidence.ToString("P0")</MudText>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(ImageDraft.RawResponse))
+            {
+                <MudExpansionPanels Dense="true" Elevation="0">
+                    <MudExpansionPanel Text="Raw response">
+                        <pre class="creator-image-draft-raw">@ImageDraft.RawResponse</pre>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+        </div>
+    }
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" Value="@Character.Body.Identity.Species" ValueChanged="SetSpecies" Label="Species"
+                          Dense="true" Variant="Variant.Text" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" Value="@Character.Body.Identity.Archetype" ValueChanged="SetArchetype"
+                          Label="Archetype" Dense="true" Variant="Variant.Text" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField T="string" Value="@Character.Body.Notes" ValueChanged="SetNotes" Label="Notes" Lines="2"
+                          Dense="true" Variant="Variant.Text" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="creator-main-grid">
+        <MudStack Spacing="2" Class="creator-diagram-panel">
+            <div class="creator-section-heading">
+                <div>
+                    <MudText Typo="Typo.subtitle2">@DiagramTitle</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@DiagramSummary</MudText>
+                </div>
+                @if (IsDiagramZoomed)
+                {
+                    <button type="button" class="send-to-btn" @onclick="ResetDiagramZoom">
+                        <MudIcon Icon="fa-solid fa-arrow-left" Size="Size.Small" />
+                        <span>Body</span>
+                    </button>
+                }
+            </div>
+            <div class="creator-region-map" role="list" aria-label="@DiagramTitle">
+                @foreach (var region in VisibleDiagramRegions)
+                {
+                    <button type="button"
+                            class="creator-region-node @(IsSelectedRegion(region.Id) ? "creator-region-node--active" : null)"
+                            aria-pressed="@IsSelectedRegion(region.Id).ToString().ToLowerInvariant()"
+                            aria-label="@GetRegionButtonLabel(region)" @onclick="() => SelectDiagramRegion(region)"
+                            @onkeydown="args => HandleRegionKeyDown(args, region)">
+                        <span>@region.Label</span>
+                        @if (HasChildRegions(region.Id) && !IsDiagramZoomed)
+                        {
+                            <MudIcon Icon="fa-solid fa-magnifying-glass-plus" Size="Size.Small" />
+                        }
+                    </button>
+                }
+            </div>
+        </MudStack>
+
+        <MudStack Spacing="2" Class="creator-region-editor">
+            <div class="creator-section-heading">
+                <MudText Typo="Typo.subtitle2">@SelectedRegion?.Label</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@SelectedRegionTraitSummary</MudText>
+            </div>
+
+            @if (SelectedRegion is null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No region selected.</MudText>
+            }
+            else
+            {
+                @foreach (var trait in SelectedTraitDefinitions)
+                {
+                    @if (trait.Options.Count > 0)
+                    {
+                        <MudSelect T="string" Value="@GetTraitValue(trait)" ValueChanged="value => SetTraitValue(trait, value)"
+                                   Label="@trait.Label" Dense="true" Variant="Variant.Text" Clearable="true">
+                            @foreach (var option in trait.Options)
+                            {
+                                <MudSelectItem T="string" Value="@option.Id">@option.Label</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField T="string" Value="@GetTraitValue(trait)" ValueChanged="value => SetTraitValue(trait, value)"
+                                      Label="@trait.Label" Dense="true" Variant="Variant.Text" />
+                    }
+                }
+
+                <MudTextField T="string" Value="@SelectedRegionState.FreeformNotes" ValueChanged="SetSelectedRegionNotes"
+                              Label="Region Notes" Lines="3" Dense="true" Variant="Variant.Text" />
+            }
+        </MudStack>
+    </div>
+
+    <div class="creator-preview-grid">
+        <MudStack Spacing="2" Class="creator-prompt-panel">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Value="@SelectedPromptProfileId" ValueChanged="OnPromptProfileChanged"
+                               Label="Prompt Profile" Dense="true" Variant="Variant.Text">
+                        @foreach (var profile in Character.Body.PromptProfiles)
+                        {
+                            <MudSelectItem T="string" Value="@profile.Id">@profile.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Value="@SelectedWardrobeId" ValueChanged="OnWardrobeChanged" Label="Wardrobe"
+                               Dense="true" Variant="Variant.Text" Clearable="true">
+                        @foreach (var wardrobe in Character.Body.Wardrobes)
+                        {
+                            <MudSelectItem T="string" Value="@wardrobe.Id">@wardrobe.Label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <div class="creator-application-panel">
+                <div class="creator-section-heading">
+                    <div>
+                        <MudText Typo="Typo.subtitle2">Prompt Application</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Temporary context for Generate</MudText>
+                    </div>
+                    <MudSwitch T="bool" Value="@IncludeNegativePromptOnSend"
+                               ValueChanged="OnIncludeNegativePromptChanged" Label="Negative guard" Dense="true"
+                               Color="Color.Primary" />
+                </div>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="CharacterPromptCompositionMode" Value="@ApplicationMode"
+                                   ValueChanged="OnApplicationModeChanged" Label="Mode" Dense="true" Variant="Variant.Text">
+                            <MudSelectItem T="CharacterPromptCompositionMode"
+                                           Value="CharacterPromptCompositionMode.Append">Append</MudSelectItem>
+                            <MudSelectItem T="CharacterPromptCompositionMode"
+                                           Value="CharacterPromptCompositionMode.Prepend">Prepend</MudSelectItem>
+                            <MudSelectItem T="CharacterPromptCompositionMode"
+                                           Value="CharacterPromptCompositionMode.Replace">Replace</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" Value="@ApplicationContext.Pose" ValueChanged="SetApplicationPose"
+                                      Label="Pose" Dense="true" Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" Value="@ApplicationContext.ExpressionOverride"
+                                      ValueChanged="SetApplicationExpression" Label="Expression" Dense="true"
+                                      Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" Value="@ApplicationContext.Camera" ValueChanged="SetApplicationCamera"
+                                      Label="Camera" Dense="true" Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" Value="@ApplicationContext.Scene" ValueChanged="SetApplicationScene"
+                                      Label="Scene" Dense="true" Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" Value="@ApplicationContext.Style" ValueChanged="SetApplicationStyle"
+                                      Label="Style" Dense="true" Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string" Value="@ApplicationContext.EditIntent"
+                                      ValueChanged="SetApplicationEditIntent" Label="Edit Intent" Dense="true"
+                                      Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string" Value="@ApplicationContext.AdditionalNegative"
+                                      ValueChanged="SetApplicationAdditionalNegative" Label="Negative Additions" Dense="true"
+                                      Variant="Variant.Text" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="send-to-section creator-send-section">
+                    <div class="send-to-buttons">
+                        <button type="button" class="send-to-btn mode-extras" disabled="@(!CanApplyPrompt)"
+                                @onclick="OnCopyPrompt">
+                            <MudIcon Icon="fa-solid fa-copy" Size="Size.Small" />
+                            <span>Copy</span>
+                        </button>
+                        @foreach (var workflow in PromptWorkflows)
+                        {
+                            var targetWorkflow = workflow;
+                            <button type="button" class="send-to-btn @GetWorkflowModeClass(targetWorkflow.Mode)"
+                                    disabled="@(!CanApplyPrompt)"
+                                    @onclick="() => OnSendPromptToWorkflow.InvokeAsync(targetWorkflow)">
+                                <MudIcon Icon="@GetWorkflowIcon(targetWorkflow.Mode)" Size="Size.Small" />
+                                <span>@targetWorkflow.Title</span>
+                            </button>
+                        }
+                    </div>
+                    @if (PromptWorkflows.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">No eligible Generate workflows are currently
+                            available.</MudText>
+                        }
+                    </div>
+                </div>
+
+                <div class="creator-prompt-output">
+                    <MudText Typo="Typo.subtitle2">Positive</MudText>
+                    <p>@(Compilation?.PositivePrompt ?? string.Empty)</p>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Compilation?.NegativePrompt))
+                {
+                    <div class="creator-prompt-output">
+                        <MudText Typo="Typo.subtitle2">Negative</MudText>
+                        <p>@Compilation.NegativePrompt</p>
+                    </div>
+                }
+
+                @if (Compilation?.Warnings.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                        @string.Join(" ", Compilation.Warnings)
+                    </MudAlert>
+                }
+
+                @if (HasPromptComparison)
+                {
+                    <MudExpansionPanels Dense="true" Elevation="0">
+                        <MudExpansionPanel Text="Prompt Changes">
+                            <div class="creator-prompt-comparison">
+                                <div class="creator-prompt-output">
+                                    <MudText Typo="Typo.subtitle2">Previous</MudText>
+                                    <p>@(BaselineCompilation?.PositivePrompt ?? string.Empty)</p>
+                                </div>
+                                <div class="creator-prompt-output">
+                                    <MudText Typo="Typo.subtitle2">Current</MudText>
+                                    <p>@(Compilation?.PositivePrompt ?? string.Empty)</p>
+                                </div>
+                            </div>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
+            </MudStack>
+
+            <MudStack Spacing="2" Class="creator-context-panel">
+                <MudText Typo="Typo.subtitle2">Reference Context</MudText>
+                <MudText Typo="Typo.body2">@ReferenceSheetSummary</MudText>
+                @if (ActiveReferenceSheet is not null)
+                {
+                    <div class="creator-reference-context">
+                        <MudIcon Icon="fa-solid fa-images" Size="Size.Small" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.body2">@ActiveReferenceSheet.Label</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@ActiveReferenceSheet.SourceImage.SourceLabel
+                            </MudText>
+                        </div>
+                    </div>
+                }
+            </MudStack>
+        </div>
+    </MudStack>
+
+@code {
+    [Parameter, EditorRequired] public CharacterEntity Character { get; set; } = default!;
+    [Parameter, EditorRequired] public CharacterCreatorCatalog Catalog { get; set; } = default!;
+    [Parameter] public CharacterPromptCompilation? Compilation { get; set; }
+    [Parameter] public CharacterPromptCompilation? BaselineCompilation { get; set; }
+    [Parameter] public CharacterLlmAuthoringSuggestion? AuthoringSuggestion { get; set; }
+    [Parameter] public CharacterImageDraft? ImageDraft { get; set; }
+    [Parameter] public string ImageDraftDataUri { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> ImageDraftModels { get; set; } = [];
+    [Parameter] public string SelectedImageDraftModel { get; set; } = string.Empty;
+    [Parameter] public bool IsAuthoringBusy { get; set; }
+    [Parameter] public bool IsImageDraftBusy { get; set; }
+    [Parameter] public string SelectedRegionId { get; set; } = "body";
+    [Parameter] public string? SelectedPromptProfileId { get; set; }
+    [Parameter] public string? SelectedWardrobeId { get; set; }
+    [Parameter] public CharacterPromptApplicationContext ApplicationContext { get; set; } = new();
+    [Parameter] public CharacterPromptCompositionMode ApplicationMode { get; set; } = CharacterPromptCompositionMode.Append;
+    [Parameter] public bool IncludeNegativePromptOnSend { get; set; }
+    [Parameter] public IReadOnlyList<Workflow> PromptWorkflows { get; set; } = [];
+    [Parameter] public bool IsDirty { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnRegionSelected { get; set; }
+    [Parameter] public EventCallback<string> OnPromptProfileChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnWardrobeChanged { get; set; }
+    [Parameter] public EventCallback OnApplicationContextChanged { get; set; }
+    [Parameter] public EventCallback<CharacterPromptCompositionMode> OnApplicationModeChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnIncludeNegativePromptChanged { get; set; }
+    [Parameter] public EventCallback<Workflow> OnSendPromptToWorkflow { get; set; }
+    [Parameter] public EventCallback OnCopyPrompt { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnReload { get; set; }
+    [Parameter] public EventCallback OnExpandSummary { get; set; }
+    [Parameter] public EventCallback OnRewriteRegion { get; set; }
+    [Parameter] public EventCallback OnFillMissing { get; set; }
+    [Parameter] public EventCallback OnAcceptSuggestion { get; set; }
+    [Parameter] public EventCallback OnRejectSuggestion { get; set; }
+    [Parameter] public EventCallback<string> OnImageDraftDataChanged { get; set; }
+    [Parameter] public EventCallback<string> OnImageDraftModelChanged { get; set; }
+    [Parameter] public EventCallback OnCreateImageDraft { get; set; }
+    [Parameter] public EventCallback OnImageDraftEdited { get; set; }
+    [Parameter] public EventCallback OnAcceptImageDraft { get; set; }
+    [Parameter] public EventCallback OnRejectImageDraft { get; set; }
+
+    private string? _zoomRegionId;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(_zoomRegionId)
+            && DiagramRegions.All(region => !string.Equals(region.Id, _zoomRegionId, StringComparison.Ordinal)))
+        {
+            _zoomRegionId = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_zoomRegionId))
+        {
+            var selectedParentId = SelectedRegion?.ParentId;
+            if (!string.IsNullOrWhiteSpace(selectedParentId))
+            {
+                _zoomRegionId = selectedParentId;
+            }
+        }
+    }
+
+    private IReadOnlyList<CharacterRegionDefinition> DiagramRegions => Catalog.Regions
+        .OrderBy(region => region.SortOrder)
+        .ThenBy(region => region.Label)
+        .ToList();
+
+    private IReadOnlyList<CharacterRegionDefinition> VisibleDiagramRegions
+    {
+        get
+        {
+            if (IsDiagramZoomed)
+            {
+                var zoomRoot = DiagramRegions.FirstOrDefault(region => string.Equals(region.Id, _zoomRegionId,
+StringComparison.Ordinal));
+                var childRegions = DiagramRegions
+                    .Where(region => string.Equals(region.ParentId, _zoomRegionId, StringComparison.Ordinal))
+                    .ToList();
+
+                return zoomRoot is null ? childRegions : new[] { zoomRoot }.Concat(childRegions).ToList();
+            }
+
+            return DiagramRegions
+                .Where(region => string.IsNullOrWhiteSpace(region.ParentId))
+                .ToList();
+        }
+    }
+
+    private bool IsDiagramZoomed => !string.IsNullOrWhiteSpace(_zoomRegionId);
+
+    private string DiagramTitle => IsDiagramZoomed
+        ? $"{ResolveRegionLabel(_zoomRegionId ?? string.Empty)} Detail Map"
+        : "Body Map";
+
+    private string DiagramSummary => IsDiagramZoomed
+        ? "Focused region controls"
+        : "Top-level regions";
+
+    private bool HasPromptComparison => !string.IsNullOrWhiteSpace(BaselineCompilation?.PositivePrompt)
+        && !string.IsNullOrWhiteSpace(Compilation?.PositivePrompt)
+        && !string.Equals(BaselineCompilation.PositivePrompt, Compilation.PositivePrompt, StringComparison.Ordinal);
+
+    private CharacterRegionDefinition? SelectedRegion => Catalog.Regions.FirstOrDefault(region => region.Id ==
+SelectedRegionId)
+        ?? Catalog.Regions.FirstOrDefault();
+
+    private IReadOnlyList<CharacterTraitDefinition> SelectedTraitDefinitions => SelectedRegion is null
+        ? []
+        : Catalog.TraitDefinitions
+            .Where(trait => string.Equals(trait.RegionId, SelectedRegion.Id, StringComparison.Ordinal))
+            .OrderBy(trait => trait.Label)
+            .ToList();
+
+    private CharacterRegionState SelectedRegionState => GetRegionState(SelectedRegion?.Id ?? SelectedRegionId)
+        ?? new CharacterRegionState { RegionId = SelectedRegion?.Id ?? SelectedRegionId };
+
+    private string SelectedRegionTraitSummary
+    {
+        get
+        {
+            var count = SelectedRegionState.SelectedTraits.Values.Count(trait => !string.IsNullOrWhiteSpace(trait.Value));
+            return count == 1 ? "1 trait" : $"{count} traits";
+        }
+    }
+
+    private CharacterReferenceSheetBody? ActiveReferenceSheet => Character.Body.ReferenceSheets.FirstOrDefault(sheet =>
+sheet.Id == Character.Body.ActiveReferenceSheetId)
+        ?? Character.Body.ReferenceSheets.FirstOrDefault();
+
+    private string ReferenceSheetSummary => Character.Body.ReferenceSheets.Count == 1
+        ? "1 reference sheet linked"
+        : $"{Character.Body.ReferenceSheets.Count} reference sheets linked";
+
+    private string AuthoringSuggestionTitle => string.IsNullOrWhiteSpace(AuthoringSuggestion?.Label)
+        ? "LLM Suggestion"
+        : AuthoringSuggestion.Label;
+
+    private bool CanRunImageDraft => !IsImageDraftBusy
+        && !string.IsNullOrWhiteSpace(SelectedImageDraftModel)
+        && !string.IsNullOrWhiteSpace(ImageDraftDataUri);
+
+    private bool CanApplyPrompt => !string.IsNullOrWhiteSpace(Compilation?.PositivePrompt);
+
+    private bool IsSelectedRegion(string regionId) => string.Equals(regionId, SelectedRegion?.Id, StringComparison.Ordinal);
+
+    private bool HasChildRegions(string regionId) => DiagramRegions.Any(region => string.Equals(region.ParentId, regionId,
+StringComparison.Ordinal));
+
+    private string GetRegionButtonLabel(CharacterRegionDefinition region)
+    {
+        if (HasChildRegions(region.Id) && !IsDiagramZoomed)
+        {
+            return $"{region.Label}, open detail map";
+        }
+
+        return $"{region.Label}, edit region";
+    }
+
+    private async Task SelectDiagramRegion(CharacterRegionDefinition region)
+    {
+        await OnRegionSelected.InvokeAsync(region.Id);
+        if (HasChildRegions(region.Id) && !IsDiagramZoomed)
+        {
+            _zoomRegionId = region.Id;
+        }
+    }
+
+    private async Task HandleRegionKeyDown(KeyboardEventArgs args, CharacterRegionDefinition region)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            await SelectDiagramRegion(region);
+        }
+        else if (args.Key == "Escape" && IsDiagramZoomed)
+        {
+            ResetDiagramZoom();
+        }
+    }
+
+    private void ResetDiagramZoom()
+    {
+        _zoomRegionId = null;
+    }
+
+    private async Task SetSpecies(string value)
+    {
+        Character.Body.Identity.Species = value ?? string.Empty;
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetArchetype(string value)
+    {
+        Character.Body.Identity.Archetype = value ?? string.Empty;
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetNotes(string value)
+    {
+        Character.Body.Notes = value ?? string.Empty;
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationPose(string value)
+    {
+        ApplicationContext.Pose = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationExpression(string value)
+    {
+        ApplicationContext.ExpressionOverride = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationCamera(string value)
+    {
+        ApplicationContext.Camera = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationScene(string value)
+    {
+        ApplicationContext.Scene = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationStyle(string value)
+    {
+        ApplicationContext.Style = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationEditIntent(string value)
+    {
+        ApplicationContext.EditIntent = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private async Task SetApplicationAdditionalNegative(string value)
+    {
+        ApplicationContext.AdditionalNegative = value ?? string.Empty;
+        await OnApplicationContextChanged.InvokeAsync();
+    }
+
+    private string GetWorkflowIcon(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "fa-solid fa-font",
+        ModeType.Img2Img => "fa-solid fa-image",
+        ModeType.Img2Vid => "fa-solid fa-video",
+        ModeType.Extras => "fa-solid fa-panorama",
+        _ => "fa-solid fa-circle"
+    };
+
+    private string GetWorkflowModeClass(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "mode-txt2img",
+        ModeType.Img2Img => "mode-img2img",
+        ModeType.Img2Vid => "mode-img2vid",
+        ModeType.Extras => "mode-extras",
+        _ => string.Empty
+    };
+
+    private async Task SetImageDraftSpecies(string value)
+    {
+        if (ImageDraft is null) return;
+        ImageDraft.Species = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private async Task SetImageDraftArchetype(string value)
+    {
+        if (ImageDraft is null) return;
+        ImageDraft.Archetype = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private async Task SetImageDraftSummary(string value)
+    {
+        if (ImageDraft is null) return;
+        ImageDraft.Summary = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private async Task SetImageDraftNotes(string value)
+    {
+        if (ImageDraft is null) return;
+        ImageDraft.Notes = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private async Task SetImageDraftRegionNotes(CharacterImageDraftRegion region, string value)
+    {
+        region.Notes = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private async Task SetImageDraftTraitValue(CharacterImageDraftTrait trait, string value)
+    {
+        trait.Value = value ?? string.Empty;
+        await OnImageDraftEdited.InvokeAsync();
+    }
+
+    private string ResolveRegionLabel(string regionId)
+    {
+        return Catalog.Regions.FirstOrDefault(region => string.Equals(region.Id, regionId, StringComparison.Ordinal))?.Label ??
+regionId;
+    }
+
+    private string ResolveTraitLabel(string traitId)
+    {
+        return Catalog.TraitDefinitions.FirstOrDefault(trait => string.Equals(trait.Id, traitId,
+StringComparison.Ordinal))?.Label ?? traitId;
+    }
+
+    private string GetTraitValue(CharacterTraitDefinition trait)
+    {
+        var region = GetRegionState(SelectedRegion?.Id ?? SelectedRegionId);
+        return region?.SelectedTraits.TryGetValue(trait.Id, out var value) == true ? value.Value : string.Empty;
+    }
+
+    private async Task SetTraitValue(CharacterTraitDefinition trait, string? value)
+    {
+        var region = GetOrCreateRegionState(SelectedRegion?.Id ?? SelectedRegionId);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            region.SelectedTraits.Remove(trait.Id);
+        }
+        else
+        {
+            region.SelectedTraits[trait.Id] = new CharacterTraitValue
+            {
+                TraitId = trait.Id,
+                Value = value.Trim(),
+                Locked = trait.LockedByDefault
+            };
+        }
+
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetSelectedRegionNotes(string value)
+    {
+        GetOrCreateRegionState(SelectedRegion?.Id ?? SelectedRegionId).FreeformNotes = value ?? string.Empty;
+        await OnChanged.InvokeAsync();
+    }
+
+    private CharacterRegionState? GetRegionState(string regionId)
+    {
+        if (string.IsNullOrWhiteSpace(regionId))
+        {
+            return null;
+        }
+
+        return Character.Body.Regions.TryGetValue(regionId, out var region) ? region : null;
+    }
+
+    private CharacterRegionState GetOrCreateRegionState(string regionId)
+    {
+        if (string.IsNullOrWhiteSpace(regionId))
+        {
+            regionId = "body";
+        }
+
+        if (!Character.Body.Regions.TryGetValue(regionId, out var region))
+        {
+            region = new CharacterRegionState { RegionId = regionId };
+            Character.Body.Regions[regionId] = region;
+        }
+
+        return region;
+    }
+}

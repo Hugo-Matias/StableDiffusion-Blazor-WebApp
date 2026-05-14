@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "character-presets",
+  "displayName": "Character Presets",
+  "items": [
+    {
+      "id": "starter-scout",
+      "label": "Scout Starter",
+      "presetType": "starter",
+      "description": "A compact baseline for an agile explorer character.",
+      "traitValues": [
+        {
+          "regionId": "body",
+          "traitId": "body.build",
+          "value": "athletic",
+          "locked": false
+        },
+        {
+          "regionId": "expression",
+          "traitId": "expression.default",
+          "value": "focused",
+          "locked": false
+        }
+      ]
+    }
+  ]
+}

@@ -102,6 +102,10 @@ builder.Services.AddSingleton<BlazorWebApp.Scheduler.Persistence.IJobRepository,
 // Danbooru library persistence
 builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ISavedDanbooruMediaRepository, BlazorWebApp.Data.Repositories.SavedDanbooruMediaRepository>();
 
+// Character Creator persistence and catalogs
+builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICharacterRepository, BlazorWebApp.Data.Repositories.CharacterRepository>();
+builder.Services.AddSingleton<ICharacterCreatorCatalogService, CharacterCreatorCatalogService>();
+
 // Gallery cleanup persistence
 builder.Services.AddSingleton<BlazorWebApp.Data.Repositories.ICleanupRepository, BlazorWebApp.Data.Repositories.CleanupRepository>();
 builder.Services.AddSingleton<ICleanupPromptIndexService, CleanupPromptIndexService>();
@@ -182,6 +186,10 @@ builder.Services.AddScoped<IAssetResolverService, AssetResolverService>();
 builder.Services.AddScoped<JavascriptService>();
 builder.Services.AddSingleton<OllamaService>();
 builder.Services.AddScoped<CharacterPromptSuggestionService>();
+builder.Services.AddScoped<ICharacterPromptCompilerService, CharacterPromptCompilerService>();
+builder.Services.AddScoped<ICharacterLlmAuthoringService, CharacterLlmAuthoringService>();
+builder.Services.AddScoped<ICharacterImageDraftService, CharacterImageDraftService>();
+builder.Services.AddScoped<ICharacterImportExportService, CharacterImportExportService>();
 
 // Tag prompt builder service (two-pass Danbooru tag resolution)
 builder.Services.AddScoped<TagPromptService>();

@@ -45,17 +45,27 @@
             {
                 <section class="character-shot-group" aria-label="@group.Label slots">
                     <header class="character-shot-group-header">
-                        <MudIcon Icon="@GetKindIcon(group.Kind)" Size="Size.Small" />
-                        <MudText Typo="Typo.subtitle2">@group.Label</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Slots.Count</MudText>
+                        <button type="button" class="character-shot-group-toggle" @onclick="() => ToggleGroup(group.Kind)">
+                            <MudIcon Icon="@GetKindIcon(group.Kind)" Size="Size.Small" />
+                            <MudText Typo="Typo.subtitle2">@group.Label</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Slots.Count</MudText>
+                            <MudIcon Icon="@(IsGroupExpanded(group.Kind) ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down")" Size="Size.Small" Class="character-shot-group-chevron" />
+                        </button>
+                        <button type="button" class="send-to-btn" @onclick="() => ToggleGroupSelection(group)" disabled="@IsRunning">
+                            <MudIcon Icon="@(group.Slots.All(s => s.IsEnabled) ? "fa-solid fa-ban" : "fa-solid fa-check-double")" Size="Size.Small" />
+                            <span>@(group.Slots.All(s => s.IsEnabled) ? "Deselect" : "Select All")</span>
+                        </button>
                     </header>
-                    <div class="character-shot-grid">
-                        @foreach (var slot in group.Slots)
-                        {
-                            <CharacterShotCard Slot="slot" IsRunning="IsRunning" OnChanged="OnSlotChanged" OnRun="OnRunSlot"
-                                               OnView="OnViewSlot" OnRemove="OnRemoveSlot" />
-                        }
-                    </div>
+                    @if (IsGroupExpanded(group.Kind))
+                    {
+                        <div class="character-shot-grid">
+                            @foreach (var slot in group.Slots)
+                            {
+                                <CharacterShotCard Slot="slot" IsRunning="IsRunning" OnChanged="OnSlotChanged" OnRun="OnRunSlot"
+                                                   OnView="OnViewSlot" OnRemove="OnRemoveSlot" />
+                            }
+                        </div>
+                    }
                 </section>
             }
         </div>
@@ -72,8 +82,25 @@
     [Parameter] public EventCallback<string> OnViewSlot { get; set; }
 
     private bool _addSlotMenuOpen;
+    private readonly HashSet<CharacterReferenceSlotKind> _collapsedGroups = new();
 
     private int EnabledCount => Slots.Count(slot => slot.IsEnabled);
+
+    private bool IsGroupExpanded(CharacterReferenceSlotKind kind) => !_collapsedGroups.Contains(kind);
+
+    private void ToggleGroup(CharacterReferenceSlotKind kind)
+    {
+        if (!_collapsedGroups.Remove(kind))
+            _collapsedGroups.Add(kind);
+    }
+
+    private async Task ToggleGroupSelection(CharacterSlotGroup group)
+    {
+        var allEnabled = group.Slots.All(s => s.IsEnabled);
+        foreach (var slot in group.Slots)
+            slot.IsEnabled = !allEnabled;
+        await OnSlotChanged.InvokeAsync();
+    }
 
     private IReadOnlyList<CharacterSlotGroup> GroupSlots()
     {

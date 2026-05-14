@@ -37,10 +37,70 @@ public class PromptSendToServiceTests
             backend.Object,
             stateService.Object,
             Mock.Of<IGenerationParameterService>(),
+            Mock.Of<IWorkflowStateService>(),
             Mock.Of<NavigationManager>(),
             Mock.Of<MudBlazor.ISnackbar>());
 
         service.GetParameterWorkflows().Should().ContainSingle()
             .Which.Id.Should().Be(enabledTxt2Img.Id);
+    }
+
+    [Fact]
+    public async Task SendPromptToWorkflowAsync_ShouldComposeSavedPromptAndQueuePositiveAndNegativeOverrides()
+    {
+        var workflow = new Workflow { Id = Guid.NewGuid(), Title = "Portrait", Base = ModelBase.Flux, Mode = ModeType.Txt2Img };
+        var saved = new GenerationParameters { WorkflowId = workflow.Id };
+        var prompts = saved.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+        prompts.SetValue(FragmentKeys.Params.Positive, "misty ruins");
+        prompts.SetValue(FragmentKeys.Params.Negative, "low quality");
+
+        var stateService = new Mock<IStateService>();
+        stateService.SetupGet(service => service.GenerationParameters).Returns(new GenerationParameters { WorkflowId = Guid.NewGuid() });
+        stateService.SetupGet(service => service.State).Returns(new AppState());
+
+        var workflowStates = new Mock<IWorkflowStateService>();
+        workflowStates.Setup(service => service.LoadWorkflowStateAsync(workflow.Id)).ReturnsAsync(saved);
+
+        var parameters = new Mock<IGenerationParameterService>();
+        var queued = new List<(string FragmentId, string Key, object? Value)>();
+        parameters.Setup(service => service.QueuePendingOverride(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<object?>()))
+            .Callback<string, string, object?>((fragmentId, key, value) => queued.Add((fragmentId, key, value)));
+
+        var nav = new TestNavigationManager();
+        nav.SetUri("http://localhost/", "http://localhost/characters");
+
+        var service = new PromptSendToService(
+            Mock.Of<IBackendService>(),
+            stateService.Object,
+            parameters.Object,
+            workflowStates.Object,
+            nav,
+            Mock.Of<MudBlazor.ISnackbar>());
+
+        await service.SendPromptToWorkflowAsync(new PromptSendToRequest
+        {
+            PositivePrompt = "Kira, long silver hair",
+            NegativePrompt = "different face",
+            Mode = PromptApplicationMode.Prepend,
+            IncludeNegativePrompt = true
+        }, workflow);
+
+        queued.Should().Contain(item => item.FragmentId == FragmentKeys.Fragments.Prompts
+            && item.Key == FragmentKeys.Params.Positive
+            && (string)item.Value! == "Kira, long silver hair, misty ruins");
+        queued.Should().Contain(item => item.FragmentId == FragmentKeys.Fragments.Prompts
+            && item.Key == FragmentKeys.Params.Negative
+            && (string)item.Value! == "different face, low quality");
+        nav.Uri.Should().Be($"http://localhost/generate/{workflow.Id}");
+    }
+
+    private sealed class TestNavigationManager : NavigationManager
+    {
+        public void SetUri(string baseUri, string uri) => Initialize(baseUri, uri);
+
+        protected override void NavigateToCore(string uri, bool forceLoad)
+        {
+            Uri = ToAbsoluteUri(uri).ToString();
+        }
     }
 }

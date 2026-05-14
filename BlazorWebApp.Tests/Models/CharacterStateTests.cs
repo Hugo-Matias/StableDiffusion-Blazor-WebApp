@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.CharacterCreator;
 using FluentAssertions;
 using System.Text.Json;
 
@@ -15,6 +16,12 @@ public class CharacterStateTests
         appState.Character.Engine.Should().Be(CharacterReferenceEngine.Qwen);
         appState.Character.LoaderMode.Should().Be(CharacterLoaderMode.AioCheckpoint);
         appState.Character.GlobalPositivePromptExtension.Should().BeEmpty();
+        appState.Character.SelectedCharacterId.Should().BeNull();
+        appState.Character.SelectedReferenceSheetId.Should().BeNull();
+        appState.Character.SelectedCreatorRegionId.Should().Be("body");
+        appState.Character.SelectedPromptProfileId.Should().BeNull();
+        appState.Character.SelectedWardrobeId.Should().BeNull();
+        appState.Character.PendingSourceImage.Should().BeNull();
         appState.Character.GlobalSeed.Should().Be(-1);
         appState.Character.ShowEngineSettings.Should().BeFalse();
         appState.Character.UseRtxUpscale.Should().BeTrue();
@@ -26,6 +33,44 @@ public class CharacterStateTests
         appState.Character.Assets.Flux.Clip.Should().Be(CharacterReferenceDefaults.Flux2KleinClip);
         appState.Character.Assets.Flux.Vae.Should().Be(CharacterReferenceDefaults.Flux2KleinVae);
         appState.Character.Slots.Should().HaveCount(15);
+    }
+
+    [Fact]
+    public void PendingSourceImage_ShouldResolveSourceByImageIdBeforePathOrBytes()
+    {
+        var pending = new CharacterPendingSourceImage
+        {
+            ImageId = 17,
+            ImagePath = "C:/images/source.png",
+            ImageDataUri = "data:image/png;base64,aW1hZ2U=",
+            SourceLabel = "Source",
+            OriginalFilename = "source.png"
+        };
+
+        var source = pending.ToReferenceSourceImage();
+
+        source.ImageId.Should().Be(17);
+        source.ImagePath.Should().Be("C:/images/source.png");
+        source.SourceFingerprint.Should().Be("image:17");
+    }
+
+    [Fact]
+    public void CharacterReferenceSheetBody_ShouldApplyPersistedSheetToAppState()
+    {
+        var sheet = CharacterReferenceSheetBody.Create(CharacterReferenceSourceImage.FromPath("C:/images/source.png", "Source"), "Main Sheet");
+        sheet.Engine = CharacterReferenceEngine.Flux2Klein;
+        sheet.GlobalPositivePromptExtension = "consistent lighting";
+        sheet.Slots[0].LastOutputImageId = 42;
+        var state = new AppStateCharacter();
+
+        sheet.ApplyToAppState(state);
+
+        state.SelectedReferenceSheetId.Should().Be(sheet.Id);
+        state.Engine.Should().Be(CharacterReferenceEngine.Flux2Klein);
+        state.SourceImage.ImagePath.Should().Be("C:/images/source.png");
+        state.SourceImage.SourceLabel.Should().Be("Source");
+        state.GlobalPositivePromptExtension.Should().Be("consistent lighting");
+        state.Slots[0].LastOutputImageId.Should().Be(42);
     }
 
     [Fact]
@@ -174,7 +219,7 @@ public class CharacterStateTests
         slot.Width.Should().Be(1088);
         slot.Height.Should().Be(1920);
         slot.DependencyPolicy.Should().Be(CharacterReferenceDependencyPolicy.FrontViewOutput);
-        slot.PromptTemplate.Should().Be("Same exact anime woman and body proportions, same exact detailed anime artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose.");
+        slot.PromptTemplate.Should().Be("Same exact person and body proportions, same exact detailed artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose.");
         slot.PromptExtension.Should().BeEmpty();
         slot.Id.Should().StartWith("custom-customcamera-");
     }
@@ -211,7 +256,7 @@ public class CharacterStateTests
         slot.PromptExtension = "low-angle camera, dramatic lighting";
 
         CharacterReferenceSlotCatalog.ComposePrompt(slot).Should()
-            .Be("Same exact anime woman and body proportions, same exact detailed anime artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose. low-angle camera, dramatic lighting");
+            .Be("Same exact person and body proportions, same exact detailed artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose. low-angle camera, dramatic lighting");
     }
 
     [Fact]
@@ -263,6 +308,16 @@ public class CharacterStateTests
     {
         var state = new AppStateCharacter
         {
+            SelectedCharacterId = 5,
+            SelectedReferenceSheetId = "sheet-1",
+            SelectedCreatorRegionId = "hair",
+            SelectedPromptProfileId = "rich_portrait",
+            SelectedWardrobeId = "travel",
+            PendingSourceImage = new CharacterPendingSourceImage
+            {
+                ImagePath = "C:/images/pending.png",
+                SourceLabel = "Pending"
+            },
             Engine = CharacterReferenceEngine.Flux2Klein,
             LoaderMode = CharacterLoaderMode.SplitStack,
             GlobalPositivePromptExtension = "consistent watercolor lighting",
@@ -280,7 +335,14 @@ public class CharacterStateTests
         var restored = JsonSerializer.Deserialize<AppStateCharacter>(json);
 
         restored.Should().NotBeNull();
-        restored!.Engine.Should().Be(CharacterReferenceEngine.Flux2Klein);
+        restored!.SelectedCharacterId.Should().Be(5);
+        restored.SelectedReferenceSheetId.Should().Be("sheet-1");
+        restored.SelectedCreatorRegionId.Should().Be("hair");
+        restored.SelectedPromptProfileId.Should().Be("rich_portrait");
+        restored.SelectedWardrobeId.Should().Be("travel");
+        restored.PendingSourceImage.Should().NotBeNull();
+        restored.PendingSourceImage!.ImagePath.Should().Be("C:/images/pending.png");
+        restored.Engine.Should().Be(CharacterReferenceEngine.Flux2Klein);
         restored.LoaderMode.Should().Be(CharacterLoaderMode.SplitStack);
         restored.GlobalPositivePromptExtension.Should().Be("consistent watercolor lighting");
         restored.GlobalSeed.Should().Be(12345);

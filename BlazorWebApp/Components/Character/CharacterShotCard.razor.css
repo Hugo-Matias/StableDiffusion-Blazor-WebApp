@@ -43,10 +43,8 @@
 }
 
 .character-shot-title-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  gap: var(--character-title-icon-gap, 0.4rem);
   min-width: 0;
 }
 
@@ -54,10 +52,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.character-shot-kind-icon {
-  color: var(--mud-palette-secondary);
 }
 
 .character-shot-label-field {

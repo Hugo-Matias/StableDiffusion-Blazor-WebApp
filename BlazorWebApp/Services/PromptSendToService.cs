@@ -10,6 +10,7 @@ public class PromptSendToService : IPromptSendToService
     private readonly IBackendService _backend;
     private readonly IStateService _state;
     private readonly IGenerationParameterService _parameters;
+    private readonly IWorkflowStateService _workflowStates;
     private readonly NavigationManager _navManager;
     private readonly ISnackbar _snackbar;
 
@@ -17,12 +18,14 @@ public class PromptSendToService : IPromptSendToService
         IBackendService backend,
         IStateService state,
         IGenerationParameterService parameters,
+        IWorkflowStateService workflowStates,
         NavigationManager navManager,
         ISnackbar snackbar)
     {
         _backend = backend;
         _state = state;
         _parameters = parameters;
+        _workflowStates = workflowStates;
         _navManager = navManager;
         _snackbar = snackbar;
     }
@@ -74,10 +77,8 @@ public class PromptSendToService : IPromptSendToService
     public void SendPromptToWorkflow(string prompt, Workflow workflow)
     {
         if (workflow == null) return;
-        prompt ??= string.Empty;
 
-        // Always queue an override; if the target workflow is already loaded, also
-        // notify subscribers immediately so the prompt UI refreshes without a reload.
+        prompt ??= string.Empty;
         _parameters.QueuePendingOverride(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, prompt);
 
         var isActive = _state.GenerationParameters.WorkflowId == workflow.Id;
@@ -88,5 +89,67 @@ public class PromptSendToService : IPromptSendToService
 
         _navManager.NavigateTo($"/generate/{workflow.Id}");
         _snackbar.Add($"Prompt sent to {workflow.Title}", Severity.Success);
+    }
+
+    public async Task SendPromptToWorkflowAsync(PromptSendToRequest request, Workflow workflow)
+    {
+        if (workflow == null || request == null) return;
+
+        var isActive = _state.GenerationParameters.WorkflowId == workflow.Id;
+        var existing = isActive
+            ? _state.GenerationParameters
+            : await _workflowStates.LoadWorkflowStateAsync(workflow.Id);
+
+        var positivePrompt = ComposePrompt(GetPromptValue(existing, FragmentKeys.Params.Positive), request.PositivePrompt, request.Mode);
+        var negativePrompt = request.IncludeNegativePrompt
+            ? ComposePrompt(GetPromptValue(existing, FragmentKeys.Params.Negative), request.NegativePrompt, request.Mode)
+            : null;
+
+        _parameters.QueuePendingOverride(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, positivePrompt);
+        if (negativePrompt is not null)
+        {
+            _parameters.QueuePendingOverride(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, negativePrompt);
+        }
+
+        if (isActive)
+        {
+            _parameters.SetFragmentValueAndNotify(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Positive, positivePrompt);
+            if (negativePrompt is not null)
+            {
+                _parameters.SetFragmentValueAndNotify(FragmentKeys.Fragments.Prompts, FragmentKeys.Params.Negative, negativePrompt);
+            }
+        }
+
+        _navManager.NavigateTo($"/generate/{workflow.Id}");
+        _snackbar.Add($"Prompt sent to {workflow.Title}", Severity.Success);
+    }
+
+    private static string GetPromptValue(GenerationParameters? parameters, string key)
+    {
+        return parameters?.GetFragment(FragmentKeys.Fragments.Prompts)?.GetValue<string>(key) ?? string.Empty;
+    }
+
+    private static string ComposePrompt(string? existingPrompt, string prompt, PromptApplicationMode mode)
+    {
+        var existing = CleanupPrompt(existingPrompt ?? string.Empty);
+        var incoming = CleanupPrompt(prompt ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(incoming))
+        {
+            return existing;
+        }
+
+        if (string.IsNullOrWhiteSpace(existing) || mode == PromptApplicationMode.Replace)
+        {
+            return incoming;
+        }
+
+        return mode == PromptApplicationMode.Prepend
+            ? CleanupPrompt($"{incoming}, {existing}")
+            : CleanupPrompt($"{existing}, {incoming}");
+    }
+
+    private static string CleanupPrompt(string value)
+    {
+        return (value ?? string.Empty).Trim().Trim(',').Trim();
     }
 }

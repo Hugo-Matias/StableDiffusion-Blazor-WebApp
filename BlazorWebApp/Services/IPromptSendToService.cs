@@ -25,4 +25,11 @@ public interface IPromptSendToService
     /// (queued if not currently active) and navigates to the generate page for it.
     /// </summary>
     void SendPromptToWorkflow(string prompt, Workflow workflow);
+
+    /// <summary>
+    /// Applies positive and optional negative prompt text to a workflow using replace,
+    /// prepend, or append composition. Inactive workflows use their saved prompt state
+    /// when available and queue the composed values for the next Generate navigation.
+    /// </summary>
+    Task SendPromptToWorkflowAsync(PromptSendToRequest request, Workflow workflow);
 }

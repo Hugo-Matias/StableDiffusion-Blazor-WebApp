@@ -9,9 +9,6 @@
                      Dense="true" />
         <div class="character-shot-title-group">
             <div class="character-shot-title-row">
-                <MudTooltip Text="@GetKindLabel(Slot.Kind)">
-                    <MudIcon Icon="@GetKindIcon(Slot.Kind)" Size="Size.Small" Class="character-shot-kind-icon" />
-                </MudTooltip>
                 @if (Slot.IsBuiltIn)
                 {
                     <MudText Typo="Typo.subtitle2" Class="character-shot-title">@Slot.Label</MudText>
@@ -233,32 +230,4 @@ IO.GetImageStaticFile(Slot.LastOutputPath);
     private Task Run() => OnRun.InvokeAsync(Slot.Id);
     private Task View() => CanView ? OnView.InvokeAsync(Slot.Id) : Task.CompletedTask;
     private Task Remove() => OnRemove.InvokeAsync(Slot.Id);
-
-    private static string GetKindLabel(CharacterReferenceSlotKind kind)
-    {
-        return kind switch
-        {
-            CharacterReferenceSlotKind.BodyAngle => "Body Angle",
-            CharacterReferenceSlotKind.Expression => "Expression",
-            CharacterReferenceSlotKind.Pose => "Pose",
-            CharacterReferenceSlotKind.Body => "Body",
-            CharacterReferenceSlotKind.Outfit => "Outfit",
-            CharacterReferenceSlotKind.Landscape => "Landscape",
-            _ => "Custom"
-        };
-    }
-
-    private static string GetKindIcon(CharacterReferenceSlotKind kind)
-    {
-        return kind switch
-        {
-            CharacterReferenceSlotKind.BodyAngle => "fa-solid fa-camera-retro",
-            CharacterReferenceSlotKind.Expression => "fa-solid fa-face-smile",
-            CharacterReferenceSlotKind.Pose => "fa-solid fa-person-running",
-            CharacterReferenceSlotKind.Body => "fa-solid fa-child-reaching",
-            CharacterReferenceSlotKind.Outfit => "fa-solid fa-shirt",
-            CharacterReferenceSlotKind.Landscape => "fa-solid fa-panorama",
-            _ => "fa-solid fa-square-plus"
-        };
-    }
 }

@@ -89,8 +89,32 @@
 .character-shot-group-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--app-gutter-inner);
   color: var(--mud-palette-text-primary);
+}
+
+.character-shot-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-inner);
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+}
+
+.character-shot-group-toggle:hover {
+  opacity: 0.8;
+}
+
+.character-shot-group-chevron {
+  margin-inline-start: auto;
+  flex: 0 0 auto;
 }
 
 .character-shot-group-header .mud-icon-root {

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using BlazorWebApp.Models.CharacterCreator;
 
 namespace BlazorWebApp.Models;
 
@@ -6,6 +7,15 @@ public class AppStateCharacter
 {
     public int ActiveTabIndex { get; set; }
     public bool SidebarCollapsed { get; set; }
+    public int? SelectedCharacterId { get; set; }
+    public string? SelectedReferenceSheetId { get; set; }
+    public string SelectedCreatorRegionId { get; set; } = "body";
+    public string? SelectedPromptProfileId { get; set; }
+    public string? SelectedWardrobeId { get; set; }
+    public CharacterPromptApplicationContext PromptApplicationContext { get; set; } = new();
+    public CharacterPromptCompositionMode PromptApplicationMode { get; set; } = CharacterPromptCompositionMode.Append;
+    public bool IncludeNegativePromptOnSend { get; set; } = true;
+    public CharacterPendingSourceImage? PendingSourceImage { get; set; }
     public CharacterReferenceEngine Engine { get; set; } = CharacterReferenceEngine.Qwen;
     public CharacterLoaderMode LoaderMode { get; set; } = CharacterLoaderMode.AioCheckpoint;
     public CharacterAssetState Assets { get; set; } = new();
@@ -33,6 +43,51 @@ public class AppStateCharacter
         var slot = CharacterReferenceSlotCatalog.CreateCustomSlot(presetKey, label);
         Slots.Add(slot);
         return slot;
+    }
+}
+
+public class CharacterPendingSourceImage
+{
+    public int? ImageId { get; set; }
+    public string? ImagePath { get; set; }
+    public string? ImageDataUri { get; set; }
+    public string? SourceLabel { get; set; }
+    public string? OriginalFilename { get; set; }
+
+    public CharacterReferenceSourceImage ToReferenceSourceImage()
+    {
+        if (ImageId is { } imageId)
+        {
+            return CharacterReferenceSourceImage.FromImageId(imageId, ImagePath, SourceLabel, OriginalFilename);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ImageDataUri) && TryDecodeDataUri(ImageDataUri, out var bytes))
+        {
+            return CharacterReferenceSourceImage.FromBytes(bytes, SourceLabel, OriginalFilename);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ImagePath))
+        {
+            return CharacterReferenceSourceImage.FromPath(ImagePath, SourceLabel);
+        }
+
+        throw new InvalidOperationException("A source image is required before creating a character reference sheet.");
+    }
+
+    private static bool TryDecodeDataUri(string value, out byte[] bytes)
+    {
+        var commaIndex = value.IndexOf(',', StringComparison.Ordinal);
+        var base64 = commaIndex >= 0 ? value[(commaIndex + 1)..] : value;
+        try
+        {
+            bytes = Convert.FromBase64String(base64);
+            return bytes.Length > 0;
+        }
+        catch
+        {
+            bytes = [];
+            return false;
+        }
     }
 }
 

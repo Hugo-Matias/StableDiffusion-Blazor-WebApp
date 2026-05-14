@@ -79,7 +79,7 @@
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is MediaSendToTarget target)
         {
-            SendTo.SendSourceToTarget(Asset, target);
+            await SendTo.SendSourceToTargetAsync(Asset, target);
             await OnTargetSelected.InvokeAsync();
         }
     }

@@ -1,5 +1,7 @@
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Data.Repositories;
 using BlazorWebApp.Models;
+using BlazorWebApp.Models.CharacterCreator;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using ImageEntity = BlazorWebApp.Data.Entities.Image;
@@ -20,6 +22,7 @@ public class MediaSendToService : IMediaSendToService
 
     private readonly IBackendService _backend;
     private readonly IStateService _state;
+    private readonly ICharacterRepository _characters;
     private readonly ISessionService _session;
     private readonly IIOService _io;
     private readonly IOrchestratorService _orchestrator;
@@ -29,6 +32,7 @@ public class MediaSendToService : IMediaSendToService
     public MediaSendToService(
         IBackendService backend,
         IStateService state,
+        ICharacterRepository characters,
         ISessionService session,
         IIOService io,
         IOrchestratorService orchestrator,
@@ -37,6 +41,7 @@ public class MediaSendToService : IMediaSendToService
     {
         _backend = backend;
         _state = state;
+        _characters = characters;
         _session = session;
         _io = io;
         _orchestrator = orchestrator;
@@ -187,7 +192,7 @@ public class MediaSendToService : IMediaSendToService
         _ => "fa-solid fa-image"
     };
 
-    public void SendSourceToTarget(ImageEntity asset, MediaSendToTarget target)
+    public async Task SendSourceToTargetAsync(ImageEntity asset, MediaSendToTarget target)
     {
         if (asset == null || target == null)
             return;
@@ -222,13 +227,8 @@ public class MediaSendToService : IMediaSendToService
 
         if (target.SourceKey == CharacterSourceKey)
         {
-            _state.State.Character.SourceImage.ImageDataUri = data;
-            _state.State.Character.SourceImage.ImagePath = null;
-            _state.State.Character.SourceImage.SourceLabel = Path.GetFileName(asset.Path);
-            _ = _state.SaveState();
-
+            await SendCharacterSourceAsync(asset, resolvedPath, data);
             _navManager.NavigateTo("/characters");
-            _snackbar.Add("Sent image to Characters source image", Severity.Success);
             return;
         }
 
@@ -244,6 +244,37 @@ public class MediaSendToService : IMediaSendToService
 
         _navManager.NavigateTo($"/generate/{target.Workflow.Id}");
         _snackbar.Add($"Sent {mediaType.ToString().ToLowerInvariant()} to {target.DisplayLabel}", Severity.Success);
+    }
+
+    private async Task SendCharacterSourceAsync(ImageEntity asset, string resolvedPath, string? data)
+    {
+        var label = Path.GetFileName(asset.Path);
+        var pending = new CharacterPendingSourceImage
+        {
+            ImageId = asset.Id,
+            ImagePath = resolvedPath,
+            ImageDataUri = data,
+            SourceLabel = label,
+            OriginalFilename = label
+        };
+
+        if (_state.State.Character.SelectedCharacterId is not { } characterId)
+        {
+            _state.State.Character.PendingSourceImage = pending;
+            await _state.SaveState();
+            _snackbar.Add("Choose or create a character to attach this source image.", Severity.Info);
+            return;
+        }
+
+        var sourceImage = CharacterReferenceSourceImage.FromImageId(asset.Id, resolvedPath, label, label);
+        var sheet = await _characters.AddOrGetReferenceSheetAsync(characterId, sourceImage, label);
+        sheet.ApplyToAppState(_state.State.Character);
+        _state.State.Character.PendingSourceImage = null;
+        _state.State.Character.SourceImage.ImagePath = resolvedPath;
+        _state.State.Character.SourceImage.ImageDataUri = null;
+        _state.State.Character.SourceImage.SourceLabel = label;
+        await _state.SaveState();
+        _snackbar.Add("Sent image to the selected character reference sheet.", Severity.Success);
     }
 
     public async Task SendParametersToWorkflow(ImageEntity asset, Workflow workflow, IReadOnlyCollection<string> selectedParams)
