@@ -167,6 +167,24 @@ body:has(.asset-viewer-overlay) .mud-tooltip {
   z-index: 10220 !important;
 }
 
+html:has(.selection-manager-overlay.visible) {
+  overflow: hidden !important;
+}
+
+body:has(.selection-manager-overlay.visible) {
+  overflow: hidden !important;
+}
+
+body:has(.selection-manager-overlay.visible) .mud-popover-provider,
+body:has(.selection-manager-overlay.visible) .mud-popover,
+body:has(.selection-manager-overlay.visible) .mud-menu-popover {
+  z-index: 10210 !important;
+}
+
+body:has(.selection-manager-overlay.visible) .mud-tooltip {
+  z-index: 10220 !important;
+}
+
 /*
  * Image Editor Layer Panel - Active Layer Styling
  * These rules ensure the active layer is visually distinct.

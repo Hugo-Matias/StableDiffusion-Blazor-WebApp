@@ -1,0 +1,155 @@
+.selection-manager-overlay {
+  --selection-manager-width: 42rem;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.selection-manager-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.selection-manager-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--selection-manager-width);
+  max-width: 90vw;
+  background: var(--mud-palette-drawer-background);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  z-index: 10150;
+}
+
+.selection-manager-drawer.open {
+  transform: translateX(0);
+}
+
+.selection-manager-title,
+.selection-manager-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+}
+
+.selection-manager-title {
+  min-width: 0;
+}
+
+.selection-manager-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+  padding: var(--app-dialog-padding);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.selection-manager-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-inner);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--app-dialog-padding);
+}
+
+.selection-manager-toolbar {
+  flex-wrap: wrap;
+  padding-bottom: var(--app-gutter-inner);
+  border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.selection-manager-toolbar-copy {
+  min-width: 0;
+}
+
+.selection-manager-save-strip,
+.selection-manager-confirm-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--app-gutter-inner);
+  padding: var(--app-gutter-inner);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.selection-manager-save-strip ::deep .mud-input-control {
+  flex: 1 1 auto;
+  margin-top: 0;
+}
+
+.selection-manager-confirm-strip {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selection-manager-confirm-strip.destructive {
+  border-color: var(--mud-palette-error);
+  background: rgba(var(--mud-palette-error-rgb), 0.08);
+}
+
+.selection-manager-confirm-copy {
+  min-width: 0;
+}
+
+.selection-manager-confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--app-gutter-inner) / 2);
+  flex: 0 0 auto;
+}
+
+.selection-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-inner);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: calc(var(--app-gutter-inner) / 2);
+}
+
+.selection-manager-empty {
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+}
+
+@media (max-width: 720px) {
+  .selection-manager-overlay {
+    --selection-manager-width: 100vw;
+  }
+
+  .selection-manager-title,
+  .selection-manager-toolbar,
+  .selection-manager-save-strip,
+  .selection-manager-confirm-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selection-manager-confirm-actions {
+    width: 100%;
+  }
+
+  .selection-manager-confirm-actions ::deep .mud-button-root {
+    flex: 1 1 auto;
+  }
+
+  .selection-manager-drawer {
+    max-width: 100vw;
+  }
+}

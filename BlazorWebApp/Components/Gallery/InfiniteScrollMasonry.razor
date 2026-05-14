@@ -13,7 +13,7 @@
             <GalleryActionButton Icon="fa-solid fa-window-maximize" Label="Fullscreen" Tone="secondary"
                                  OnClick="@(() => OpenViewer(0))" />
             <GalleryActionButton Icon="fa-solid fa-check" Label="Selections" Tone="secondary"
-                                 OnClick="ShowSelectionsDialog" />
+                                 OnClick="ShowSelectionsDrawer" />
         </div>
         @if (Gallery.SelectedImageIds.Count > 0)
         {
@@ -70,6 +70,8 @@
     }
 </div>
 
+<SelectionsDrawer @bind-IsVisible="_showSelectionsDrawer" />
+
 <AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
              CurrentPage="Images.CurrentPage" PageCount="1" TotalCount="@(Images.Images?.Count ?? 0)"
              OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
@@ -82,6 +84,7 @@
     [Parameter] public EventCallback OnImagesChanged { get; set; }
 
     private bool _isLoadingNext;
+    private bool _showSelectionsDrawer;
     private bool _showViewer;
     private int _viewerStartIndex;
     private IJSObjectReference? _infiniteScrollModule;
@@ -190,10 +193,9 @@
         return Task.CompletedTask;
     }
 
-    private void ShowSelectionsDialog()
+    private void ShowSelectionsDrawer()
     {
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        DialogService.Show<SelectionsDialog>("", options);
+        _showSelectionsDrawer = true;
     }
 
     private async Task DeleteSingleImage(Image image)

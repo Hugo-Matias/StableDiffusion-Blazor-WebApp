@@ -7,11 +7,9 @@
         <div class="selection-manager-header">
             <div class="selection-manager-title">
                 <MudText Typo="Typo.h6">Selection Manager</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@Gallery.SelectedImageIds.Count currently selected
-                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Gallery.SelectedImageIds.Count currently selected</MudText>
             </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default"
-                           OnClick="Close" />
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="Close" />
         </div>
 
         <div class="selection-manager-body">
@@ -36,49 +34,50 @@
                 <div class="selection-manager-confirm-strip destructive">
                     <div class="selection-manager-confirm-copy">
                         <MudText Typo="Typo.subtitle2">Delete @_deleteSelectionName?</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">This removes the saved set only. Images stay in
-                            the gallery.</MudText>
-                        </div>
-                        <div class="selection-manager-confirm-actions">
-                            <MudButton OnClick="CancelDeleteSelection" Variant="Variant.Text" Size="Size.Small">Cancel
-                            </MudButton>
-                            <MudButton OnClick="DeletePendingSelection" Variant="Variant.Filled" Color="Color.Error"
-                                       Size="Size.Small" StartIcon="@Icons.Material.Filled.Delete">
-                                Delete
-                            </MudButton>
-                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">This removes the saved set only. Images stay in the gallery.</MudText>
                     </div>
-                }
+                    <div class="selection-manager-confirm-actions">
+                        <MudButton OnClick="CancelDeleteSelection" Variant="Variant.Text" Size="Size.Small">Cancel</MudButton>
+                        <MudButton OnClick="DeletePendingSelection" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Delete">
+                            Delete
+                        </MudButton>
+                    </div>
+                </div>
+            }
 
-                @if (_isLoading)
-                {
-                    <div class="app-empty-state selection-manager-empty">
-                        <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
-                        <MudText Typo="Typo.body2">Loading selections</MudText>
-                    </div>
-                }
-                else if (_selections.Count == 0)
-                {
-                    <div class="app-empty-state selection-manager-empty">
-                        <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Large" />
-                        <MudText Typo="Typo.body2">No saved selections yet.</MudText>
-                    </div>
-                }
-                else
-                {
-                    <div class="selection-manager-list">
-                        @foreach (var selection in _selections)
-                        {
-                            <SelectionCard Selection="selection" PreviewGeneration="_previewGeneration"
-                                           OnAppendSelection="AppendSelectionToCurrent" OnReplaceSelection="ReplaceCurrentSelection"
-                                           OnAppendCurrentToSelection="AppendCurrentToSavedSelection"
-                                           OnReplaceSavedSelection="ReplaceSavedSelection" OnRequestDeleteSelection="RequestDeleteSelection" />
-                        }
-                    </div>
-                }
-            </div>
-        </aside>
-    </div>
+            @if (_isLoading)
+            {
+                <div class="app-empty-state selection-manager-empty">
+                    <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Loading selections</MudText>
+                </div>
+            }
+            else if (_selections.Count == 0)
+            {
+                <div class="app-empty-state selection-manager-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Large" />
+                    <MudText Typo="Typo.body2">No saved selections yet.</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="selection-manager-list">
+                    @foreach (var selection in _selections)
+                    {
+                        <SelectionCard Selection="selection"
+                                       PreviewGeneration="_previewGeneration"
+                                       OnAppendSelection="AppendSelectionToCurrent"
+                                       OnReplaceSelection="ReplaceCurrentSelection"
+                                       OnAppendCurrentToSelection="AppendCurrentToSavedSelection"
+                                       OnReplaceSavedSelection="ReplaceSavedSelection"
+                                       OnRequestDeleteSelection="RequestDeleteSelection" />
+                    }
+                </div>
+            }
+        </div>
+    </aside>
+</div>
 
 @code {
     [Parameter] public bool IsVisible { get; set; }
@@ -94,8 +93,7 @@
     private int? _deleteSelectionId;
     private string? _deleteSelectionName;
 
-    private bool CanSaveCurrent => Gallery.SelectedImageIds.Count > 0 && !_isSaving &&
-!string.IsNullOrWhiteSpace(_selectionName);
+    private bool CanSaveCurrent => Gallery.SelectedImageIds.Count > 0 && !_isSaving && !string.IsNullOrWhiteSpace(_selectionName);
 
     protected override async Task OnParametersSetAsync()
     {

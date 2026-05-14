@@ -17,7 +17,7 @@
                     <GalleryActionButton Icon="fa-solid fa-window-maximize" Label="Fullscreen" Tone="secondary"
                                          OnClick="@(() => OpenViewer(0))" />
                     <GalleryActionButton Icon="fa-solid fa-check" Label="Selections" Tone="secondary"
-                                         OnClick="ShowSelectionsDialog" />
+                                         OnClick="ShowSelectionsDrawer" />
                     @if (ShowClearButton)
                     {
                         <GalleryActionButton Icon="fa-solid fa-border-none" Label="Clear" Tone="error"
@@ -101,6 +101,8 @@
     </div>
 </div>
 
+<SelectionsDrawer @bind-IsVisible="_showSelectionsDrawer" />
+
 <!-- Unified Asset Viewer (handles both images and videos with pagination) -->
 <AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
              CurrentPage="_currentPage" PageCount="Images.PageCount"
@@ -137,6 +139,7 @@
     [Parameter] public EventCallback OnClear { get; set; }
 
     private int _currentPage = 1;
+    private bool _showSelectionsDrawer;
     private bool _showViewer;
     private int _viewerStartIndex;
 
@@ -261,10 +264,9 @@
 
     private Task HandleClearClicked() => OnClear.InvokeAsync();
 
-    private void ShowSelectionsDialog()
+    private void ShowSelectionsDrawer()
     {
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        DialogService.Show<SelectionsDialog>("", options);
+        _showSelectionsDrawer = true;
     }
 
     private async Task ShowDeleteImageDialog(Image image)
