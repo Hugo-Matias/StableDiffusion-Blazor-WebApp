@@ -2,24 +2,23 @@
 @using BlazorWebApp.Events
 @inject IStateService State
 @inject IEventService Events
-@inject IIOService IO
 @inject IDatabaseService DB
 @inject IResourcesService ResourcesService
-@inject IOrchestratorService Orchestrator
-@inject IGenerationParameterService ParameterService
-@inject CivitaiService Civitai
-@inject IConfiguration Configuration
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
-@inject NavigationManager NavManager
 @implements IDisposable
 
 <TabbedPageShell @bind-ActivePanelIndex="State.State.Resources.ActiveTabIndex">
     @foreach (var resource in _resources)
     {
         <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
-            <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) :
-                                                                                                                                                                                                                                                                                                                                                      LoadResource(r, r.Files[0])) />
+            @if (_selectedResource != null && _selectedResourceTypeId == resource.Key.Id)
+            {
+                <ResourceDetailPanel Resource="_selectedResource" OnBack="ReturnToResults"
+                                     OnResourceChanged="HandleResourceChanged" OnResourceDeleted="HandleResourceDeleted" />
+            }
+            else
+            {
+                <ResourcePanel Resources="resource.Value" OnLoad="ShowResourceDetail" />
+            }
         </MudTabPanel>
     }
     
@@ -29,9 +28,9 @@
 </TabbedPageShell>
 
 @code {
-    private Dictionary<ResourceType, List<LocalResource>> _resources;
-    private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
-    private Dictionary<string, string> _resourceTypeDirectories;
+    private Dictionary<ResourceType, List<LocalResource>> _resources = new();
+    private LocalResource? _selectedResource;
+    private int? _selectedResourceTypeId;
 
     protected async override Task OnInitializedAsync()
     {
@@ -39,23 +38,7 @@
         Events.Subscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
         Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
         
-        await GetResourceTypeDirectories();
         await InitializeResourceDictionary();
-    }
-
-    private async Task GetResourceTypeDirectories()
-    {
-        var baseDir = Configuration["ResourcesPath"];
-        _resourceTypeDirectories = new()
-        {
-            {"Checkpoint", Path.Combine(baseDir, "Checkpoint")},
-            {"Diffusion", Path.Combine(baseDir, "Diffusion")},
-            {"TextualInversion", Path.Combine(baseDir, "TextualInversion")},
-            {"Hypernetwork", Path.Combine(baseDir, "Hypernetwork")},
-            {"LORA", Path.Combine(baseDir, "LORA")},
-            {"LoCon", Path.Combine(baseDir, "LORA")},
-            {"VAE", Path.Combine(baseDir, "VAE")}
-        };
     }
 
     private async Task InitializeResourceDictionary()
@@ -68,175 +51,45 @@
         }
     }
 
-    private async Task ShowResourceVersionsDialog(LocalResource resource)
+    private void ShowResourceDetail(LocalResource resource)
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var param = new DialogParameters();
-        param.Add("Resource", resource);
-        var dialog = await DialogService.ShowAsync<ResourceVersionsDialog>(resource.Title, param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled) await LoadResource(resource, (LocalResourceFile)result.Data);
+        _selectedResource = resource;
+        _selectedResourceTypeId = resource.Type.Id;
     }
 
-    private async Task LoadResource(LocalResource resource, LocalResourceFile resourceFile)
+    private void ReturnToResults()
     {
-        if (resource.Type.Name.Equals("vae", StringComparison.InvariantCultureIgnoreCase))
-        {
-            // VAE loading no longer supported through Resources page
-            Snackbar.Add("VAE selection is done through generation page workflow assets", Severity.Info);
-            return;
-        }
-
-        var subtype = resource.SubType != null ? resource.SubType.Name : null;
-        var file = await ResourcesService.GetResourceFileInfo(resource.Type.Name, subtype, resourceFile);
-
-        if (file == null)
-        {
-            await ShowNotFoundDeleteDialog(resourceFile);
-            return;
-        }
-
-        await ShowLoadResourceDialog(resource, file);
+        _selectedResource = null;
+        _selectedResourceTypeId = null;
     }
 
-    private async Task ShowLoadResourceDialog(LocalResource resource, LocalResourceFile file)
+    private async Task HandleResourceChanged()
     {
-        var comp = StringComparison.InvariantCultureIgnoreCase;
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var dialogParam = new DialogParameters();
-        dialogParam.Add("Resource", resource);
-        dialogParam.Add("File", file);
-        var dialog = await DialogService.ShowAsync<LoadResourceDialog>("", dialogParam, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
+        var selectedResourceId = _selectedResource?.ResourceId;
+        await RefreshAsync();
+        if (selectedResourceId != null)
         {
-            if (result.Data != null)
-            {
-                var command = result.Data.ToString();
-                if (string.IsNullOrEmpty(command)) return;
-                if (command.Equals("Edit", comp))
-                {
-                    await ShowResourceInfoDialog(file);
-                    Refresh();
-                }
-                else if (command == "Toggle") Refresh();
-                else if (result.Data is ValueTuple<string, bool, List<string>> loraTuple && loraTuple.Item1 == "AddLora")
-                {
-                    // LoRA: add to loader panel (no specific workflow)
-                    QueueLoraForGenerate(file, resource.Type.Name);
-                    QueueTriggerWords(loraTuple.Item3);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                    NavManager.NavigateTo("/generate");
-                }
-                else if (result.Data is ValueTuple<string, Workflow, List<string>> wfLoraTuple && wfLoraTuple.Item1 ==
-"AddLoraToWorkflow")
-                {
-                    // LoRA: queue LoRA and navigate to workflow
-                    QueueLoraForGenerate(file, resource.Type.Name);
-                    QueueTriggerWords(wfLoraTuple.Item3);
-                    Orchestrator.SetCurrentWorkflow(wfLoraTuple.Item2.Id);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                    NavManager.NavigateTo($"/generate/{wfLoraTuple.Item2.Id}");
-                }
-                else if (result.Data is ValueTuple<string, Workflow> wfTuple && wfTuple.Item1 == "SendToWorkflow")
-                {
-                    // Checkpoint: queue asset value and navigate to workflow
-                    QueueCheckpointForWorkflow(file, wfTuple.Item2);
-                    Orchestrator.SetCurrentWorkflow(wfTuple.Item2.Id);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                    NavManager.NavigateTo($"/generate/{wfTuple.Item2.Id}");
-                }
-                else if (result.Data is bool isPrompt)
-                {
-                    // Non-LoRA resource (TextualInversion, Hypernetwork, etc.)
-                    var target = (ModeType.Txt2Img, isPrompt);
-                    await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                    NavManager.NavigateTo("/generate");
-                }
-            }
+            _selectedResource = _resources.Values
+                .SelectMany(resources => resources)
+                .FirstOrDefault(resource => resource.ResourceId == selectedResourceId || resource.Files.Any(file => file.ResourceId ==
+selectedResourceId));
+            _selectedResourceTypeId = _selectedResource?.Type.Id;
         }
     }
 
-    private async Task ShowResourceInfoDialog(LocalResourceFile file)
+    private async Task HandleResourceDeleted()
     {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var entity = await DB.GetResourceById(file.ResourceId);
-        var param = new DialogParameters();
-        param.Add("Resource", entity);
-        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Edit", param, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            var data = (ValueTuple<Resource, string>)result.Data;
-            if (data.Item2 == "Update")
-            {
-                var directory = file.File.Directory.FullName;
-                var filename = file.File.Name.Replace(file.File.Extension, "");
-                var resourceId = file.ResourceId;
-                var isEnabled = file.IsEnabled;
-                await ResourcesService.UpdateResource(data.Item1, directory, filename, resourceId, isEnabled);
-            }
-            else if (data.Item2 == "Delete")
-            {
-                await ShowDeleteDialog(data.Item1, file);
-            }
-        }
+        ReturnToResults();
+        await RefreshAsync();
     }
 
-    private async Task ShowDeleteDialog(Resource resource, LocalResourceFile file)
-    {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var confirmParam = new DialogParameters();
-        var msg = new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>All preview images associated with this resource will also be removed.<br/>This action is irreversible!</small>");
-        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxEnabled), true);
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxContent), "Delete files from disk?");
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxColor), Color.Error);
-        options.MaxWidth = MaxWidth.Small;
-        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
-        var confirmationResult = await confirmationDialog.Result;
-        if (!confirmationResult.Canceled)
-        {
-            var deleteFiles = confirmationResult.Data != null && (bool)confirmationResult.Data == true;
-            await ResourcesService.DeleteResource(resource, deleteFiles, file.File.Directory.FullName,
-file.File.Name.Replace(file.File.Extension, ""));
-            Snackbar.Add(deleteFiles ? "Resource and files were" : "Resource was" + " deleted successfully.", Severity.Success);
-        }
-    }
+    private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args) => _ = RefreshAsync();
+    private void OnDownloadCompleted(DownloadCompletedEventArgs args) => _ = RefreshAsync();
+    private void OnResourcesStateChanged(ResourcesChangedEventArgs args) => _ = RefreshAsync();
 
-    private async Task ShowNotFoundDeleteDialog(LocalResourceFile file)
-    {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var confirmParam = new DialogParameters();
-        var msg = new MarkupString(@"<span class='lead'>File not found!</br>Do you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>This action is irreversible!</small>");
-        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
-        options.MaxWidth = MaxWidth.Small;
-        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
-        var confirmationResult = await confirmationDialog.Result;
-        if (!confirmationResult.Canceled)
-        {
-            await ResourcesService.DeleteResource(await DB.GetResourceById(file.ResourceId), false, string.Empty, string.Empty);
-            Snackbar.Add("Resource deleted successfully!", Severity.Success);
-        }
-    }
-
-    private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args) => Refresh();
-    private void OnDownloadCompleted(DownloadCompletedEventArgs args) => Refresh();
-    private void OnResourcesStateChanged(ResourcesChangedEventArgs args) => Refresh();
-
-    private async void Refresh()
+    private async Task RefreshAsync()
     {
         await InitializeResourceDictionary();
-        await GetResourceTypeDirectories();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -245,43 +98,5 @@ file.File.Name.Replace(file.File.Extension, ""));
         Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
         Events.Unsubscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
         Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
-    }
-
-    private void QueueCheckpointForWorkflow(LocalResourceFile file, Workflow workflow)
-    {
-        if (workflow.Assets == null) return;
-
-        // Find the first checkpoint/diffusion model asset parameter in the workflow
-        var checkpointAsset = workflow.Assets.FirstOrDefault(a =>
-            a.Type == AssetType.DiffusionModel ||
-            a.Type == AssetType.CheckpointModel);
-
-        if (checkpointAsset == null) return;
-
-        // Queue the filename so it survives workflow initialization
-        ParameterService.QueuePendingAsset(checkpointAsset.Parameter, file.Filename);
-    }
-
-    private void QueueLoraForGenerate(LocalResourceFile file, string resourceType)
-    {
-        var comp = StringComparison.InvariantCultureIgnoreCase;
-        var filename = file.File.Name.Replace(file.File.Extension, "");
-        var weight = State.State.Resources.Weight;
-
-        var resourcesPath = Configuration["ResourcesPath"];
-        var loraBasePath = Path.Combine(resourcesPath!, resourceType);
-        var fullPath = file.File.FullName;
-        var subPath = fullPath.StartsWith(loraBasePath, comp)
-            ? fullPath.Substring(loraBasePath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            : file.File.Name;
-
-        var newLora = new Lora { Name = filename, Path = subPath, Strength = weight, IsNegative = false, IsEnabled = true };
-        ParameterService.QueuePendingLora(newLora);
-    }
-
-    private void QueueTriggerWords(List<string> triggerWords)
-    {
-        if (triggerWords == null || triggerWords.Count == 0) return;
-        ParameterService.QueuePendingPromptAppend(string.Join(", ", triggerWords));
     }
 }

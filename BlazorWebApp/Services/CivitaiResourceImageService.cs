@@ -37,6 +37,16 @@ public sealed class CivitaiResourceImageSaveResult
 
 public sealed class CivitaiResourceImageService : ICivitaiResourceImageService
 {
+    private static readonly HashSet<string> VideoExtensions = new(StringComparer.InvariantCultureIgnoreCase)
+    {
+        ".mp4",
+        ".webm",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".m4v"
+    };
+
     private readonly CivitaiService _civitai;
     private readonly IImageService _imageService;
     private readonly IIOService _io;
@@ -68,21 +78,26 @@ public sealed class CivitaiResourceImageService : ICivitaiResourceImageService
         var image = await ResolveImageAsync(request);
         if (image == null)
             return new CivitaiResourceImageSaveResult();
+        if (string.IsNullOrWhiteSpace(image.Url))
+            return new CivitaiResourceImageSaveResult { Image = image };
 
         var modelVersionId = ResolveModelVersionId(request, image);
         var physicalStem = BuildPhysicalStem(request, image, modelVersionId);
-        var imagePath = physicalStem + ".png";
-        var localPath = ToWebImagePath(imagePath);
+        var mediaExtension = ResolveMediaExtension(image.Url);
+        var mediaPath = physicalStem + mediaExtension;
+        var localPath = ToWebImagePath(mediaPath);
         var result = new CivitaiResourceImageSaveResult
         {
             Image = image,
             LocalPath = localPath,
-            FileAlreadyExisted = File.Exists(imagePath)
+            FileAlreadyExisted = File.Exists(mediaPath)
         };
 
         if (!result.FileAlreadyExisted)
         {
-            result.FileCreated = await _imageService.DownloadImageAsPng(image.Url, imagePath, overwrite: true);
+            result.FileCreated = IsVideoExtension(mediaExtension)
+                ? await DownloadMediaFileAsync(image.Url, mediaPath)
+                : await _imageService.DownloadImageAsPng(image.Url, mediaPath, overwrite: true);
         }
 
         if (!result.FileCreated && !result.FileAlreadyExisted)
@@ -230,6 +245,49 @@ public sealed class CivitaiResourceImageService : ICivitaiResourceImageService
         if (image.Id > 0) hashes.Add($"civitai-{image.Id}");
 
         return hashes.Distinct().ToList();
+    }
+
+    private static string ResolveMediaExtension(string? url)
+    {
+        var extension = ResolveUrlExtension(url);
+        return IsVideoExtension(extension) ? extension : ".png";
+    }
+
+    private static string ResolveUrlExtension(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return Path.GetExtension(uri.AbsolutePath);
+
+        return Path.GetExtension(url);
+    }
+
+    private static bool IsVideoExtension(string? extension)
+        => !string.IsNullOrWhiteSpace(extension) && VideoExtensions.Contains(extension);
+
+    private async Task<bool> DownloadMediaFileAsync(string? url, string path)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+
+        try
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+
+            using var httpClient = new HttpClient();
+            await using var source = await httpClient.GetStreamAsync(url);
+            await using var destination = File.Create(path);
+            await source.CopyToAsync(destination);
+            await destination.FlushAsync();
+
+            return new FileInfo(path).Length > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to download CivitAI media file {Url}", url);
+            return false;
+        }
     }
 
     private string ToWebImagePath(string physicalPath)

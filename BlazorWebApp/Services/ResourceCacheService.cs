@@ -6,7 +6,7 @@ namespace BlazorWebApp.Services;
 
 /// <summary>
 /// In-memory cache of Resource entities with lazy loading and event-based invalidation.
-/// Subscribes to ResourcesChangedEventArgs to invalidate when resources are created, edited, or deleted.
+/// Subscribes to resource/download events to invalidate when resources are created, edited, or deleted.
 /// </summary>
 public class ResourceCacheService : IResourceCacheService
 {
@@ -26,6 +26,7 @@ public class ResourceCacheService : IResourceCacheService
         _logger = logger;
 
         events.Subscribe<ResourcesChangedEventArgs>(OnResourcesChanged);
+        events.Subscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
     }
 
     /// <inheritdoc />
@@ -130,6 +131,11 @@ public class ResourceCacheService : IResourceCacheService
     }
 
     private void OnResourcesChanged(ResourcesChangedEventArgs args)
+    {
+        InvalidateCache();
+    }
+
+    private void OnDownloadCompleted(DownloadCompletedEventArgs args)
     {
         InvalidateCache();
     }

@@ -8,7 +8,7 @@
     }
     <div class="lora-card-body">
         <div class="lora-card-name">
-            <MudText Typo="Typo.caption" Class="lora-name-text">@Lora.Name</MudText>
+            <MudText Typo="Typo.caption" Class="lora-name-text">@(_displayName ?? Lora.Name)</MudText>
         </div>
         <div class="lora-card-controls">
             <MudNumericField Value="Lora.Strength" ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
@@ -41,6 +41,7 @@
 
     private bool _isHigh;
     private string? _previewSrc;
+    private string? _displayName;
     private string? _cachedPath;
 
     protected override async Task OnParametersSetAsync()
@@ -50,17 +51,19 @@
         if (Lora.Path != _cachedPath)
         {
             _cachedPath = Lora.Path;
-            _previewSrc = await LoadPreviewAsync(Lora.Path);
+            var metadata = await LoadMetadataAsync(Lora.Path);
+            _previewSrc = metadata.PreviewSrc;
+            _displayName = metadata.DisplayName;
         }
     }
 
-    private async Task<string?> LoadPreviewAsync(string path)
+    private async Task<(string? PreviewSrc, string? DisplayName)> LoadMetadataAsync(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (string.IsNullOrWhiteSpace(path)) return (null, null);
         var resource = await ResourceCache.FindByFilenameAsync(path);
-        if (resource == null) return null;
+        if (resource == null) return (null, null);
         var img = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", path);
-        return string.IsNullOrEmpty(img) ? null : img;
+        return (string.IsNullOrEmpty(img) ? null : img, string.IsNullOrWhiteSpace(resource.Title) ? null : resource.Title);
     }
 
     private async Task TogglePath()

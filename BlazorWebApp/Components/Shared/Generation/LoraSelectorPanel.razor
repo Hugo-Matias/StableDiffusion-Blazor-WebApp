@@ -14,11 +14,8 @@
 }
 
 <div class="@(_isOpen ? "lsp-root lsp-root--open" : "lsp-root")">
-    <MudButton FullWidth="true"
-               Variant="Variant.Outlined"
-               Size="Size.Small"
-               EndIcon="@(_isOpen ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down")"
-               OnClick="TogglePanel"
+    <MudButton FullWidth="true" Variant="Variant.Outlined" Size="Size.Small"
+               EndIcon="@(_isOpen ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down")" OnClick="TogglePanel"
                Class="lsp-trigger">
         Add LoRA
     </MudButton>
@@ -27,16 +24,9 @@
     {
         <div class="lsp-panel">
             <div class="lsp-search-row">
-                <MudTextField @bind-Value="_search"
-                              Placeholder="Search..."
-                              Variant="Variant.Text"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="fa-solid fa-magnifying-glass"
-                              Clearable="true"
-                              Immediate="true"
-                              DebounceInterval="200"
-                              Margin="Margin.Dense"
-                              Class="lsp-search-field" />
+                <MudTextField @bind-Value="_search" Placeholder="Search..." Variant="Variant.Text" Adornment="Adornment.End"
+                              AdornmentIcon="fa-solid fa-magnifying-glass" Clearable="true" Immediate="true" DebounceInterval="200"
+                              Margin="Margin.Dense" Class="lsp-search-field" />
             </div>
 
             @if (_isLoading)
@@ -52,12 +42,14 @@
             }
             else
             {
-                <MudTabs Class="lsp-tabs" PanelClass="lsp-panel-content"
-                         Rounded="false" Border="false" Centered="false" MinimumTabWidth="60px">
+                <MudTabs Class="lsp-tabs" PanelClass="lsp-panel-content" Rounded="false" Border="false" Centered="false"
+                         MinimumTabWidth="60px">
                     @foreach (var (baseModel, filenames) in _grouped.OrderBy(x => x.Key))
                     {
                         <MudTabPanel Text="@baseModel">
-                            @{ var filtered = Filtered(filenames).ToList(); }
+                            @{
+                                var filtered = Filtered(filenames).ToList();
+                            }
                             @if (filtered.Count == 0)
                             {
                                 <div class="app-empty-state"><span>No results</span></div>
@@ -67,10 +59,9 @@
                                 <div class="lsp-card-grid">
                                     @foreach (var fn in filtered)
                                     {
-                                        var name = Path.GetFileNameWithoutExtension(fn);
+                                        var name = GetDisplayTitle(fn);
                                         var added = IsAdded(fn);
-                                        <div class="@(added ? "lsp-card lsp-card--added" : "lsp-card")"
-                                             @onclick="() => TryAdd(fn)"
+                                        <div class="@(added ? "lsp-card lsp-card--added" : "lsp-card")" @onclick="() => TryAdd(fn)"
                                              title="@name">
                                             @if (_previews.TryGetValue(fn, out var src) && !string.IsNullOrEmpty(src))
                                             {
@@ -101,7 +92,9 @@
                     @if (_untracked.Any())
                     {
                         <MudTabPanel Text="Untracked">
-                            @{ var untrackedFiltered = Filtered(_untracked).ToList(); }
+                            @{
+                                var untrackedFiltered = Filtered(_untracked).ToList();
+                            }
                             @if (untrackedFiltered.Count == 0)
                             {
                                 <div class="app-empty-state"><span>No results</span></div>
@@ -146,6 +139,7 @@
     private Dictionary<string, List<string>> _grouped = new();
     private List<string> _untracked = new();
     private Dictionary<string, string> _previews = new();
+    private Dictionary<string, string> _titles = new(StringComparer.OrdinalIgnoreCase);
 
     private async Task TogglePanel()
     {
@@ -180,6 +174,7 @@
             _grouped = new();
             _untracked = new();
             _previews = new();
+            _titles = new(StringComparer.OrdinalIgnoreCase);
 
             foreach (var fn in filenames)
             {
@@ -191,6 +186,7 @@
                     if (!_grouped.ContainsKey(resource.BaseModel))
                         _grouped[resource.BaseModel] = new();
                     _grouped[resource.BaseModel].Add(fn);
+                    _titles[fn] = string.IsNullOrWhiteSpace(resource.Title) ? Path.GetFileNameWithoutExtension(fn) : resource.Title;
 
                     var imgSrc = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", fn);
                     if (!string.IsNullOrEmpty(imgSrc))
@@ -227,8 +223,14 @@
     {
         if (string.IsNullOrWhiteSpace(_search)) return filenames;
         return filenames.Where(fn =>
-            Path.GetFileNameWithoutExtension(fn).Contains(_search, StringComparison.OrdinalIgnoreCase));
+            Path.GetFileNameWithoutExtension(fn).Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || GetDisplayTitle(fn).Contains(_search, StringComparison.OrdinalIgnoreCase));
     }
+
+    private string GetDisplayTitle(string fn)
+        => _titles.TryGetValue(fn, out var title) && !string.IsNullOrWhiteSpace(title)
+            ? title
+            : Path.GetFileNameWithoutExtension(fn);
 
     private bool IsAdded(string fn) =>
         Loras.Any(l => string.Equals(l.Path, fn, StringComparison.OrdinalIgnoreCase));

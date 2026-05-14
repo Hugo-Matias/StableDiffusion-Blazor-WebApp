@@ -1,0 +1,864 @@
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IDatabaseService DB
+@inject IResourcesService ResourcesService
+@inject IOrchestratorService Orchestrator
+@inject IGenerationParameterService ParameterService
+@inject IRouterService Router
+@inject IConfiguration Configuration
+@inject IBackendService Backend
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Resources.SidebarCollapsed" SidebarTitle="Resource">
+    <Sidebar>
+        <div class="resource-detail__sidebar">
+            <button type="button" class="send-to-btn resource-detail__back" @onclick="HandleBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+                <span>Back to resources</span>
+            </button>
+
+            @if (_selectedFile == null)
+            {
+                <MudAlert Severity="Severity.Warning">The selected resource file is missing from disk.</MudAlert>
+                <MudButton Color="Color.Error" Variant="Variant.Filled" FullWidth="true" OnClick="DeleteMissingResource">
+                    Delete database record
+                </MudButton>
+            }
+            else
+            {
+                @if (Resource.Files?.Count > 1)
+                {
+                    <MudSelect T="LocalResourceFile" Label="File" Variant="Variant.Text" Value="_selectedFile"
+                               ValueChanged="SelectFile" Dense ToStringFunc="FileLabel">
+                        @foreach (var file in Resource.Files)
+                        {
+                            <MudSelectItem Value="file">@FileLabel(file)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                <div class="resource-detail__meta-card">
+                    <div class="resource-detail__chip-row">
+                        <MudChip T="string" Text="@Resource.Type.Name"
+                                 Color="Enum.TryParse<CivitaiModelType>(Resource.Type.Name, out var modelType) ? Parser.ParseCivitaiResourceColorAsColor(modelType) : Color.Default"
+                                 Size="Size.Small" Label />
+                        @if (Resource.SubType != null)
+                        {
+                            <MudChip T="string" Text="@Resource.SubType.Name" Color="Color.Tertiary" Size="Size.Small" Label />
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Resource.BaseModel))
+                        {
+                            <MudChip T="string" Text="@Resource.BaseModel" Color="Color.Info" Size="Size.Small" Label />
+                        }
+                    </div>
+
+                    <div class="resource-detail__meta-grid">
+                        <div>
+                            <span class="resource-detail__meta-label">File</span>
+                            <span>@_selectedFile.Filename</span>
+                        </div>
+                        <div>
+                            <span class="resource-detail__meta-label">Size</span>
+                            <span>@(_selectedFile.SizeKb > 0 ? Parser.ParseSizeKb(_selectedFile.SizeKb) : "Unknown")</span>
+                        </div>
+                        <div>
+                            <span class="resource-detail__meta-label">State</span>
+                            <span>@(_selectedFile.IsEnabled ? "Enabled" : "Disabled")</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Resource.Author))
+                        {
+                            <div>
+                                <span class="resource-detail__meta-label">Author</span>
+                                <span>@Resource.Author</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (_isLoraType || _isPromptResourceType)
+                {
+                    <MudSlider T="float" ValueChanged="HandleResourceWeightChanged" Value="State.State.Resources.Weight"
+                               Min="Settings.Settings.Resources.Weight.Min" Max="Settings.Settings.Resources.Weight.Max"
+                               Step="Settings.Settings.Resources.Weight.Step" ValueLabel>
+                        <small>Weight:</small> @State.State.Resources.Weight
+                    </MudSlider>
+                }
+
+                @if (_selectedFile.TriggerWords?.Count > 0)
+                {
+                    <div class="resource-detail__rail">
+                        <MudText Typo="Typo.caption">Trigger Words</MudText>
+                        <div class="resource-detail__chips">
+                            @foreach (var word in _selectedFile.TriggerWords)
+                            {
+                                var capturedWord = word;
+                                var isSelected = _selectedTriggerWords.Contains(capturedWord);
+                                <span @ondblclick="@(() => SoloTriggerWord(capturedWord))" @ondblclick:preventDefault
+                                      @ondblclick:stopPropagation>
+                                    <MudChip T="string" Color="@(isSelected? Color.Primary: Color.Default)" Size="Size.Small" Label
+                                             Variant="@(isSelected ? Variant.Filled : Variant.Text)"
+                                             OnClick="@(() => ToggleTriggerWord(capturedWord))">
+                                        @capturedWord
+                                    </MudChip>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (Resource.Tags?.Count > 0)
+                {
+                    <div class="resource-detail__rail">
+                        <MudText Typo="Typo.caption">Tags</MudText>
+                        <div class="resource-detail__chips resource-detail__chips--clamped">
+                            @foreach (var tag in Resource.Tags)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@tag</MudChip>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="send-to-section">
+                    <span class="send-to-label">Actions:</span>
+                    <div class="send-to-buttons">
+                        <button type="button" class="send-to-btn" @onclick="ToggleFile">
+                            <MudIcon
+                            Icon="@(_selectedFile.IsEnabled ? "fa-solid fa-circle-pause" : "fa-solid fa-circle-play")"
+                            Size="Size.Small" />
+                            <span>@(_selectedFile.IsEnabled ? "Disable" : "Enable")</span>
+                        </button>
+                        <button type="button" class="send-to-btn" @onclick="SaveMetadata"
+                                disabled="@(_entity == null || _selectedFile.File == null)">
+                            <MudIcon Icon="fa-solid fa-floppy-disk" Size="Size.Small" />
+                            <span>Save</span>
+                        </button>
+                        <button type="button" class="send-to-btn" @onclick="ConfirmDelete" disabled="@(_entity == null)">
+                            <MudIcon Icon="fa-solid fa-trash" Size="Size.Small" />
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                @if (Resource.Type.Name.Equals("Checkpoint", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    @if (_compatibleWorkflows.Count > 0)
+                    {
+                        <div class="send-to-section">
+                            <span class="send-to-label">Send model to:</span>
+                            <div class="send-to-buttons">
+                                @foreach (var workflow in _compatibleWorkflows)
+                                {
+                                    var capturedWorkflow = workflow;
+                                    <button type="button" class="send-to-btn @GetWorkflowModeClass(capturedWorkflow.Mode)"
+                                            disabled="@(!Backend.IsBackendAvailable || !_selectedFile.IsEnabled)"
+                                            @onclick="@(() => SendCheckpointToWorkflow(capturedWorkflow))">
+                                        <MudIcon Icon="@GetWorkflowIcon(capturedWorkflow.Mode)" Size="Size.Small" />
+                                        <span>@capturedWorkflow.Title</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">No compatible workflows found for this model.</MudText>
+                    }
+                }
+                else if (_isLoraType)
+                {
+                    <div class="send-to-section">
+                        <span class="send-to-label">LoRA:</span>
+                        <div class="send-to-buttons">
+                            <button type="button" class="send-to-btn"
+                                    disabled="@(!Backend.IsBackendAvailable || !_selectedFile.IsEnabled)"
+                                    @onclick="AddLoraToLoader">
+                                <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                                <span>Add to loader</span>
+                            </button>
+                            @foreach (var workflow in _compatibleWorkflows)
+                            {
+                                var capturedWorkflow = workflow;
+                                <button type="button" class="send-to-btn @GetWorkflowModeClass(capturedWorkflow.Mode)"
+                                        disabled="@(!Backend.IsBackendAvailable || !_selectedFile.IsEnabled)"
+                                        @onclick="@(() => AddLoraToWorkflow(capturedWorkflow))">
+                                    <MudIcon Icon="@GetWorkflowIcon(capturedWorkflow.Mode)" Size="Size.Small" />
+                                    <span>@capturedWorkflow.Title</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!Resource.Type.Name.Equals("VAE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    <div class="send-to-section">
+                        <span class="send-to-label">Prompt:</span>
+                        <div class="send-to-buttons">
+                            <button type="button" class="send-to-btn mode-txt2img"
+                                    disabled="@(!Backend.IsBackendAvailable || !_selectedFile.IsEnabled)"
+                                    @onclick="@(() => SendPromptResource(true))">
+                                <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                                <span>Positive</span>
+                            </button>
+                            <button type="button" class="send-to-btn mode-extras"
+                                    disabled="@(!Backend.IsBackendAvailable || !_selectedFile.IsEnabled)"
+                                    @onclick="@(() => SendPromptResource(false))">
+                                <MudIcon Icon="fa-solid fa-minus" Size="Size.Small" />
+                                <span>Negative</span>
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">VAE selection is done through generation page workflow assets.</MudAlert>
+                }
+            }
+        </div>
+    </Sidebar>
+    <Content>
+        <div class="resource-detail">
+            <div class="resource-detail__header">
+                <div>
+                    <MudText Typo="Typo.h5">@Resource.Title</MudText>
+                    @if (_selectedFile != null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_selectedFile.Filename</MudText>
+                    }
+                </div>
+                <div class="resource-detail__links">
+                    @if (Resource.CivitaiId != null)
+                    {
+                        <MudLink Target="_blank" Href="@($"https://civitai.com/models/{Resource.CivitaiId}")"
+                                 Color="Color.Info">Model @Resource.CivitaiId</MudLink>
+                    }
+                    @if (_selectedFile?.CivitaiId != null)
+                    {
+                        <MudLink Target="_blank"
+                                 Href="@($"https://civitai.com/models/{Resource.CivitaiId}?modelVersionId={_selectedFile.CivitaiId}")"
+                                 Color="Color.Info">Version @_selectedFile.CivitaiId</MudLink>
+                    }
+                </div>
+            </div>
+
+            @if (_selectedFile == null)
+            {
+                <div class="app-empty-state">
+                    <i class="fa-solid fa-file-circle-xmark"></i>
+                    <span>Resource file not found.</span>
+                </div>
+            }
+            else
+            {
+                @if (_viewerAssets.Count > 0)
+                {
+                    <div class="resource-detail__media-grid">
+                        @foreach (var capturedIndex in GetHeroAssetIndexes())
+                        {
+                            var asset = _viewerAssets[capturedIndex];
+                            <button type="button" class="resource-detail__media-card"
+                                    @onclick="@(() => OpenViewerAt(capturedIndex))">
+                                @if (IsVideo(asset.Path))
+                                {
+                                    <video src="@asset.Path" autoplay loop muted playsinline></video>
+                                    <span class="resource-detail__media-badge">
+                                        <MudIcon Icon="fa-solid fa-video" Size="Size.Small" />
+                                    </span>
+                                }
+                                else
+                                {
+                                    <img src="@asset.Path" alt="@Resource.Title" loading="lazy" />
+                                }
+                            </button>
+                        }
+                    </div>
+
+                    @if (_viewerAssets.Count > 1)
+                    {
+                        <div class="resource-detail__media-controls">
+                            <MudTooltip Text="Previous media">
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" Variant="Variant.Text"
+                                               Disabled="_heroIndex == 0" OnClick="PreviousHeroAsset" />
+                            </MudTooltip>
+                            <MudText Typo="Typo.caption">@($"{_heroIndex + 1} / {_viewerAssets.Count}")</MudText>
+                            <MudTooltip Text="Next media">
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Variant="Variant.Text"
+                                               Disabled="_heroIndex >= _viewerAssets.Count - 1" OnClick="NextHeroAsset" />
+                            </MudTooltip>
+                        </div>
+
+                        <div class="resource-detail__thumb-grid">
+                            @for (var i = 0; i < _viewerAssets.Count; i++)
+                            {
+                                var capturedIndex = i;
+                                var asset = _viewerAssets[i];
+                                var isActive = capturedIndex == _heroIndex;
+                                <button type="button"
+                                        class="@($"resource-detail__thumb{(isActive ? " resource-detail__thumb--active" : string.Empty)}")"
+                                        title="@($"Media {capturedIndex + 1} of {_viewerAssets.Count}")"
+                                        @onclick="@(() => SelectHeroAsset(capturedIndex))">
+                                    @if (IsVideo(asset.Path))
+                                    {
+                                        <video src="@asset.Path" muted playsinline preload="metadata"></video>
+                                    }
+                                    else
+                                    {
+                                        <img src="@asset.Path" alt="" loading="lazy" />
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="app-empty-state">
+                        <i class="fa-regular fa-image"></i>
+                        <span>No local resource images saved.</span>
+                    </div>
+                }
+
+                <section class="resource-detail__section">
+                    <MudText Typo="Typo.h6">Description</MudText>
+                    <div class="resource-detail__prose">
+                        @if (!string.IsNullOrWhiteSpace(_selectedFile.Description))
+                        {
+                            @((MarkupString)_selectedFile.Description)
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No description provided.</MudText>
+                        }
+                    </div>
+                </section>
+
+                @if (_entity != null)
+                {
+                    <section class="resource-detail__section">
+                        <MudText Typo="Typo.h6">Edit Metadata</MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editTitle" Label="Title" Variant="Variant.Text" Dense Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editAuthor" Label="Author" Variant="Variant.Text" Dense Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudSelect T="string" @bind-Value="_editType" Label="Type" Variant="Variant.Text" Dense>
+                                    @foreach (var type in _resourceTypes)
+                                    {
+                                        <MudSelectItem Value="@type.Name">@type.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudAutocomplete T="string" @bind-Value="_editSubtype" Label="Sub-Type" Variant="Variant.Text"
+                                                 Dense SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50" CoerceValue
+                                                 ResetValueOnEmptyText Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="_editBaseModel" Label="Base Model" Variant="Variant.Text" Dense
+                                              Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudNumericField @bind-Value="_editModelId" Label="CivitAI Model ID" Variant="Variant.Text"
+                                                 Dense Min="0" Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudNumericField @bind-Value="_editVersionId" Label="CivitAI Version ID" Variant="Variant.Text"
+                                                 Dense Min="0" Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_tagText" Label="Tags" Variant="Variant.Text" Dense Lines="3" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_triggerWordText" Label="Trigger Words" Variant="Variant.Text" Dense
+                                              Lines="3" />
+                            </MudItem>
+                        </MudGrid>
+                    </section>
+                }
+            }
+        </div>
+    </Content>
+</TwoColumnLayout>
+
+<AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
+             ShowScore="false" ShowOpenInExplorer="false" ImageToPromptSourceLabel="Resource image"
+             OnAssetChanged="HandleViewerAssetChanged" />
+
+@code {
+    [Parameter, EditorRequired] public LocalResource Resource { get; set; } = default!;
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnResourceChanged { get; set; }
+    [Parameter] public EventCallback OnResourceDeleted { get; set; }
+
+    private LocalResourceFile? _selectedFile;
+    private Resource? _entity;
+    private List<Workflow> _compatibleWorkflows = new();
+    private List<string> _selectedTriggerWords = new();
+    private List<ResourceType> _resourceTypes = new();
+    private List<ImageEntity> _viewerAssets = new();
+    private int _heroIndex;
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private int? _loadedResourceId;
+
+    private string? _editTitle;
+    private string? _editAuthor;
+    private string? _editType;
+    private string? _editSubtype;
+    private string? _editBaseModel;
+    private int? _editModelId;
+    private int? _editVersionId;
+    private string? _tagText;
+    private string? _triggerWordText;
+
+    private bool _isLoraType => Resource.Type.Name.Equals("LORA", StringComparison.InvariantCultureIgnoreCase)
+        || Resource.Type.Name.Equals("LoCon", StringComparison.InvariantCultureIgnoreCase);
+
+    private bool _isPromptResourceType => Resource.Type.Name.Equals("TextualInversion",
+StringComparison.InvariantCultureIgnoreCase)
+        || Resource.Type.Name.Equals("Hypernetwork", StringComparison.InvariantCultureIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Resource == null) return;
+        _resourceTypes = await DB.GetResourceTypes(ordered: true);
+
+        var firstFileId = Resource.Files?.FirstOrDefault()?.ResourceId;
+        if (_loadedResourceId != firstFileId)
+        {
+            _loadedResourceId = firstFileId;
+            await SelectFile(Resource.Files?.FirstOrDefault());
+        }
+    }
+
+    private async Task SelectFile(LocalResourceFile? file)
+    {
+        if (file == null)
+        {
+            _selectedFile = null;
+            _entity = null;
+            _viewerAssets.Clear();
+            return;
+        }
+
+        var subtype = Resource.SubType?.Name;
+        _selectedFile = await ResourcesService.GetResourceFileInfo(Resource.Type.Name, subtype, file);
+        if (_selectedFile == null)
+        {
+            _entity = await DB.GetResourceById(file.ResourceId);
+            _viewerAssets.Clear();
+            return;
+        }
+
+        _entity = await DB.GetResourceById(_selectedFile.ResourceId);
+        LoadEditState();
+        LoadTriggerSelection();
+        LoadCompatibleWorkflows();
+        await LoadViewerAssets();
+    }
+
+    private static string FileLabel(LocalResourceFile? file)
+    {
+        if (file == null) return string.Empty;
+        var label = string.IsNullOrWhiteSpace(file.Title) ? Path.GetFileNameWithoutExtension(file.Filename) : file.Title;
+        return file.SizeKb > 0 ? $"{label} ({Parser.ParseSizeKb(file.SizeKb)})" : label;
+    }
+
+    private void LoadEditState()
+    {
+        if (_entity == null) return;
+        _editTitle = _entity.Title;
+        _editAuthor = _entity.Author;
+        _editType = _entity.Type?.Name;
+        _editSubtype = _entity.SubType?.Name;
+        _editBaseModel = _entity.BaseModel;
+        _editModelId = _entity.CivitaiModelId;
+        _editVersionId = _entity.CivitaiModelVersionId;
+        _tagText = string.Join(", ", _entity.Tags ?? new List<string>());
+        _triggerWordText = string.Join(", ", _entity.TriggerWords ?? new List<string>());
+    }
+
+    private void LoadTriggerSelection()
+    {
+        _selectedTriggerWords = _selectedFile?.TriggerWords?.Count > 0
+            ? new List<string>(_selectedFile.TriggerWords)
+            : new List<string>();
+    }
+
+    private void LoadCompatibleWorkflows()
+    {
+        _compatibleWorkflows = new();
+        if (string.IsNullOrWhiteSpace(Resource.BaseModel)) return;
+
+        var comp = StringComparison.InvariantCultureIgnoreCase;
+        var workflows = State.State?.Generation?.Workflows;
+        if (workflows == null) return;
+
+        _compatibleWorkflows = workflows
+            .Where(w => w.CompatibleResourceBaseModels != null &&
+                        w.CompatibleResourceBaseModels.Any(b => b.Equals(Resource.BaseModel, comp)))
+            .ToList();
+    }
+
+    private async Task LoadViewerAssets()
+    {
+        _viewerAssets = new();
+
+        if (_selectedFile?.CivitaiId != null)
+        {
+            var resourceImages = await DB.GetResourceImages((int)_selectedFile.CivitaiId);
+            _viewerAssets = resourceImages
+                .Where(image => !string.IsNullOrWhiteSpace(image.Path))
+                .Select(ProjectResourceImage)
+                .ToList();
+        }
+
+        var previewPath = NormalizeLocalWebPath(_selectedFile?.ImageSrc ?? Resource.ImageSrc);
+        if (_viewerAssets.Count == 0 && !string.IsNullOrWhiteSpace(previewPath))
+        {
+            _viewerAssets.Insert(0, ProjectPreviewImage(previewPath));
+        }
+
+        _heroIndex = 0;
+    }
+
+    private static ImageEntity ProjectResourceImage(ResourceImage image)
+    {
+        var asset = new ImageEntity(image)
+        {
+            Id = 0,
+            Path = NormalizeLocalWebPath(image.Path),
+            DateCreated = DateTime.Now
+        };
+        return asset;
+    }
+
+    private static ImageEntity ProjectPreviewImage(string path)
+        => new()
+        {
+            Id = 0,
+            Path = path,
+            DateCreated = DateTime.Now
+        };
+
+    private static string NormalizeLocalWebPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+        return path.StartsWith("./", StringComparison.Ordinal) ? path[1..] : path;
+    }
+
+    private void OpenViewerAt(int index)
+    {
+        if (index < 0 || index >= _viewerAssets.Count) return;
+        _heroIndex = index;
+        _viewerStartIndex = index;
+        _showViewer = true;
+    }
+
+    private IReadOnlyList<int> GetHeroAssetIndexes()
+    {
+        if (_viewerAssets.Count == 0) return Array.Empty<int>();
+        if (_viewerAssets.Count == 1) return new[] { 0 };
+
+        var first = Math.Clamp(_heroIndex, 0, _viewerAssets.Count - 1);
+        var second = first == _viewerAssets.Count - 1 ? first - 1 : first + 1;
+        return first < second ? new[] { first, second } : new[] { second, first };
+    }
+
+    private void SelectHeroAsset(int index)
+    {
+        if (index < 0 || index >= _viewerAssets.Count) return;
+        _heroIndex = index;
+    }
+
+    private void PreviousHeroAsset() => SelectHeroAsset(_heroIndex - 1);
+
+    private void NextHeroAsset() => SelectHeroAsset(_heroIndex + 1);
+
+    private void HandleViewerAssetChanged(ImageEntity asset)
+    {
+        var index = _viewerAssets.IndexOf(asset);
+        if (index >= 0)
+        {
+            _heroIndex = index;
+            _viewerStartIndex = index;
+        }
+    }
+
+    private async Task ToggleFile()
+    {
+        if (_selectedFile == null) return;
+        await ResourcesService.ToggleResource(Resource, _selectedFile);
+        await OnResourceChanged.InvokeAsync();
+        await SelectFile(_selectedFile);
+    }
+
+    private async Task SaveMetadata()
+    {
+        if (_entity == null || _selectedFile?.File == null) return;
+
+        _entity.Title = _editTitle?.Trim() ?? _entity.Title;
+        _entity.Author = string.IsNullOrWhiteSpace(_editAuthor) ? null : _editAuthor.Trim();
+        _entity.BaseModel = string.IsNullOrWhiteSpace(_editBaseModel) ? null : _editBaseModel.Trim();
+        _entity.CivitaiModelId = _editModelId;
+        _entity.CivitaiModelVersionId = _editVersionId;
+        _entity.Type = ResolveResourceType(_editType);
+        _entity.SubType = string.IsNullOrWhiteSpace(_editSubtype) ? null : new ResourceSubType { Name = _editSubtype.Trim() };
+        _entity.Tags = SplitList(_tagText);
+        _entity.TriggerWords = SplitList(_triggerWordText);
+
+        var directory = _selectedFile.File.Directory?.FullName ?? string.Empty;
+        var filename = Path.GetFileNameWithoutExtension(_selectedFile.File.Name);
+        await ResourcesService.UpdateResource(_entity, directory, filename, _selectedFile.ResourceId, _selectedFile.IsEnabled);
+        Snackbar.Add("Resource metadata saved.", Severity.Success);
+        await OnResourceChanged.InvokeAsync();
+        await SelectFile(_selectedFile);
+    }
+
+    private ResourceType ResolveResourceType(string? name)
+    {
+        var type = _resourceTypes.FirstOrDefault(t => t.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+        return type ?? new ResourceType { Name = string.IsNullOrWhiteSpace(name) ? Resource.Type.Name : name.Trim() };
+    }
+
+    private static List<string> SplitList(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? new List<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_entity == null || _selectedFile?.File == null) return;
+
+        var deleteFiles = await ConfirmDeleteFiles();
+        if (deleteFiles == null) return;
+
+        await ResourcesService.DeleteResource(_entity, deleteFiles.Value, _selectedFile.File.Directory?.FullName ??
+string.Empty,
+            Path.GetFileNameWithoutExtension(_selectedFile.File.Name));
+        Snackbar.Add(deleteFiles.Value ? "Resource and files were deleted." : "Resource was deleted.", Severity.Success);
+        await OnResourceDeleted.InvokeAsync();
+    }
+
+    private async Task DeleteMissingResource()
+    {
+        if (_entity == null) return;
+        var confirmed = await ConfirmSimpleDelete();
+        if (!confirmed) return;
+
+        await ResourcesService.DeleteResource(_entity, false, string.Empty, string.Empty);
+        Snackbar.Add("Resource deleted.", Severity.Success);
+        await OnResourceDeleted.InvokeAsync();
+    }
+
+    private async Task<bool?> ConfirmDeleteFiles()
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmationDialog.CancelButtonText)] = "No",
+            [nameof(ConfirmationDialog.OkButtonText)] = "Yes",
+            [nameof(ConfirmationDialog.OkButtonColor)] = Color.Error,
+            [nameof(ConfirmationDialog.Content)] = new MarkupString("<span class='lead'>Delete this resource?</span><br/><small>Associated preview images are also removed. This action is irreversible.</small>"),
+            [nameof(ConfirmationDialog.CheckboxEnabled)] = true,
+            [nameof(ConfirmationDialog.CheckboxContent)] = "Delete files from disk?",
+            [nameof(ConfirmationDialog.CheckboxColor)] = Color.Error
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", parameters, new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small
+        });
+        var result = await dialog.Result;
+        return result.Canceled ? null : result.Data as bool? ?? false;
+    }
+
+    private async Task<bool> ConfirmSimpleDelete()
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmationDialog.CancelButtonText)] = "No",
+            [nameof(ConfirmationDialog.OkButtonText)] = "Yes",
+            [nameof(ConfirmationDialog.OkButtonColor)] = Color.Error,
+            [nameof(ConfirmationDialog.Content)] = new MarkupString("<span class='lead'>Delete this missing resource record?</span><br/><small>This action is irreversible.</small>")
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", parameters, new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small
+        });
+        var result = await dialog.Result;
+        return !result.Canceled;
+    }
+
+    private async Task SendCheckpointToWorkflow(Workflow workflow)
+    {
+        if (_selectedFile == null) return;
+        QueueCheckpointForWorkflow(_selectedFile, workflow);
+        Orchestrator.SetCurrentWorkflow(workflow.Id);
+        await DB.UpdateResourceLoadedDate(_selectedFile.ResourceId);
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+    }
+
+    private async Task AddLoraToLoader()
+    {
+        if (_selectedFile == null) return;
+        await QueueLoraForGenerate(_selectedFile, Resource.Type.Name);
+        QueueTriggerWords(_selectedTriggerWords);
+        await DB.UpdateResourceLoadedDate(_selectedFile.ResourceId);
+        NavManager.NavigateTo("/generate");
+    }
+
+    private async Task AddLoraToWorkflow(Workflow workflow)
+    {
+        if (_selectedFile == null) return;
+        await QueueLoraForGenerate(_selectedFile, Resource.Type.Name);
+        QueueTriggerWords(_selectedTriggerWords);
+        Orchestrator.SetCurrentWorkflow(workflow.Id);
+        await DB.UpdateResourceLoadedDate(_selectedFile.ResourceId);
+        NavManager.NavigateTo($"/generate/{workflow.Id}");
+    }
+
+    private async Task SendPromptResource(bool isPositive)
+    {
+        if (_selectedFile == null) return;
+        await ResourcesService.LoadPrompt(_selectedFile, Resource.Type.Name, (ModeType.Txt2Img, isPositive));
+        await DB.UpdateResourceLoadedDate(_selectedFile.ResourceId);
+        NavManager.NavigateTo("/generate");
+    }
+
+    private void QueueCheckpointForWorkflow(LocalResourceFile file, Workflow workflow)
+    {
+        if (workflow.Assets == null) return;
+        var checkpointAsset = workflow.Assets.FirstOrDefault(a =>
+            a.Type == AssetType.DiffusionModel ||
+            a.Type == AssetType.CheckpointModel);
+        if (checkpointAsset == null) return;
+        ParameterService.QueuePendingAsset(checkpointAsset.Parameter, file.Filename);
+    }
+
+    private async Task QueueLoraForGenerate(LocalResourceFile file, string resourceType)
+    {
+        var path = await ResolveBackendLoraPath(file, resourceType);
+        var filename = Path.GetFileNameWithoutExtension(path);
+        var weight = State.State.Resources.Weight;
+
+        var newLora = new Lora { Name = filename, Path = path, Strength = weight, IsNegative = false, IsEnabled = true };
+        ParameterService.QueuePendingLora(newLora);
+    }
+
+    private async Task<string> ResolveBackendLoraPath(LocalResourceFile file, string resourceType)
+    {
+        var candidates = BuildLoraPathCandidates(file, resourceType);
+
+        try
+        {
+            var available = (await Router.SearchLoras(BlazorWebApp.Data.Enums.Backend.ComfyUI, string.Empty)).ToList();
+            var exact = available.FirstOrDefault(path => candidates.Contains(NormalizeModelPath(path)));
+            if (!string.IsNullOrWhiteSpace(exact)) return exact;
+
+            var filename = file.File.Name;
+            var byFilename = available.FirstOrDefault(path => Path.GetFileName(path).Equals(filename,
+StringComparison.InvariantCultureIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(byFilename)) return byFilename;
+        }
+        catch
+        {
+        }
+
+        return candidates.FirstOrDefault(path => !path.Equals(file.File.Name, StringComparison.InvariantCultureIgnoreCase)) ??
+file.File.Name;
+    }
+
+    private HashSet<string> BuildLoraPathCandidates(LocalResourceFile file, string resourceType)
+    {
+        var comp = StringComparison.InvariantCultureIgnoreCase;
+        var candidates = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase)
+        {
+            NormalizeModelPath(file.File.Name)
+        };
+
+        var resourcesPath = Configuration["ResourcesPath"];
+        if (string.IsNullOrWhiteSpace(resourcesPath)) return candidates;
+
+        foreach (var folder in new[] { "LORA", resourceType }.Distinct(StringComparer.InvariantCultureIgnoreCase))
+        {
+            var basePath = Path.Combine(resourcesPath, folder);
+            var fullPath = file.File.FullName;
+            if (!fullPath.StartsWith(basePath, comp)) continue;
+
+            var relative = fullPath.Substring(basePath.Length).TrimStart(Path.DirectorySeparatorChar,
+Path.AltDirectorySeparatorChar);
+            if (!string.IsNullOrWhiteSpace(relative)) candidates.Add(NormalizeModelPath(relative));
+        }
+
+        return candidates;
+    }
+
+    private static string NormalizeModelPath(string path)
+        => path.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
+
+    private void QueueTriggerWords(List<string> triggerWords)
+    {
+        if (triggerWords.Count == 0) return;
+        ParameterService.QueuePendingPromptAppend(string.Join(", ", triggerWords));
+    }
+
+    private void ToggleTriggerWord(string word)
+    {
+        if (_selectedTriggerWords.Contains(word)) _selectedTriggerWords.Remove(word);
+        else _selectedTriggerWords.Add(word);
+    }
+
+    private void SoloTriggerWord(string word)
+    {
+        _selectedTriggerWords = _selectedTriggerWords.Count == 1 && _selectedTriggerWords.Contains(word)
+            ? new List<string>(_selectedFile?.TriggerWords ?? new List<string>())
+            : new List<string> { word };
+    }
+
+    private void HandleResourceWeightChanged(float value)
+    {
+        State.State.Resources.Weight = value;
+        Settings.SaveSettings();
+    }
+
+    private Task HandleBack() => OnBack.InvokeAsync();
+
+    private static bool IsVideo(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var lower = path.ToLowerInvariant();
+        return lower.Contains(".mp4") || lower.Contains(".webm") || lower.Contains(".mov") || lower.Contains(".m4v");
+    }
+
+    private static string GetWorkflowIcon(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "fa-solid fa-font",
+        ModeType.Img2Img => "fa-solid fa-image",
+        ModeType.Img2Vid => "fa-solid fa-video",
+        ModeType.Txt2Vid => "fa-solid fa-film",
+        ModeType.Vid2Vid => "fa-solid fa-clapperboard",
+        ModeType.Extras => "fa-solid fa-panorama",
+        _ => "fa-solid fa-circle"
+    };
+
+    private static string GetWorkflowModeClass(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "mode-txt2img",
+        ModeType.Img2Img => "mode-img2img",
+        ModeType.Img2Vid => "mode-img2vid",
+        ModeType.Txt2Vid => "mode-img2vid",
+        ModeType.Vid2Vid => "mode-img2vid",
+        ModeType.Extras => "mode-extras",
+        _ => string.Empty
+    };
+}

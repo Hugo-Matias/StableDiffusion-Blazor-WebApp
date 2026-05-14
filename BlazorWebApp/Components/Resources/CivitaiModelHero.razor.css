@@ -1,8 +1,17 @@
 .civitai-model-hero {
   --civitai-model-hero-gap: calc(var(--app-gutter-inner) / 2);
   --civitai-model-thumb-min: 5rem;
+  --civitai-model-hero-placeholder-gap: calc(var(--app-gutter-inner) / 2);
   display: flex;
   flex-direction: column;
+  gap: var(--civitai-model-hero-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+.civitai-model-hero__media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--civitai-model-hero-gap);
   width: 100%;
   min-width: 0;
@@ -12,7 +21,7 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 16 / 9;
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);
   border-radius: var(--app-surface-radius);
@@ -29,7 +38,7 @@
 .civitai-model-hero__video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -53,9 +62,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--civitai-model-hero-placeholder-gap);
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 16 / 9;
   border: 1px dashed var(--mud-palette-divider);
   border-radius: var(--app-surface-radius);
   color: var(--mud-palette-text-secondary);
@@ -103,5 +112,11 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+@media (max-width: 900px) {
+  .civitai-model-hero__media-grid {
+    grid-template-columns: 1fr;
+  }
 }

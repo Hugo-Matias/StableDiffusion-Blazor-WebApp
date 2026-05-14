@@ -7,7 +7,7 @@
         {
             var capturedIndex = i;
             var img = Images[i];
-            var isVideo = CivitaiAssetAdapter.IsVideoUrl(img.Url);
+            var isVideo = CivitaiAssetAdapter.IsVideo(img);
             var isActive = capturedIndex == ActiveIndex;
             <button type="button"
                     class="@($"civitai-preview-strip__thumb{(isActive ? " civitai-preview-strip__thumb--active" : string.Empty)}")"

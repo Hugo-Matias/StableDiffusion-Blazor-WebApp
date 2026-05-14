@@ -1,15 +1,17 @@
 @inject IIOService IO
 
-<div class="@GetCardClasses()" 
-     style="@GetCardStyle()"
-     @onmouseenter="() => _isHovered = true" 
-     @onmouseleave="() => _isHovered = false"
-     @onclick="@(async () => await OnLoad.InvokeAsync(Resource))">
+<div class="@GetCardClasses()" style="@GetCardStyle()" @onmouseenter="() => _isHovered = true"
+     @onmouseleave="() => _isHovered = false" @onclick="@(async () => await OnLoad.InvokeAsync(Resource))">
     <div class="image-wrapper">
-        <img src="@(string.IsNullOrWhiteSpace(Resource.ImageSrc) ? "./no_image.png" : Resource.ImageSrc)" 
-             alt="@(Title ?? Resource.Title)" 
-             class="card-image" 
-             loading="lazy" />
+        @if (IsVideo(Resource.ImageSrc))
+        {
+            <video src="@Resource.ImageSrc" class="card-image" autoplay loop muted playsinline></video>
+        }
+        else
+        {
+            <img src="@(string.IsNullOrWhiteSpace(Resource.ImageSrc) ? "./no_image.png" : Resource.ImageSrc)"
+                 alt="@(Title ?? Resource.Title)" class="card-image" loading="lazy" />
+        }
         
         @* Hover Overlay - for center action *@
         <div class="hover-overlay @(_isHovered ? "visible" : "")">
@@ -51,5 +53,15 @@
         if (Opacity < 1f) style += $" opacity: {Opacity};";
         if (!string.IsNullOrWhiteSpace(Filter)) style += $" filter: {Filter};";
         return style;
+    }
+
+    private static bool IsVideo(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".mp4", StringComparison.InvariantCultureIgnoreCase)
+            || extension.Equals(".webm", StringComparison.InvariantCultureIgnoreCase)
+            || extension.Equals(".mov", StringComparison.InvariantCultureIgnoreCase)
+            || extension.Equals(".m4v", StringComparison.InvariantCultureIgnoreCase);
     }
 }

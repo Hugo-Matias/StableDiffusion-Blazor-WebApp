@@ -137,5 +137,10 @@ namespace BlazorWebApp.Components.Resources
             }
             return false;
         }
+
+        public static bool IsVideo(CivitaiImageDto? dto)
+            => dto?.ImageType is { Length: > 0 } && dto.ImageType[0] == 0
+                || string.Equals(dto?.Type, "video", StringComparison.OrdinalIgnoreCase)
+                || IsVideoUrl(dto?.Url);
     }
 }

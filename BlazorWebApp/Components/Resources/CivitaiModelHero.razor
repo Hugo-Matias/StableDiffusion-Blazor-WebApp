@@ -15,21 +15,28 @@
     }
     else
     {
-        var active = Version.Images[_heroIndex];
-        var isVideo = CivitaiAssetAdapter.IsVideoUrl(active.Url);
-        <button type="button" class="civitai-model-hero__media" @onclick="@(() => OpenViewerAt(_heroIndex))">
-            @if (isVideo)
+        var heroIndexes = GetHeroIndexes();
+        <div class="civitai-model-hero__media-grid">
+            @foreach (var heroIndex in heroIndexes)
             {
-                <video class="civitai-model-hero__video" src="@active.Url" autoplay loop muted playsinline></video>
+                var active = Version.Images[heroIndex];
+                var isVideo = CivitaiAssetAdapter.IsVideo(active);
+                <button type="button" class="civitai-model-hero__media" @onclick="@(() => OpenViewerAt(heroIndex))">
+                    @if (isVideo)
+                    {
+                        <video class="civitai-model-hero__video" src="@active.Url" autoplay loop muted playsinline></video>
+                    }
+                    else
+                    {
+                        <img class="civitai-model-hero__image" src="@active.Url" alt="@($"{Version.Name} preview")"
+                             loading="lazy" />
+                    }
+                    <span class="civitai-model-hero__overlay">
+                        <MudIcon Icon="fa-solid fa-expand" Size="Size.Small" />
+                    </span>
+                </button>
             }
-            else
-            {
-                <img class="civitai-model-hero__image" src="@active.Url" alt="@($"{Version.Name} preview")" loading="lazy" />
-            }
-            <span class="civitai-model-hero__overlay">
-                <MudIcon Icon="fa-solid fa-expand" Size="Size.Small" />
-            </span>
-        </button>
+        </div>
 
         @if (Version.Images.Count > 1)
         {
@@ -50,7 +57,7 @@
                 {
                     var capturedIndex = i;
                     var image = Version.Images[i];
-                    var thumbnailIsVideo = CivitaiAssetAdapter.IsVideoUrl(image.Url);
+                    var thumbnailIsVideo = CivitaiAssetAdapter.IsVideo(image);
                     var isActive = capturedIndex == _heroIndex;
                     <button type="button"
                             class="@($"civitai-model-hero__thumb{(isActive ? " civitai-model-hero__thumb--active" : string.Empty)}")"
@@ -111,6 +118,16 @@
     private void PreviousImage() => SelectImage(_heroIndex - 1);
 
     private void NextImage() => SelectImage(_heroIndex + 1);
+
+    private IReadOnlyList<int> GetHeroIndexes()
+    {
+        if (Version?.Images == null || Version.Images.Count == 0) return Array.Empty<int>();
+        if (Version.Images.Count == 1) return new[] { 0 };
+
+        var first = Math.Clamp(_heroIndex, 0, Version.Images.Count - 1);
+        var second = first == Version.Images.Count - 1 ? first - 1 : first + 1;
+        return first < second ? new[] { first, second } : new[] { second, first };
+    }
 
     private async Task OpenViewerAt(int index)
     {

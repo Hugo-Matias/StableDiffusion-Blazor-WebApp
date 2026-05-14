@@ -186,9 +186,13 @@ namespace BlazorWebApp.Services
         public string GetResourceImagePath(string type, string filename)
         {
             var previewPath = $"{type}/{Path.GetFileNameWithoutExtension(filename)}";
-            if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".png"))) return $"./files/resource_previews/{previewPath}.png";
-            else if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".jpg"))) return $"./files/resource_previews/{previewPath}.jpg";
-            else return string.Empty;
+            foreach (var extension in new[] { ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm", ".mov", ".m4v" })
+            {
+                if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + extension)))
+                    return $"./files/resource_previews/{previewPath}{extension}";
+            }
+
+            return string.Empty;
         }
 
         public string GetBase64FromFile(string path)

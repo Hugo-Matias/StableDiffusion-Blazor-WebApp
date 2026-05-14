@@ -1,14 +1,17 @@
+@using BlazorWebApp.Events
 @inject IConfiguration Configuration
 @inject IDatabaseService DB
 @inject IIOService IO
-@inject IDialogService DialogService
+@inject IEventService Events
+@inject ISnackbar Snackbar
 
 <MudStack Row>
     @if (_missing != null)
     {
         <MudStack>
             <MudText Typo="Typo.h6" Color="Color.Error">Missing from Database:</MudText>
-            <FileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)" StartIndex=@(_resourcesPath.Length + 1) />
+            <FileTree Files="_missing" OnFileSelected="async v => await HandleFileSelected(v)"
+                      StartIndex=@(_resourcesPath.Length + 1) />
         </MudStack>
     }
     @if (_added != null)
@@ -33,7 +36,8 @@
 
     private async Task Audit()
     {
-        var localModels = IO.GetFilesRecursive(_resourcesPath, ".git", extensionsBlacklist: null, extensionsWhitelist: new() { ".pt", ".ckpt", ".safetensors" });
+        var localModels = IO.GetFilesRecursive(_resourcesPath, ".git", extensionsBlacklist: null, extensionsWhitelist: new() {
+".pt", ".ckpt", ".safetensors" });
         var dbModels = await DB.GetResources();
         _missing = new();
         _added = new List<FileInfo>();
@@ -49,25 +53,27 @@
         var splitPath = Path.GetRelativePath(_resourcesPath, file.FullName).Split("\\");
         var type = splitPath[0];
         var subType = splitPath[1] != file.Name ? splitPath[1] : string.Empty;
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var param = new DialogParameters();
         var resource = new Resource()
-            {
-                Filename = file.Name,
-                Title = file.Name,
-                Type = new() { Name = type },
-                SubType = new() { Name = subType },
-                Tags = new(),
-                TriggerWords = new(),
-                SizeKb = file.Length / 1024
-            };
-        param.Add("Resource", resource);
-        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Resource", param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled)
         {
-            await DB.CreateResource((Resource)result.Data);
-            await InvokeAsync(StateHasChanged);
+            Filename = file.Name,
+            Title = file.Name,
+            Type = new() { Name = type },
+            SubType = new() { Name = subType },
+            Tags = new(),
+            TriggerWords = new(),
+            SizeKb = file.Length / 1024
+        };
+        if (await DB.CreateResource(resource))
+        {
+            Events.Publish(new ResourcesChangedEventArgs("Created resource from audit"));
+            Snackbar.Add($"Created resource record for {file.Name}.", Severity.Success);
+            await Audit();
         }
+        else
+        {
+            Snackbar.Add($"Resource record already exists for {file.Name}.", Severity.Info);
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 }

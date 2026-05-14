@@ -518,6 +518,8 @@ namespace BlazorWebApp.Services
                     if (typeOverride != null) entity.Type = new() { Name = resourceType };
                     if (!string.IsNullOrWhiteSpace(subtype)) entity.SubType = new() { Name = subtype };
                     var isAdded = await _db.CreateResource(entity);
+                    if (isAdded)
+                        _events.Publish(new ResourcesChangedEventArgs($"Downloaded {file.Name}"));
                     if (!isAdded) status = CivitaiDownloadStatus.Exists;
                 }
                 #endregion
@@ -559,28 +561,73 @@ namespace BlazorWebApp.Services
             if (version.Images == null || version.Images.Count == 0)
                 return;
 
-            var previewPath = Path.Combine(GetRequiredConfigurationPath("ResourcePreviewsPath"), resourceType, Path.GetFileNameWithoutExtension(file.Name) + ".png");
-            if (File.Exists(previewPath))
+            var filename = string.IsNullOrWhiteSpace(file.Name) ? version.Id.ToString() : file.Name;
+            var previewStem = Path.Combine(GetRequiredConfigurationPath("ResourcePreviewsPath"), resourceType, Path.GetFileNameWithoutExtension(filename));
+            if (PreviewFileExists(previewStem))
                 return;
 
-            var previewDirectory = Path.GetDirectoryName(previewPath);
+            var previewDirectory = Path.GetDirectoryName(previewStem);
             if (!string.IsNullOrWhiteSpace(previewDirectory))
                 Directory.CreateDirectory(previewDirectory);
 
-            foreach (var image in version.Images.Where(image => !string.IsNullOrWhiteSpace(image.Url)))
+            foreach (var image in version.Images)
             {
+                var url = image.Url;
+                if (string.IsNullOrWhiteSpace(url)) continue;
+
                 try
                 {
-                    if (await _img.DownloadImageAsPng(image.Url, previewPath))
+                    var isVideo = IsVideoPreview(image);
+                    var previewPath = isVideo
+                        ? previewStem + ResolveVideoPreviewExtension(url)
+                        : previewStem + ".png";
+
+                    var downloaded = isVideo
+                        ? await DownloadPreviewMediaAsync(url, previewPath)
+                        : await _img.DownloadImageAsPng(url, previewPath);
+
+                    if (downloaded)
                         return;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to download CivitAI preview image {ImageId} for model {ModelId}, version {VersionId}, file {FileName}", image.Id, model.Id, version.Id, file.Name);
+                    _logger.LogWarning(ex, "Failed to download CivitAI preview media {ImageId} for model {ModelId}, version {VersionId}, file {FileName}", image.Id, model.Id, version.Id, file.Name);
                 }
             }
 
-            _logger.LogWarning("No CivitAI preview image could be downloaded for model {ModelId}, version {VersionId}, file {FileName}", model.Id, version.Id, file.Name);
+            _logger.LogWarning("No CivitAI preview media could be downloaded for model {ModelId}, version {VersionId}, file {FileName}", model.Id, version.Id, file.Name);
+        }
+
+        private static bool PreviewFileExists(string previewStem)
+            => ImageExtensions.Concat(VideoExtensions).Any(extension => File.Exists(previewStem + extension));
+
+        private static bool IsVideoPreview(CivitaiImageDto image)
+            => image.ImageType is { Length: > 0 } && image.ImageType[0] == 0
+                || IsKnownVideo(image.Type, image.Url);
+
+        private static string ResolveVideoPreviewExtension(string? url)
+        {
+            var extension = GetUrlExtension(url);
+            return extension != null && VideoExtensions.Contains(extension) ? extension : ".mp4";
+        }
+
+        private async Task<bool> DownloadPreviewMediaAsync(string? url, string path)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+
+            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to download CivitAI preview media {Url}, status code: {StatusCode}", url, response.StatusCode);
+                return false;
+            }
+
+            await using var source = await response.Content.ReadAsStreamAsync();
+            await using var destination = File.Create(path);
+            await source.CopyToAsync(destination);
+            await destination.FlushAsync();
+
+            return new FileInfo(path).Length > 0;
         }
 
         private string GetRequiredConfigurationPath(string key)

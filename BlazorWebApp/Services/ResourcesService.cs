@@ -186,7 +186,7 @@ namespace BlazorWebApp.Services
             // Update resource preview
             var resourceEntity = await _db.GetResourceById(resourceId);
             var previewFiles = _io.GetFilesByName(Path.Combine(_configuration["ResourcePreviewsPath"]!, resourceEntity.Type.Name), filename).ToArray();
-            if (previewFiles != null)
+            if (previewFiles != null && previewFiles.Length > 0)
             {
                 //if (previewFiles.Length > 1) await Console.Out.WriteLineAsync("More than one resource preview found.");
                 var previewFilename = new FileInfo(resource.Filename);
@@ -217,7 +217,9 @@ namespace BlazorWebApp.Services
                 }
             }
             await _db.DeleteResource(resource.Id);
-            await _db.DeleteResourceImage((int)resource.CivitaiModelVersionId!);
+            if (resource.CivitaiModelVersionId != null)
+                await _db.DeleteResourceImage((int)resource.CivitaiModelVersionId);
+            _events.Publish(new ResourcesChangedEventArgs("Delete"));
         }
 
         public async Task ToggleResource(LocalResource resource, LocalResourceFile file)
