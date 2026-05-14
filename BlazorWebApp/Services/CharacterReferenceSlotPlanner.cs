@@ -48,7 +48,8 @@ public static class CharacterReferenceSlotPlanner
         if (includeDependencies)
         {
             var dependencySlotId = ResolveDependencySlotId(slot);
-            if (!string.IsNullOrWhiteSpace(dependencySlotId))
+            if (!string.IsNullOrWhiteSpace(dependencySlotId)
+                && ShouldRunDependency(dependencySlotId, slotsById))
             {
                 Visit(dependencySlotId, includeDependencies, slotsById, resolvedIds, visiting, visited);
             }
@@ -59,7 +60,7 @@ public static class CharacterReferenceSlotPlanner
         resolvedIds.Add(slotId);
     }
 
-    private static string? ResolveDependencySlotId(CharacterReferenceSlotState slot)
+    public static string? ResolveDependencySlotId(CharacterReferenceSlotState slot)
     {
         return slot.DependencyPolicy switch
         {
@@ -68,5 +69,19 @@ public static class CharacterReferenceSlotPlanner
             CharacterReferenceDependencyPolicy.PreviousSlot => slot.DependencySlotId,
             _ => null
         };
+    }
+
+    public static bool HasReusableOutput(CharacterReferenceSlotState slot)
+    {
+        return !string.IsNullOrWhiteSpace(slot.LastOutputPath)
+            && File.Exists(slot.LastOutputPath);
+    }
+
+    private static bool ShouldRunDependency(
+        string dependencySlotId,
+        IReadOnlyDictionary<string, CharacterReferenceSlotState> slotsById)
+    {
+        return !slotsById.TryGetValue(dependencySlotId, out var dependencySlot)
+            || !HasReusableOutput(dependencySlot);
     }
 }

@@ -122,15 +122,29 @@
             return;
         }
 
-        var image = await Database.GetImageById(slot.LastOutputImageId.Value);
-        if (image is null)
+        var imageIds = CharacterReferenceSlotCatalog.OrderSlotsByKind(Character.Slots)
+            .Select(slot => slot.LastOutputImageId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        var images = await Database.GetImages(imageIds);
+        var imageById = images.ToDictionary(image => image.Id);
+        var viewerAssets = imageIds
+            .Where(imageById.ContainsKey)
+            .Select(id => imageById[id])
+            .ToList();
+
+        var startIndex = viewerAssets.FindIndex(image => image.Id == slot.LastOutputImageId.Value);
+        if (startIndex < 0)
         {
             Snackbar.Add("The saved image record for this slot could not be found.", Severity.Warning);
             return;
         }
 
-        _viewerAssets = new List<ImageEntity> { image };
-        _viewerStartIndex = 0;
+        _viewerAssets = viewerAssets;
+        _viewerStartIndex = startIndex;
         _showViewer = true;
     }
 }

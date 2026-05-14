@@ -1,5 +1,7 @@
 .character-shot-card {
   --character-shot-preview-height: 18rem;
+  --character-shot-selection-accent-width: 0.2rem;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--app-gutter-inner);
@@ -10,8 +12,22 @@
   background: var(--mud-palette-surface);
 }
 
-.character-shot-card--disabled {
-  opacity: 0.72;
+.character-shot-card--selected {
+  border-color: color-mix(
+    in srgb,
+    var(--mud-palette-primary) 54%,
+    var(--mud-palette-lines-default)
+  );
+}
+
+.character-shot-card--selected::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--app-surface-padding);
+  inset-inline-start: 0;
+  width: var(--character-shot-selection-accent-width);
+  border-radius: 0 var(--app-surface-radius) var(--app-surface-radius) 0;
+  background: var(--mud-palette-primary);
 }
 
 .character-shot-card-header {

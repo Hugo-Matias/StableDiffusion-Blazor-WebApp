@@ -3,7 +3,7 @@
 @inject IIOService IO
 @inject ISnackbar Snackbar
 
-<article class="character-shot-card @(Slot.IsEnabled ? null : "character-shot-card--disabled")">
+<article class="character-shot-card @(Slot.IsEnabled ? "character-shot-card--selected" : null)">
     <header class="character-shot-card-header">
         <MudCheckBox T="bool" Value="@Slot.IsEnabled" ValueChanged="HandleEnabledChanged" Color="Color.Primary"
                      Dense="true" />

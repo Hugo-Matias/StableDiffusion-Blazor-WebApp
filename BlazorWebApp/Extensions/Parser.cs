@@ -17,11 +17,25 @@ namespace BlazorWebApp.Extensions
 
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
-        public static string NormalizePath(this string path)
+        public static string NormalizePath(this string? path)
         {
-            return Path.GetFullPath(new Uri(path).LocalPath)
-                       .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                       .ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+            var trimmedPath = path.Trim();
+            if (Uri.TryCreate(trimmedPath, UriKind.Absolute, out var uri) && uri.IsFile)
+            {
+                trimmedPath = uri.LocalPath;
+            }
+            else if (Regex.IsMatch(trimmedPath, @"^[a-z][a-z0-9+.-]*://", RegexOptions.IgnoreCase))
+            {
+                return trimmedPath
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, '/', '\\')
+                    .ToLowerInvariant();
+            }
+
+            return Path.GetFullPath(trimmedPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .ToLowerInvariant();
         }
 
         public static string RemoveBase64Header(this string data)

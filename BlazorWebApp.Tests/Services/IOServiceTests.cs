@@ -369,6 +369,19 @@ namespace BlazorWebApp.Tests.Services
             result.Should().Be(staticPath);
         }
 
+        [Fact]
+        public void GetImageStaticFile_ReturnsEmpty_WhenPathCannotBeNormalized()
+        {
+            // Arrange
+            var invalidPath = "bad:///:not-a-local-image";
+
+            // Act
+            var result = _sut.GetImageStaticFile(invalidPath);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
         #endregion
     }
 }

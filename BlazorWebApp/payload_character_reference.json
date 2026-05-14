@@ -86,14 +86,14 @@
     },
     "character_slot_front_view_encode_positive": {
       "inputs": {
-        "prompt": "Same exact anime woman and body proportions, same exact detailed anime artstyle, (same exact hairstyle:1.3), change pose to standing straight, both feet on the ground, natural relaxed pose, arms to the side, direct front view, eye level, adjust zoom level to get a full body portrait from feet to head. (completely white solid background)",
+        "prompt": "Same exact person and body proportions, same exact detailed artstyle, (same exact hairstyle:1.3), change pose to standing straight, both feet on the ground, natural relaxed pose, arms to the side, direct front view, eye level, adjust zoom level to get a full body portrait from feet to head. (completely white solid background) neutral expression change style to anime, her pants are ripped on the tighs",
         "vl_resize_indexs": "1,2,3",
         "main_image_index": 1,
         "target_size": 1024,
         "target_vl_size": 384,
         "upscale_method": "lanczos",
         "crop_method": "pad",
-        "instruction": "Describe the key features of the input image (clothes, color, shape, size, texture, objects, background), then explain how the user\u0027s text instruction should alter or modify the image. Generate a new image that meets the user\u0027s requirements while maintaining consistency with the original input where appropriate.",
+        "instruction": "Describe the key features of the input image (clothes, color, shape, size, texture, objects, background), then explain how the user\u0027s text instruction should alter or modify the image. The image should contain a single character ONLY. Generate a new image that meets the user\u0027s requirements while maintaining consistency with the original input where appropriate.",
         "clip": [
           "checkpoint_loader",
           1
@@ -121,7 +121,7 @@
         "target_vl_size": 384,
         "upscale_method": "lanczos",
         "crop_method": "pad",
-        "instruction": "Describe the key features of the input image (clothes, color, shape, size, texture, objects, background), then explain how the user\u0027s text instruction should alter or modify the image. Generate a new image that meets the user\u0027s requirements while maintaining consistency with the original input where appropriate.",
+        "instruction": "Describe the key features of the input image (clothes, color, shape, size, texture, objects, background), then explain how the user\u0027s text instruction should alter or modify the image. The image should contain a single character ONLY. Generate a new image that meets the user\u0027s requirements while maintaining consistency with the original input where appropriate.",
         "clip": [
           "checkpoint_loader",
           1
@@ -142,7 +142,7 @@
     },
     "character_slot_front_view_sampler": {
       "inputs": {
-        "seed": 1236615495,
+        "seed": 42,
         "steps": 4,
         "cfg": 1.6,
         "sampler_name": "euler",
@@ -200,5 +200,5 @@
       }
     }
   },
-  "client_id": "d89234ab-7c1a-4b40-8410-3449fddfbb68"
+  "client_id": "b489ecf4-1a7e-49d7-90c1-08330cf4dff4"
 }

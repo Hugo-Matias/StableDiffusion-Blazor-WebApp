@@ -12,10 +12,19 @@ public class CharacterStateTests
         var appState = new AppState();
 
         appState.Character.Should().NotBeNull();
+        appState.Character.Engine.Should().Be(CharacterReferenceEngine.Qwen);
         appState.Character.LoaderMode.Should().Be(CharacterLoaderMode.AioCheckpoint);
+        appState.Character.GlobalPositivePromptExtension.Should().BeEmpty();
+        appState.Character.GlobalSeed.Should().Be(-1);
+        appState.Character.ShowEngineSettings.Should().BeFalse();
         appState.Character.UseRtxUpscale.Should().BeTrue();
         appState.Character.UseCleanGpu.Should().BeFalse();
+        appState.Character.FaceReplacement.Enabled.Should().BeFalse();
+        appState.Character.FaceReplacement.UseCloseNeutralReference.Should().BeFalse();
         appState.Character.Assets.Aio.Checkpoint.Should().Be(CharacterReferenceDefaults.AioCheckpoint);
+        appState.Character.Assets.Flux.DiffusionModel.Should().Be(CharacterReferenceDefaults.Flux2KleinDiffusionModel);
+        appState.Character.Assets.Flux.Clip.Should().Be(CharacterReferenceDefaults.Flux2KleinClip);
+        appState.Character.Assets.Flux.Vae.Should().Be(CharacterReferenceDefaults.Flux2KleinVae);
         appState.Character.Slots.Should().HaveCount(15);
     }
 
@@ -112,6 +121,31 @@ public class CharacterStateTests
     }
 
     [Fact]
+    public void OrderSlotsByKind_ShouldMatchCharacterGridGroupingOrder()
+    {
+        var slots = new[]
+        {
+            new CharacterReferenceSlotState { Id = "custom", Kind = CharacterReferenceSlotKind.Custom },
+            new CharacterReferenceSlotState { Id = "outfit", Kind = CharacterReferenceSlotKind.Outfit },
+            new CharacterReferenceSlotState { Id = "expression", Kind = CharacterReferenceSlotKind.Expression },
+            new CharacterReferenceSlotState { Id = "body", Kind = CharacterReferenceSlotKind.Body },
+            new CharacterReferenceSlotState { Id = "body-angle", Kind = CharacterReferenceSlotKind.BodyAngle },
+            new CharacterReferenceSlotState { Id = "landscape", Kind = CharacterReferenceSlotKind.Landscape },
+            new CharacterReferenceSlotState { Id = "pose", Kind = CharacterReferenceSlotKind.Pose }
+        };
+
+        CharacterReferenceSlotCatalog.OrderSlotsByKind(slots).Select(slot => slot.Id).Should().Equal([
+            "body-angle",
+            "expression",
+            "pose",
+            "body",
+            "outfit",
+            "landscape",
+            "custom"
+        ]);
+    }
+
+    [Fact]
     public void AddSlot_ShouldAppendCustomSlotWithNormalizedLabel()
     {
         var state = new AppStateCharacter();
@@ -181,6 +215,20 @@ public class CharacterStateTests
     }
 
     [Fact]
+    public void ComposePrompt_ShouldAppendGlobalExtensionAfterSlotExtension()
+    {
+        var state = new AppStateCharacter
+        {
+            GlobalPositivePromptExtension = "consistent watercolor lighting"
+        };
+        var slot = state.AddSlot(CharacterReferenceSlotPresetKey.CustomCamera);
+        slot.PromptExtension = "low-angle camera, dramatic lighting";
+
+        CharacterReferenceSlotCatalog.ComposePrompt(slot, state.GlobalPositivePromptExtension).Should()
+            .Be("Same exact person and body proportions, same exact detailed artstyle, same exact hairstyle, and outfit. Same exact facial expression and pose. low-angle camera, dramatic lighting consistent watercolor lighting");
+    }
+
+    [Fact]
     public void ActiveAssets_ShouldExposeOnlySelectedLoaderModeAssets()
     {
         var state = new AppStateCharacter();
@@ -198,6 +246,16 @@ public class CharacterStateTests
         state.ActiveAssets.Keys.Should().NotContain(CharacterAssetKeys.Checkpoint);
         state.ActiveAssets[CharacterAssetKeys.Clip].Should().Be(CharacterReferenceDefaults.SplitClip);
         state.ActiveAssets[CharacterAssetKeys.Vae].Should().Be(CharacterReferenceDefaults.SplitVae);
+
+        state.Engine = CharacterReferenceEngine.Flux2Klein;
+        state.ActiveAssets.Keys.Should().BeEquivalentTo([
+            CharacterAssetKeys.DiffusionModel,
+            CharacterAssetKeys.Clip,
+            CharacterAssetKeys.Vae
+        ]);
+        state.ActiveAssets[CharacterAssetKeys.DiffusionModel].Should().Be(CharacterReferenceDefaults.Flux2KleinDiffusionModel);
+        state.ActiveAssets[CharacterAssetKeys.Clip].Should().Be(CharacterReferenceDefaults.Flux2KleinClip);
+        state.ActiveAssets[CharacterAssetKeys.Vae].Should().Be(CharacterReferenceDefaults.Flux2KleinVae);
     }
 
     [Fact]
@@ -205,8 +263,16 @@ public class CharacterStateTests
     {
         var state = new AppStateCharacter
         {
+            Engine = CharacterReferenceEngine.Flux2Klein,
             LoaderMode = CharacterLoaderMode.SplitStack,
-            UseCleanGpu = true
+            GlobalPositivePromptExtension = "consistent watercolor lighting",
+            GlobalSeed = 12345,
+            UseCleanGpu = true,
+            FaceReplacement = new CharacterFaceReplacementSettings
+            {
+                Enabled = true,
+                UseCloseNeutralReference = true
+            }
         };
         state.AddSlot(CharacterReferenceSlotPresetKey.CustomPose, "Close Leap");
 
@@ -214,9 +280,14 @@ public class CharacterStateTests
         var restored = JsonSerializer.Deserialize<AppStateCharacter>(json);
 
         restored.Should().NotBeNull();
-        restored!.LoaderMode.Should().Be(CharacterLoaderMode.SplitStack);
+        restored!.Engine.Should().Be(CharacterReferenceEngine.Flux2Klein);
+        restored.LoaderMode.Should().Be(CharacterLoaderMode.SplitStack);
+        restored.GlobalPositivePromptExtension.Should().Be("consistent watercolor lighting");
+        restored.GlobalSeed.Should().Be(12345);
         restored.UseRtxUpscale.Should().BeTrue();
         restored.UseCleanGpu.Should().BeTrue();
+        restored.FaceReplacement.Enabled.Should().BeTrue();
+        restored.FaceReplacement.UseCloseNeutralReference.Should().BeTrue();
         restored.Assets.Aio.Checkpoint.Should().Be(CharacterReferenceDefaults.AioCheckpoint);
         restored.Slots.Should().HaveCount(16);
         restored.Slots.Last().Should().BeEquivalentTo(new

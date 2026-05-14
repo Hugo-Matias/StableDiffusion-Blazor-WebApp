@@ -8,6 +8,7 @@ namespace BlazorWebApp.Workflows.Fragments.Qwen;
 public class QwenCharacterShotFragment : IFragmentBuilder
 {
     private readonly QwenImageEditPlusProEncodeFragment _encodeFragment = new();
+    private readonly QwenCharacterFaceReplacementFragment _faceReplacementFragment = new();
 
     public FragmentMetadata Metadata => new()
     {
@@ -22,9 +23,13 @@ public class QwenCharacterShotFragment : IFragmentBuilder
         public required CharacterReferenceSlotState Slot { get; init; }
         public string NodePrefix { get; init; } = "character_slot_";
         public string SourceImageRefKey { get; init; } = "source_image";
+        public string GlobalPositivePromptExtension { get; init; } = string.Empty;
         public string GlobalNegativePrompt { get; init; } = CharacterReferenceDefaults.GlobalNegativePrompt;
         public bool UseRtxUpscale { get; init; } = true;
         public bool UseCleanGpu { get; init; }
+        public CharacterFaceReplacementSettings FaceReplacement { get; init; } = new();
+        public string OriginalSourceImageRefKey { get; init; } = CharacterReferenceWorkflowIds.SourceImageOutputKey;
+        public string? CloseNeutralFaceRefKey { get; init; }
         public string FilenamePrefix { get; init; } = "Character/Reference";
         public string SageAttention { get; init; } = "auto";
         public bool AllowSageCompile { get; init; }
@@ -116,7 +121,7 @@ public class QwenCharacterShotFragment : IFragmentBuilder
         {
             NodeId = positiveNodeId,
             OutputKey = positiveKey,
-            Prompt = CharacterReferenceSlotCatalog.ComposePrompt(slot),
+            Prompt = CharacterReferenceSlotCatalog.ComposePrompt(slot, fragmentParams.GlobalPositivePromptExtension),
             ImageRefKey = scaledImageKey
         });
 
@@ -152,6 +157,25 @@ public class QwenCharacterShotFragment : IFragmentBuilder
 
         var finalImageRef = (nodeId: decodeNodeId, index: 0);
 
+        if (ShouldUseFaceReplacement(slot, fragmentParams.FaceReplacement))
+        {
+            finalImageRef = _faceReplacementFragment.Build(builder, registry, new QwenCharacterFaceReplacementFragment.Parameters
+            {
+                Slot = slot,
+                NodePrefix = $"{prefix}face_",
+                TargetImageRef = finalImageRef,
+                ModelRef = (cfgNormNodeId, 0),
+                VaeRef = vaeRef,
+                SourceImageRefKey = fragmentParams.OriginalSourceImageRefKey,
+                CloseNeutralRefKey = fragmentParams.FaceReplacement.UseCloseNeutralReference
+                    ? fragmentParams.CloseNeutralFaceRefKey
+                    : null,
+                GlobalPositivePromptExtension = fragmentParams.GlobalPositivePromptExtension,
+                GlobalNegativePrompt = fragmentParams.GlobalNegativePrompt,
+                Settings = fragmentParams.FaceReplacement
+            });
+        }
+
         if (fragmentParams.UseRtxUpscale)
         {
             builder.AddNode(rtxNodeId, node => node
@@ -182,5 +206,25 @@ public class QwenCharacterShotFragment : IFragmentBuilder
             .InputRef("images", finalImageRef));
 
         return new CharacterReferenceOutputNode(slot.Id, slot.Label, saveNodeId, fragmentParams.FilenamePrefix);
+    }
+
+    private static bool ShouldUseFaceReplacement(
+        CharacterReferenceSlotState slot,
+        CharacterFaceReplacementSettings settings)
+    {
+        if (!settings.Enabled)
+        {
+            return false;
+        }
+
+        if (slot.Kind == CharacterReferenceSlotKind.Expression
+            || slot.Kind == CharacterReferenceSlotKind.Landscape
+            || slot.Kind == CharacterReferenceSlotKind.Custom)
+        {
+            return false;
+        }
+
+        return slot.PresetKey is not CharacterReferenceSlotPresetKey.BackView
+            and not CharacterReferenceSlotPresetKey.BackThreeQuarter;
     }
 }

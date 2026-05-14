@@ -12,6 +12,13 @@ public record CharacterReferenceOutputNode(
     string NodeId,
     string FilenamePrefix);
 
+public interface ICharacterReferenceWorkflowComposer
+{
+    CharacterReferenceEngine Engine { get; }
+
+    CharacterReferenceWorkflowBuildResult Build(AppStateCharacter characterState);
+}
+
 public static class CharacterReferenceWorkflowIds
 {
     public const string SourceImageNodeId = "character_source_image";
@@ -20,6 +27,8 @@ public static class CharacterReferenceWorkflowIds
     public const string NeutralSlotId = "neutral";
 
     public static string SlotImageOutputKey(string slotId) => $"slot_{Sanitize(slotId)}_image_output";
+
+    public static string DependencyImageNodeId(string slotId) => $"character_dependency_{Sanitize(slotId)}_image";
 
     public static string SlotNodePrefix(string slotId) => $"character_slot_{Sanitize(slotId)}_";
 

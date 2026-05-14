@@ -83,6 +83,11 @@ builder.Services.AddSingleton<IRouterService, RouterService>();
 // Workflow service - uses C# IWorkflowBuilder implementations only
 builder.Services.AddSingleton<IWorkflowService, WorkflowService>();
 builder.Services.AddSingleton<BlazorWebApp.Workflows.Templates.Qwen.QwenCharacterReferenceWorkflowComposer>();
+builder.Services.AddSingleton<BlazorWebApp.Workflows.Templates.Flux.Flux2KleinCharacterReferenceWorkflowComposer>();
+builder.Services.AddSingleton<BlazorWebApp.Workflows.Models.ICharacterReferenceWorkflowComposer>(serviceProvider =>
+    serviceProvider.GetRequiredService<BlazorWebApp.Workflows.Templates.Qwen.QwenCharacterReferenceWorkflowComposer>());
+builder.Services.AddSingleton<BlazorWebApp.Workflows.Models.ICharacterReferenceWorkflowComposer>(serviceProvider =>
+    serviceProvider.GetRequiredService<BlazorWebApp.Workflows.Templates.Flux.Flux2KleinCharacterReferenceWorkflowComposer>());
 builder.Services.AddSingleton<ICharacterReferenceRunService, CharacterReferenceRunService>();
 
 // Workflow state persistence service (per-workflow saved parameters)

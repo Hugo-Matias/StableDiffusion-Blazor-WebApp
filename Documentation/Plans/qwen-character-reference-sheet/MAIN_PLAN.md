@@ -2,8 +2,8 @@
 
 ## Status
 
-**Current Phase:** Phase 4 implemented and build-validated; ready for runtime UI review before Phase 5  
-**Total Complexity:** ~55 points across 5 implementation phases  
+**Current Phase:** Phase 6 implemented and focused-validated; Phase 5 runtime/manual review remains open  
+**Total Complexity:** ~68 points across 6 implementation phases  
 **Primary Planning Reference:** `Documentation/Plans/IMPLEMENTATION_GUIDE.md`  
 **Workflow Conversion Reference:** `.github/prompts/workflow-conversion.prompt.md`  
 **Source Workflow:** `Documentation/Plans/qwen-character-reference-sheet/KiraNugget's Multiview Character Sheet.json`  
@@ -72,6 +72,8 @@ This is not the full Character Creator entity system. It is a workflow-backed re
 | Standardize Characters as an image source target            | Local images can be sent to `Characters / Source Image` through the same media Send To dialog used for workflow source inputs.                                                                                                           |
 | Treat ComfyUI source-image filenames as ephemeral           | The page keeps the browser/app source data and uploads a fresh Comfy input filename per run when available, avoiding stale `LoadImage` references after Comfy cleanup or validation failures.                                            |
 | Treat RTX upscale as opportunistic                          | The `RTXVideoSuperResolution` schema is valid, but NVIDIA VFX runtime initialization can fail in a ComfyUI container even on supported GPUs. Character runs retry once without RTX and disable the toggle after an `NvVFX_Load` failure. |
+| Add selectable character reference engines                  | Keep Qwen as the default engine and add Flux 2 Klein as an alternate engine selected from the Character settings sidebar.                                                                                                                |
+| Base Flux 2 Klein character slots on the existing I2I flow  | The Flux engine should preserve the existing Flux 2 Klein Img2Img Edit conditioning logic: `CLIPTextEncode` text conditioning plus `ReferenceLatent` over a VAE-encoded reference image.                                                 |
 | Persist page state in app state for now                     | Slot definitions, custom prompts, selected loader mode, and visibility choices live in `AppState.Character`. No character DB work in this plan.                                                                                          |
 | Persist generated images through existing image persistence | Outputs should still become app images in the selected project. Future character linkage can attach those images to Character entities later.                                                                                            |
 | Leave detailer enhancement out                              | The user explicitly scoped out detailer enhancement for now.                                                                                                                                                                             |
@@ -512,33 +514,101 @@ Success criteria:
 - Plan and phase documents accurately reflect implemented behavior.
 - Remaining runtime risks are clearly documented.
 
+### Phase 6 - Selectable Flux 2 Klein Engine (13 points)
+
+- [x] Probe live ComfyUI schemas for the Flux 2 Klein I2I nodes used by the character engine.
+- [x] Add character reference engine state with Qwen as the default and Flux 2 Klein as an alternate engine.
+- [x] Add sidebar engine selection and show engine-specific asset controls in a collapsible panel matching Generate's workflow assets pattern.
+- [x] Refactor character workflow composition behind an engine-aware composer abstraction.
+- [x] Add a Flux 2 Klein character workflow composer based on the existing I2I path.
+- [x] Preserve existing dependency reuse behavior for same-run and saved Front/Neutral prerequisite images.
+- [x] Update run-service persistence to record the active engine model asset.
+- [x] Add focused workflow and service tests for engine selection, Flux graph shape, and dependency reuse.
+- [x] Normalize negative character seed defaults before sending Flux `RandomNoise.noise_seed` to ComfyUI.
+
+Success criteria:
+
+- Qwen remains the default behavior and existing Qwen character tests continue to pass.
+- Flux 2 Klein uses `CLIPTextEncode`, `VAEEncode`, `ReferenceLatent`, `EmptyFlux2LatentImage`, `Flux2Scheduler`, and `SamplerCustomAdvanced` in the same logical order as the existing I2I workflow.
+- Users can choose Qwen or Flux 2 Klein from the Character settings sidebar without losing existing slot state.
+- Dependent slots still reuse generated or saved prerequisite outputs instead of regenerating them unnecessarily.
+- Targeted tests cover both engines and the run service routes to the selected composer.
+
+### Phase 7 - Sampler Control Polish (5 points)
+
+- [x] Add a global positive prompt extension that appends to each slot prompt instead of overriding it.
+- [x] Split seed into an independent character-level setting so fixed seeds do not require enabling sampler overrides.
+- [x] Keep sampler overrides scoped to sampling behavior: steps, CFG, sampler, scheduler, and denoise.
+- [x] Add sampler and scheduler controls to the advanced sampler override surface.
+- [x] Keep the Add Slot / Enable All / Disable All toolbar actions inline to save vertical space.
+- [x] Open the character AssetViewer with all existing slot output images ordered by the same slot type grouping as the grid, starting at the clicked slot.
+- [x] Keep disabled slot images fully visible and use a subtle selected/enabled card cue instead of opacity changes.
+- [x] Add focused state and composer tests for global seed and sampler override behavior.
+
+Success criteria:
+
+- Users can set a global seed while leaving per-slot sampler defaults intact.
+- Users can add global positive guidance while preserving hidden slot templates and per-slot prompt extensions.
+- Enabling sampler overrides changes sampler behavior without being required for seed consistency.
+- Toolbar actions stay on one row at normal content widths, with graceful overflow on narrow screens.
+- Existing character slot outputs can be browsed continuously from the shared AssetViewer in the same type order as the grouped grid.
+- Focused character state and workflow composer tests cover the behavior.
+
+### Phase 8 - Qwen Source-Rooted Face Replacement (13 points)
+
+- [x] Add an optional Qwen-only face replacement pass for full-body/body/pose slots after the main slot decode and before RTX upscale/save.
+- [x] Use the original Character source image as the identity and hair reference, not Front View or close expression outputs.
+- [x] Use the generated slot face/head crop as the target image so placement, head angle, lighting, and body integration stay anchored to the full-body output.
+- [x] Preserve target crop camera angle, face orientation, and expression when the source image is not aligned; adapt the replacement to the target orientation instead of forcing the source pose onto the full-body result.
+- [x] Use CLIPSeg/SAM/SAM2 or Impact detector nodes only for target/source crop and composite mask quality; identity must come from the Qwen multi-image i2i edit pass.
+- [x] Feed Qwen edit with target crop as `image1`, source-image face/head crop as `image2`, `main_image_index = 1`, and sample from the encoder latent output rather than a fresh empty latent.
+- [x] Keep close expression shots out of the default identity path because they often crop hair; optionally add them later as expression-only secondary references.
+- [x] Add a user-facing toggle to include Close Neutral as an optional secondary reference when the user wants expression/face guidance beyond the source image.
+
+Implementation note: the first pass uses CLIPSeg face/hair masks for target/source crops and composite feathering, with source identity applied through Qwen multi-image i2i. Runtime output quality still needs visual tuning after generation samples are reviewed.
+
+Success criteria:
+
+- Full-body face replacement improves identity fidelity without drifting hair silhouette or changing body/pose composition.
+- Source identity is adapted onto the generated target orientation and expression, not imposed as a mismatched source-camera pose.
+- The replacement pass is disabled by default and skipped for back-facing slots.
+- Close Neutral is only used when its toggle is enabled, and remains off by default.
+- The graph remains Qwen-only and does not affect Flux 2 Klein behavior.
+- Targeted workflow tests verify the replacement pass uses source-image crops and Qwen encoder latent output instead of generic `FaceDetailer` or empty latent sampling.
+
 ---
 
 ## Stress Points And Concerns
 
-| Concern                           | Risk                                                                                 | Mitigation / Decision Needed                                                                                                                   |
-| --------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| AIO checkpoint compatibility      | A checkpoint may not actually contain Qwen model/CLIP/VAE in the expected format.    | Default to `Base/Qwen-Rapid-AIO-NSFW-v19.safetensors`, keep split mode available, and validate ComfyUI failures clearly.                       |
-| Split diffusion loader exact node | Source used missing Nunchaku loader, not standard `UNETLoader`.                      | Probe and confirm the standard split loader before implementation. If incompatible, split mode becomes blocked until a valid loader is chosen. |
-| `easy cleanGpuUsed` passthrough   | It may not type cleanly into save/output mapping or may not be needed.               | Add an advanced toggle and only place it at sensible graph points after testing.                                                               |
-| Multi-output history mapping      | Existing service reads first output only.                                            | Add expected-output collector keyed by node id/slot id. Keep existing behavior for Generate workflows.                                         |
-| Dynamic custom slots              | Slot count changes between runs, complicating node ids and output mapping.           | Derive stable node ids from slot ids and run id; output collector consumes explicit expected outputs.                                          |
-| Dependency DAG                    | Running one expression may require Neutral; running one pose may require Front view. | Encode prerequisites and auto-queue missing prerequisites unless the required output is already available.                                     |
-| AppState growth                   | Page state can become large if storing output details.                               | Store references/ids/paths, not binary image payloads. Future Character entity can own richer history.                                         |
-| UI density                        | 15+ cards plus addable slots can become crowded.                                     | Use stable card dimensions, responsive grid tracks, and collapsed prompts by default.                                                          |
-| Source prompt fidelity            | Source prompt helper nodes are missing locally.                                      | Preserve prompt text as C# templates and hidden overrides; tests can verify template defaults.                                                 |
+| Concern                           | Risk                                                                                                                           | Mitigation / Decision Needed                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AIO checkpoint compatibility      | A checkpoint may not actually contain Qwen model/CLIP/VAE in the expected format.                                              | Default to `Base/Qwen-Rapid-AIO-NSFW-v19.safetensors`, keep split mode available, and validate ComfyUI failures clearly.                                  |
+| Split diffusion loader exact node | Source used missing Nunchaku loader, not standard `UNETLoader`.                                                                | Probe and confirm the standard split loader before implementation. If incompatible, split mode becomes blocked until a valid loader is chosen.            |
+| `easy cleanGpuUsed` passthrough   | It may not type cleanly into save/output mapping or may not be needed.                                                         | Add an advanced toggle and only place it at sensible graph points after testing.                                                                          |
+| Multi-output history mapping      | Existing service reads first output only.                                                                                      | Add expected-output collector keyed by node id/slot id. Keep existing behavior for Generate workflows.                                                    |
+| Dynamic custom slots              | Slot count changes between runs, complicating node ids and output mapping.                                                     | Derive stable node ids from slot ids and run id; output collector consumes explicit expected outputs.                                                     |
+| Dependency DAG                    | Running one expression may require Neutral; running one pose may require Front view.                                           | Encode prerequisites and auto-queue missing prerequisites unless the required output is already available.                                                |
+| Flux prompt/reference fidelity    | Flux does not use Qwen's image-edit text encoder, so slot prompts may influence results differently.                           | Preserve the existing Flux 2 Klein I2I conditioning path with `CLIPTextEncode` plus `ReferenceLatent`, and validate runtime output before tuning prompts. |
+| Full-body face fidelity           | Generic `FaceDetailer` improves local detail but is not rooted in the source identity and can refine the wrong generated face. | Add a Qwen-only source-image face replacement pass that uses source image for identity/hair and target crop for placement.                                |
+| AppState growth                   | Page state can become large if storing output details.                                                                         | Store references/ids/paths, not binary image payloads. Future Character entity can own richer history.                                                    |
+| UI density                        | 15+ cards plus addable slots can become crowded.                                                                               | Use stable card dimensions, responsive grid tracks, and collapsed prompts by default.                                                                     |
+| Source prompt fidelity            | Source prompt helper nodes are missing locally.                                                                                | Preserve prompt text as C# templates and hidden overrides; tests can verify template defaults.                                                            |
 
 ---
 
 ## Resolved Clarifications
 
-| Decision               | Resolution                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------------- |
-| App-state root         | Use `AppState.Character` to match the page route and leave room for future character features. |
-| Default AIO checkpoint | Use `Base/Qwen-Rapid-AIO-NSFW-v19.safetensors`.                                                |
-| RTX upscale default    | Enabled by default.                                                                            |
-| Dependent slot runs    | Auto-run missing prerequisites unless the output is already available.                         |
-| GPU cleanup helper     | Keep `easy cleanGpuUsed` as an advanced/OOM mitigation toggle if testing shows it helps.       |
+| Decision                | Resolution                                                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App-state root          | Use `AppState.Character` to match the page route and leave room for future character features.                                                      |
+| Default AIO checkpoint  | Use `Base/Qwen-Rapid-AIO-NSFW-v19.safetensors`.                                                                                                     |
+| RTX upscale default     | Enabled by default.                                                                                                                                 |
+| Dependent slot runs     | Auto-run missing prerequisites unless the output is already available.                                                                              |
+| GPU cleanup helper      | Keep `easy cleanGpuUsed` as an advanced/OOM mitigation toggle if testing shows it helps.                                                            |
+| Flux 2 Klein engine     | Add as a selectable engine using the existing I2I conditioning logic, not the Qwen edit encoder.                                                    |
+| Face replacement root   | Use the original source image as the Qwen replacement identity/hair reference; do not use Front View or expression shots as the default source.     |
+| Replacement orientation | The generated target crop controls camera angle, face orientation, and expression; source image contributes identity/hair without forcing its pose. |
+| Close Neutral reference | Add an opt-in toggle to include Close Neutral as a secondary reference; keep it disabled by default.                                                |
 
 ## Open Clarifications
 

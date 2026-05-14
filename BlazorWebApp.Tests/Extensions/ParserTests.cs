@@ -50,6 +50,37 @@ namespace BlazorWebApp.Tests.Extensions
 
         #endregion
 
+        #region Path Normalization Tests
+
+        [Fact]
+        public void NormalizePath_WindowsPath_DoesNotTreatDriveLetterAsUriScheme()
+        {
+            // Arrange
+            var path = @"E:\Documentos\GitHub Repos\Stable-Diffusion-WebUI\BlazorWebApp\output\image.png";
+
+            // Act
+            var result = Parser.NormalizePath(path);
+
+            // Assert
+            result.Should().Contain("output");
+            result.Should().EndWith("image.png");
+        }
+
+        [Fact]
+        public void NormalizePath_FileUri_UsesLocalPath()
+        {
+            // Arrange
+            var path = new Uri(Path.Combine(Path.GetTempPath(), "BlazorWebApp", "image.png")).AbsoluteUri;
+
+            // Act
+            var result = Parser.NormalizePath(path);
+
+            // Assert
+            result.Should().EndWith(Path.Combine("BlazorWebApp", "image.png").ToLowerInvariant());
+        }
+
+        #endregion
+
         #region DetectWildcards Tests
 
         [Fact]

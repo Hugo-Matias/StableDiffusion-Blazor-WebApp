@@ -79,6 +79,7 @@ public class QwenCharacterReferenceWorkflowComposerTests
     {
         var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.FrontView);
         state.SourceImage.ImagePath = "source.png";
+        state.GlobalPositivePromptExtension = "global positive extension";
         state.Slots[0].PromptExtension = "front view prompt";
 
         var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
@@ -110,7 +111,7 @@ public class QwenCharacterReferenceWorkflowComposerTests
         samplerInputs.GetProperty("denoise").GetDouble().Should().Be(1);
 
         var encodeInputs = Inputs(json, $"{prefix}encode_positive");
-        encodeInputs.GetProperty("prompt").GetString().Should().EndWith(" front view prompt");
+        encodeInputs.GetProperty("prompt").GetString().Should().EndWith(" front view prompt global positive extension");
         encodeInputs.GetProperty("target_size").GetInt32().Should().Be(1024);
         encodeInputs.GetProperty("target_vl_size").GetInt32().Should().Be(384);
         encodeInputs.GetProperty("upscale_method").GetString().Should().Be("lanczos");
@@ -141,6 +142,26 @@ public class QwenCharacterReferenceWorkflowComposerTests
     }
 
     [Fact]
+    public void Build_WithReusableDependencyImage_ShouldLoadItAndUseItAsPrerequisiteOutput()
+    {
+        var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.LeftProfile);
+        state.ReusableDependencyImagePaths[CharacterReferenceWorkflowIds.FrontViewSlotId] = "uploaded-front.png";
+
+        var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
+        using var json = Parse(result);
+        var dependencyNodeId = CharacterReferenceWorkflowIds.DependencyImageNodeId(CharacterReferenceWorkflowIds.FrontViewSlotId);
+        var leftPrefix = CharacterReferenceWorkflowIds.SlotNodePrefix("left-profile");
+
+        result.Outputs.Should().ContainSingle().Which.SlotId.Should().Be("left-profile");
+        ClassType(json, dependencyNodeId).Should().Be("LoadImage");
+        Inputs(json, dependencyNodeId).GetProperty("image").GetString().Should().Be("uploaded-front.png");
+        Inputs(json, $"{leftPrefix}image_scale").GetProperty("image")[0].GetString()
+            .Should().Be(dependencyNodeId);
+        json.RootElement.TryGetProperty($"{CharacterReferenceWorkflowIds.SlotNodePrefix("front-view")}save", out _)
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public void Build_WithCleanGpuEnabled_ShouldSaveFromCleanGpuNode()
     {
         var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.FrontView);
@@ -159,12 +180,12 @@ public class QwenCharacterReferenceWorkflowComposerTests
     public void Build_WithSamplerOverrides_ShouldApplyOverridesToSlots()
     {
         var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.FrontView);
+        state.GlobalSeed = 123;
         state.SamplerOverrides.Enabled = true;
-        state.SamplerOverrides.Seed = 123;
         state.SamplerOverrides.Steps = 6;
         state.SamplerOverrides.Cfg = 2.2;
-        state.SamplerOverrides.SamplerName = "euler";
-        state.SamplerOverrides.Scheduler = "simple";
+        state.SamplerOverrides.SamplerName = "dpmpp_2m";
+        state.SamplerOverrides.Scheduler = "karras";
         state.SamplerOverrides.Denoise = 0.9;
 
         var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
@@ -174,7 +195,108 @@ public class QwenCharacterReferenceWorkflowComposerTests
         samplerInputs.GetProperty("seed").GetInt64().Should().Be(123);
         samplerInputs.GetProperty("steps").GetInt32().Should().Be(6);
         samplerInputs.GetProperty("cfg").GetDouble().Should().Be(2.2);
+        samplerInputs.GetProperty("sampler_name").GetString().Should().Be("dpmpp_2m");
+        samplerInputs.GetProperty("scheduler").GetString().Should().Be("karras");
         samplerInputs.GetProperty("denoise").GetDouble().Should().Be(0.9);
+    }
+
+    [Fact]
+    public void Build_WithGlobalSeedOnly_ShouldApplySeedWithoutSamplerOverrides()
+    {
+        var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.FrontView);
+        state.GlobalSeed = 456;
+
+        var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
+        using var json = Parse(result);
+        var samplerInputs = Inputs(json, $"{CharacterReferenceWorkflowIds.SlotNodePrefix("front-view")}sampler");
+
+        samplerInputs.GetProperty("seed").GetInt64().Should().Be(456);
+        samplerInputs.GetProperty("steps").GetInt32().Should().Be(4);
+        samplerInputs.GetProperty("cfg").GetDouble().Should().Be(1.6);
+        samplerInputs.GetProperty("sampler_name").GetString().Should().Be("euler");
+        samplerInputs.GetProperty("scheduler").GetString().Should().Be("simple");
+    }
+
+    [Fact]
+    public void Build_WithFaceReplacementEnabled_ShouldUseSourceCropAndEncoderLatentBeforeRtx()
+    {
+        var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.FrontView);
+        state.SourceImage.ImagePath = "source.png";
+        state.FaceReplacement.Enabled = true;
+        state.FaceReplacement.CropResolution = 640;
+        state.FaceReplacement.Denoise = 0.45;
+
+        var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
+        using var json = Parse(result);
+        var prefix = CharacterReferenceWorkflowIds.SlotNodePrefix("front-view");
+        var facePrefix = $"{prefix}face_";
+
+        ClassType(json, $"{facePrefix}target_mask").Should().Be("BatchCLIPSeg");
+        ClassType(json, $"{facePrefix}source_crop").Should().Be("BatchCropFromMaskAdvanced");
+        ClassType(json, $"{facePrefix}encode_positive").Should().Be(QwenImageEditPlusProEncodeFragment.NodeClassType);
+        ClassType(json, $"{facePrefix}sampler").Should().Be("KSampler");
+        ClassType(json, $"{facePrefix}uncrop").Should().Be("BatchUncropAdvanced");
+        json.RootElement.EnumerateObject().Select(property => property.Value.GetProperty("class_type").GetString())
+            .Should().NotContain("FaceDetailer");
+
+        InputRef(Inputs(json, $"{facePrefix}target_crop"), "original_images").Should().Be(($"{prefix}decode", 0));
+        InputRef(Inputs(json, $"{facePrefix}source_crop"), "original_images")
+            .Should().Be((CharacterReferenceWorkflowIds.SourceImageNodeId, 0));
+
+        var positiveInputs = Inputs(json, $"{facePrefix}encode_positive");
+        InputRef(positiveInputs, "image1").Should().Be(($"{facePrefix}target_clean", 0));
+        InputRef(positiveInputs, "image2").Should().Be(($"{facePrefix}source_clean", 0));
+        positiveInputs.TryGetProperty("image3", out _).Should().BeFalse();
+        positiveInputs.GetProperty("main_image_index").GetInt32().Should().Be(1);
+        positiveInputs.GetProperty("prompt").GetString().Should().Contain("Preserve image1 camera angle");
+        positiveInputs.GetProperty("prompt").GetString().Should().Contain("Adapt the source identity to image1");
+
+        var samplerInputs = Inputs(json, $"{facePrefix}sampler");
+        InputRef(samplerInputs, "latent_image").Should().Be(($"{facePrefix}encode_positive", QwenImageEditPlusProEncodeFragment.LatentOutputIndex));
+        samplerInputs.GetProperty("denoise").GetDouble().Should().Be(0.45);
+
+        Inputs(json, $"{prefix}rtx_upscale").GetProperty("images")[0].GetString().Should().Be($"{facePrefix}uncrop");
+        Inputs(json, $"{prefix}save").GetProperty("images")[0].GetString().Should().Be($"{prefix}rtx_upscale");
+    }
+
+    [Fact]
+    public void Build_WithCloseNeutralFaceReference_ShouldIncludeNeutralAsOptionalThirdReference()
+    {
+        var state = CreateStateWithSlots(
+            CharacterReferenceSlotPresetKey.FrontView,
+            CharacterReferenceSlotPresetKey.NeutralExpression,
+            CharacterReferenceSlotPresetKey.ModelPose);
+        state.FaceReplacement.Enabled = true;
+        state.FaceReplacement.UseCloseNeutralReference = true;
+
+        var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
+        using var json = Parse(result);
+        var neutralPrefix = CharacterReferenceWorkflowIds.SlotNodePrefix("neutral");
+        var posePrefix = CharacterReferenceWorkflowIds.SlotNodePrefix("model-pose");
+        var facePrefix = $"{posePrefix}face_";
+
+        result.Outputs.Select(output => output.SlotId).Should().StartWith(CharacterReferenceWorkflowIds.NeutralSlotId);
+        InputRef(Inputs(json, $"{facePrefix}neutral_resize"), "image").Should().Be(($"{neutralPrefix}rtx_upscale", 0));
+
+        var positiveInputs = Inputs(json, $"{facePrefix}encode_positive");
+        InputRef(positiveInputs, "image1").Should().Be(($"{facePrefix}target_clean", 0));
+        InputRef(positiveInputs, "image2").Should().Be(($"{facePrefix}source_clean", 0));
+        InputRef(positiveInputs, "image3").Should().Be(($"{facePrefix}neutral_clean", 0));
+        positiveInputs.GetProperty("prompt").GetString().Should().Contain("Image3 is an optional neutral close reference");
+    }
+
+    [Fact]
+    public void Build_WithFaceReplacementEnabled_ShouldSkipBackFacingSlots()
+    {
+        var state = CreateStateWithSlots(CharacterReferenceSlotPresetKey.BackView);
+        state.FaceReplacement.Enabled = true;
+
+        var result = new QwenCharacterReferenceWorkflowComposer().Build(state);
+        using var json = Parse(result);
+        var prefix = CharacterReferenceWorkflowIds.SlotNodePrefix("back-view");
+
+        json.RootElement.TryGetProperty($"{prefix}face_encode_positive", out _).Should().BeFalse();
+        Inputs(json, $"{prefix}save").GetProperty("images")[0].GetString().Should().Be($"{prefix}rtx_upscale");
     }
 
     private static AppStateCharacter CreateStateWithoutSlots()
@@ -209,5 +331,11 @@ public class QwenCharacterReferenceWorkflowComposerTests
     private static string? ClassType(JsonDocument json, string nodeId)
     {
         return json.RootElement.GetProperty(nodeId).GetProperty("class_type").GetString();
+    }
+
+    private static (string nodeId, int index) InputRef(JsonElement inputs, string inputName)
+    {
+        var reference = inputs.GetProperty(inputName);
+        return (reference[0].GetString()!, reference[1].GetInt32());
     }
 }

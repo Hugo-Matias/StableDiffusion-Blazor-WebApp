@@ -1,9 +1,12 @@
 .character-shot-grid-shell {
   --character-card-min: var(--character-card-min-width, 18.75rem);
-  --character-grid-scroll-offset: 16rem;
   display: flex;
   flex-direction: column;
+  height: 100%;
   gap: var(--app-gutter-inner);
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -13,28 +16,54 @@
   justify-content: space-between;
   gap: var(--app-gutter-inner);
   min-width: 0;
+  position: relative;
+  flex: 0 0 auto;
 }
 
 .character-shot-toolbar-actions {
-  position: relative;
-  max-width: var(--character-toolbar-actions-width, 24rem);
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  max-width: none;
+  overflow-x: auto;
+}
+
+.character-add-slot-popover-layer {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 20;
+  height: 100%;
 }
 
 .character-add-slot-popover {
   position: absolute;
   top: calc(100% + var(--character-add-slot-popover-offset, 0.5rem));
   right: 0;
-  z-index: 8;
-  width: min(var(--character-add-slot-popover-width, 24rem), 100%);
+  width: min(var(--character-add-slot-popover-width, 28rem), 100%);
+  max-height: min(
+    var(--character-add-slot-popover-max-height, 32rem),
+    calc(100vh - 12rem)
+  );
   padding: var(--app-gutter-inner);
+  overflow-y: auto;
   border: 1px solid var(--mud-palette-lines-default);
   border-radius: var(--app-surface-radius);
   background: var(--mud-palette-surface);
   box-shadow: var(--mud-elevation-8);
 }
 
+.character-add-slot-actions {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--character-add-slot-action-min, 10rem)), 1fr)
+  );
+  gap: var(--app-gutter-inner);
+}
+
 .character-shot-grid-scroll {
-  max-height: calc(100vh - var(--character-grid-scroll-offset, 16rem));
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: var(--character-grid-scrollbar-gutter, 0.25rem);
@@ -96,5 +125,9 @@
 
   .character-add-slot-popover {
     width: 100%;
+    max-height: min(
+      var(--character-add-slot-popover-max-height-mobile, 24rem),
+      calc(100vh - 10rem)
+    );
   }
 }

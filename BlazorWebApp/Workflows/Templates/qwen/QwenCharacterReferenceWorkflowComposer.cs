@@ -6,11 +6,13 @@ using BlazorWebApp.Workflows.Models;
 
 namespace BlazorWebApp.Workflows.Templates.Qwen;
 
-public class QwenCharacterReferenceWorkflowComposer
+public class QwenCharacterReferenceWorkflowComposer : ICharacterReferenceWorkflowComposer
 {
     private readonly QwenCharacterLoaderFragment _loaderFragment = new();
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
     private readonly QwenCharacterShotFragment _shotFragment = new();
+
+    public CharacterReferenceEngine Engine => CharacterReferenceEngine.Qwen;
 
     public CharacterReferenceWorkflowBuildResult Build(AppStateCharacter characterState)
     {
@@ -19,10 +21,11 @@ public class QwenCharacterReferenceWorkflowComposer
         var outputs = new List<CharacterReferenceOutputNode>();
 
         BuildSourceImage(builder, registry, characterState);
+        BuildReusableDependencyImages(builder, registry, characterState);
         BuildLoader(builder, registry, characterState);
         _loraLoaderFragment.BuildAll(builder, registry, characterState.Loras);
 
-        foreach (var slot in characterState.Slots.Where(slot => slot.IsEnabled))
+        foreach (var slot in OrderSlotsForBuild(characterState))
         {
             var sourceImageRefKey = ResolveSourceImageRefKey(registry, slot);
             var nodePrefix = CharacterReferenceWorkflowIds.SlotNodePrefix(slot.Id);
@@ -30,12 +33,16 @@ public class QwenCharacterReferenceWorkflowComposer
 
             outputs.Add(_shotFragment.Build(builder, registry, new QwenCharacterShotFragment.Parameters
             {
-                Slot = ApplySamplerOverrides(slot, characterState.SamplerOverrides),
+                Slot = ApplyRunSettings(slot, characterState),
                 NodePrefix = nodePrefix,
                 SourceImageRefKey = sourceImageRefKey,
+                GlobalPositivePromptExtension = characterState.GlobalPositivePromptExtension,
                 GlobalNegativePrompt = characterState.GlobalNegativePrompt,
                 UseRtxUpscale = characterState.UseRtxUpscale,
                 UseCleanGpu = characterState.UseCleanGpu,
+                FaceReplacement = characterState.FaceReplacement,
+                OriginalSourceImageRefKey = CharacterReferenceWorkflowIds.SourceImageOutputKey,
+                CloseNeutralFaceRefKey = ResolveCloseNeutralFaceRefKey(registry, characterState),
                 FilenamePrefix = filenamePrefix
             }));
         }
@@ -54,6 +61,30 @@ public class QwenCharacterReferenceWorkflowComposer
             .Input("image", characterState.SourceImage.ImagePath ?? string.Empty));
 
         registry.Register(CharacterReferenceWorkflowIds.SourceImageOutputKey, CharacterReferenceWorkflowIds.SourceImageNodeId, 0);
+    }
+
+    private static void BuildReusableDependencyImages(
+        ComfyWorkflowBuilder builder,
+        NodeRegistry registry,
+        AppStateCharacter characterState)
+    {
+        foreach (var (slotId, imagePath) in characterState.ReusableDependencyImagePaths)
+        {
+            if (string.IsNullOrWhiteSpace(slotId) || string.IsNullOrWhiteSpace(imagePath))
+            {
+                continue;
+            }
+
+            var nodeId = CharacterReferenceWorkflowIds.DependencyImageNodeId(slotId);
+            var label = characterState.Slots.FirstOrDefault(slot => slot.Id == slotId)?.Label ?? slotId;
+
+            builder.AddNode(nodeId, node => node
+                .Type("LoadImage")
+                .Title($"{label} Reused Dependency")
+                .Input("image", imagePath));
+
+            registry.Register(CharacterReferenceWorkflowIds.SlotImageOutputKey(slotId), nodeId, 0);
+        }
     }
 
     private void BuildLoader(
@@ -89,14 +120,49 @@ public class QwenCharacterReferenceWorkflowComposer
         };
     }
 
-    private static CharacterReferenceSlotState ApplySamplerOverrides(
-        CharacterReferenceSlotState slot,
-        CharacterSamplerOverrides overrides)
+    private static IReadOnlyList<CharacterReferenceSlotState> OrderSlotsForBuild(AppStateCharacter characterState)
     {
-        if (!overrides.Enabled)
+        var enabledSlots = characterState.Slots.Where(slot => slot.IsEnabled).ToList();
+        if (!characterState.FaceReplacement.Enabled || !characterState.FaceReplacement.UseCloseNeutralReference)
+        {
+            return enabledSlots;
+        }
+
+        var neutralSlot = enabledSlots.FirstOrDefault(slot => slot.Id == CharacterReferenceWorkflowIds.NeutralSlotId);
+        if (neutralSlot is null)
+        {
+            return enabledSlots;
+        }
+
+        return enabledSlots
+            .Where(slot => slot.Id != CharacterReferenceWorkflowIds.NeutralSlotId)
+            .Prepend(neutralSlot)
+            .ToList();
+    }
+
+    private static string? ResolveCloseNeutralFaceRefKey(
+        NodeRegistry registry,
+        AppStateCharacter characterState)
+    {
+        if (!characterState.FaceReplacement.Enabled || !characterState.FaceReplacement.UseCloseNeutralReference)
+        {
+            return null;
+        }
+
+        var neutralOutputKey = CharacterReferenceWorkflowIds.SlotImageOutputKey(CharacterReferenceWorkflowIds.NeutralSlotId);
+        return registry.HasOutput(neutralOutputKey) ? neutralOutputKey : null;
+    }
+
+    private static CharacterReferenceSlotState ApplyRunSettings(
+        CharacterReferenceSlotState slot,
+        AppStateCharacter characterState)
+    {
+        if (characterState.GlobalSeed < 0 && !characterState.SamplerOverrides.Enabled)
         {
             return slot;
         }
+
+        var overrides = characterState.SamplerOverrides;
 
         return new CharacterReferenceSlotState
         {
@@ -108,12 +174,12 @@ public class QwenCharacterReferenceWorkflowComposer
             Width = slot.Width,
             Height = slot.Height,
             BatchSize = slot.BatchSize,
-            Seed = overrides.Seed,
-            Steps = overrides.Steps,
-            Cfg = overrides.Cfg,
-            SamplerName = overrides.SamplerName,
-            Scheduler = overrides.Scheduler,
-            Denoise = overrides.Denoise,
+            Seed = characterState.GlobalSeed >= 0 ? characterState.GlobalSeed : slot.Seed,
+            Steps = overrides.Enabled ? overrides.Steps : slot.Steps,
+            Cfg = overrides.Enabled ? overrides.Cfg : slot.Cfg,
+            SamplerName = overrides.Enabled ? overrides.SamplerName : slot.SamplerName,
+            Scheduler = overrides.Enabled ? overrides.Scheduler : slot.Scheduler,
+            Denoise = overrides.Enabled ? overrides.Denoise : slot.Denoise,
             PromptTemplate = slot.PromptTemplate,
             PromptExtension = slot.PromptExtension,
             PromptOverride = slot.PromptOverride,
