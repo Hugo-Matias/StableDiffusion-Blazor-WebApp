@@ -1,5 +1,6 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using BlazorWebApp.Workflows.Fragments.Core;
 using BlazorWebApp.Workflows.Models;
 using BlazorWebApp.Workflows.Templates.Qwen;
 using FluentAssertions;
@@ -91,12 +92,12 @@ public class QwenSwapAnythingSam31WorkflowTests
     }
 
     [Fact]
-    public void Build_ShouldSaveUsingReferenceFilenamePrefix()
+    public void Build_ShouldUseStandardImageSavePrefix()
     {
         using var json = BuildJson();
 
         json.RootElement.GetProperty("save").GetProperty("inputs").GetProperty("filename_prefix").GetString()
-            .Should().Be("Qwen/SwapAnything/reference");
+            .Should().Be(SaveFragment.StandardFilenamePrefix);
     }
 
     private JsonDocument BuildJson()

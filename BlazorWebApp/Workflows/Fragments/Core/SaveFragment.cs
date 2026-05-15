@@ -11,6 +11,8 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SaveFragment : IFragmentBuilder
 {
+    public const string StandardFilenamePrefix = "tmp/img";
+
     public FragmentMetadata Metadata => new()
     {
         Id = "save",
@@ -24,7 +26,7 @@ public class SaveFragment : IFragmentBuilder
     /// </summary>
     public class Parameters
     {
-        public string FilenamePrefix { get; set; } = "tmp/img";
+        public string FilenamePrefix { get; set; } = StandardFilenamePrefix;
     }
 
     public void Build(
@@ -34,10 +36,7 @@ public class SaveFragment : IFragmentBuilder
         string scope = "",
         string scopeTitle = "")
     {
-        var fragment = parameters.GetFragment(Metadata.Id);
-        var filenamePrefix = fragment?.GetString("filename_prefix", "tmp/img") ?? "tmp/img";
-
-        BuildInternal(builder, registry, filenamePrefix);
+        BuildInternal(builder, registry);
     }
 
     /// <summary>
@@ -48,20 +47,19 @@ public class SaveFragment : IFragmentBuilder
         Builders.NodeRegistry registry,
         Parameters fragmentParams)
     {
-        BuildInternal(builder, registry, fragmentParams.FilenamePrefix);
+        BuildInternal(builder, registry);
     }
 
     private static void BuildInternal(
         ComfyWorkflowBuilder builder,
-        Builders.NodeRegistry registry,
-        string filenamePrefix)
+        Builders.NodeRegistry registry)
     {
         var imageRef = registry.GetRef("image_output");
 
         builder.AddNode("save", node => node
             .Type("SaveImage")
             .Title("Save Image")
-            .Input("filename_prefix", filenamePrefix)
+            .Input("filename_prefix", StandardFilenamePrefix)
             .InputRef("images", imageRef));
 
         // Register output for potential chaining (though typically terminal)
