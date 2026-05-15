@@ -1,0 +1,16 @@
+<!-- Anima: Soul flame/spark representing life and spirit -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24">
+  <defs>
+    <linearGradient id="anima-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#eab308;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbbf24;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Outer flame -->
+  <path d="M16,3 Q22,12 22,18 A6,6 0 0,1 10,18 Q10,12 16,3Z" fill="url(#anima-grad)" opacity="0.7"/>
+  <!-- Inner flame -->
+  <path d="M16,9 Q19,14 19,18 A3,3 0 0,1 13,18 Q13,14 16,9Z" fill="#fbbf24"/>
+  <!-- Flame spark -->
+  <circle cx="16" cy="15" r="1.5" fill="#fff" opacity="0.8"/>
+</svg>

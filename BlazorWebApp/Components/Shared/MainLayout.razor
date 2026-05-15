@@ -44,27 +44,33 @@
                                AdornmentColor="Color.Inherit" OnAdornmentClick="RefreshWorkflows">
                         @foreach (var workflowBase in _workflowBases)
                         {
-                            <MudSelectItem Value="@workflowBase" />
+                            <MudSelectItem Value="@workflowBase">
+                                <div class="base-select-item">
+                                    <img class="base-icon" src="images/model-bases/@GetBaseIconPath(workflowBase)"
+                                         alt="@workflowBase" />
+                                    <span class="base-label">@GetBaseDisplayName(workflowBase)</span>
+                                </div>
+                            </MudSelectItem>
                         }
                     </MudSelect>
                 }
 
                 <ProjectSelectorDropdown />
-                
+
                 @* Dark/Light Mode Toggle *@
                 <MudIconButton
                 Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                 Color="Color.Inherit"
                 Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
                 OnClick="ToggleDarkMode" />
-                
+
                 @* Info/Help Button *@
                 @if (InfoService.CurrentInfo != null)
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Title="Help & Shortcuts"
                                    OnClick="OpenInfoDrawer" />
                 }
-                
+
                 <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Title="Settings"
                                OnClick="() => DrawerToggler()" />
             </MudStack>
@@ -95,7 +101,7 @@
                 @Body
             </div>
         </MudMainContent>
-        
+
         @* Info Drawer (global, contextual) - inside MudLayout for proper overlay *@
         <InfoDrawer @ref="_infoDrawer" />
     </MudLayout>
@@ -161,13 +167,13 @@
     private async void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args)
     {
         LoadWorkflowBases();
-        
+
         // Load backend-dependent resources when backend comes online
         if (Backend.IsBackendAvailable)
         {
             await M.LoadBackendDependentResources();
         }
-        
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -180,7 +186,7 @@
                 .Where(b => !string.IsNullOrWhiteSpace(b))
                 .Distinct(StringComparer.InvariantCultureIgnoreCase)
                 .Select(b => Enum.Parse<ModelBase>(b, ignoreCase: true))
-                .OrderBy(b => b)
+                .OrderBy(b => GetBaseDisplayName(b))
                 .ToList();
         }
     }
@@ -266,6 +272,34 @@
         LoadWorkflowBases();
         await InvokeAsync(StateHasChanged);
     }
+
+    private static string GetBaseIconPath(ModelBase modelBase) => modelBase switch
+    {
+        ModelBase.StableDiffusion => "stable-diffusion.svg",
+        ModelBase.Flux => "flux.svg",
+        ModelBase.Chroma => "chroma.svg",
+        ModelBase.Qwen => "qwen.svg",
+        ModelBase.ZImage => "zimage.svg",
+        ModelBase.Wan => "wan.svg",
+        ModelBase.Anima => "anima.svg",
+        ModelBase.Ernie => "ernie.svg",
+        ModelBase.LTX => "ltx.svg",
+        _ => "stable-diffusion.svg"
+    };
+
+    private static string GetBaseDisplayName(ModelBase modelBase) => modelBase switch
+    {
+        ModelBase.StableDiffusion => "Stable Diffusion",
+        ModelBase.Flux => "Flux",
+        ModelBase.Chroma => "Chroma",
+        ModelBase.Qwen => "Qwen",
+        ModelBase.ZImage => "Z-Image",
+        ModelBase.Wan => "Wan",
+        ModelBase.Anima => "Anima",
+        ModelBase.Ernie => "Ernie",
+        ModelBase.LTX => "LTX",
+        _ => modelBase.ToString()
+    };
 
     public void Dispose()
     {
