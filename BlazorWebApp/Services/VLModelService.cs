@@ -87,6 +87,16 @@ namespace BlazorWebApp.Services
                     Images = m.Images
                 }).ToList();
 
+            // Substitute {concept} placeholder for VideoInstruct style.
+            if (request.Style == InterrogationStyle.VideoInstruct && !string.IsNullOrWhiteSpace(request.UserInstruction))
+            {
+                foreach (var msg in messages)
+                {
+                    if (!string.IsNullOrEmpty(msg.Content))
+                        msg.Content = msg.Content.Replace("{concept}", request.UserInstruction);
+                }
+            }
+
             var lastUser = messages.LastOrDefault(m => string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
             if (lastUser is null)
             {
@@ -198,6 +208,16 @@ namespace BlazorWebApp.Services
                     Content = m.Content,
                     Images = m.Images
                 }).ToList();
+
+            // Substitute {concept} placeholder for VideoInstruct style.
+            if (request.Style == InterrogationStyle.VideoInstruct && !string.IsNullOrWhiteSpace(request.UserInstruction))
+            {
+                foreach (var msg in messages)
+                {
+                    if (!string.IsNullOrEmpty(msg.Content))
+                        msg.Content = msg.Content.Replace("{concept}", request.UserInstruction);
+                }
+            }
 
             var lastUser = messages.LastOrDefault(m => string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
             if (lastUser is null)

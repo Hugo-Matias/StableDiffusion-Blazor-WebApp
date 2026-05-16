@@ -210,7 +210,7 @@ public class ChromaTxt2ImgWorkflow : IWorkflowBuilder
         // 7. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

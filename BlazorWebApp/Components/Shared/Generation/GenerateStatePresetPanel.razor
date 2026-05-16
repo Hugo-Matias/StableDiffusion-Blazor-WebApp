@@ -24,6 +24,8 @@
                    OnClick="EditPreset" Disabled="@(_selectedPreset == null)" />
     <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
                    Title="Apply workflow state" OnClick="ApplyPreset" Disabled="@(_selectedPreset == null || Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small"
+                   Title="Reset workflow state to template defaults" OnClick="ResetWorkflowState" Disabled="@(Workflow == null)" />
     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
                    Title="Delete workflow state" OnClick="DeletePreset" Disabled="@(_selectedPreset == null)" />
 </MudStack>
@@ -118,6 +120,29 @@ MaxWidth.Small,
         await ParameterService.SaveCurrentWorkflowStateAsync();
         await State.SaveState();
         Snackbar.Add("Workflow state applied.", Severity.Success);
+    }
+
+    private async Task ResetWorkflowState()
+    {
+        if (Workflow == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["OkButtonText"] = "Reset",
+            ["CancelButtonText"] = "Cancel",
+            ["OkButtonColor"] = Color.Warning,
+            ["Content"] = new MarkupString("Reset the current workflow state to the template defaults? Named presets will not be deleted.")
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Reset Workflow State", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        await ParameterService.ResetToWorkflowDefaultsAsync(Workflow);
+        await ParameterService.SaveCurrentWorkflowStateAsync();
+        await State.SaveState();
+        _selectedPreset = null;
+        Snackbar.Add("Workflow state reset to template defaults.", Severity.Success);
     }
 
     private async Task DeletePreset()

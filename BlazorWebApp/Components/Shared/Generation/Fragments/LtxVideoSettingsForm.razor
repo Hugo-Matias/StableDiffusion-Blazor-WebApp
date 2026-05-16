@@ -6,76 +6,31 @@
 <MudGrid Spacing="2">
     @if (_hasResolution)
     {
-        <MudItem xs="6">
-            <MudSlider T="int"
-                       @bind-Value="_localWidth"
-                       @bind-Value:after="OnWidthChanged"
-                       Min="_widthMin"
-                       Max="_widthMax"
-                       Step="_widthStep"
-                       Variant="Variant.Filled"
-                       ValueLabel>
-                <small>Width:</small> @_localWidth<small>px</small>
-            </MudSlider>
-        </MudItem>
-        <MudItem xs="6">
-            <MudSlider T="int"
-                       @bind-Value="_localHeight"
-                       @bind-Value:after="OnHeightChanged"
-                       Min="_heightMin"
-                       Max="_heightMax"
-                       Step="_heightStep"
-                       Variant="Variant.Filled"
-                       ValueLabel>
-                <small>Height:</small> @_localHeight<small>px</small>
-            </MudSlider>
-        </MudItem>
+        <ResolutionPanel Width="@_localWidth" WidthChanged="HandleWidthChanged" Height="@_localHeight"
+                         HeightChanged="HandleHeightChanged" />
     }
     <MudItem xs="6">
-        <MudSlider T="int"
-                   @bind-Value="_localDuration"
-                   @bind-Value:after="OnDurationChanged"
-                   Min="_durationMin"
-                   Max="_durationMax"
-                   Step="_durationStep"
-                   Variant="Variant.Filled"
-                   ValueLabel>
+        <MudSlider T="int" @bind-Value="_localDuration" @bind-Value:after="OnDurationChanged" Min="_durationMin"
+                   Max="_durationMax" Step="_durationStep" Variant="Variant.Filled" ValueLabel>
             <small>Duration:</small> @_localDuration<small>s</small>
         </MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider T="int"
-                   @bind-Value="_localFrameRate"
-                   @bind-Value:after="OnFrameRateChanged"
-                   Min="_frameRateMin"
-                   Max="_frameRateMax"
-                   Step="_frameRateStep"
-                   Variant="Variant.Filled"
-                   ValueLabel>
+        <MudSlider T="int" @bind-Value="_localFrameRate" @bind-Value:after="OnFrameRateChanged" Min="_frameRateMin"
+                   Max="_frameRateMax" Step="_frameRateStep" Variant="Variant.Filled" ValueLabel>
             <small>Frame Rate:</small> @_localFrameRate<small>fps</small>
         </MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider T="int"
-                   @bind-Value="_localImgCompression"
-                   @bind-Value:after="OnImgCompressionChanged"
-                   Min="_imgCompressionMin"
-                   Max="_imgCompressionMax"
-                   Step="_imgCompressionStep"
-                   Variant="Variant.Filled"
+        <MudSlider T="int" @bind-Value="_localImgCompression" @bind-Value:after="OnImgCompressionChanged"
+                   Min="_imgCompressionMin" Max="_imgCompressionMax" Step="_imgCompressionStep" Variant="Variant.Filled"
                    ValueLabel>
             <small>Image Compression:</small> @_localImgCompression
         </MudSlider>
     </MudItem>
     <MudItem xs="6">
-        <MudSlider T="double"
-                   @bind-Value="_localI2vStrength"
-                   @bind-Value:after="OnI2vStrengthChanged"
-                   Min="_i2vStrengthMin"
-                   Max="_i2vStrengthMax"
-                   Step="_i2vStrengthStep"
-                   Variant="Variant.Filled"
-                   ValueLabel>
+        <MudSlider T="double" @bind-Value="_localI2vStrength" @bind-Value:after="OnI2vStrengthChanged"
+                   Min="_i2vStrengthMin" Max="_i2vStrengthMax" Step="_i2vStrengthStep" Variant="Variant.Filled" ValueLabel>
             <small>I2V Strength:</small> @_localI2vStrength.ToString("F2")
         </MudSlider>
     </MudItem>
@@ -97,8 +52,6 @@
     private int _frameRateMin = 8, _frameRateMax = 30, _frameRateStep = 1;
     private int _imgCompressionMin = 1, _imgCompressionMax = 30, _imgCompressionStep = 1;
     private double _i2vStrengthMin = 0.0, _i2vStrengthMax = 1.0, _i2vStrengthStep = 0.05;
-    private int _widthMin = 256, _widthMax = 1920, _widthStep = 32;
-    private int _heightMin = 256, _heightMax = 1920, _heightStep = 32;
 
     protected override void OnParametersSet()
     {
@@ -153,19 +106,6 @@
             _i2vStrengthStep = strengthConstraints.GetStep(0.05);
         }
 
-        if (Fragment.Schema.Parameters.TryGetValue("width", out var widthConstraints))
-        {
-            _widthMin = widthConstraints.GetMin(256);
-            _widthMax = widthConstraints.GetMax(1920);
-            _widthStep = widthConstraints.GetStep(32);
-        }
-
-        if (Fragment.Schema.Parameters.TryGetValue("height", out var heightConstraints))
-        {
-            _heightMin = heightConstraints.GetMin(256);
-            _heightMax = heightConstraints.GetMax(1920);
-            _heightStep = heightConstraints.GetStep(32);
-        }
     }
 
     private async Task OnDurationChanged()
@@ -192,14 +132,16 @@
         await OnChanged.InvokeAsync();
     }
 
-    private async Task OnWidthChanged()
+    private async Task HandleWidthChanged(int value)
     {
+        _localWidth = value;
         ParameterService.SetFragmentProperty(Fragment, "width", _localWidth, notify: true);
         await OnChanged.InvokeAsync();
     }
 
-    private async Task OnHeightChanged()
+    private async Task HandleHeightChanged(int value)
     {
+        _localHeight = value;
         ParameterService.SetFragmentProperty(Fragment, "height", _localHeight, notify: true);
         await OnChanged.InvokeAsync();
     }

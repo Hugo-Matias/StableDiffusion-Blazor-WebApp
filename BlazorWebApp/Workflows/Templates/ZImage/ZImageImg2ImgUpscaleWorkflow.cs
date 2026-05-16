@@ -186,7 +186,7 @@ public class ZImageImg2ImgUpscaleWorkflow : IWorkflowBuilder
 
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

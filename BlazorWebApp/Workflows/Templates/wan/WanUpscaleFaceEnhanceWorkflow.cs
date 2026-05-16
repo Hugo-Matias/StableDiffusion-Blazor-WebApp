@@ -156,7 +156,7 @@ public class WanUpscaleFaceEnhanceWorkflow : IWorkflowBuilder
             NodeId = "final_video_output",
             FrameRate = settings.FrameRate,
             ImageInputName = "image_output",
-            FilenamePrefix = "Upscale + FaceEnhance",
+            FilenamePrefix = "tmp/video",
             Format = "video/h264-mp4",
             PixFmt = "yuv420p",
             Crf = settings.Crf,

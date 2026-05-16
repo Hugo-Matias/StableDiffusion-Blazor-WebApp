@@ -256,7 +256,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
         // 11. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

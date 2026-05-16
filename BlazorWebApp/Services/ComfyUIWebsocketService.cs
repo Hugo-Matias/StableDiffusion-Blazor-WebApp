@@ -1,4 +1,5 @@
 ﻿using BlazorWebApp.Models;
+using System.Buffers.Binary;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,11 @@ namespace BlazorWebApp.Services
 {
     public class ComfyUIWebsocketService : IHostedService
     {
+        private const int ComfyBinaryHeaderLength = 8;
+        private const uint PreviewImageEventType = 1;
+        private const uint JpegImageType = 1;
+        private const uint PngImageType = 2;
+
         private readonly ILogger<ComfyUIWebsocketService> _logger;
         private readonly IBackendService _backend;
         private readonly IImageService _imageService;
@@ -15,6 +21,7 @@ namespace BlazorWebApp.Services
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
+        private string _currentNodeId = string.Empty;
 
         public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, IImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
         {
@@ -109,17 +116,36 @@ namespace BlazorWebApp.Services
 
                         if (type == "execution_start")
                         {
+                            _currentNodeId = string.Empty;
                             _imageService.Progress = new() { State = new() { Job = "Execution Started" } };
                             _progressService.NotifyProgressChanged();
+                        }
+
+                        if (type == "executing")
+                        {
+                            var data = doc.RootElement.GetProperty("data");
+                            if (data.TryGetProperty("node", out var nodeElement) && nodeElement.ValueKind != JsonValueKind.Null)
+                            {
+                                _currentNodeId = nodeElement.GetString() ?? string.Empty;
+                                _imageService.Progress.CurrentNodeId = _currentNodeId;
+                                _imageService.Progress.State.Job = FormatNodeLabel(_currentNodeId);
+                                _progressService.NotifyProgressChanged();
+                            }
                         }
 
                         if (type == "progress")
                         {
                             var data = doc.RootElement.GetProperty("data");
-                            var id = Guid.Parse(data.GetProperty("prompt_id").ToString());
+                            if (!Guid.TryParse(data.GetProperty("prompt_id").GetString(), out var id))
+                            {
+                                _logger.LogWarning("ComfyUI progress event did not include a valid prompt_id");
+                                continue;
+                            }
+
                             var value = data.GetProperty("value").GetInt32();
                             var max = data.GetProperty("max").GetInt32();
-                            var node = doc.RootElement.GetProperty("data").GetProperty("node");
+                            var node = doc.RootElement.GetProperty("data").GetProperty("node").GetString() ?? string.Empty;
+                            _currentNodeId = node;
 
                             // If not already tracked, add it
                             var existing = _progressService.Progresses.FirstOrDefault(p => p.Id == id);
@@ -137,14 +163,19 @@ namespace BlazorWebApp.Services
                             }
 
                             _imageService.Progress.Value = (float)value / max;
-                            _imageService.Progress.State.Job = $"Running node: {node}";
+                            _imageService.Progress.CurrentNodeId = node;
+                            _imageService.Progress.State.Job = FormatNodeLabel(node);
                             _progressService.Update(id, value);
                             _progressService.NotifyProgressChanged();
                         }
 
                         if (type == "execution_success" || type == "execution_error" || type == "execution_interrupted")
                         {
-                            _promptId = Guid.Parse(doc.RootElement.GetProperty("data").GetProperty("prompt_id").GetString());
+                            if (!Guid.TryParse(doc.RootElement.GetProperty("data").GetProperty("prompt_id").GetString(), out _promptId))
+                            {
+                                _logger.LogWarning("ComfyUI {EventType} event did not include a valid prompt_id", type);
+                                continue;
+                            }
 
                             if (type == "execution_success")
                             {
@@ -164,6 +195,7 @@ namespace BlazorWebApp.Services
                                 _bus.PublishExecutionFailed(_promptId, $"{errorType} | Node: {nodeId} - {nodeType}: {error}");
                             }
                             _progressService.Remove(_promptId);
+                            _currentNodeId = string.Empty;
                             _imageService.Progress = new();
                             _progressService.NotifyProgressChanged();
                         }
@@ -179,13 +211,84 @@ namespace BlazorWebApp.Services
                 if (result.MessageType == WebSocketMessageType.Binary)
                 {
                     var fullBytes = ms.ToArray();
-                    // ComfyUI frames have an 8-byte header we can skip
-                    var imageBytes = fullBytes.Skip(8).ToArray();
+                    if (!TryReadPreviewImage(fullBytes, out var imageBytes, out var mimeType))
+                    {
+                        _logger.LogDebug("Ignoring unsupported ComfyUI binary websocket message ({ByteCount} bytes)", fullBytes.Length);
+                        continue;
+                    }
 
                     var base64 = Convert.ToBase64String(imageBytes);
                     _imageService.Progress.CurrentImage = base64;
+                    _imageService.Progress.CurrentImageMimeType = mimeType;
+                    _imageService.Progress.CurrentPreviewNodeId = _currentNodeId;
+                    _progressService.NotifyProgressChanged();
                 }
             }
+        }
+
+        private static string FormatNodeLabel(string nodeId)
+        {
+            if (string.IsNullOrWhiteSpace(nodeId))
+            {
+                return "Running";
+            }
+
+            return nodeId switch
+            {
+                "stage1_sampler" => "Running: Stage 1 sampler",
+                "stage2_sampler" => "Running: Stage 2 sampler",
+                _ => $"Running node: {nodeId}"
+            };
+        }
+
+        private static bool TryReadPreviewImage(byte[] bytes, out byte[] imageBytes, out string mimeType)
+        {
+            imageBytes = Array.Empty<byte>();
+            mimeType = "image/png";
+
+            if (bytes.Length <= ComfyBinaryHeaderLength)
+            {
+                return false;
+            }
+
+            var eventType = BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(0, 4));
+            if (eventType != PreviewImageEventType)
+            {
+                return false;
+            }
+
+            var imageType = BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(4, 4));
+            mimeType = imageType switch
+            {
+                JpegImageType => "image/jpeg",
+                PngImageType => "image/png",
+                _ => DetectImageMimeType(bytes.AsSpan(ComfyBinaryHeaderLength))
+            };
+
+            imageBytes = bytes[ComfyBinaryHeaderLength..];
+            return imageBytes.Length > 0;
+        }
+
+        private static string DetectImageMimeType(ReadOnlySpan<byte> imageBytes)
+        {
+            if (imageBytes.Length >= 3
+                && imageBytes[0] == 0xFF
+                && imageBytes[1] == 0xD8
+                && imageBytes[2] == 0xFF)
+            {
+                return "image/jpeg";
+            }
+
+            if (imageBytes.Length >= 8
+                && imageBytes[0] == 0x89
+                && imageBytes[1] == 0x50
+                && imageBytes[2] == 0x4E
+                && imageBytes[3] == 0x47)
+            {
+                return "image/png";
+            }
+
+            return "image/png";
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

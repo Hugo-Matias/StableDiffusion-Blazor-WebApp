@@ -416,7 +416,7 @@ public FragmentMetadata Metadata => new()
     Component = "SamplerForm",      // Required today for user-visible fluent fragments
     Icon = "fa-solid fa-dice",
     Order = 50,
-    Collapsible = true,
+    Collapsible = false,
     IsHidden = false,               // true for utility fragments (no UI)
     Parameters = [ ... ]
 };
@@ -425,6 +425,10 @@ public FragmentMetadata Metadata => new()
 For the current fluent workflow runtime, user-visible fragments should declare a registered
 `Component`. `FragmentMetadata.Parameters` are bridged into schema constraints, but metadata-only
 dynamic field rendering is not implemented in `FragmentRenderer` yet.
+
+`FragmentMetadata.Parameters` is also the single source of truth for any designed component attached through `Component`. Defaults, labels, static select options, min/max, step values, and dynamic option sources belong in `FragmentParameter`. A component may control layout and interaction behavior, but it must read these values through `FragmentReference.Schema` / `Fragment.Schema.GetConstraints(...)` or through `ParameterService.GetResolvedOptions(...)` for resolved dynamic options. Do not copy `FragmentParameter.Options`, `DefaultValue`, `Min`, `Max`, or `Step` into Razor component fields; that creates stale UI when metadata changes.
+
+`Collapsible` is not a generic visual-compression flag. In the Generate page integration it marks a fragment as optional/toggleable and affects the fragment's default active state. Core workflow definitions and required settings - model loader mode, source/frame guide wiring, video dimensions, sampler settings, scheduler settings, prompt fields, and other values needed to define the workflow - must use `Collapsible = false`. Use `Collapsible = true` only for true optional enhancements or add-on passes such as Sage/NAG patches, RIFE/frame interpolation, detailer, upscale, or other features the workflow can legitimately run without.
 
 ### Fragment Parameters (UI Definition)
 
@@ -459,6 +463,8 @@ Parameters can fetch their options dynamically from ComfyUI:
 | -------------------------------------------- | --------------------------------------- |
 | `new DynamicSource("Backend", "Samplers")`   | Sampler algorithms available in ComfyUI |
 | `new DynamicSource("Backend", "Schedulers")` | Scheduler types available in ComfyUI    |
+
+For static select lists, set `FragmentParameter.Options`. For dynamic lists, set `FragmentParameter.Source`. In both cases, the attached form reads the schema/resolved options; it must not maintain a second local option table.
 
 ### Dual Build Pattern
 
@@ -916,6 +922,8 @@ For every removal, document the proof that it is disabled, UI-only, preview-only
    - Which enhancements to include
    - Whether the detailer should share the main model or use a separate model asset
 
+    Do not classify required workflow settings as enhancements just because they are advanced. Core model-loader choices, frame/source guide controls, scheduler/sampler controls, and required video/audio settings should remain always visible and non-collapsible. Reserve the optional/toggleable treatment for add-ons that can be omitted from the graph without changing the workflow's core identity.
+
 6. **UI Component Review**
 
    Review every UI-visible fragment before the main plan is approved:
@@ -969,6 +977,7 @@ For every removal, document the proof that it is disabled, UI-only, preview-only
    - Follow `WORKFLOW_UI_CONVERSION_GUIDE.md`
    - Use `[FragmentComponent("...")]` for auto-discovery
    - Follow the app's UI design language instead of copying legacy form quirks blindly
+   - Keep `FragmentMetadata.Parameters` as the single source of truth. Forms must read options, defaults, min/max, and step values from `Fragment.Schema.GetConstraints(...)` or `ParameterService.GetResolvedOptions(...)`; do not duplicate these values in Razor fields.
 4. **Create the workflow class** in `Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
 5. **Build and verify compilation**
 
@@ -978,6 +987,7 @@ For every removal, document the proof that it is disabled, UI-only, preview-only
 - Workflow appears in UI with correct metadata
 - Every UI-visible fragment resolves to the intended component
 - New or reused form components match the current design language and field mapping plan
+- New or reused form components consume metadata-backed schema for defaults, options, and constraints; changing `FragmentParameter` values should update the UI without editing the component
 - Assets populate correctly
 - Generation produces valid ComfyUI JSON
 - ComfyUI executes the workflow successfully

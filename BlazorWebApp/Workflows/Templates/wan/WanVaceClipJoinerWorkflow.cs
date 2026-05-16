@@ -247,7 +247,7 @@ public class WanVaceClipJoinerWorkflow : IWorkflowBuilder
             SaveVideoNodeId = "save_video",
             ImageInputName = "image_output",
             FpsInputName = "video_1_fps",
-            FilenamePrefix = "VACE joined",
+            FilenamePrefix = "tmp/video",
             Format = "auto",
             Codec = "auto"
         });

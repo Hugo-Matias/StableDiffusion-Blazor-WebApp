@@ -171,6 +171,22 @@ namespace BlazorWebApp.Services
         }
 
         /// <inheritdoc />
+        public async Task<GenerationParameters> ResetToWorkflowDefaultsAsync(Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogWarning("Cannot reset defaults for null workflow");
+                return Current;
+            }
+
+            InitializeFromWorkflowInternal(workflow, savedState: null);
+            await PreResolveDynamicSourcesAsync(workflow);
+
+            PublishChange(GenerationParametersChangedEventArgs.ParametersLoaded());
+            return Current;
+        }
+
+        /// <inheritdoc />
         public bool HasPendingOverrides =>
             _pendingOverrides.Count > 0 || _pendingLoras.Count > 0 || _pendingAssets.Count > 0 || _pendingPromptAppends.Count > 0;
 

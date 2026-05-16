@@ -209,7 +209,7 @@ public class QwenTxt2ImgWorkflow : IWorkflowBuilder
         // 8. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

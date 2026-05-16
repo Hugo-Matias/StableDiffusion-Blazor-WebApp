@@ -87,8 +87,15 @@ SourceDefinition.Label;
 
     private async Task HandleImageChanged(string imageData)
     {
-        Source.Data = imageData;
-        Source.Filename = null; // Clear filename since it's from drag/drop or clipboard
+        if (string.IsNullOrWhiteSpace(imageData))
+        {
+            Source.Clear();
+        }
+        else
+        {
+            Source.Data = imageData;
+            Source.Filename = null; // Clear filename since it's from drag/drop or clipboard
+        }
         await OnSourceChanged.InvokeAsync((SourceId, Source));
     }
 

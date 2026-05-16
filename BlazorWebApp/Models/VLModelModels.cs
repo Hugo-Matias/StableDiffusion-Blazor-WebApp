@@ -11,7 +11,8 @@ namespace BlazorWebApp.Models
         Artistic,
         Technical,
         Tags,
-        Focus
+        Focus,
+        VideoInstruct
     }
 
     /// <summary>
@@ -31,6 +32,13 @@ namespace BlazorWebApp.Models
         /// better at the structured concept extraction than a VL model).
         /// </summary>
         public string? TagNormalizationModelName { get; set; }
+
+        /// <summary>
+        /// User-supplied concept instruction for <see cref="InterrogationStyle.VideoInstruct"/>.
+        /// Substituted for the <c>{concept}</c> placeholder in the VL.VideoInstruct system prompt
+        /// at runtime.
+        /// </summary>
+        public string? UserInstruction { get; set; }
     }
 
     /// <summary>

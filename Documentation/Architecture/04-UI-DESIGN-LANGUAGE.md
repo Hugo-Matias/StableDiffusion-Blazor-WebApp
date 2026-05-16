@@ -256,6 +256,39 @@ Pattern used by `ResourcePanel` (`--resources-scroll-offset`) and the CivitAI pa
 
 If a child card component has a fixed width set in its own `.razor.css`, expose that width through a CSS variable (e.g. `--civitai-card-width`) so the parent can drive size tokens without editing the card's CSS. See `CivitaiImageCard.razor.css`.
 
+### Fragment component conventions
+
+When building a fragment form component (`[FragmentComponent("...")]`) that exposes **width and height** parameters, always use `<ResolutionPanel>` instead of raw `<MudSlider>` controls. This provides quick-resolution presets, rotate, x0.5/x2 scaling, and aspect-ratio lock for free.
+
+```razor
+<ResolutionPanel Width="@_localWidth"
+                 WidthChanged="HandleWidthChanged"
+                 Height="@_localHeight"
+                 HeightChanged="HandleHeightChanged" />
+```
+
+Handlers write directly through `ParameterService`:
+
+```csharp
+private async Task HandleWidthChanged(int value)
+{
+    _localWidth = value;
+    ParameterService.SetFragmentProperty(Fragment, "width", _localWidth, notify: true);
+    await OnChanged.InvokeAsync();
+}
+
+private async Task HandleHeightChanged(int value)
+{
+    _localHeight = value;
+    ParameterService.SetFragmentProperty(Fragment, "height", _localHeight, notify: true);
+    await OnChanged.InvokeAsync();
+}
+```
+
+If resolution is optional (e.g. when a workflow-controlled `_includeResolution` flag suppresses those parameters), wrap the component in `@if (_hasResolution)`. The `ResolutionPanel` reads its slider min/max/step and quick-resolution list from `ISettingsService.Settings.Generation.Shared.Resolution` — do **not** duplicate those constraints in the fragment schema or the form code.
+
+---
+
 ### Card grid primitive (`.app-grid`)
 
 Use the global `.app-grid` utility (declared in [`site.css`](../../BlazorWebApp/wwwroot/site.css)) instead of redeclaring `grid-template-columns: repeat(auto-fill, minmax(...))` in component-scoped CSS. Tune density per surface by overriding `--app-card-min` (and optionally `--app-grid-gap`) on the element:

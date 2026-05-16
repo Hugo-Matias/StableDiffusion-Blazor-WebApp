@@ -27,7 +27,7 @@ public class LtxDecodeFragment : IFragmentBuilder
         public int Overlap { get; set; } = 64;
         public int TemporalSize { get; set; } = 4096;
         public int TemporalOverlap { get; set; } = 4;
-        public string FilenamePrefix { get; set; } = "tmp/vid";
+        public string FilenamePrefix { get; set; } = "tmp/video";
         public string AvLatentInputName { get; set; } = "av_latent_output";
     }
 

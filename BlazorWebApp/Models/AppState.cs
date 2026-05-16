@@ -411,6 +411,12 @@ namespace BlazorWebApp.Models
 
         /// <summary>Last result text shown in the textarea (raw or normalized, whichever was active).</summary>
         public string? LastResultText { get; set; }
+
+        /// <summary>
+        /// User instruction text persisted for the VideoInstruct style (the concept / motion
+        /// guidance that is injected into the <c>{concept}</c> placeholder at run time).
+        /// </summary>
+        public string? LastVideoInstruction { get; set; }
     }
 
     public class AppStatePromptsLLMWorkshop

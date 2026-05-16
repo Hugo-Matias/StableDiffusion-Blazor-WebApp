@@ -23,7 +23,7 @@ public class SaveVideoFragment : IFragmentBuilder
         public string NodeId { get; set; } = "video_save";
         public int FrameRate { get; set; } = 16;
         public string ImageInputName { get; set; } = "image_output";
-        public string FilenamePrefix { get; set; } = "tmp/vid";
+        public string FilenamePrefix { get; set; } = "tmp/video";
         public string Format { get; set; } = "video/h264-mp4";
         public string PixFmt { get; set; } = "yuv420p";
         public int Crf { get; set; } = 19;
@@ -40,7 +40,7 @@ public class SaveVideoFragment : IFragmentBuilder
         var fragment = parameters.GetFragment(Metadata.Id);
         var frameRate = fragment?.GetInt("frame_rate", 16) ?? 16;
         var imageInputName = fragment?.GetString("image_input_name", "image_output") ?? "image_output";
-        var filenamePrefix = fragment?.GetString("filename_prefix", "tmp/vid") ?? "tmp/vid";
+        var filenamePrefix = fragment?.GetString("filename_prefix", "tmp/video") ?? "tmp/video";
 
         BuildInternal(builder, registry, new Parameters
         {

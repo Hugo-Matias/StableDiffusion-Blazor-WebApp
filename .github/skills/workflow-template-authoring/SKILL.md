@@ -31,14 +31,15 @@ Use this skill for workflow-template implementation work in the fluent C# system
 4. Keep workflow descriptions user-facing. They belong in the Info drawer, not as a banner on the page.
 5. Reuse existing fragments where the parameter shape already matches.
 6. Hidden utility fragments should stay out of `GetFragments()`.
-7. Follow the repo's scope and output conventions:
+7. Put every UI-facing default, static option list, numeric min/max/step, and dynamic option source in `FragmentMetadata.Parameters`. A designed component may render those controls, but the metadata remains the source of truth.
+8. Follow the repo's scope and output conventions:
    - scoped loader fragments write scoped outputs
    - processing fragments read from the requested scope
    - pipeline outputs such as `image_output` and `latent_output` stay on the main pipeline
-8. Use `NodeRegistry` typed references instead of ad hoc node id strings where the existing patterns support them.
-9. For optional passes, overwrite the main pipeline output instead of creating side-channel save logic.
-10. If a user-visible fragment changes, pair the workflow work with the workflow UI skill.
-11. Add or update the narrowest workflow tests under `BlazorWebApp.Tests/Workflows/`.
+9. Use `NodeRegistry` typed references instead of ad hoc node id strings where the existing patterns support them.
+10. For optional passes, overwrite the main pipeline output instead of creating side-channel save logic.
+11. If a user-visible fragment changes, pair the workflow work with the workflow UI skill.
+12. Add or update the narrowest workflow tests under `BlazorWebApp.Tests/Workflows/`.
 
 ## Guardrails
 
@@ -46,6 +47,7 @@ Use this skill for workflow-template implementation work in the fluent C# system
 - Do not hardcode CivitAI base-model strings without checking `Data/CivitAI/basemodels.json`.
 - Do not leave a workflow without a `Description`.
 - Do not rely on metadata-only dynamic rendering for fluent fragments that need a real form component.
+- Do not duplicate `FragmentParameter.Options`, `DefaultValue`, `Min`, `Max`, or `Step` inside Razor forms. Components must consume metadata through `Fragment.Schema.GetConstraints(...)` or resolved options through `IGenerationParameterService`.
 
 ## Key Anchors
 

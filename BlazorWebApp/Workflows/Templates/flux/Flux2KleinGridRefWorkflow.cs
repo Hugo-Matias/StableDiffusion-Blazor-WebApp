@@ -230,7 +230,7 @@ public class Flux2KleinGridRefWorkflow : IWorkflowBuilder
         BuildDetailerIfActive(builder, registry, parameters, promptsFragment);
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

@@ -29,6 +29,8 @@ Use this skill when workflow metadata needs a user-facing form on the Generate p
    - keep local `_local...` state for MudBlazor-bound controls
    - sync from `Fragment` in `OnParametersSet()`
    - write back through `SetFragmentProperty(..., notify: true)`
+   - read defaults, labels, static options, min/max, and step values from `Fragment.Schema.GetConstraints("parameter")`
+   - read backend/ComfyUI-resolved option lists through `ParameterService.GetResolvedOptions(Fragment.Id, "parameter")` when runtime-resolved values are needed
 6. Prefer repo-standard controls:
    - `MudSelect` for bounded options
    - `MudAutocomplete` for large searchable lists
@@ -37,13 +39,16 @@ Use this skill when workflow metadata needs a user-facing form on the Generate p
 7. Use `Variant.Text`, `Dense="true"`, and `MudGrid Spacing="2"` or `MudStack Spacing="2"`.
 8. Keep fragment forms flush. Do not add a root `MudPaper`, root `pa-*`, or root elevation.
 9. Use resolved backend options or schema-driven constraints instead of free-text entry where the backend already defines valid values.
-10. Validate the narrowest possible path: focused build, relevant workflow test, and runtime render verification when available.
+10. Before finishing, verify the component has no duplicated `_options = [...]`, default, min/max, or step tables for values already present in `FragmentMetadata.Parameters`.
+11. Validate the narrowest possible path: focused build, relevant workflow test, and runtime render verification when available.
 
 ## Guardrails
 
 - Do not mutate a shared form just to support an unrelated parameter shape if a new form would be clearer.
 - Do not rely on manual component registration when the attribute-based discovery path works.
 - Do not add form padding that fights the surrounding Generate-page surface.
+- Do not treat designed components as a second source of truth. `FragmentMetadata.Parameters` owns defaults, options, min/max, step values, and dynamic sources; components own layout, local bound state, event handling, and temporary persisted-value normalization only.
+- Do not hardcode static select option arrays in a fragment form when the corresponding `FragmentParameter.Options` exists.
 
 ## Key Anchors
 

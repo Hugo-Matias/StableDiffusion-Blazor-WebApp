@@ -607,7 +607,7 @@ public class WanOneToAllAnimationWorkflow : IWorkflowBuilder
             .InputRef("images", registry.GetRef("image_output"))
             .Input("frame_rate", frameRate)
             .Input("loop_count", 0)
-            .Input("filename_prefix", "onetoall/v")
+            .Input("filename_prefix", "tmp/video")
             .Input("format", "video/h264-mp4")
             .Input("pix_fmt", "yuv420p")
             .Input("crf", 19)

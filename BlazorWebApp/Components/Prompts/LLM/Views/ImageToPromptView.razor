@@ -81,6 +81,15 @@
         @* Image preview + drop zone (reuses Generate-page ImageInput component). *@
         <ImageInput ImageData="@_imageData" ImageDataChanged="HandleImageChanged" Title="Source image" />
 
+        @* Video Instruct: concept / motion guidance text input. *@
+        @if (_style == InterrogationStyle.VideoInstruct)
+        {
+            <MudTextField T="string" @bind-Value="_videoInstruction" Immediate="true" Label="Video instruction"
+                          HelperText="Describe the concept, motion, or interaction the video model should center on." Lines="3"
+                          AutoGrow="true" Variant="Variant.Text"
+                          Placeholder="e.g. the subject slowly turns toward the camera while reaching out to touch the glass surface" />
+        }
+
         @* Result textarea + raw/normalized toggle. *@
         <MudStack Spacing="1">
             <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
@@ -195,6 +204,9 @@
     private System.Timers.Timer? _elapsedTimer;
     private int _elapsedSeconds;
 
+    // VideoInstruct style - user-supplied concept / motion guidance.
+    private string _videoInstruction = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         // Hydrate persisted view state. This is also the channel cross-page redirects use
@@ -219,6 +231,10 @@
         {
             _resultText = s.LastResultText!;
             _lastAppliedText = _resultText;
+        }
+        if (!string.IsNullOrWhiteSpace(s.LastVideoInstruction))
+        {
+            _videoInstruction = s.LastVideoInstruction!;
         }
 
         await LoadModels();
@@ -366,7 +382,10 @@
                 Style = _style,
                 ImageBytes = _imageBytes,
                 NormalizeToDanbooruTags = _normalizeToTags,
-                TagNormalizationModelName = string.IsNullOrWhiteSpace(SelectedModel) ? null : SelectedModel
+                TagNormalizationModelName = string.IsNullOrWhiteSpace(SelectedModel) ? null : SelectedModel,
+                UserInstruction = _style == InterrogationStyle.VideoInstruct && !string.IsNullOrWhiteSpace(_videoInstruction)
+                    ? _videoInstruction
+                    : null
             };
 
             InterrogationResult result;
@@ -515,6 +534,7 @@
         s.LastImageDataUri = string.IsNullOrWhiteSpace(_imageData) ? null : _imageData;
         s.LastSourceLabel = string.IsNullOrWhiteSpace(_sourceLabel) ? null : _sourceLabel;
         s.LastResultText = string.IsNullOrWhiteSpace(_resultText) ? null : _resultText;
+        s.LastVideoInstruction = string.IsNullOrWhiteSpace(_videoInstruction) ? null : _videoInstruction;
         await State.SaveState();
     }
 

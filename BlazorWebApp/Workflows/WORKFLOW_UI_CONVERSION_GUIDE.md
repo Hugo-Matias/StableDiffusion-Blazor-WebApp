@@ -67,6 +67,7 @@ Before the plan is approved, confirm:
 - The new UI follows the design-language defaults for spacing, density, and field variants
 - Any multi-pass or multi-mode behavior uses an existing tabbed or grouped pattern already present in the app
 - No fragment form adds a root `MudPaper` or extra shell padding unless it is intentionally a major surface like `PromptsForm`
+- Core workflow settings are always visible and non-collapsible. `Collapsible = true` is reserved for true optional enhancements/add-ons such as Sage/NAG patches, RIFE/frame interpolation, detailer, upscale, or other passes the workflow can run without.
 
 ### 3. Field Mapping Review
 
@@ -139,6 +140,14 @@ Guidance by parameter semantics:
 - Use numeric fields for values the user may paste, type precisely, or set outside a comfortable slider range.
 - Prefer selects over free text whenever the backend already exposes valid options.
 
+Metadata ownership rule:
+
+- `FragmentMetadata.Parameters` is the single source of truth for parameter defaults, labels, static select options, min/max/step constraints, and dynamic option sources.
+- Designed components receive `FragmentReference`; use `Fragment.Schema.GetConstraints("parameter_name")` to read static options, defaults, min/max, and step values.
+- Use `ParameterService.GetResolvedOptions(Fragment.Id, "parameter_name")` when a parameter uses backend/ComfyUI-resolved options and the resolved runtime list is needed.
+- Do not hardcode `_options = [...]`, slider min/max/step, or default literals in a Razor form when those values are already declared in `FragmentParameter`. A literal fallback is acceptable only as a defensive fallback after schema lookup or as explicit old-value normalization.
+- If changing a `FragmentParameter.Options` or `DefaultValue` does not change the custom component UI after rebuild/restart, the component is bypassing metadata and must be fixed before the integration is considered complete.
+
 ---
 
 ## Fragment Form Implementation Pattern
@@ -152,6 +161,7 @@ Current fragment forms follow this implementation shape:
 5. Keep local `_local...` state for MudBlazor-bound controls to prevent snap-back.
 6. Sync local state from the fragment in `OnParametersSet()`.
 7. Write changes back through `ParameterService.SetFragmentProperty(..., notify: true)`.
+8. Read defaults/options/constraints from `Fragment.Schema` or `ParameterService.GetResolvedOptions`; do not duplicate `FragmentParameter` values in component fields.
 
 Skeleton:
 
@@ -177,11 +187,14 @@ Skeleton:
     [Parameter] public EventCallback OnChanged { get; set; }
 
     private float _localStrength;
+    private ParameterConstraints _strengthConstraints = new();
 
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
-        _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", 0.5f);
+        _strengthConstraints = Fragment.Schema?.GetConstraints("strength") ?? new ParameterConstraints();
+        var defaultStrength = _strengthConstraints.GetDefault<float>() ?? 0.5f;
+        _localStrength = ParameterService.GetFragmentProperty(Fragment, "strength", defaultStrength);
     }
 
     private async Task OnStrengthChanged()
@@ -192,7 +205,7 @@ Skeleton:
 }
 ```
 
-If the fragment uses backend-resolved options, prefer `ParameterService.GetResolvedOptions(Fragment.Id, "parameter")` or schema constraints already bridged into `Fragment.Schema`.
+If the fragment uses backend-resolved options, prefer `ParameterService.GetResolvedOptions(Fragment.Id, "parameter")` or schema constraints already bridged into `Fragment.Schema`. If a select has static options, bind the select items from `Fragment.Schema.GetConstraints("parameter").Options`, not from a component-local list.
 
 ---
 
@@ -202,6 +215,8 @@ If the fragment uses backend-resolved options, prefer `ParameterService.GetResol
 - Create a new component when reusing an existing one would introduce dead fields, missing fields, or misleading labels.
 - Prefer a dedicated new component over mutating a shared component to support an unrelated parameter shape.
 - If a fragment is user-visible, set `FragmentMetadata.Component` explicitly. Do not rely on metadata-only dynamic rendering for fluent fragments.
+- Reused or new components must treat schema metadata as authoritative. They may customize layout, grouping, enable/disable behavior, and derived display text, but they must not own duplicate option/default/constraint tables.
+- Do not use `Collapsible = true` to save vertical space for required settings. In the Generate page this creates optional-feature semantics. Use it only when the fragment has a meaningful enable/disable state and the workflow remains valid when it is inactive.
 
 ---
 
@@ -213,6 +228,7 @@ After implementation, verify UI behavior in addition to build success.
 - Each UI-visible fragment renders the intended component.
 - No fragment shows a missing-component warning.
 - Dynamic select options populate correctly.
+- Static select options and defaults change when `FragmentMetadata.Parameters` changes, proving the component is reading schema metadata.
 - Sliders, numeric fields, and text inputs write back to `GenerationParameters` without snap-back.
 - Any derived info text updates as dependent values change.
 - The visual result matches the app's existing design language and Generate page density.

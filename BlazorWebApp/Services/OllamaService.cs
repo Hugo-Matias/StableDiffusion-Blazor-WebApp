@@ -455,6 +455,28 @@ namespace BlazorWebApp.Services
                         new() { Role = "user", Content = "Describe the attached image in one casual sentence." }
                     }
                 },
+                new SystemPromptTemplate
+                {
+                    Name = "VL.VideoInstruct",
+                    Description = "Video scene script from an image for a multimodal video model. Describes the initial scene and a naturally evolving motion scenario centered on a user-supplied concept. Inject the concept via the {concept} placeholder at runtime.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content =
+                            "Generate a video scene script with a description based on the image for an LLM that has a tokenizer " +
+                            "that uses interleaved attention to support long-context understanding that is fed into a multimodal video model. " +
+                            "Strict specification, follow to the word: No timestamps. No unnecessary embellishment. Output only plain English text.\n\n" +
+                            "First, describe the image initial scene in concise natural language: subject(s), subject(s) appearance, " +
+                            "subject(s) composition and pose, background, and context.\n\n" +
+                            "Next, formulate a naturally evolving scenario that would take place describing every moving body part, " +
+                            "composition change, and manipulation from the uploaded initial frame that would be reflected in the video " +
+                            "model's post-latent evolution output. If the image is explicit or sexual in nature, use full anatomical " +
+                            "terminology and spice it up slightly with visually representable erotic themes.\n\n" +
+                            "Center the prompt around this basic idea: {concept}\n\n" +
+                            "Output only text following the above instruction." },
+                        new() { Role = "user", Content = "Write a video scene script based on the attached image." }
+                    }
+                },
             };
         }
 

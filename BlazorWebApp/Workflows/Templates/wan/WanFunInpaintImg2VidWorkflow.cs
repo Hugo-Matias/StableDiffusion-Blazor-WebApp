@@ -267,7 +267,7 @@ public class WanFunInpaintImg2VidWorkflow : IWorkflowBuilder
             SaveVideoNodeId = "save_video",
             ImageInputName = imageInputName,
             Fps = frameRate,
-            FilenamePrefix = "video/ComfyUI",
+            FilenamePrefix = "tmp/video",
             Format = "auto",
             Codec = "auto"
         });

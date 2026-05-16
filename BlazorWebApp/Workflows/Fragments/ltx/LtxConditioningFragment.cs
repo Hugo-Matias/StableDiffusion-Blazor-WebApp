@@ -63,6 +63,26 @@ public class LtxConditioningFragment : IFragmentBuilder
         BuildCroppedInternal(builder, registry, fragmentParams, scope, scopeTitle);
     }
 
+    public void BuildZeroNegative(
+        ComfyWorkflowBuilder builder,
+        NodeRegistry registry,
+        string positiveInputName,
+        string negativeOutputName,
+        string nodeId = "ltx_zero_negative",
+        string scope = "",
+        string scopeTitle = "")
+    {
+        var resolvedNodeId = $"{scope}{nodeId}";
+        var positiveRef = registry.GetRef($"{scope}{positiveInputName}");
+
+        builder.AddNode(resolvedNodeId, node => node
+            .Type("ConditioningZeroOut")
+            .Title($"{scopeTitle}No Negative")
+            .InputRef("conditioning", positiveRef));
+
+        registry.Register($"{scope}{negativeOutputName}", resolvedNodeId, 0);
+    }
+
     private static void BuildInternal(
         ComfyWorkflowBuilder builder,
         NodeRegistry registry,

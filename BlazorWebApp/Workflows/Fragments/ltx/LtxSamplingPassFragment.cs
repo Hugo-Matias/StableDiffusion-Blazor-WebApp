@@ -130,6 +130,11 @@ public class LtxSamplingPassFragment : IFragmentBuilder
             .InputRef("sigmas", sigmasRef)
             .InputRef("latent_image", latentRef));
 
-        registry.Register($"{scope}av_latent_output", samplerId, 0);
+        // Downstream consumers must read SamplerCustomAdvanced's `denoised_output` (slot 1),
+        // not the raw `output` (slot 0). The reference Comfy graph leaves slot 0 unwired and
+        // routes the clean prediction from slot 1 to LTXVSeparateAVLatent / LTXVLatentUpsampler.
+        // Using slot 0 leaves residual conditioning baked into late frames (image-burn artifact
+        // at end of I2V outputs).
+        registry.Register($"{scope}av_latent_output", samplerId, 1);
     }
 }

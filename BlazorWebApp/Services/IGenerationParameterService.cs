@@ -117,6 +117,11 @@ namespace BlazorWebApp.Services
         Task<GenerationParameters> InitializeFromWorkflowAsync(Workflow workflow);
 
         /// <summary>
+        /// Resets the current workflow parameters to the template defaults, ignoring any saved workflow state.
+        /// </summary>
+        Task<GenerationParameters> ResetToWorkflowDefaultsAsync(Workflow workflow);
+
+        /// <summary>
         /// Saves the current workflow's parameters to the database.
         /// Call this before switching workflows, on generation complete, or when explicitly saving.
         /// </summary>

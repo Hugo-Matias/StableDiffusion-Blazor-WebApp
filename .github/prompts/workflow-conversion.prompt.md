@@ -181,6 +181,8 @@ For each UI-visible fragment, confirm:
 - Which existing components were inspected as style and interaction references
 - That the final UI follows `WORKFLOW_UI_CONVERSION_GUIDE.md` and `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`
 - The field-to-control mapping for every exposed parameter
+- That `FragmentMetadata.Parameters` remains the single source of truth for every exposed parameter's defaults, static options, min/max, step values, and dynamic option sources
+- That any reused or new component reads those values from `Fragment.Schema.GetConstraints(...)` or `ParameterService.GetResolvedOptions(...)`, not from duplicated component-local `_options`, default, or range fields
 
 ### 2c. UI-Exposed vs Hardcoded Values
 
@@ -274,6 +276,9 @@ After the user approves, implement in this order:
    - Follow `Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md`
    - Use `[FragmentComponent("...")]` so the component is auto-discovered
    - Prefer dedicated new components over overloading unrelated existing forms
+
+- Treat `FragmentMetadata.Parameters` as authoritative. Components may keep local bound state and layout logic, but defaults, select options, min/max/step constraints, and dynamic option sources must be read from `Fragment.Schema.GetConstraints(...)` or `ParameterService.GetResolvedOptions(...)`. Do not duplicate these values in Razor component fields.
+
 4. **Workflow class**: Create in `BlazorWebApp/Workflows/Templates/{Base}/{Base}{Mode}Workflow.cs`
    - Implement `IWorkflowBuilder`
    - Declare fragment fields, `Metadata`, `GetFragments()`, and `Build()`
@@ -307,7 +312,9 @@ After the build:
 4. Report UI integration status:
    - Which components were reused
    - Which components were created or updated
-   - Any remaining runtime UI risks that were not executable in validation
+
+- Whether static/dynamic options, defaults, and constraints are metadata-driven through `Fragment.Schema` / resolved options
+- Any remaining runtime UI risks that were not executable in validation
 
 ---
 

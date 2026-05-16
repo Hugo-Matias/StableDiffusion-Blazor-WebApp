@@ -284,7 +284,7 @@ public class Flux2KleinAdonisUpscaleWorkflow : IWorkflowBuilder
         _vaeDecodeFragment.Build(builder, registry);
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

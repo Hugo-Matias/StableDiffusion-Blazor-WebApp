@@ -11,7 +11,7 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SaveFragment : IFragmentBuilder
 {
-    public const string StandardFilenamePrefix = "tmp/img";
+    public const string StandardFilenamePrefix = "tmp/image";
 
     public FragmentMetadata Metadata => new()
     {

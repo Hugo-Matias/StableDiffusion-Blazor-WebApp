@@ -219,7 +219,7 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
         // 10. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
-            FilenamePrefix = "tmp/img"
+            FilenamePrefix = "tmp/image"
         });
 
         return builder.ToComfyWorkflow(registry);

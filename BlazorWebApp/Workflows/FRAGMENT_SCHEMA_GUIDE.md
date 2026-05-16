@@ -64,14 +64,14 @@ This guide documents the C# fragment system used for building ComfyUI workflows.
 
 ### Key Principles
 
-| Principle                     | Description                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| **Single Source of Truth**    | Fragment C# class defines both node logic and UI schema via `FragmentMetadata` |
-| **Workflow Owns Defaults**    | Workflow `Build()` method provides default values via `GenerationParameters`   |
-| **Metadata Owns Constraints** | Min/max/step live in `FragmentParameter`, not AppSettings                      |
-| **Type-Based Discovery**      | `FragmentType` enum drives UI layout decisions                                 |
-| **Compile-Time Safety**       | All fragment logic is validated at build time                                  |
-| **Hybrid Rendering**          | Designed components are the active fluent UI path; metadata-only dynamic rendering is not wired yet |
+| Principle                     | Description                                                                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Single Source of Truth**    | Fragment C# class defines both node logic and UI schema via `FragmentMetadata`; designed Razor components must consume the schema, not duplicate it |
+| **Workflow Owns Defaults**    | Workflow `Build()` method provides default values via `GenerationParameters`                                                                        |
+| **Metadata Owns Constraints** | Min/max/step/default/options live in `FragmentParameter`, not AppSettings or hardcoded Razor fields                                                 |
+| **Type-Based Discovery**      | `FragmentType` enum drives UI layout decisions                                                                                                      |
+| **Compile-Time Safety**       | All fragment logic is validated at build time                                                                                                       |
+| **Hybrid Rendering**          | Designed components are the active fluent UI path; metadata-only dynamic rendering is not wired yet                                                 |
 
 ---
 
@@ -116,6 +116,8 @@ DiscoverFragments()
             |-- FragmentType.Loader/Input -> latent fallback when width/height are present
             +-- FragmentType.Unknown/Conditioning/Output -> optional when collapsible or component-backed
 ```
+
+Important: `Collapsible` is semantic, not cosmetic. The runtime treats collapsible fragments as optional/toggleable in the Generate UI and uses that optional status when choosing the initial `IsActive` value. Required workflow settings must not be collapsible. Set `Collapsible = false` for core settings such as model-loader configuration, source/frame guides, prompts, dimensions, sampler/scheduler controls, and required video/audio settings. Set `Collapsible = true` only for true optional enhancements or add-on passes that can be disabled without invalidating the workflow.
 
 ### 4. Generation (User clicks Generate)
 
@@ -168,7 +170,7 @@ public class SamplerFragment : IFragmentBuilder
         Component = "SamplerForm",
         Icon = "fa-solid fa-dice",
         Order = 50,
-        Collapsible = true,
+        Collapsible = false,
         Parameters = [
             new() { Name = "sampler_name", Type = ParameterType.Select, Source = new DynamicSource("KSampler", "sampler_name") },
             new() { Name = "scheduler", Type = ParameterType.Select, Source = new DynamicSource("KSampler", "scheduler") },
@@ -214,19 +216,19 @@ public class SamplerFragment : IFragmentBuilder
 
 Defined in `Workflows/Models/FragmentMetadata.cs`:
 
-| Property             | Type                                    | Default      | Description                                                      |
-| -------------------- | --------------------------------------- | ------------ | ---------------------------------------------------------------- |
-| `Id`                 | string                                  | **Required** | Unique identifier for parameter storage and UI rendering         |
-| `Type`               | FragmentType                            | **Required** | Fragment classification (see [FragmentType](#fragmenttype-enum)) |
-| `Title`              | string                                  | **Required** | Display title in UI                                              |
+| Property             | Type                                    | Default      | Description                                                                                                                             |
+| -------------------- | --------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `Id`                 | string                                  | **Required** | Unique identifier for parameter storage and UI rendering                                                                                |
+| `Type`               | FragmentType                            | **Required** | Fragment classification (see [FragmentType](#fragmenttype-enum))                                                                        |
+| `Title`              | string                                  | **Required** | Display title in UI                                                                                                                     |
 | `Component`          | string?                                 | `null`       | Blazor component name. For fluent fragments, set this on user-visible fragments; metadata-only dynamic rendering is not implemented yet |
-| `Icon`               | string?                                 | `null`       | FontAwesome icon class                                           |
-| `Order`              | int                                     | `100`        | Display order (lower = higher priority)                          |
-| `Collapsible`        | bool                                    | `true`       | Whether fragment can be collapsed in UI                          |
-| `DefaultCollapsed`   | bool                                    | `false`      | Initial collapsed state; if `true`, fragment starts inactive     |
-| `IsHidden`           | bool                                    | `false`      | Hidden from UI (utility/loader fragments)                        |
-| `Parameters`         | IEnumerable&lt;FragmentParameter&gt;    | `[]`         | Parameter definitions for UI and validation                      |
-| `InclusionCondition` | Func&lt;GenerationParameters, bool&gt;? | `null`       | Lambda controlling conditional inclusion                         |
+| `Icon`               | string?                                 | `null`       | FontAwesome icon class                                                                                                                  |
+| `Order`              | int                                     | `100`        | Display order (lower = higher priority)                                                                                                 |
+| `Collapsible`        | bool                                    | `true`       | Optional/toggleable UI section. Use `false` for core required settings; use `true` only for true optional enhancements/add-ons          |
+| `DefaultCollapsed`   | bool                                    | `false`      | Initial collapsed state for optional sections; optional fragments can start inactive unless `DefaultActive` overrides it                 |
+| `IsHidden`           | bool                                    | `false`      | Hidden from UI (utility/loader fragments)                                                                                               |
+| `Parameters`         | IEnumerable&lt;FragmentParameter&gt;    | `[]`         | Parameter definitions for UI and validation                                                                                             |
+| `InclusionCondition` | Func&lt;GenerationParameters, bool&gt;? | `null`       | Lambda controlling conditional inclusion                                                                                                |
 
 ### Order Ranges
 
@@ -251,7 +253,7 @@ public enum FragmentType
     Prompts,         // Positive/negative prompts
     Conditioning,    // CLIP, pose, edit, or other conditioning stages
     Sampler,         // KSampler and sampler variants
-    Settings,        // Supplemental settings panels surfaced as optional UI fragments
+    Settings,        // Settings panels; use Collapsible=false for required/core settings
     Enhancement,     // Upscale, detailer, frame interpolation, etc.
     Utility,         // Helper fragments with no UI
     Output           // Decode/save/output stages
@@ -273,11 +275,15 @@ switch (metadata.Type)
         _latentFragmentId ??= fragmentId;
         break;
     case FragmentType.Settings:
+        // Renders in the settings/optional-fragments slot. Use Collapsible=false for required settings.
+        break;
     case FragmentType.Enhancement:
         // Renders as optional collapsible section
         break;
 }
 ```
+
+`FragmentType.Settings` can represent either required settings or optional settings. The type alone does not make a section optional. If the settings are part of the workflow's core definition, keep `Collapsible = false` so the section renders as a required always-visible form. If the settings control an optional feature, use `FragmentType.Enhancement` where possible, or document why a `Settings` fragment is optional.
 
 ---
 
@@ -285,18 +291,18 @@ switch (metadata.Type)
 
 Defined in `Workflows/Models/FragmentParameter.cs`:
 
-| Property       | Type      | Description                                                |
-| -------------- | --------- | ---------------------------------------------------------- |
-| `Name`         | string    | Parameter key (matches key in `FragmentParameters.Values`) |
-| `Label`        | string?   | Display label (defaults to Name if null)                   |
-| `Type`         | ParameterType | UI control type for the parameter                     |
-| `DefaultValue` | object?   | Default value for initialization                           |
-| `Min`          | double?   | Minimum value (for numeric inputs)                         |
-| `Max`          | double?   | Maximum value (for numeric inputs)                         |
-| `Step`         | double?   | Step increment (for sliders)                               |
-| `Source`       | DynamicSource? | Dynamic option source (`NodeType` + `InputName`)     |
-| `Options`      | IEnumerable&lt;string&gt;? | Static option list for select fields    |
-| `Description`  | string?   | Optional help text for the UI                              |
+| Property       | Type                       | Description                                                |
+| -------------- | -------------------------- | ---------------------------------------------------------- |
+| `Name`         | string                     | Parameter key (matches key in `FragmentParameters.Values`) |
+| `Label`        | string?                    | Display label (defaults to Name if null)                   |
+| `Type`         | ParameterType              | UI control type for the parameter                          |
+| `DefaultValue` | object?                    | Default value for initialization                           |
+| `Min`          | double?                    | Minimum value (for numeric inputs)                         |
+| `Max`          | double?                    | Maximum value (for numeric inputs)                         |
+| `Step`         | double?                    | Step increment (for sliders)                               |
+| `Source`       | DynamicSource?             | Dynamic option source (`NodeType` + `InputName`)           |
+| `Options`      | IEnumerable&lt;string&gt;? | Static option list for select fields                       |
+| `Description`  | string?                    | Optional help text for the UI                              |
 
 ### Dynamic Source Configuration
 
@@ -358,6 +364,18 @@ The service calls ComfyUI's `/object_info/{Source.NodeType}` API and extracts op
 
 Fragment form components are registered through `[FragmentComponent("...")]` discovery in `ComponentRegistry.cs`, with manual registration used only as a fallback when no attributed components are found.
 
+Designed components are layout and interaction shells only. They must read parameter definitions from `FragmentReference.Schema`, which is built from `FragmentMetadata.Parameters` by `GenerationParameterService.BuildSchemaFromMetadata()`. Do not copy static select options, numeric ranges, step values, labels, or defaults into the Razor component when those values exist in `FragmentParameter`. The component may keep local `_local...` state for MudBlazor binding and may contain temporary normalization for old persisted values, but the canonical values must remain in metadata.
+
+Required access pattern inside a designed component:
+
+```csharp
+var scale = Fragment?.Schema?.GetConstraints("scale_factor") ?? new ParameterConstraints();
+var scaleOptions = scale.Options ?? [];
+var defaultScale = scale.GetDefault<string>() ?? "1.0";
+```
+
+For dynamic options resolved from ComfyUI or backend sources, prefer `ParameterService.GetResolvedOptions(Fragment.Id, "parameter_name")` when the runtime-resolved list is needed. Use `Fragment.Schema.GetConstraints("parameter_name")` for static options, default values, min/max/step, source metadata, and fallback constraints.
+
 Current attributed components in `Components/Shared/Generation/Fragments/` include:
 
 ```csharp
@@ -401,6 +419,9 @@ UpscaleForm
 1. **Fragment metadata is the default source**
    - Each `FragmentParameter` can define a `DefaultValue`
    - Workflows can override defaults by pre-populating `GenerationParameters` before fragment init
+   - Designed Razor forms must retrieve defaults from `Fragment.Schema.GetConstraints(parameter).GetDefault<T>()` before falling back to a defensive literal
+   - Static select lists must come from `FragmentParameter.Options` via `Fragment.Schema.GetConstraints(parameter).Options`; never duplicate them as `_options = [...]` in the component
+   - Numeric controls must read min/max/step from schema constraints when those values are present in metadata
 
 2. **Dynamic sources set defaults during initialization**
    - When `InitializeFromWorkflowAsync()` runs, dynamic sources are pre-resolved
@@ -608,8 +629,9 @@ public IEnumerable<IFragmentBuilder> GetFragments() =>
 
 3. **(Optional) Create designed component** if complex UI needed:
    - Create `Components/Shared/Generation/Fragments/MyNodeForm.razor`
-    - Add `[FragmentComponent("MyNodeForm")]` so `ComponentRegistry` can auto-discover it
+   - Add `[FragmentComponent("MyNodeForm")]` so `ComponentRegistry` can auto-discover it
    - Set `Component = "MyNodeForm"` in `FragmentMetadata`
+   - Treat `FragmentMetadata.Parameters` as the single source of truth for defaults, options, min/max, and step values. The designed component must read these through `Fragment.Schema.GetConstraints(...)` or `ParameterService.GetResolvedOptions(...)` instead of re-declaring them.
 
 ---
 

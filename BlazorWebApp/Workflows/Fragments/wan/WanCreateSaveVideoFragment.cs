@@ -21,7 +21,7 @@ public class WanCreateSaveVideoFragment : IFragmentBuilder
         public string ImageInputName { get; set; } = "image_output";
         public string FpsInputName { get; set; } = "";
         public double Fps { get; set; } = 16;
-        public string FilenamePrefix { get; set; } = "video/ComfyUI";
+        public string FilenamePrefix { get; set; } = "tmp/video";
         public string Format { get; set; } = "auto";
         public string Codec { get; set; } = "auto";
     }

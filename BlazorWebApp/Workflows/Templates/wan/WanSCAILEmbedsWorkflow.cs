@@ -404,7 +404,7 @@ public class WanSCAILEmbedsWorkflow : IWorkflowBuilder
             .Title("Save Video")
             .Input("frame_rate", finalOutputFrameRate)
             .Input("loop_count", 0)
-            .Input("filename_prefix", "WanVideo_SCAIL")
+            .Input("filename_prefix", "tmp/video")
             .Input("format", "video/h264-mp4")
             .Input("pix_fmt", "yuv420p")
             .Input("crf", 19)
