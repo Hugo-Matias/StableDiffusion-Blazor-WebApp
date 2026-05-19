@@ -60,6 +60,7 @@ namespace BlazorWebApp.Services
         Task<List<string>> GetFilenameFromHistory(Guid promptId);
         Task<Dictionary<string, List<ComfyImageOutputFile>>> GetImageOutputsFromHistory(Guid promptId, IReadOnlyCollection<string>? outputNodeIds = null);
         Task<List<string>> GetVideoFilenameFromHistory(Guid promptId);
+        Task<List<string>> GetAudioFilenameFromHistory(Guid promptId);
 
         /// <summary>
         /// Posts an arbitrary ComfyUI prompt and returns the first text/string output from history.
@@ -117,6 +118,16 @@ namespace BlazorWebApp.Services
         /// <param name="workflow">The workflow template to execute.</param>
         /// <returns>The generated video result.</returns>
         Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow);
+
+        /// <summary>
+        /// Executes audio generation using the unified GenerationParameters model.
+        /// Builds the ComfyUI workflow payload directly from fragments.
+        /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="clientId">The WebSocket client ID for progress tracking.</param>
+        /// <param name="workflow">The workflow template to execute.</param>
+        /// <returns>The generated audio result.</returns>
+        Task<GeneratedAudios> PostAudioGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow);
 
         #endregion
 

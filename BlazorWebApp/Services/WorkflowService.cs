@@ -174,7 +174,10 @@ namespace BlazorWebApp.Services
                 CompatibleResourceBaseModels = metadata.CompatibleResourceBaseModels.Count > 0
                     ? metadata.CompatibleResourceBaseModels
                     : null,
-                UsesDualModelLoras = metadata.UsesDualModelLoras
+                UsesDualModelLoras = metadata.UsesDualModelLoras,
+                DualModelLoraHighLabel = metadata.DualModelLoraHighLabel,
+                DualModelLoraLowLabel = metadata.DualModelLoraLowLabel,
+                DualModelLoraBothLabel = metadata.DualModelLoraBothLabel
             };
         }
 

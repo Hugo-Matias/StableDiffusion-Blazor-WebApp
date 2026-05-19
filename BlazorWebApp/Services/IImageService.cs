@@ -29,6 +29,11 @@ namespace BlazorWebApp.Services
         GeneratedVideos GeneratedVideos { get; }
 
         /// <summary>
+        /// Last generated audio result.
+        /// </summary>
+        GeneratedAudios GeneratedAudios { get; }
+
+        /// <summary>
         /// Current inference progress. Can be set by websocket service.
         /// </summary>
         InferenceProgress Progress { get; set; }
@@ -53,6 +58,14 @@ namespace BlazorWebApp.Services
         /// <param name="workflow">The workflow to use for generation.</param>
         /// <returns>Generated video result.</returns>
         Task<GeneratedVideos> GenerateVideoAsync(GenerationParameters parameters, Workflow workflow);
+
+        /// <summary>
+        /// Generates audio using the new GenerationParameters model.
+        /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to use for generation.</param>
+        /// <returns>Generated audio result.</returns>
+        Task<GeneratedAudios> GenerateAudioAsync(GenerationParameters parameters, Workflow workflow);
 
         /// <summary>
         /// Generates a single image and saves it flagged as <see cref="Image.IsHidden"/> = true.

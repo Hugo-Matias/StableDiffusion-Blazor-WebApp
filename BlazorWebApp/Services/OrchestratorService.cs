@@ -7,7 +7,7 @@ using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Services
 {
-    public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras, Img2VidSamples }
+    public enum Outdir { Txt2ImgSamples, Txt2ImgGrid, Img2ImgSamples, Img2ImgGrid, Extras, Img2VidSamples, Audio }
 
     /// <summary>
     /// Orchestrates generation workflows, coordinates between specialized services,

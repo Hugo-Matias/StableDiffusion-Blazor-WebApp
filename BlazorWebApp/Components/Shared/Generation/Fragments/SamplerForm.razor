@@ -18,6 +18,17 @@
 @inject IGenerationParameterService ParameterService
 
 <MudGrid Spacing="2">
+    @if (_showSamplerEngine)
+    {
+        <MudItem xs="12">
+            <MudSelect T="string" Label="Sampler Engine" @bind-Value="_localSamplerEngine" @bind-Value:after="OnSamplerEngineChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                @foreach (var engine in _samplerEngineOptions)
+                {
+                    <MudSelectItem Value="@engine" />
+                }
+            </MudSelect>
+        </MudItem>
+    }
     <MudItem xs="6">
         <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
             @foreach (var sampler in _samplerOptions)
@@ -143,33 +154,57 @@
 
     private string? _localSamplerName;
     private string? _localScheduler;
+    private string? _localSamplerEngine;
     private int _localSteps;
     private long _localSeed;
     private float _localCfgScale;
     private float _localGuidance;
     private float _localDenoise;
     private float _localEta;
+    private bool _showSamplerEngine;
     private bool _showDenoise = true;
     private bool _showEta;
     private ParameterConstraints _etaConstraints = new();
+    private List<string> _samplerEngineOptions = new();
     private List<string> _samplerOptions = new();
     private List<string> _schedulerOptions = new();
+
+    private const string SamplerEngineKey = "sampler_engine";
+    private const string KSamplerAdvancedEngine = "KSamplerAdvanced";
+    private const string Res4LyfEngine = "RES4LYF";
+    private const string KSamplerSamplerNameKey = "ksampler_sampler_name";
+    private const string KSamplerSchedulerKey = "ksampler_scheduler";
+    private const string Res4LyfSamplerNameKey = "res4lyf_sampler_name";
+    private const string Res4LyfSchedulerKey = "res4lyf_scheduler";
+
+    private bool IsRes4LyfEngine => string.Equals(_localSamplerEngine, Res4LyfEngine, StringComparison.OrdinalIgnoreCase);
+    private string ActiveSamplerNameKey => _showSamplerEngine && IsRes4LyfEngine ? Res4LyfSamplerNameKey : _showSamplerEngine ? KSamplerSamplerNameKey : Params.SamplerName;
+    private string ActiveSchedulerKey => _showSamplerEngine && IsRes4LyfEngine ? Res4LyfSchedulerKey : _showSamplerEngine ? KSamplerSchedulerKey : Params.Scheduler;
 
     protected override void OnParametersSet()
     {
         if (Fragment == null) return;
 
-        _showDenoise = Fragment.Schema?.Parameters.ContainsKey(Params.Denoise) ?? true;
-        _showEta = Fragment.Schema?.Parameters.ContainsKey(Params.Eta) ?? false;
+        var schema = Fragment.Schema;
+        _showSamplerEngine = schema?.Parameters.ContainsKey(SamplerEngineKey) ?? false;
+        if (_showSamplerEngine)
+        {
+            var engineConstraints = schema?.GetConstraints(SamplerEngineKey) ?? new ParameterConstraints();
+            _samplerEngineOptions = engineConstraints.Options ?? [KSamplerAdvancedEngine, Res4LyfEngine];
+            var defaultEngine = engineConstraints.GetDefault<string>() ?? KSamplerAdvancedEngine;
+            _localSamplerEngine = ParameterService.GetFragmentProperty(Fragment, SamplerEngineKey, defaultEngine) ?? defaultEngine;
+        }
+
+        _showDenoise = _showSamplerEngine
+            ? IsRes4LyfEngine && (schema?.Parameters.ContainsKey(Params.Denoise) ?? false)
+            : schema?.Parameters.ContainsKey(Params.Denoise) ?? true;
+        _showEta = _showSamplerEngine
+            ? IsRes4LyfEngine && (schema?.Parameters.ContainsKey(Params.Eta) ?? false)
+            : schema?.Parameters.ContainsKey(Params.Eta) ?? false;
         _etaConstraints = Fragment.Schema?.GetConstraints(Params.Eta) ?? new ParameterConstraints();
 
-        // Load resolved options from pre-resolution cache
-        _samplerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.SamplerName);
-        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.Scheduler);
-
         // Sync local state FROM service
-        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
-        _localScheduler = ParameterService.GetFragmentProperty(Fragment, Params.Scheduler, "normal");
+        SyncSamplerOptionsAndValues();
         _localSteps = ParameterService.GetFragmentProperty(Fragment, Params.Steps, 20);
         _localSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, -1L);
         
@@ -190,18 +225,27 @@
     #endregion
     
     #region Event Handlers
+
+    private async Task OnSamplerEngineChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, SamplerEngineKey, _localSamplerEngine, notify: true);
+        SyncSamplerOptionsAndValues();
+        _showDenoise = IsRes4LyfEngine && (Fragment?.Schema?.Parameters.ContainsKey(Params.Denoise) ?? false);
+        _showEta = IsRes4LyfEngine && (Fragment?.Schema?.Parameters.ContainsKey(Params.Eta) ?? false);
+        await OnChanged.InvokeAsync();
+    }
     
     private async Task OnSamplerChanged()
     {
         // Write TO service (with notification for UI updates)
-        ParameterService.SetFragmentProperty(Fragment, Params.SamplerName, _localSamplerName, notify: true);
+        ParameterService.SetFragmentProperty(Fragment, ActiveSamplerNameKey, _localSamplerName, notify: true);
         await OnChanged.InvokeAsync();
     }
     
     private async Task OnSchedulerChanged()
     {
         // Write TO service (with notification for UI updates)
-        ParameterService.SetFragmentProperty(Fragment, Params.Scheduler, _localScheduler, notify: true);
+        ParameterService.SetFragmentProperty(Fragment, ActiveSchedulerKey, _localScheduler, notify: true);
         await OnChanged.InvokeAsync();
     }
     
@@ -271,7 +315,7 @@
                 {
                     if (nodeProperty.Value.ValueKind == System.Text.Json.JsonValueKind.Object &&
                         nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
-                        inputs.TryGetProperty("seed", out var seedEl))
+                        (inputs.TryGetProperty("seed", out var seedEl) || inputs.TryGetProperty("noise_seed", out seedEl)))
                     {
                         if (seedEl.ValueKind == System.Text.Json.JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
                         {
@@ -293,4 +337,56 @@
     }
     
     #endregion
+
+    private void SyncSamplerOptionsAndValues()
+    {
+        if (Fragment == null) return;
+
+        var samplerDefault = Fragment.Schema?.GetConstraints(ActiveSamplerNameKey).GetDefault<string>() ?? "euler";
+        var schedulerDefault = Fragment.Schema?.GetConstraints(ActiveSchedulerKey).GetDefault<string>() ?? "normal";
+
+        _localSamplerName = GetEngineAwareValue(ActiveSamplerNameKey, Params.SamplerName, samplerDefault);
+        _localScheduler = GetEngineAwareValue(ActiveSchedulerKey, Params.Scheduler, schedulerDefault);
+
+        _samplerOptions = GetOptions(ActiveSamplerNameKey, _localSamplerName);
+        _schedulerOptions = GetOptions(ActiveSchedulerKey, _localScheduler);
+    }
+
+    private string GetEngineAwareValue(string primaryKey, string legacyKey, string defaultValue)
+    {
+        if (Fragment == null)
+        {
+            return defaultValue;
+        }
+
+        var value = ParameterService.GetFragmentProperty(Fragment, primaryKey, string.Empty);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = ParameterService.GetFragmentProperty(Fragment, legacyKey, string.Empty);
+        return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+    }
+
+    private List<string> GetOptions(string parameterName, string? currentValue)
+    {
+        if (Fragment == null)
+        {
+            return [];
+        }
+
+        var options = ParameterService.GetResolvedOptions(Fragment.Id, parameterName);
+        if (options.Count == 0)
+        {
+            options = Fragment.Schema?.GetConstraints(parameterName).Options ?? [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentValue) && !options.Contains(currentValue, StringComparer.OrdinalIgnoreCase))
+        {
+            options = [currentValue, .. options];
+        }
+
+        return options;
+    }
 }

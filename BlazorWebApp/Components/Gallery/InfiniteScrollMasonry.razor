@@ -39,6 +39,12 @@
                                OnSelectVideo="OpenViewer" OnDeleteVideo="video => DeleteVideoFromImage(video)"
                                OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" />
                 }
+                else if (IsAudioFile(image.Path))
+                {
+                    <AudioCard Audio="@ConvertToGeneratedAudio(image)" Index="@Images.Images.IndexOf(image)"
+                               OnDeleteAudio="audio => DeleteAudioFromImage(audio)" OnAudioChanged="HandleAudioChanged"
+                               ShowSelectionCheckbox="true" />
+                }
                 else if (IsPureGallery)
                 {
                     <GalleryImageTile Image="@image" OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
@@ -72,7 +78,7 @@
 
 <SelectionsDrawer @bind-IsVisible="_showSelectionsDrawer" />
 
-<AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
+<AssetViewer @bind-IsVisible="_showViewer" Assets="@ViewerAssets" StartIndex="_viewerStartIndex"
              CurrentPage="Images.CurrentPage" PageCount="1" TotalCount="@(Images.Images?.Count ?? 0)"
              OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
 
@@ -92,8 +98,10 @@
     private string? _lastLayoutSignature;
 
     private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+    private static readonly string[] AudioExtensions = { ".mp3", ".wav", ".flac", ".ogg", ".m4a" };
 
     private bool IsPureGallery => PresentationMode == GalleryPresentationMode.Pure;
+    private List<Image> ViewerAssets => Images.Images?.Where(i => !IsAudioFile(i.Path)).ToList() ?? new List<Image>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -147,11 +155,18 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private bool IsVideoFile(string path)
+    private bool IsVideoFile(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
         var extension = Path.GetExtension(path)?.ToLowerInvariant();
         return VideoExtensions.Contains(extension);
+    }
+
+    private bool IsAudioFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return AudioExtensions.Contains(extension);
     }
 
     private GeneratedVideo ConvertToGeneratedVideo(Image image)
@@ -163,8 +178,26 @@
             Filename = Path.GetFileName(image.Path),
             Width = image.Width,
             Height = image.Height,
-            Prompt = image.Prompt,
-            NegativePrompt = image.NegativePrompt,
+            Prompt = image.Prompt ?? string.Empty,
+            NegativePrompt = image.NegativePrompt ?? string.Empty,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
+    private GeneratedAudio ConvertToGeneratedAudio(Image image)
+    {
+        return new GeneratedAudio
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Prompt = image.Prompt ?? string.Empty,
+            NegativePrompt = image.NegativePrompt ?? string.Empty,
             Seed = image.Seed,
             Steps = image.Steps,
             CfgScale = image.CfgScale,
@@ -178,7 +211,11 @@
     {
         if (Images.Images == null || Images.Images.Count == 0) return;
 
-        _viewerStartIndex = Math.Clamp(startIndex, 0, Images.Images.Count - 1);
+        var selected = Images.Images.ElementAtOrDefault(startIndex);
+        if (selected == null || IsAudioFile(selected.Path)) return;
+
+        var viewerAssets = ViewerAssets;
+        _viewerStartIndex = Math.Max(0, viewerAssets.FindIndex(i => i.Id == selected.Id));
         _showViewer = true;
     }
 
@@ -215,6 +252,15 @@
         }
     }
 
+    private async Task DeleteAudioFromImage(GeneratedAudio audio)
+    {
+        var image = Images.Images.FirstOrDefault(i => i.Id == audio.Id || i.Path == audio.FilePath);
+        if (image != null)
+        {
+            await DeleteSingleImage(image);
+        }
+    }
+
     private async Task HandleVideoChanged(GeneratedVideo video)
     {
         // Sync changes back to the Image entity
@@ -225,6 +271,18 @@
             image.Score = video.Score;
         }
         // Don't call StateHasChanged here - it would cause the viewer to re-render with a new list
+    }
+
+    private Task HandleAudioChanged(GeneratedAudio audio)
+    {
+        var image = Images.Images.FirstOrDefault(i => i.Id == audio.Id);
+        if (image != null)
+        {
+            image.Favorite = audio.Favorite;
+            image.Score = audio.Score;
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task ShowDeleteImagesDialog()

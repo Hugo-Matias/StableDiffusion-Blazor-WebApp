@@ -3,6 +3,7 @@ using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Workflows.Fragments.Core;
 using BlazorWebApp.Workflows.Fragments.Enhancements;
 using BlazorWebApp.Workflows.Fragments.Loaders;
+using BlazorWebApp.Workflows.Fragments.Wan;
 using BlazorWebApp.Workflows.Fragments.zimage;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
@@ -17,8 +18,9 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
     private readonly LoadDiffusionFragment _loadDiffusionFragment = new();
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
     private readonly LoraLoaderFragment _loraLoaderFragment = new();
+    private readonly WanModelOnlyLoraFragment _modelOnlyLoraFragment = new();
     private readonly PromptsFragment _promptsFragment = new();
-    private readonly KSamplerAdvancedFragment _baseSamplerFragment = new()
+    private readonly SwitchableSamplerFragment _baseSamplerFragment = new()
     {
         Id = "base_sampler",
         Title = "Phase 1 - ZIB",
@@ -26,19 +28,24 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
         Order = 50,
         Collapsible = false,
         DefaultActive = true,
-        Defaults = new KSamplerAdvancedFragment.Parameters
+        Defaults = new SwitchableSamplerFragment.Parameters
         {
-            SamplerName = "res_multistep",
-            Scheduler = "simple",
+            SamplerEngine = SwitchableSamplerFragment.KSamplerAdvancedEngine,
+            KSamplerSamplerName = "res_multistep",
+            KSamplerScheduler = "simple",
+            Res4LyfSamplerName = "multistep/res_2m",
+            Res4LyfScheduler = "simple",
             Steps = 8,
             Cfg = 4.0,
+            Denoise = 1.0,
+            Eta = 0.5,
             StartAtStep = 0,
             EndAtStep = 20,
             AddNoise = "enable",
             ReturnWithLeftoverNoise = "disable"
         }
     };
-    private readonly SamplerFragment _zitSamplerFragment = new()
+    private readonly SwitchableSamplerFragment _zitSamplerFragment = new()
     {
         Id = "zit_sampler",
         Title = "Phase 2 - ZIT",
@@ -46,14 +53,21 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
         Order = 55,
         Collapsible = false,
         DefaultActive = true,
-        Defaults = new SamplerFragment.Parameters
+        Defaults = new SwitchableSamplerFragment.Parameters
         {
-            SamplerName = "linear/ralston_2s",
-            Scheduler = "beta",
+            SamplerEngine = SwitchableSamplerFragment.Res4LyfEngine,
+            KSamplerSamplerName = "dpmpp_2m_sde",
+            KSamplerScheduler = "sgm_uniform",
+            Res4LyfSamplerName = "linear/ralston_2s",
+            Res4LyfScheduler = "beta",
             Steps = 10,
             Cfg = 1.0,
             Denoise = 0.56,
-            Eta = 0.23
+            Eta = 0.23,
+            StartAtStep = 5,
+            EndAtStep = 999,
+            AddNoise = "enable",
+            ReturnWithLeftoverNoise = "disable"
         }
     };
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
@@ -74,12 +88,24 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
 
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
+    private readonly UpscaleWithModelFragment _upscaleWithModelFragment = new()
+    {
+        Title = "Upscale With Model",
+        Order = 125,
+        Collapsible = true,
+        DefaultCollapsed = true
+    };
 
     public WorkflowMetadata Metadata => new()
     {
         Title = "Txt2Img Multi Pass",
+        Description = "Generates a Z-Image Base composition, refines it through a ZIT second pass, then optionally applies tiled upscale, detailer, and model-upscale enhancements. Use it when you want separate composition and detail passes with optional post-processing controls.",
         Base = Data.Enums.ModelBase.ZImage,
         Mode = ModeType.Txt2Img,
+        UsesDualModelLoras = true,
+        DualModelLoraHighLabel = "ZIT",
+        DualModelLoraLowLabel = "ZIB",
+        DualModelLoraBothLabel = "Both",
         Assets =
         [
             new WorkflowAsset
@@ -149,6 +175,7 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
         yield return _seedVarianceEnhancerFragment;
         yield return _zImageUpscaleFragment;
         yield return _detailerFragment;
+        yield return _upscaleWithModelFragment;
     }
 
     public ComfyWorkflow Build(GenerationParameters parameters)
@@ -184,7 +211,7 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
             LatentClass = "EmptySD3LatentImage"
         });
 
-        _loraLoaderFragment.BuildAll(builder, registry, parameters.Loras);
+        BuildZImageLoras(builder, registry, parameters);
 
         _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters
         {
@@ -210,36 +237,51 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
 
         var baseSeed = baseSamplerFragment?.GetLong("seed", -1) ?? -1;
         if (baseSeed < 0) baseSeed = Random.Shared.NextInt64(0, int.MaxValue);
-        _baseSamplerFragment.Build(builder, registry, new KSamplerAdvancedFragment.Parameters
+        _baseSamplerFragment.Build(builder, registry, new SwitchableSamplerFragment.Parameters
         {
             SamplerId = "sampler_base",
             Title = "Phase 1 - ZIB Sampler",
-            SamplerName = baseSamplerFragment?.GetString("sampler_name", "res_multistep") ?? "res_multistep",
-            Scheduler = baseSamplerFragment?.GetString("scheduler", "simple") ?? "simple",
+            SamplerEngine = baseSamplerFragment?.GetString("sampler_engine", SwitchableSamplerFragment.KSamplerAdvancedEngine) ?? SwitchableSamplerFragment.KSamplerAdvancedEngine,
+            KSamplerSamplerName = GetSamplerValue(baseSamplerFragment, "ksampler_sampler_name", "sampler_name", "res_multistep"),
+            KSamplerScheduler = GetSamplerValue(baseSamplerFragment, "ksampler_scheduler", "scheduler", "simple"),
+            Res4LyfSamplerName = GetSamplerValue(baseSamplerFragment, "res4lyf_sampler_name", "sampler_name", "multistep/res_2m"),
+            Res4LyfScheduler = GetSamplerValue(baseSamplerFragment, "res4lyf_scheduler", "scheduler", "simple"),
             Steps = baseSamplerFragment?.GetInt("steps", 8) ?? 8,
             Cfg = baseSamplerFragment?.GetDouble("cfg", 4.0) ?? 4.0,
+            Denoise = baseSamplerFragment?.GetDouble("denoise", 1.0) ?? 1.0,
+            Eta = baseSamplerFragment?.GetDouble("eta", 0.5) ?? 0.5,
             Seed = baseSeed,
-            AddNoise = "enable",
-            StartAtStep = 0,
-            EndAtStep = 20,
-            ReturnWithLeftoverNoise = "disable",
+            AddNoise = baseSamplerFragment?.GetString("add_noise", "enable") ?? "enable",
+            StartAtStep = baseSamplerFragment?.GetInt("start_at_step", 0) ?? 0,
+            EndAtStep = baseSamplerFragment?.GetInt("end_at_step", 20) ?? 20,
+            ReturnWithLeftoverNoise = baseSamplerFragment?.GetString("return_with_leftover_noise", "disable") ?? "disable",
+            StepsToRun = baseSamplerFragment?.GetInt("steps_to_run", -1) ?? -1,
+            SamplerMode = baseSamplerFragment?.GetString("sampler_mode", "standard") ?? "standard",
             ModelOverride = registry.GetRef("base_model_output")
         });
 
         var zitSeed = zitSamplerFragment?.GetLong("seed", -1) ?? -1;
         if (zitSeed < 0) zitSeed = Random.Shared.NextInt64(0, int.MaxValue);
-        _zitSamplerFragment.Build(builder, registry, new SamplerFragment.Parameters
+        _zitSamplerFragment.Build(builder, registry, new SwitchableSamplerFragment.Parameters
         {
             SamplerId = "sampler_zit",
             Title = "Phase 2 - ZIT Sampler",
-            SamplerName = zitSamplerFragment?.GetString("sampler_name", "linear/ralston_2s") ?? "linear/ralston_2s",
-            Scheduler = zitSamplerFragment?.GetString("scheduler", "beta") ?? "beta",
+            SamplerEngine = zitSamplerFragment?.GetString("sampler_engine", SwitchableSamplerFragment.Res4LyfEngine) ?? SwitchableSamplerFragment.Res4LyfEngine,
+            KSamplerSamplerName = GetSamplerValue(zitSamplerFragment, "ksampler_sampler_name", "sampler_name", "dpmpp_2m_sde"),
+            KSamplerScheduler = GetSamplerValue(zitSamplerFragment, "ksampler_scheduler", "scheduler", "sgm_uniform"),
+            Res4LyfSamplerName = GetSamplerValue(zitSamplerFragment, "res4lyf_sampler_name", "sampler_name", "linear/ralston_2s"),
+            Res4LyfScheduler = GetSamplerValue(zitSamplerFragment, "res4lyf_scheduler", "scheduler", "beta"),
             Steps = zitSamplerFragment?.GetInt("steps", 10) ?? 10,
             Cfg = zitSamplerFragment?.GetDouble("cfg", 1.0) ?? 1.0,
             Denoise = zitSamplerFragment?.GetDouble("denoise", 0.56) ?? 0.56,
             Eta = zitSamplerFragment?.GetDouble("eta", 0.23) ?? 0.23,
             Seed = zitSeed,
-            ClassType = "ClownsharKSampler_Beta"
+            AddNoise = zitSamplerFragment?.GetString("add_noise", "enable") ?? "enable",
+            StartAtStep = zitSamplerFragment?.GetInt("start_at_step", 5) ?? 5,
+            EndAtStep = zitSamplerFragment?.GetInt("end_at_step", 999) ?? 999,
+            ReturnWithLeftoverNoise = zitSamplerFragment?.GetString("return_with_leftover_noise", "disable") ?? "disable",
+            StepsToRun = zitSamplerFragment?.GetInt("steps_to_run", -1) ?? -1,
+            SamplerMode = zitSamplerFragment?.GetString("sampler_mode", "standard") ?? "standard"
         });
 
         _vaeDecodeFragment.Build(builder, registry);
@@ -251,6 +293,8 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
         }
 
         BuildDetailerIfActive(builder, registry, parameters, promptsFragment, latentFragment);
+
+        _upscaleWithModelFragment.Build(builder, parameters, registry);
 
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
@@ -314,6 +358,82 @@ public class ZImageTxt2ImgMultiPassWorkflow : IWorkflowBuilder
         => parameters.Assets?.GetValueOrDefault("ModelPatch")
            ?? parameters.Assets?.GetValueOrDefault("ControlNet")
            ?? "Z-Image-Turbo-Fun-Controlnet-Tile-2.1-8steps.safetensors";
+
+    private void BuildZImageLoras(
+        ComfyWorkflowBuilder builder,
+        NodeRegistry registry,
+        GenerationParameters parameters)
+    {
+        if (parameters.Loras is null || parameters.Loras.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = 0; i < parameters.Loras.Count; i++)
+        {
+            var lora = parameters.Loras[i];
+            if (!lora.IsEnabled)
+            {
+                continue;
+            }
+
+            var zitLoraPath = GetZitLoraPath(lora);
+            if (!string.IsNullOrWhiteSpace(zitLoraPath))
+            {
+                _loraLoaderFragment.Build(builder, registry, new LoraLoaderFragment.Parameters
+                {
+                    LoraLoaderId = $"lora_loader_{i}",
+                    LoraName = lora.Name ?? "",
+                    LoraPath = zitLoraPath,
+                    LoraStrength = lora.Strength
+                });
+            }
+
+            if (lora.HasLowPath)
+            {
+                _modelOnlyLoraFragment.Build(builder, registry, new WanModelOnlyLoraFragment.Parameters
+                {
+                    NodeId = $"base_lora_loader_{i}",
+                    LoraName = lora.LowPath,
+                    Strength = lora.Strength,
+                    ModelInputName = "base_model_output",
+                    ModelOutputName = "base_model_output",
+                    Title = $"Phase 1 ZIB LoRA {i + 1}"
+                });
+            }
+        }
+    }
+
+    private static string? GetZitLoraPath(BlazorWebApp.Models.Lora lora)
+    {
+        if (lora.HasHighPath)
+        {
+            return lora.HighPath;
+        }
+
+        return lora.HasLowPath ? null : lora.Path;
+    }
+
+    private static string GetSamplerValue(
+        BlazorWebApp.Models.FragmentParameters? fragment,
+        string primaryKey,
+        string legacyKey,
+        string defaultValue)
+    {
+        if (fragment is null)
+        {
+            return defaultValue;
+        }
+
+        var value = fragment.GetString(primaryKey);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        value = fragment.GetString(legacyKey);
+        return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+    }
 
     private void BuildDetailerIfActive(
         ComfyWorkflowBuilder builder,

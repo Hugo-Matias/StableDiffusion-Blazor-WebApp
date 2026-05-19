@@ -3,6 +3,11 @@
    ========================================== */
 
 .lora-card {
+  --lora-target-button-min-width: 22px;
+  --lora-target-button-height: 22px;
+  --lora-target-button-padding-inline: 4px;
+  --lora-target-button-margin-inline: 2px;
+  --lora-target-button-font-size: 0.65rem;
   position: relative;
   margin-bottom: 4px;
   border-radius: var(--app-surface-radius);
@@ -92,17 +97,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 0.65rem;
+  min-width: var(--lora-target-button-min-width);
+  height: var(--lora-target-button-height);
+  padding: 0 var(--lora-target-button-padding-inline);
+  font-size: var(--lora-target-button-font-size);
   font-weight: 700;
   line-height: 1;
-  border-radius: 50%;
+  border-radius: 999px;
   border: 1px solid;
   background: transparent;
   cursor: pointer;
-  margin: 0 2px;
+  margin: 0 var(--lora-target-button-margin-inline);
   transition: opacity 0.15s;
 }
 
@@ -118,6 +123,11 @@
 .lora-hl-btn--low {
   color: var(--mud-palette-secondary);
   border-color: var(--mud-palette-secondary);
+}
+
+.lora-hl-btn--both {
+  color: var(--mud-palette-info);
+  border-color: var(--mud-palette-info);
 }
 
 /* White controls when banner is showing */

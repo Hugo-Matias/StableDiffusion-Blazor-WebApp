@@ -28,20 +28,36 @@
     <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" Workflow="@_selectedWorkflow" Columns="3"
                          IsInitiallyExpanded="false" />
 
-    @* Prompts + Generate Button (full width) *@
-    <PromptsForm Prompt="@GetPromptValue()" PromptChanged="HandlePromptChanged" NegativePrompt="@GetNegativePromptValue()"
-                 NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync"
-                 OnInterrupt="InterruptAsync" OnLoraSelected="HandleLoraAdded" OnStylesChanged="HandleStylesChanged"
-                 OnPromptTagAppended="HandlePromptTagAppended" OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
-                 ButtonDisabled="@_isGenerating" />
+    @if (!IsAudioMode)
+    {
+        @* Prompts + Generate Button (full width) *@
+        <PromptsForm Prompt="@GetPromptValue()" PromptChanged="HandlePromptChanged" NegativePrompt="@GetNegativePromptValue()"
+                     NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync"
+                     OnInterrupt="InterruptAsync" OnLoraSelected="HandleLoraAdded" OnStylesChanged="HandleStylesChanged"
+                     OnPromptTagAppended="HandlePromptTagAppended" OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
+                     ButtonDisabled="@_isGenerating" />
+    }
+    else
+    {
+        @* Audio Prompts + Generate Button (matching image/video design) *@
+        <AudioPromptsForm OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync" OnInterrupt="InterruptAsync"
+                          ButtonDisabled="@_isGenerating" />
+    }
 
     @* Two-column layout *@
     <MudGrid Spacing="8">
         @* Left Column - Parameters *@
         <MudItem xs="6">
             @* LoRAs *@
-            <LoraForm Loras="Parameters.Loras" Backend="Data.Enums.Backend.ComfyUI"
-                      IsDualModel="@(_selectedWorkflow?.UsesDualModelLoras == true)" OnLorasUpdated="HandleLorasUpdated" />
+            @if (!IsAudioMode)
+            {
+                <LoraForm Loras="Parameters.Loras" Backend="Data.Enums.Backend.ComfyUI"
+                          IsDualModel="@(_selectedWorkflow?.UsesDualModelLoras == true)"
+                          HighTargetLabel="@(_selectedWorkflow?.DualModelLoraHighLabel ?? "H")"
+                          LowTargetLabel="@(_selectedWorkflow?.DualModelLoraLowLabel ?? "L")"
+                          BothTargetLabel="@(_selectedWorkflow?.DualModelLoraBothLabel ?? "Both")"
+                          OnLorasUpdated="HandleLorasUpdated" />
+            }
 
             @* Sources (if workflow has sources) *@
             @if (HasSources)
@@ -89,11 +105,15 @@
         <MudItem xs="6">
             @if (IsVideoMode)
             {
-                <GeneratedVideoTabs GeneratedVideos="@ImageService.GeneratedVideos" />
+                <GeneratedVideoTabs @key="VideoKey" GeneratedVideos="@ImageService.GeneratedVideos" />
+            }
+            else if (IsAudioMode)
+            {
+                <GeneratedAudioTabs @key="AudioKey" GeneratedAudios="@ImageService.GeneratedAudios" />
             }
             else
             {
-                <GeneratedImageTabs />
+                <GeneratedImageTabs @key="ImageKey" />
             }
         </MudItem>
     </MudGrid>

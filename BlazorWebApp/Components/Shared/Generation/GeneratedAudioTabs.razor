@@ -1,0 +1,39 @@
+@using BlazorWebApp.Components.Gallery
+@using BlazorWebApp.Models
+
+<MudTabs Elevation="1" PanelClass="pa-3" MinimumTabWidth="100px" Rounded Centered>
+    <MudTabPanel Icon="fa-solid fa-wave-square">
+        <div class="audio-preview-container">
+            @if (GeneratedAudios?.Audios?.Count > 0)
+            {
+                <MudGrid Spacing="2" Justify="Justify.Center">
+                    @foreach (var audio in GeneratedAudios.Audios)
+                    {
+                        <MudItem xs="12" sm="8" md="6">
+                            <AudioCard Audio="audio" Index="@GeneratedAudios.Audios.IndexOf(audio)" UseFixedSize="true" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <div class="no-audio-placeholder">
+                    <MudIcon Icon="fa-solid fa-file-audio" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body1" Class="no-audio-text">No audio generated</MudText>
+                </div>
+            }
+        </div>
+    </MudTabPanel>
+    <MudTabPanel Icon="fa-solid fa-spinner">
+        <div class="queue-panel">
+            <div class="no-audio-placeholder">
+                <MudIcon Icon="fa-solid fa-queue-music" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.body1" Class="no-audio-text">Audio queue</MudText>
+            </div>
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter] public GeneratedAudios? GeneratedAudios { get; set; }
+}

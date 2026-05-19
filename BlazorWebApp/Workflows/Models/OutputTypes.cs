@@ -35,3 +35,8 @@ public sealed record ImageOutput(string NodeId, int OutputIndex) : NodeOutput(No
 /// Represents a CONDITIONING output from a node (e.g., CLIPTextEncode).
 /// </summary>
 public sealed record ConditioningOutput(string NodeId, int OutputIndex) : NodeOutput(NodeId, OutputIndex);
+
+/// <summary>
+/// Represents an AUDIO output from a node (e.g., LoadAudio, VAEDecodeAudio, DramaBoxTTS).
+/// </summary>
+public sealed record AudioOutput(string NodeId, int OutputIndex) : NodeOutput(NodeId, OutputIndex);

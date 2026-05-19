@@ -47,6 +47,11 @@ namespace BlazorWebApp.Models
         public VideoSourceOptions? VideoOptions { get; set; }
 
         /// <summary>
+        /// Optional loader settings for audio sources (trim start, trim duration).
+        /// </summary>
+        public AudioSourceOptions? AudioOptions { get; set; }
+
+        /// <summary>
         /// Whether this source has valid data.
         /// </summary>
         public bool HasData => !string.IsNullOrWhiteSpace(Data) || !string.IsNullOrWhiteSpace(FilePath);
@@ -78,7 +83,8 @@ namespace BlazorWebApp.Models
                 FilePath = FilePath,
                 Width = Width,
                 Height = Height,
-                VideoOptions = VideoOptions?.Clone()
+                VideoOptions = VideoOptions?.Clone(),
+                AudioOptions = AudioOptions?.Clone()
             };
         }
 

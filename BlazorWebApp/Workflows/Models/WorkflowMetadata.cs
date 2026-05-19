@@ -66,6 +66,21 @@ public record WorkflowMetadata
     public bool UsesDualModelLoras { get; init; }
 
     /// <summary>
+    /// Short UI label for LoRAs assigned to the high/default dual-model branch.
+    /// </summary>
+    public string DualModelLoraHighLabel { get; init; } = "H";
+
+    /// <summary>
+    /// Short UI label for LoRAs assigned to the low/secondary dual-model branch.
+    /// </summary>
+    public string DualModelLoraLowLabel { get; init; } = "L";
+
+    /// <summary>
+    /// Short UI label for LoRAs assigned to both dual-model branches.
+    /// </summary>
+    public string DualModelLoraBothLabel { get; init; } = "Both";
+
+    /// <summary>
     /// Generates a deterministic GUID from workflow metadata using UUID v5 (RFC 4122).
     /// Same inputs always produce the same GUID, preventing copy-paste collisions.
     /// </summary>

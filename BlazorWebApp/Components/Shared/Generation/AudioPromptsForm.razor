@@ -1,0 +1,178 @@
+@*
+    AudioPromptsForm - Prompt input form for audio generation workflows
+
+Follows the same visual design as PromptsForm (paper shell, tabbed layout,
+    sticky GenerateButton) but simplified for audio: no styles, no autocomplete,
+    no prompt tools.
+
+DramaBox -> single "Prompt" tab (text field)
+    AceStep -> "Tags" + "Lyrics" tabs
+*@
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IGenerationParameterService ParameterService
+
+<div class="audio-prompts-root">
+    <MudPaper Class="pa-6 mb-5 mt-n4 audio-prompts-paper">
+        <MudStack Spacing="3">
+            @if (_currentBase == ModelBase.DramaBox)
+            {
+                @* --- DramaBox: single Prompt tab --- *@
+                <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="false" Border="false"
+                         ApplyEffectsToContainer="true" Class="@($"prompt-tabs prompt-tabs-audio")" PanelClass="pa-0">
+                    <MudTabPanel Text="@GetPromptTabLabel()">
+                        <div class="audio-prompt-field">
+                            <MudTextField T="string" Value="@_dramaBoxText"
+                                          ValueChanged="@((string v) => HandleDramaBoxTextChanged(v))" Label="" Lines="2"
+                                          AutoGrow="true" MaxLines="10" Variant="Variant.Text"
+                                          Placeholder="Enter the dialogue text to synthesize..." />
+                        </div>
+                    </MudTabPanel>
+                </MudTabs>
+            }
+            else if (_currentBase == ModelBase.AceStep)
+            {
+                @* --- AceStep: Tags + Lyrics tabs --- *@
+                <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="false" Border="false"
+                         ApplyEffectsToContainer="true" Class="@($"prompt-tabs prompt-tabs-audio")" PanelClass="pa-0">
+                    <MudTabPanel Text="@GetTagsTabLabel()">
+                        <div class="audio-prompt-field">
+                            <MudTextField T="string" Value="@_aceStepTags"
+                                          ValueChanged="@((string v) => HandleAceStepTagsChanged(v))" Label="" Lines="2"
+                                          AutoGrow="true" MaxLines="8" Variant="Variant.Text"
+                                          Placeholder="Neo-Soul, soulful vocals, steady groove..." />
+                        </div>
+                    </MudTabPanel>
+                    <MudTabPanel Text="@GetLyricsTabLabel()">
+                        <div class="audio-prompt-field audio-prompt-field--tall">
+                            <MudTextField T="string" Value="@_aceStepLyrics"
+                                          ValueChanged="@((string v) => HandleAceStepLyricsChanged(v))" Label="" Lines="4"
+                                          AutoGrow="true" MaxLines="20" Variant="Variant.Text"
+                                          Placeholder="[Verse 1] Write your lyrics here..." />
+                        </div>
+                    </MudTabPanel>
+                </MudTabs>
+            }
+        </MudStack>
+
+        @* Sticky Generate button matching image/video PromptsForm positioning *@
+        <div class="audio-gen-btn-sticky">
+            <GenerateButton OnGenerateClicked="OnGenerate" OnClearQueue="OnClearQueue" OnInterrupt="OnInterrupt"
+                            IsDisabled="ButtonDisabled" />
+        </div>
+    </MudPaper>
+</div>
+
+@code {
+    #region Parameters
+
+    /// <summary>
+    /// Called when generate button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnGenerate { get; set; }
+
+    /// <summary>
+    /// Called when the user clears the remaining queued prompts.
+    /// </summary>
+    [Parameter] public EventCallback OnClearQueue { get; set; }
+
+    /// <summary>
+    /// Called when interrupt button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnInterrupt { get; set; }
+
+    /// <summary>
+    /// Whether the generate button should be disabled.
+    /// </summary>
+    [Parameter] public bool ButtonDisabled { get; set; }
+
+    #endregion
+
+    #region State
+
+    private int _activeTab;
+    private string _dramaBoxText = "";
+    private string _aceStepTags = "";
+    private string _aceStepLyrics = "";
+
+    // Fragment IDs from the audio workflow fragments
+    private const string DramaBoxSpeechFragmentId = "dramabox_speech";
+    private const string AceStepMusicFragmentId = "ace_step_music";
+
+    #endregion
+
+    #region Computed
+
+    private ModelBase? _currentBase => State.State?.Generation?.WorkflowBase;
+
+    #endregion
+
+    #region Lifecycle
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        ResetActiveTabIfNeeded();
+        LoadFragmentValues();
+    }
+
+    /// <summary>
+    /// Resets _activeTab when the workflow base changes so we never land on an index
+    /// that exceeds the number of tabs for the new base (DramaBox has 1 tab, AceStep
+    /// has 2). Without this guard MudTabs throws ArgumentOutOfRangeException during
+    /// OnAfterRenderAsync.
+    /// </summary>
+    private void ResetActiveTabIfNeeded()
+    {
+        int maxIndex = _currentBase == ModelBase.DramaBox ? 0 : _currentBase == ModelBase.AceStep ? 1 : 0;
+        if (_activeTab > maxIndex)
+        {
+            _activeTab = 0;
+        }
+    }
+
+    private void LoadFragmentValues()
+    {
+        if (_currentBase == ModelBase.DramaBox)
+        {
+            _dramaBoxText = ParameterService.GetFragmentValue<string>(DramaBoxSpeechFragmentId, "text") ?? "";
+        }
+        else if (_currentBase == ModelBase.AceStep)
+        {
+            _aceStepTags = ParameterService.GetFragmentValue<string>(AceStepMusicFragmentId, "tags") ?? "";
+            _aceStepLyrics = ParameterService.GetFragmentValue<string>(AceStepMusicFragmentId, "lyrics") ?? "";
+        }
+    }
+
+    #endregion
+
+    #region Handlers
+
+    private void HandleDramaBoxTextChanged(string value)
+    {
+        _dramaBoxText = value;
+        ParameterService.SetFragmentValueAndNotify(DramaBoxSpeechFragmentId, "text", value);
+    }
+
+    private void HandleAceStepTagsChanged(string value)
+    {
+        _aceStepTags = value;
+        ParameterService.SetFragmentValueAndNotify(AceStepMusicFragmentId, "tags", value);
+    }
+
+    private void HandleAceStepLyricsChanged(string value)
+    {
+        _aceStepLyrics = value;
+        ParameterService.SetFragmentValueAndNotify(AceStepMusicFragmentId, "lyrics", value);
+    }
+
+    #endregion
+
+    #region Tab Labels (bullet indicator when content exists, matching PromptsForm convention)
+
+    private string GetPromptTabLabel() => string.IsNullOrWhiteSpace(_dramaBoxText) ? "Prompt" : "Prompt \u2022";
+    private string GetTagsTabLabel() => string.IsNullOrWhiteSpace(_aceStepTags) ? "Tags" : "Tags \u2022";
+    private string GetLyricsTabLabel() => string.IsNullOrWhiteSpace(_aceStepLyrics) ? "Lyrics" : "Lyrics \u2022";
+
+    #endregion
+}

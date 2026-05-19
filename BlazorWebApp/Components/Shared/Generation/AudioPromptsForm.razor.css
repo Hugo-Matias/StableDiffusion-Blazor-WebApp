@@ -1,0 +1,113 @@
+/* ------------------------------------------------------------------
+ * AudioPromptsForm - mirrors the PromptsForm paper/tabs/button shell
+ * but uses an audio-themed accent (purple-to-pink gradient) for the
+ * active tab indicator and textarea underline.
+ * ------------------------------------------------------------------ */
+
+.audio-prompts-root {
+  --gen-sticky-width: 30%;
+  --gen-sticky-max-width: 500px;
+  --gen-sticky-top-gap: 2rem;
+  --gen-sticky-overlap: 3.3rem;
+  --gen-sticky-height: 3.5rem;
+
+  margin-bottom: 3rem;
+}
+
+.audio-prompts-paper {
+  position: relative;
+  padding-bottom: calc(
+    var(--gen-sticky-top-gap) + var(--gen-sticky-height) -
+      var(--gen-sticky-overlap)
+  ) !important;
+}
+
+::deep .audio-prompts-paper {
+  position: relative;
+  padding-bottom: calc(
+    var(--gen-sticky-top-gap) + var(--gen-sticky-height) -
+      var(--gen-sticky-overlap)
+  ) !important;
+}
+
+/* --- Sticky Generate button overlap (scoped to audio to avoid PromptsForm conflict) */
+.audio-gen-btn-sticky {
+  position: relative;
+  width: var(--gen-sticky-width);
+  max-width: var(--gen-sticky-max-width);
+  margin: var(--gen-sticky-top-gap) auto calc(-1 * var(--gen-sticky-overlap))
+    auto;
+  z-index: 2;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+}
+
+.audio-gen-btn-sticky ::deep .gen-btn--generate,
+.audio-gen-btn-sticky ::deep .gen-btn-group {
+  min-height: var(--gen-sticky-height);
+  height: var(--gen-sticky-height);
+}
+
+.audio-gen-btn-sticky ::deep .gen-btn {
+  min-height: var(--gen-sticky-height);
+}
+
+@media (max-height: 700px) {
+  ::deep .audio-prompts-paper {
+    padding-bottom: 1.5rem !important;
+  }
+
+  .audio-gen-btn-sticky {
+    margin-bottom: 0;
+  }
+}
+
+/* --- Audio prompt tabs ------------------------------------------- */
+::deep .prompt-tabs-audio .mud-tabs-tabbar {
+  background-color: transparent;
+  border-radius: 0;
+  min-height: 2.25rem;
+}
+
+::deep .prompt-tabs-audio .mud-tabs-tabbar-inner {
+  min-height: 2.25rem;
+}
+
+::deep .prompt-tabs-audio .mud-tab {
+  min-height: 2.25rem;
+  text-transform: none;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+}
+
+::deep .prompt-tabs-audio .mud-tabs-panels {
+  padding-top: 0.5rem;
+}
+
+/* Audio accent coloring (purple matching DramaBox icon gradient) */
+::deep .prompt-tabs-audio .mud-tab.mud-tab-active {
+  color: #a855f7;
+}
+
+::deep .prompt-tabs-audio .mud-tab-slider {
+  background-color: #a855f7 !important;
+}
+
+::deep .prompt-tabs-audio .mud-input.mud-input-underline::before,
+::deep .prompt-tabs-audio .mud-input.mud-input-underline::after {
+  border-bottom-color: #a855f7 !important;
+}
+
+/* --- Audio prompt textarea field --------------------------------- */
+.audio-prompt-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+::deep .audio-prompt-field textarea {
+  font-size: 1.2rem;
+}
+
+/* Taller variant for lyrics - allows more vertical expansion */
+.audio-prompt-field--tall ::deep textarea {
+  min-height: 8rem;
+}

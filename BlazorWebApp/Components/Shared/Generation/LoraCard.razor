@@ -16,9 +16,8 @@
                              Style="width:38px;margin:0 4px;" />
             @if (IsDualModel)
             {
-                <button class="lora-hl-btn @(_isHigh ? "lora-hl-btn--high" : "lora-hl-btn--low")" @onclick="TogglePath"
-                        title="@(_isHigh ? "Assigned to High model" : "Assigned to Low model")">
-                    @(_isHigh ? "H" : "L")
+                <button class="lora-hl-btn @TargetClass" @onclick="TogglePath" title="@TargetTitle">
+                    @TargetLabel
                 </button>
             }
             <MudToggleIconButton Toggled="Lora.IsNegative"
@@ -36,17 +35,41 @@
 @code {
     [Parameter] public Lora Lora { get; set; }
     [Parameter] public bool IsDualModel { get; set; }
+    [Parameter] public string HighTargetLabel { get; set; } = "H";
+    [Parameter] public string LowTargetLabel { get; set; } = "L";
+    [Parameter] public string BothTargetLabel { get; set; } = "Both";
     [Parameter] public EventCallback<Lora> OnRemoveLora { get; set; }
     [Parameter] public EventCallback<Lora> OnLoraChanged { get; set; }
 
-    private bool _isHigh;
+    private LoraTarget _target = LoraTarget.High;
     private string? _previewSrc;
     private string? _displayName;
     private string? _cachedPath;
 
+    private string TargetClass => _target switch
+    {
+        LoraTarget.Both => "lora-hl-btn--both",
+        LoraTarget.Low => "lora-hl-btn--low",
+        _ => "lora-hl-btn--high"
+    };
+
+    private string TargetLabel => _target switch
+    {
+        LoraTarget.Both => BothTargetLabel,
+        LoraTarget.Low => LowTargetLabel,
+        _ => HighTargetLabel
+    };
+
+    private string TargetTitle => _target switch
+    {
+        LoraTarget.Both => $"Assigned to {HighTargetLabel} and {LowTargetLabel}",
+        LoraTarget.Low => $"Assigned to {LowTargetLabel}",
+        _ => $"Assigned to {HighTargetLabel}"
+    };
+
     protected override async Task OnParametersSetAsync()
     {
-        _isHigh = Lora.HasHighPath || !Lora.HasLowPath;
+        _target = GetTarget();
 
         if (Lora.Path != _cachedPath)
         {
@@ -68,20 +91,56 @@
 
     private async Task TogglePath()
     {
-        var path = Lora.Path;
-        if (_isHigh)
+        var path = ResolvePath();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        if (_target == LoraTarget.High)
         {
             Lora.LowPath = path;
             Lora.HighPath = null;
-            _isHigh = false;
+            _target = LoraTarget.Low;
+        }
+        else if (_target == LoraTarget.Low)
+        {
+            Lora.HighPath = path;
+            Lora.LowPath = path;
+            _target = LoraTarget.Both;
         }
         else
         {
             Lora.HighPath = path;
             Lora.LowPath = null;
-            _isHigh = true;
+            _target = LoraTarget.High;
         }
         await NotifyLoraChanged();
+    }
+
+    private LoraTarget GetTarget()
+    {
+        if (Lora.HasHighPath && Lora.HasLowPath)
+        {
+            return LoraTarget.Both;
+        }
+
+        return Lora.HasLowPath ? LoraTarget.Low : LoraTarget.High;
+    }
+
+    private string? ResolvePath()
+    {
+        if (!string.IsNullOrWhiteSpace(Lora.Path))
+        {
+            return Lora.Path;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Lora.HighPath))
+        {
+            return Lora.HighPath;
+        }
+
+        return Lora.LowPath;
     }
 
     private async Task OnStrengthChanged(float value)
@@ -105,5 +164,12 @@
     private async Task NotifyLoraChanged()
     {
         await OnLoraChanged.InvokeAsync(Lora);
+    }
+
+    private enum LoraTarget
+    {
+        High,
+        Low,
+        Both
     }
 }

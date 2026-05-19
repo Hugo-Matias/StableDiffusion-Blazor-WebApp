@@ -21,6 +21,10 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         assets.Should().Contain(a => a.Parameter == "Model" && a.Label == "Phase 2 - ZIT Model");
         assets.Should().NotContain(a => a.Parameter == "VaeMergeA");
         assets.Should().NotContain(a => a.Parameter == "VaeMergeB");
+
+        _workflow.Metadata.UsesDualModelLoras.Should().BeTrue();
+        _workflow.Metadata.DualModelLoraHighLabel.Should().Be("ZIT");
+        _workflow.Metadata.DualModelLoraLowLabel.Should().Be("ZIB");
     }
 
     [Fact]
@@ -32,11 +36,15 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         baseSampler.Metadata.Title.Should().Be("Phase 1 - ZIB");
         baseSampler.Metadata.Collapsible.Should().BeFalse();
         baseSampler.Metadata.Type.Should().Be(BlazorWebApp.Workflows.Models.FragmentType.Sampler);
+        baseSampler.Metadata.Parameters.Should().Contain(p => p.Name == "sampler_engine");
+        baseSampler.Metadata.Parameters.Should().Contain(p => p.Name == "ksampler_sampler_name");
+        baseSampler.Metadata.Parameters.Should().Contain(p => p.Name == "res4lyf_sampler_name");
 
         var zitSampler = fragments.Should().Contain(f => f.Metadata.Id == "zit_sampler").Subject;
         zitSampler.Metadata.Title.Should().Be("Phase 2 - ZIT");
         zitSampler.Metadata.Collapsible.Should().BeFalse();
         zitSampler.Metadata.Type.Should().Be(BlazorWebApp.Workflows.Models.FragmentType.Settings);
+        zitSampler.Metadata.Parameters.Should().Contain(p => p.Name == "sampler_engine");
 
         var upscale = fragments.Should().Contain(f => f.Metadata.Id == "zimage_upscale").Subject;
         upscale.Metadata.Collapsible.Should().BeTrue();
@@ -44,6 +52,12 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         upscale.Metadata.Parameters.Should().Contain(p => p.Name == "upscale_sampler_name");
         upscale.Metadata.Parameters.Should().Contain(p => p.Name == "controlnet_node_type");
         upscale.Metadata.Parameters.Should().Contain(p => p.Name == "seam_fix_mode");
+
+        var upscaleWithModel = fragments.Should().Contain(f => f.Metadata.Id == "upscale_with_model").Subject;
+        upscaleWithModel.Metadata.Title.Should().Be("Upscale With Model");
+        upscaleWithModel.Metadata.Type.Should().Be(BlazorWebApp.Workflows.Models.FragmentType.Enhancement);
+        upscaleWithModel.Metadata.Parameters.Should().Contain(p => p.Name == "upscale_model");
+        upscaleWithModel.Metadata.Parameters.Should().Contain(p => p.Name == "blend_factor");
     }
 
     [Fact]
@@ -57,10 +71,49 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         json.RootElement.GetProperty("base_unet_loader").GetProperty("class_type").GetString().Should().Be("UNETLoader");
         json.RootElement.GetProperty("sampler_base").GetProperty("class_type").GetString().Should().Be("KSamplerAdvanced");
         json.RootElement.GetProperty("sampler_base").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("base_unet_loader");
+        json.RootElement.GetProperty("sampler_base").GetProperty("inputs").GetProperty("noise_seed").GetInt64().Should().Be(42L);
         json.RootElement.GetProperty("sampler_zit").GetProperty("class_type").GetString().Should().Be("ClownsharKSampler_Beta");
         json.RootElement.GetProperty("sampler_zit").GetProperty("inputs").GetProperty("latent_image")[0].GetString().Should().Be("sampler_base");
+        json.RootElement.GetProperty("sampler_zit").GetProperty("inputs").GetProperty("seed").GetInt64().Should().Be(41075146839208L);
         json.RootElement.GetProperty("vae_decoder").GetProperty("inputs").GetProperty("samples")[0].GetString().Should().Be("sampler_zit");
         json.RootElement.TryGetProperty("ultimate_sd_upscale", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_WithSamplerEngineOverrides_ShouldSwitchBothSamplerNodeTypes()
+    {
+        var parameters = CreateParameters(upscaleActive: false);
+        var baseSampler = parameters.GetOrCreateFragment("base_sampler");
+        baseSampler.SetValue("sampler_engine", "RES4LYF");
+        baseSampler.SetValue("res4lyf_sampler_name", "multistep/res_2m");
+        baseSampler.SetValue("res4lyf_scheduler", "beta");
+        baseSampler.SetValue("denoise", 1.0);
+        baseSampler.SetValue("eta", 0.5);
+
+        var zitSampler = parameters.GetOrCreateFragment("zit_sampler");
+        zitSampler.SetValue("sampler_engine", "KSamplerAdvanced");
+        zitSampler.SetValue("ksampler_sampler_name", "dpmpp_2m_sde");
+        zitSampler.SetValue("ksampler_scheduler", "sgm_uniform");
+        zitSampler.SetValue("start_at_step", 5);
+        zitSampler.SetValue("end_at_step", 999);
+
+        var workflow = _workflow.Build(parameters);
+        using var json = JsonDocument.Parse(workflow.Json);
+
+        var baseInputs = json.RootElement.GetProperty("sampler_base").GetProperty("inputs");
+        json.RootElement.GetProperty("sampler_base").GetProperty("class_type").GetString().Should().Be("ClownsharKSampler_Beta");
+        baseInputs.GetProperty("sampler_name").GetString().Should().Be("multistep/res_2m");
+        baseInputs.GetProperty("scheduler").GetString().Should().Be("beta");
+        baseInputs.TryGetProperty("noise_seed", out _).Should().BeFalse();
+
+        var zitInputs = json.RootElement.GetProperty("sampler_zit").GetProperty("inputs");
+        json.RootElement.GetProperty("sampler_zit").GetProperty("class_type").GetString().Should().Be("KSamplerAdvanced");
+        zitInputs.GetProperty("sampler_name").GetString().Should().Be("dpmpp_2m_sde");
+        zitInputs.GetProperty("scheduler").GetString().Should().Be("sgm_uniform");
+        zitInputs.GetProperty("noise_seed").GetInt64().Should().Be(41075146839208L);
+        zitInputs.GetProperty("start_at_step").GetInt32().Should().Be(5);
+        zitInputs.GetProperty("end_at_step").GetInt32().Should().Be(999);
+        zitInputs.TryGetProperty("denoise", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -76,6 +129,79 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         json.RootElement.GetProperty("qwen_controlnet").GetProperty("class_type").GetString().Should().Be("QwenImageDiffsynthControlnet");
         json.RootElement.GetProperty("ultimate_sd_upscale").GetProperty("class_type").GetString().Should().Be("UltimateSDUpscale");
         json.RootElement.GetProperty("ultimate_sd_upscale").GetProperty("inputs").GetProperty("image")[0].GetString().Should().Be("vae_decoder");
+    }
+
+    [Fact]
+    public void Build_WithLegacyLora_ShouldApplyToPhase2ZitOnly()
+    {
+        var parameters = CreateParameters(upscaleActive: false);
+        parameters.Loras.Add(new Lora
+        {
+            Name = "legacy_lora",
+            Path = "loras/legacy_lora.safetensors",
+            Strength = 0.8f,
+            IsEnabled = true
+        });
+
+        var workflow = _workflow.Build(parameters);
+        using var json = JsonDocument.Parse(workflow.Json);
+
+        var loraInputs = json.RootElement.GetProperty("lora_loader_0").GetProperty("inputs");
+        json.RootElement.GetProperty("lora_loader_0").GetProperty("class_type").GetString().Should().Be("LoraLoader");
+        loraInputs.GetProperty("lora_name").GetString().Should().Be("loras/legacy_lora.safetensors");
+        loraInputs.GetProperty("model")[0].GetString().Should().Be("unet_loader");
+        loraInputs.GetProperty("clip")[0].GetString().Should().Be("clip_loader");
+        json.RootElement.GetProperty("sampler_zit").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("lora_loader_0");
+        json.RootElement.GetProperty("sampler_base").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("base_unet_loader");
+        json.RootElement.TryGetProperty("base_lora_loader_0", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_WithZibLora_ShouldApplyModelOnlyToPhase1Base()
+    {
+        var parameters = CreateParameters(upscaleActive: false);
+        parameters.Loras.Add(new Lora
+        {
+            Name = "zib_lora",
+            Path = "loras/zib_lora.safetensors",
+            LowPath = "loras/zib_lora.safetensors",
+            Strength = 0.6f,
+            IsEnabled = true
+        });
+
+        var workflow = _workflow.Build(parameters);
+        using var json = JsonDocument.Parse(workflow.Json);
+
+        var baseLoraInputs = json.RootElement.GetProperty("base_lora_loader_0").GetProperty("inputs");
+        json.RootElement.GetProperty("base_lora_loader_0").GetProperty("class_type").GetString().Should().Be("LoraLoaderModelOnly");
+        baseLoraInputs.GetProperty("lora_name").GetString().Should().Be("loras/zib_lora.safetensors");
+        baseLoraInputs.GetProperty("model")[0].GetString().Should().Be("base_unet_loader");
+        json.RootElement.GetProperty("sampler_base").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("base_lora_loader_0");
+        json.RootElement.GetProperty("sampler_zit").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("unet_loader");
+        json.RootElement.TryGetProperty("lora_loader_0", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_WithBothBranchLora_ShouldApplyToPhase1AndPhase2()
+    {
+        var parameters = CreateParameters(upscaleActive: false);
+        parameters.Loras.Add(new Lora
+        {
+            Name = "both_lora",
+            Path = "loras/both_lora.safetensors",
+            HighPath = "loras/both_lora.safetensors",
+            LowPath = "loras/both_lora.safetensors",
+            Strength = 0.7f,
+            IsEnabled = true
+        });
+
+        var workflow = _workflow.Build(parameters);
+        using var json = JsonDocument.Parse(workflow.Json);
+
+        json.RootElement.GetProperty("lora_loader_0").GetProperty("class_type").GetString().Should().Be("LoraLoader");
+        json.RootElement.GetProperty("base_lora_loader_0").GetProperty("class_type").GetString().Should().Be("LoraLoaderModelOnly");
+        json.RootElement.GetProperty("sampler_zit").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("lora_loader_0");
+        json.RootElement.GetProperty("sampler_base").GetProperty("inputs").GetProperty("model")[0].GetString().Should().Be("base_lora_loader_0");
     }
 
     [Fact]
@@ -123,6 +249,30 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         using var json = JsonDocument.Parse(workflow.Json);
 
         json.RootElement.GetProperty("qwen_controlnet").GetProperty("class_type").GetString().Should().Be("ZImageFunControlnet");
+    }
+
+    [Fact]
+    public void Build_WithUpscaleWithModelActive_ShouldEnhanceCurrentImageOutput()
+    {
+        var parameters = CreateParameters(upscaleActive: false);
+        var upscaleWithModel = parameters.GetOrCreateFragment("upscale_with_model");
+        upscaleWithModel.IsActive = true;
+        upscaleWithModel.SetValue("upscale_model", "1xSkinContrast-High-SuperUltraCompact.pth");
+        upscaleWithModel.SetValue("blend_with_input", true);
+        upscaleWithModel.SetValue("blend_factor", 0.4);
+        upscaleWithModel.SetValue("blend_mode", "normal");
+
+        var workflow = _workflow.Build(parameters);
+        using var json = JsonDocument.Parse(workflow.Json);
+
+        json.RootElement.GetProperty("upscale_with_model_loader").GetProperty("class_type").GetString().Should().Be("UpscaleModelLoader");
+        json.RootElement.GetProperty("upscale_with_model_loader").GetProperty("inputs").GetProperty("model_name").GetString().Should().Be("1xSkinContrast-High-SuperUltraCompact.pth");
+        json.RootElement.GetProperty("upscale_with_model_image").GetProperty("class_type").GetString().Should().Be("ImageUpscaleWithModel");
+        json.RootElement.GetProperty("upscale_with_model_image").GetProperty("inputs").GetProperty("image")[0].GetString().Should().Be("vae_decoder");
+        json.RootElement.GetProperty("upscale_with_model_blend").GetProperty("class_type").GetString().Should().Be("ImageBlend");
+        json.RootElement.GetProperty("upscale_with_model_blend").GetProperty("inputs").GetProperty("image1")[0].GetString().Should().Be("vae_decoder");
+        json.RootElement.GetProperty("upscale_with_model_blend").GetProperty("inputs").GetProperty("image2")[0].GetString().Should().Be("upscale_with_model_image");
+        json.RootElement.GetProperty("save").GetProperty("inputs").GetProperty("images")[0].GetString().Should().Be("upscale_with_model_blend");
     }
 
     [Fact]
@@ -180,6 +330,9 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         latent.SetValue("batch_size", 1);
 
         var baseSampler = parameters.GetOrCreateFragment("base_sampler");
+        baseSampler.SetValue("sampler_engine", "KSamplerAdvanced");
+        baseSampler.SetValue("ksampler_sampler_name", "res_multistep");
+        baseSampler.SetValue("ksampler_scheduler", "simple");
         baseSampler.SetValue("sampler_name", "res_multistep");
         baseSampler.SetValue("scheduler", "simple");
         baseSampler.SetValue("steps", 8);
@@ -187,6 +340,11 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         baseSampler.SetValue("seed", 42L);
 
         var zitSampler = parameters.GetOrCreateFragment("zit_sampler");
+        zitSampler.SetValue("sampler_engine", "RES4LYF");
+        zitSampler.SetValue("res4lyf_sampler_name", "linear/ralston_2s");
+        zitSampler.SetValue("res4lyf_scheduler", "beta");
+        zitSampler.SetValue("ksampler_sampler_name", "dpmpp_2m_sde");
+        zitSampler.SetValue("ksampler_scheduler", "sgm_uniform");
         zitSampler.SetValue("sampler_name", "linear/ralston_2s");
         zitSampler.SetValue("scheduler", "beta");
         zitSampler.SetValue("steps", 10);
@@ -218,6 +376,13 @@ public class ZImageTxt2ImgMultiPassWorkflowTests
         upscale.SetValue("force_uniform_tiles", true);
         upscale.SetValue("tiled_decode", false);
         upscale.SetValue("batch_size", 1);
+
+        var upscaleWithModel = parameters.GetOrCreateFragment("upscale_with_model");
+        upscaleWithModel.IsActive = false;
+        upscaleWithModel.SetValue("upscale_model", "1xSkinContrast-High-SuperUltraCompact.pth");
+        upscaleWithModel.SetValue("blend_with_input", true);
+        upscaleWithModel.SetValue("blend_factor", 0.4);
+        upscaleWithModel.SetValue("blend_mode", "normal");
 
         return parameters;
     }

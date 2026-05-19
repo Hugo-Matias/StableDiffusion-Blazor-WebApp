@@ -48,7 +48,7 @@ namespace BlazorWebApp.Services
             _comfyUI = comfyUI;
             _events = events;
             _configuration = configuration;
-            
+
             // Load output paths from configuration
             OutputPaths = new OutputPathsOptions();
             configuration.GetSection(OutputPathsOptions.SectionName).Bind(OutputPaths);
@@ -118,7 +118,7 @@ namespace BlazorWebApp.Services
         public string GetOutputPath(Outdir outdir)
         {
             var baseDir = _configuration["OutputDir"] ?? "";
-            
+
             return outdir switch
             {
                 Outdir.Txt2ImgSamples => Path.Combine(baseDir, OutputPaths.Txt2ImgSamples),
@@ -127,6 +127,7 @@ namespace BlazorWebApp.Services
                 Outdir.Img2ImgGrid => Path.Combine(baseDir, OutputPaths.Img2ImgSamples),
                 Outdir.Extras => Path.Combine(baseDir, OutputPaths.Extras),
                 Outdir.Img2VidSamples => Path.Combine(baseDir, OutputPaths.Img2VidSamples),
+                Outdir.Audio => Path.Combine(baseDir, OutputPaths.Audio),
                 _ => baseDir
             };
         }

@@ -1,0 +1,40 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("AudioReferenceForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudNumericField T="double" Label="Trim Start" Variant="Variant.Text" Dense="true" Min="0" Max="600" Step="0.1"
+                         @bind-Value="_startIndex" @bind-Value:after="OnStartIndexChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="double" Label="Trim Duration" Variant="Variant.Text" Dense="true" Min="1" Max="120"
+                         Step="0.5" @bind-Value="_duration" @bind-Value:after="OnDurationChanged" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _startIndex;
+    private double _duration;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _startIndex = ParameterService.GetFragmentProperty(Fragment, "start_index", 0.0);
+        _duration = ParameterService.GetFragmentProperty(Fragment, "duration", 15.0);
+    }
+
+    private Task SetAsync(string key, object? value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task OnStartIndexChanged() => SetAsync("start_index", _startIndex);
+    private Task OnDurationChanged() => SetAsync("duration", _duration);
+}

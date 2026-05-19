@@ -70,6 +70,10 @@ namespace BlazorWebApp.Services
                     {
                         vidTcs.SetException(exception);
                     }
+                    else if (obj is TaskCompletionSource<GeneratedAudios> audioTcs)
+                    {
+                        audioTcs.SetException(exception);
+                    }
                     else if (obj is TaskCompletionSource<LLMResponse> llmTcs)
                     {
                         llmTcs.SetException(exception);
@@ -203,6 +207,17 @@ namespace BlazorWebApp.Services
             {
                 _logger.LogDebug("Handling video job completion for prompt {PromptId}", promptId);
                 await HandleVideoJobCompletionAsync(promptId, (TaskCompletionSource<GeneratedVideos>)obj);
+                return;
+            }
+
+            var isAudioJob = objType.IsGenericType &&
+                             objType.GetGenericTypeDefinition() == typeof(TaskCompletionSource<>) &&
+                             objType.GetGenericArguments()[0] == typeof(GeneratedAudios);
+
+            if (isAudioJob)
+            {
+                _logger.LogDebug("Handling audio job completion for prompt {PromptId}", promptId);
+                await HandleAudioJobCompletionAsync(promptId, (TaskCompletionSource<GeneratedAudios>)obj);
                 return;
             }
 
@@ -353,6 +368,63 @@ namespace BlazorWebApp.Services
             finally
             {
                 // Cleanup uploaded input images after job completion
+                await CleanupUploadedImagesAsync(promptId);
+            }
+        }
+
+        private async Task HandleAudioJobCompletionAsync(Guid promptId, TaskCompletionSource<GeneratedAudios> tcs)
+        {
+            try
+            {
+                var files = await GetAudioFilenameFromHistory(promptId);
+                if (files == null || files.Count == 0)
+                {
+                    _logger.LogError("Audio file not found for prompt {PromptId}!", promptId);
+                    _pendingJobs.TryRemove(promptId, out _);
+                    tcs.SetException(new Exception("No audio files generated"));
+                    return;
+                }
+
+                var audios = new GeneratedAudios();
+
+                foreach (var file in files)
+                {
+                    var filepath = Path.Combine(_comfyOutputsPath, file);
+
+                    if (!File.Exists(filepath))
+                    {
+                        _logger.LogWarning("Audio file not found on disk: {FilePath}", filepath);
+                        continue;
+                    }
+
+                    var audio = new GeneratedAudio
+                    {
+                        FilePath = filepath,
+                        Filename = Path.GetFileName(file),
+                        DateCreated = DateTime.Now
+                    };
+
+                    var fileInfo = new FileInfo(filepath);
+                    if (fileInfo.Length < 50 * 1024 * 1024)
+                    {
+                        audio.AudioData = await _io.GetBase64FromFileAsync(filepath) ?? string.Empty;
+                    }
+
+                    audios.Audios.Add(audio);
+                }
+
+                if (audios.Audios.Count == 0)
+                {
+                    _pendingJobs.TryRemove(promptId, out _);
+                    tcs.SetException(new Exception("No audio files could be loaded"));
+                    return;
+                }
+
+                _pendingJobs.TryRemove(promptId, out _);
+                tcs.SetResult(audios);
+            }
+            finally
+            {
                 await CleanupUploadedImagesAsync(promptId);
             }
         }
@@ -645,6 +717,48 @@ namespace BlazorWebApp.Services
                         {
                             files.Add(Path.Combine(file.Subfolder ?? "", file.Filename));
                         }
+                    }
+                }
+            }
+
+            return files;
+        }
+
+        public async Task<List<string>> GetAudioFilenameFromHistory(Guid promptId)
+        {
+            var files = new List<string>();
+            var response = await _httpClient.GetAsync($"/history/{promptId}");
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+
+            if (!doc.RootElement.TryGetProperty(promptId.ToString(), out var promptElement))
+            {
+                _logger.LogWarning("Prompt ID {PromptId} not found in history response", promptId);
+                return files;
+            }
+
+            if (!promptElement.TryGetProperty("outputs", out var outputsElement))
+            {
+                _logger.LogWarning("No outputs found for prompt ID {PromptId}", promptId);
+                return files;
+            }
+
+            foreach (var outputNode in outputsElement.EnumerateObject())
+            {
+                var nodeValue = outputNode.Value;
+
+                if (nodeValue.TryGetProperty("audio", out var audioElement) && audioElement.ValueKind == JsonValueKind.Array)
+                {
+                    var audioFiles = JsonSerializer.Deserialize<List<ComfyUIHistoryImageResponse>>(audioElement.GetRawText());
+                    foreach (var audio in audioFiles ?? [])
+                    {
+                        if (string.IsNullOrWhiteSpace(audio.Filename))
+                        {
+                            continue;
+                        }
+
+                        files.Add(Path.Combine(audio.Subfolder ?? "", audio.Filename));
                     }
                 }
             }
@@ -1283,6 +1397,9 @@ namespace BlazorWebApp.Services
                 case TaskCompletionSource<GeneratedVideos> vid:
                     vid.TrySetException(new OperationCanceledException(message));
                     break;
+                case TaskCompletionSource<GeneratedAudios> audio:
+                    audio.TrySetException(new OperationCanceledException(message));
+                    break;
                 default:
                     // Fallback: invoke TrySetException(Exception) via reflection.
                     var method = tcsObject.GetType().GetMethod("TrySetException", new[] { typeof(Exception) });
@@ -1335,6 +1452,11 @@ namespace BlazorWebApp.Services
             response.EnsureSuccessStatusCode();
 
             var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            if (submit?.PromptId == null)
+            {
+                throw new InvalidOperationException("ComfyUI did not return a prompt id for the audio generation request.");
+            }
+
             var promptId = Guid.Parse(submit.PromptId);
 
             var tcs = new TaskCompletionSource<LLMResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1425,6 +1547,43 @@ namespace BlazorWebApp.Services
             }
 
             var tcs = new TaskCompletionSource<GeneratedVideos>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingJobs[promptId] = tcs;
+
+            return await tcs.Task;
+        }
+
+        /// <inheritdoc />
+        public async Task<GeneratedAudios> PostAudioGenerationAsync(GenerationParameters parameters, string clientId, Workflow workflow)
+        {
+            var tempId = Guid.NewGuid();
+            await UploadSourceImagesAsync(parameters, tempId);
+
+            var workflowJson = _workflow.ComposeWorkflowFromGenerationParameters(workflow, parameters);
+            var workflowObject = JsonSerializer.Deserialize<object>(workflowJson);
+
+            var payload = new { prompt = workflowObject, client_id = clientId };
+            var promptPayload = PreparePromptPayload(payload);
+
+            var json = JsonSerializer.Serialize(promptPayload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync("payload_audio_generation.json", json);
+
+            using var response = await _httpClient.PostAsJsonAsync("/prompt", promptPayload, _jsonIgnoreNull);
+            response.EnsureSuccessStatusCode();
+
+            var submit = await response.Content.ReadFromJsonAsync<ComfyUIPromptSubmitResponse>();
+            var promptId = Guid.Parse(submit.PromptId);
+
+            if (_uploadedImages.TryRemove(tempId, out var uploadedFiles))
+            {
+                _uploadedImages[promptId] = uploadedFiles;
+            }
+
+            var tcs = new TaskCompletionSource<GeneratedAudios>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pendingJobs[promptId] = tcs;
 
             return await tcs.Task;

@@ -82,6 +82,11 @@ namespace BlazorWebApp.Models
             public const string Cfg = "cfg";
             public const string Denoise = "denoise";
             public const string Eta = "eta";
+            public const string SamplerEngine = "sampler_engine";
+            public const string KSamplerSamplerName = "ksampler_sampler_name";
+            public const string KSamplerScheduler = "ksampler_scheduler";
+            public const string Res4LyfSamplerName = "res4lyf_sampler_name";
+            public const string Res4LyfScheduler = "res4lyf_scheduler";
 
             // Latent/Resolution fragment parameters
             public const string Width = "width";

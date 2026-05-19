@@ -43,6 +43,12 @@ namespace BlazorWebApp.Models
         /// Whether LoRAs should be assigned to high/low model paths in the Generate UI.
         /// </summary>
         public bool UsesDualModelLoras { get; set; }
+
+        public string DualModelLoraHighLabel { get; set; } = "H";
+
+        public string DualModelLoraLowLabel { get; set; } = "L";
+
+        public string DualModelLoraBothLabel { get; set; } = "Both";
     }
 
     /// <summary>
@@ -57,5 +63,6 @@ namespace BlazorWebApp.Models
         public bool AllowMultiple { get; set; }
         public string Parameter { get; set; } = "";
         public VideoSourceOptions? DefaultVideoOptions { get; set; }
+        public AudioSourceOptions? DefaultAudioOptions { get; set; }
     }
 }

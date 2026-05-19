@@ -1,0 +1,44 @@
+/* ------------------------------------------------------------------
+ * GeneratedAudioTabs - mirrors GeneratedImageTabs/GeneratedVideoTabs
+ * styling for the audio output panel.
+ * ------------------------------------------------------------------ */
+
+.audio-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 16px;
+}
+
+.queue-panel {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.no-audio-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--mud-palette-text-secondary);
+  text-align: center;
+  padding: 32px;
+}
+
+.no-audio-text {
+  color: var(--mud-palette-text-secondary);
+}
+
+/* Audio card grid - matches image card sizing */
+::deep .mud-grid-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  padding: 8px !important;
+}

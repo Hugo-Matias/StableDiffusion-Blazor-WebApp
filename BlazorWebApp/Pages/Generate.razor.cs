@@ -40,6 +40,14 @@ public partial class Generate : IDisposable
 
     private bool HasSources => _selectedWorkflow?.Sources?.Count > 0;
     private bool IsVideoMode => _selectedWorkflow?.Mode is ModeType.Img2Vid or ModeType.Txt2Vid or ModeType.Vid2Vid;
+    private bool IsAudioMode => _selectedWorkflow?.Mode is ModeType.Txt2Mus or ModeType.Voi2Voi;
+
+    /// <summary>
+    /// Computed @key values to avoid Razor parsing issues with string interpolation.
+    /// </summary>
+    private object? VideoKey => $"video-{_selectedWorkflow?.Id}";
+    private object? AudioKey => $"audio-{_selectedWorkflow?.Id}";
+    private object? ImageKey => $"image-{_selectedWorkflow?.Id}";
     private bool UseGuidance => _selectedWorkflow?.Base == ModelBase.Flux;
 
     /// <summary>
@@ -78,7 +86,9 @@ public partial class Generate : IDisposable
             ModeType.Img2Img,
             ModeType.Img2Vid,
             ModeType.Txt2Vid,
-            ModeType.Vid2Vid
+            ModeType.Vid2Vid,
+            ModeType.Txt2Mus,
+            ModeType.Voi2Voi
         })
         {
             var modeWorkflows = Orchestrator.GetWorkflowsForMode(mode);
@@ -541,6 +551,7 @@ public partial class Generate : IDisposable
         {
             Parameters.Sources[args.sourceId] = args.source;
         }
+        await State.SaveState();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -636,6 +647,11 @@ public partial class Generate : IDisposable
                 case ModeType.Txt2Vid:
                 case ModeType.Vid2Vid:
                     var videos = await ImageService.GenerateVideoAsync(Parameters, _selectedWorkflow);
+                    break;
+
+                case ModeType.Txt2Mus:
+                case ModeType.Voi2Voi:
+                    var audios = await ImageService.GenerateAudioAsync(Parameters, _selectedWorkflow);
                     break;
 
                 default: // Txt2Img and Img2Img

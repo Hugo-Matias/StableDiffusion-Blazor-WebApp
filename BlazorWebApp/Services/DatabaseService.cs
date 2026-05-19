@@ -388,11 +388,14 @@ namespace BlazorWebApp.Services
             if (state.IsFavoritesOnly) query = query.Where(i => i.Favorite);
             if (state.FilterByDateRange) query = query.Where(i => i.DateCreated >= state.DateRange.Start && i.DateCreated <= state.DateRange.End.Value.AddDays(1));
 
+            var modeIdsByType = await context.Modes.ToDictionaryAsync(m => m.Type, m => m.Id);
             List<int> modes = new();
-            if (state.IsModeTxt2Img) modes.Add(1);
-            if (state.IsModeImg2Img) modes.Add(2);
-            if (state.IsModeUpscale) modes.Add(3);
-            if (state.IsModeImg2Vid) modes.Add(4);
+            if (state.IsModeTxt2Img && modeIdsByType.TryGetValue(ModeType.Txt2Img, out var txt2ImgModeId)) modes.Add(txt2ImgModeId);
+            if (state.IsModeImg2Img && modeIdsByType.TryGetValue(ModeType.Img2Img, out var img2ImgModeId)) modes.Add(img2ImgModeId);
+            if (state.IsModeUpscale && modeIdsByType.TryGetValue(ModeType.Extras, out var extrasModeId)) modes.Add(extrasModeId);
+            if (state.IsModeImg2Vid && modeIdsByType.TryGetValue(ModeType.Img2Vid, out var img2VidModeId)) modes.Add(img2VidModeId);
+            if (state.IsModeTxt2Mus && modeIdsByType.TryGetValue(ModeType.Txt2Mus, out var txt2MusModeId)) modes.Add(txt2MusModeId);
+            if (state.IsModeVoi2Voi && modeIdsByType.TryGetValue(ModeType.Voi2Voi, out var voi2VoiModeId)) modes.Add(voi2VoiModeId);
 
             // Only filter by mode if at least one mode is selected, otherwise show all
             if (modes.Count > 0)

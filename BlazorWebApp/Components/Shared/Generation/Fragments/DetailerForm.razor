@@ -18,7 +18,6 @@
 @attribute [FragmentComponent("DetailerForm")]
 @inject IGenerationParameterService ParameterService
 @inject IEventService EventService
-@inject IOrchestratorService Orchestrator
 @inject ILogger<DetailerForm> Logger
 @implements IDisposable
 
@@ -129,7 +128,7 @@
     <MudItem xs="12">
         <LoraForm Loras="@ParameterService.Current.GetDetailerLoras(_currentPass)"
                   Backend="Backend.ComfyUI"
-                  IsDualModel="@_isDualModel"
+                  IsDualModel="false"
                   OnLorasUpdated="HandleDetailerLorasUpdated" />
     </MudItem>
 
@@ -308,8 +307,6 @@
     private List<string> _schedulers = new();
 
     // Workflow awareness
-    private bool _isDualModel;
-
     protected override void OnInitialized()
     {
         EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
@@ -549,8 +546,6 @@
 
         _currentPassEnabled = GetPassEnabled(_currentPass);
 
-        var workflow = Orchestrator.GetCurrentWorkflow();
-        _isDualModel = workflow?.UsesDualModelLoras == true;
     }
 
     private void LoadResolvedOptions()

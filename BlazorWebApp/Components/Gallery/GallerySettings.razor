@@ -115,9 +115,9 @@
                                                Class="folder-nav-arrow arrow-left" Style="@GetArrowStyle(folderIndex == 0)"
                                                Disabled="@(folderIndex == 0)" OnClick="@(async () => await MoveFolderUp(folder))"
                                                title="Move left" />
-                                
+
                                 <span class="folder-tab-title">@folder.Name</span>
-                                
+
                                 <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
                                                Class="folder-nav-arrow arrow-right" Style="@GetArrowStyle(folderIndex == lastFolderIndex)"
                                                Disabled="@(folderIndex == lastFolderIndex)"
@@ -127,7 +127,7 @@
                     </MudTabPanel>
                 }
             </MudTabs>
-            
+
             <!-- Action Buttons - Right Aligned -->
             <div class="tabs-actions">
                 <MudTooltip Text="Add New Project">
@@ -135,7 +135,7 @@
                         <MudIcon Icon="fa-solid fa-plus" />
                     </CreateProjectButton>
                 </MudTooltip>
-                
+
                 @if (State.State.Gallery.FolderId > 0)
                 {
                     <MudTooltip Text="Delete Folder">
@@ -145,14 +145,14 @@
                         </MudButton>
                     </MudTooltip>
                 }
-                
+
                 <MudTooltip Text="Remove Project Cover">
                     <MudButton OnClick="RemoveProjectCover" Variant="Variant.Text" Color="Color.Info"
                                Class="action-button-uniform">
                         <MudIcon Icon="fa-solid fa-image-portrait" />
                     </MudButton>
                 </MudTooltip>
-                
+
                 <MudTooltip Text="Reorder Folders">
                     <MudButton OnClick="ToggleReorderArrows" Variant="Variant.Text"
                                Color="@(_showReorderArrows ? Color.Success : Color.Default)" Class="action-button-uniform">
@@ -187,9 +187,9 @@
                         <MudIcon Icon="fa-solid fa-broom" />
                     </MudButton>
                 </MudTooltip>
-                
+
                 <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
-                
+
                 <MudTooltip Text="@(_showFilters ? "Hide Filters" : "Show Filters")">
                     <MudButton OnClick="ToggleFilters" Variant="Variant.Outlined"
                                Color="@(_showFilters ? Color.Warning : Color.Primary)" Class="action-button-uniform">
@@ -221,7 +221,7 @@
             </MudStack>
         </MudPaper>
     }
-    
+
     <!-- Collapsible Filter Section -->
     <div class="filter-wrapper">
         <MudCollapse Expanded="_showFilters">
@@ -310,7 +310,7 @@
                                                  ToggledIcon="@Icons.Material.Filled.AllInclusive" Title="Pagination"
                                                  ToggledTitle="Infinite Scroll" Color="Color.Info" ToggledColor="Color.Info"
                                                  ToggledChanged="@(async (bool val) => await HandleNavigationModeChanged(val))" />
-                            
+
                             @if (!State.State.Gallery.UseInfiniteScroll)
                             {
                                 <MudNumericField T="int" Value="State.State.Gallery.PageSize"
@@ -344,6 +344,10 @@
                                      Default="State.State.Gallery.IsModeImg2Img" />
                             <MudChip Text="I2V" Variant="Variant.Text" Color="Color.Secondary"
                                      Default="State.State.Gallery.IsModeImg2Vid" />
+                            <MudChip Text="T2M" Variant="Variant.Text" Color="Color.Info"
+                                     Default="State.State.Gallery.IsModeTxt2Mus" />
+                            <MudChip Text="V2V" Variant="Variant.Text" Color="Color.Info"
+                                     Default="State.State.Gallery.IsModeVoi2Voi" />
                             <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Tertiary"
                                      Default="State.State.Gallery.IsModeUpscale" />
                         </MudChipSet>
@@ -515,6 +519,8 @@
         State.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "I2I");
         State.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
         State.State.Gallery.IsModeImg2Vid = chips.Any(c => c.Text == "I2V");
+        State.State.Gallery.IsModeTxt2Mus = chips.Any(c => c.Text == "T2M");
+        State.State.Gallery.IsModeVoi2Voi = chips.Any(c => c.Text == "V2V");
     }
 
     private void HandleWorkflowSelection(MudChip[] chips)
@@ -662,7 +668,7 @@
         if (Gallery.Folders == null) return;
         var index = Gallery.Folders.IndexOf(folder);
         if (index <= 0) return;
-        
+
         Gallery.Folders.RemoveAt(index);
         Gallery.Folders.Insert(index - 1, folder);
         await UpdateAllSortOrders();
@@ -736,7 +742,7 @@
     {
         if (!_showReorderArrows || isDisabled)
             return "display: none !important;";
-        
+
         return "display: inline-flex !important; opacity: 0.4; width: 24px; height: 24px; min-width: 24px; padding: 0;";
     }
 }

@@ -62,6 +62,11 @@ namespace BlazorWebApp.Services
         public GeneratedVideos GeneratedVideos { get; private set; }
 
         /// <summary>
+        /// Last generated audio result.
+        /// </summary>
+        public GeneratedAudios GeneratedAudios { get; private set; } = new();
+
+        /// <summary>
         /// Current inference progress. Can be set by websocket service.
         /// </summary>
         public InferenceProgress Progress { get; set; } = new();
@@ -553,6 +558,186 @@ namespace BlazorWebApp.Services
             }
 
             return GeneratedVideos;
+        }
+
+        public async Task<GeneratedAudios> GenerateAudioAsync(GenerationParameters parameters, Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                _logger.LogError("Cannot generate audio: workflow is null");
+                return new GeneratedAudios();
+            }
+
+            _logger.LogInformation("Starting audio generation with GenerationParameters for workflow: {WorkflowTitle}", workflow.Title);
+            Interlocked.Increment(ref _inFlightCount);
+            _progress.IsConverging = true;
+            _currentGenerationParams = parameters;
+            _currentWorkflow = workflow;
+
+            try
+            {
+                var prepared = await PrepareGenerationParametersAsync(parameters);
+                var samplerFragment = prepared.GetFragment(Fragments.MainSampler);
+                var actualSeed = samplerFragment?.GetValueOrDefault(Params.Seed, -1L)
+                    ?? prepared.GetFragment("ace_step_music")?.GetValueOrDefault("seed", -1L)
+                    ?? prepared.GetFragment("dramabox_speech")?.GetValueOrDefault("seed", -1L)
+                    ?? -1L;
+
+                _currentModel = parameters.Assets.GetValueOrDefault(Assets.Model, "")
+                    ?? parameters.Assets.Values.FirstOrDefault()
+                    ?? workflow.Base.ToString();
+
+                GeneratedAudios = await _router.PostAudioGenerationAsync(prepared, workflow);
+
+                if (_state.State.Generation.IsInterrupted)
+                    throw new Exception("Generation Canceled!");
+
+                if (_backend.OutputPaths.SaveSamples && GeneratedAudios?.Audios?.Count > 0)
+                {
+                    await SaveAudiosFromGenerationParams(GeneratedAudios, actualSeed, parameters, workflow);
+                }
+
+                _logger.LogInformation("Audio generation completed for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during audio generation for workflow: {WorkflowTitle}", workflow.Title);
+            }
+            finally
+            {
+                var remaining = Interlocked.Decrement(ref _inFlightCount);
+                if (remaining <= 0)
+                {
+                    _progress.IsConverging = false;
+                    _state.State.Generation.IsInterrupted = false;
+                }
+
+                NotifyStateChanged();
+            }
+
+            return GeneratedAudios;
+        }
+
+        private async Task SaveAudiosFromGenerationParams(GeneratedAudios audios, long actualSeed, GenerationParameters parameters, Workflow workflow)
+        {
+            var saveDir = _io.CreateDirectory(_backend.GetOutputPath(Outdir.Audio));
+            var fileIndex = GetAudioFileIndex(saveDir.FullName);
+
+            var samplerFragment = parameters.GetFragment(Fragments.MainSampler);
+            var aceFragment = parameters.GetFragment("ace_step_music");
+            var dramaFragment = parameters.GetFragment("dramabox_speech");
+            var prompt = aceFragment?.GetValueOrDefault("tags", "")
+                ?? dramaFragment?.GetValueOrDefault("text", "")
+                ?? string.Empty;
+
+            foreach (var audio in audios.Audios)
+            {
+                fileIndex++;
+                var filename = GenerateAudioFilename(fileIndex, actualSeed, samplerFragment, audio.FilePath);
+                var audioPath = Path.Combine(saveDir.FullName, filename);
+
+                if (!string.IsNullOrWhiteSpace(audio.AudioData))
+                {
+                    var audioBytes = Convert.FromBase64String(audio.AudioData);
+                    await _io.SaveFileToDisk(audioPath, audioBytes);
+                    audio.FilePath = audioPath;
+                }
+                else if (!string.IsNullOrWhiteSpace(audio.FilePath) && File.Exists(audio.FilePath))
+                {
+                    File.Copy(audio.FilePath, audioPath, overwrite: true);
+                    audio.FilePath = audioPath;
+                }
+
+                audio.Filename = filename;
+                audio.Prompt = prompt;
+                audio.NegativePrompt = string.Empty;
+                audio.Seed = actualSeed;
+                audio.Steps = samplerFragment?.GetValueOrDefault(Params.Steps, 0) ?? 0;
+                audio.CfgScale = (float)(samplerFragment?.GetValueOrDefault(Params.Cfg, 0.0)
+                    ?? aceFragment?.GetValueOrDefault("cfg_scale", 0.0)
+                    ?? dramaFragment?.GetValueOrDefault("cfg_scale", 0.0)
+                    ?? 0.0);
+                audio.Sampler = samplerFragment?.GetValue<string>(Params.SamplerName) ?? string.Empty;
+                audio.Model = parameters.Assets.GetValueOrDefault(Assets.Model) ?? parameters.Assets.Values.FirstOrDefault() ?? workflow.Base.ToString();
+
+                await AddAudioToDbFromParams(audio, audio.Steps, audio.CfgScale, audio.Sampler, workflow);
+            }
+        }
+
+        private async Task<Image> AddAudioToDbFromParams(GeneratedAudio audio, int steps, double cfg, string samplerName, Workflow workflow)
+        {
+            var samplerId = string.IsNullOrWhiteSpace(samplerName)
+                ? await _db.GetSamplerIdByName("audio")
+                : await _db.GetSamplerIdByName(samplerName);
+
+            var image = new Image
+            {
+                Path = audio.FilePath,
+                Prompt = audio.Prompt,
+                NegativePrompt = audio.NegativePrompt,
+                Seed = audio.Seed,
+                Width = 0,
+                Height = 0,
+                Steps = steps,
+                CfgScale = (float)cfg,
+                DenoisingStrength = 1.0,
+                DateCreated = DateTime.Now,
+                SamplerId = samplerId,
+                Scheduler = string.Empty,
+                Favorite = false,
+                Score = 0,
+                ModeId = await _db.GetMode(workflow.Mode),
+                WorkflowId = workflow.Id.ToString(),
+                ProjectId = _state.State.Gallery.ProjectId
+            };
+
+            await _db.AddImage(image);
+            audio.Id = image.Id;
+
+            return image;
+        }
+
+        private static int GetAudioFileIndex(string path)
+        {
+            if (!Directory.Exists(path)) return 0;
+
+            var files = Directory.GetFiles(path, "*.mp3")
+                .Concat(Directory.GetFiles(path, "*.wav"))
+                .Concat(Directory.GetFiles(path, "*.flac"))
+                .Concat(Directory.GetFiles(path, "*.ogg"))
+                .ToList();
+
+            var maxIndex = 0;
+            foreach (var file in files)
+            {
+                var match = Regex.Match(Path.GetFileNameWithoutExtension(file), @"^(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var index))
+                {
+                    maxIndex = Math.Max(maxIndex, index);
+                }
+            }
+
+            return maxIndex;
+        }
+
+        private string GenerateAudioFilename(int fileIndex, long actualSeed, FragmentParameters? samplerFragment, string sourcePath)
+        {
+            var pattern = _backend.OutputPaths.FilenamePattern;
+            var filename = $"{fileIndex.ToString().PadLeft(5, '0')}";
+
+            if (!string.IsNullOrWhiteSpace(pattern))
+            {
+                filename += "-" + pattern
+                    .Replace("[seed]", actualSeed.ToString())
+                    .Replace("[steps]", samplerFragment?.GetValueOrDefault(Params.Steps, 0).ToString() ?? "0")
+                    .Replace("[cfg]", samplerFragment?.GetValueOrDefault(Params.Cfg, 0.0).ToString() ?? "0")
+                    .Replace("[sampler]", samplerFragment?.GetValue<string>(Params.SamplerName) ?? "audio");
+            }
+
+            var extension = Path.GetExtension(sourcePath);
+            if (string.IsNullOrWhiteSpace(extension)) extension = ".mp3";
+
+            return filename + extension;
         }
 
         /// <summary>

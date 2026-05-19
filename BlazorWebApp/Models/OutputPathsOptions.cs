@@ -32,6 +32,11 @@ namespace BlazorWebApp.Models
         public string Extras { get; set; } = "Extras";
 
         /// <summary>
+        /// Subfolder for generated audio files (relative to OutputDir)
+        /// </summary>
+        public string Audio { get; set; } = "Audio";
+
+        /// <summary>
         /// Pattern for directory names within output folders.
         /// Supports: [model_name], [sampler], [seed], [steps], [cfg]
         /// </summary>

@@ -164,7 +164,7 @@ namespace BlazorWebApp.Extensions
             {
                 throw new Exception("Failed to parse prompt/negative prompt from image info.");
             }
-            
+
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
         }
 
@@ -463,6 +463,7 @@ namespace BlazorWebApp.Extensions
                 Outdir.Img2ImgGrid => ModeType.Img2Img,
                 Outdir.Extras => ModeType.Extras,
                 Outdir.Img2VidSamples => ModeType.Img2Vid,
+                Outdir.Audio => ModeType.Txt2Mus,
                 _ => ModeType.Txt2Img
             };
         }

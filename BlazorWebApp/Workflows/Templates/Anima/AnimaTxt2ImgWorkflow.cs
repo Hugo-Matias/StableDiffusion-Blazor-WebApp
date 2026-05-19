@@ -11,7 +11,7 @@ namespace BlazorWebApp.Workflows.Templates.Anima;
 /// <summary>
 /// Anima Txt2Img workflow implementation using the fluent builder API.
 /// Generates images from text prompts using the Anima model architecture.
-/// Pipeline: LoadDiffusion -> LoRA -> EmptyLatent -> Prompts -> KSampler -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
+/// Pipeline: LoadDiffusion -> LoRA -> EmptyLatent -> Prompts -> KSampler -> VaeDecode -> [SeedVR2] -> [UltimateSDUpscale] -> [Detailer] -> [UpscaleWithModel] -> Save
 /// </summary>
 public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
 {
@@ -26,15 +26,18 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
 
     // Enhancement fragments
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
+    private readonly UltimateSdUpscaleFragment _ultimateSdUpscaleFragment = new();
     private readonly BackgroundRemovalFragment _backgroundRemovalFragment = new();
     private readonly EasyRemBgFragment _easyRemBgFragment = new();
     // Detailer fragments
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
+    private readonly UpscaleWithModelFragment _upscaleWithModelFragment = new();
 
     public WorkflowMetadata Metadata => new()
     {
         Title = "Txt2Img",
+        Description = "Generates square Anima txt2img compositions with optional image-space upscaling, tiled Ultimate SD refinement, detailer, and background cleanup passes. Pick it for Anima still images when you want a compact base render with optional post-processing controls.",
         Base = Data.Enums.ModelBase.Anima,
         Mode = ModeType.Txt2Img,
         Assets =
@@ -76,9 +79,11 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
         yield return _emptyLatentFragment;
         yield return _samplerStandardFragment;
         yield return _seedVR2UpscaleFragment;
+        yield return _ultimateSdUpscaleFragment;
+        yield return _detailerFragment;
+        yield return _upscaleWithModelFragment;
         yield return _backgroundRemovalFragment;
         yield return _easyRemBgFragment;
-        yield return _detailerFragment;
     }
 
     public ComfyWorkflow Build(GenerationParameters parameters)
@@ -155,7 +160,10 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 8. Detailer (conditional) - supports chained passes
+        // 8. Ultimate SD Upscale (conditional)
+        _ultimateSdUpscaleFragment.Build(builder, parameters, registry);
+
+        // 9. Detailer (conditional) - supports chained passes
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
@@ -212,11 +220,14 @@ public class AnimaTxt2ImgWorkflow : IWorkflowBuilder
             }
         }
 
-        // 9. Background Removal (conditional)
+        // 10. Upscale With Model (conditional)
+        _upscaleWithModelFragment.Build(builder, parameters, registry);
+
+        // 11. Background Removal (conditional)
         _backgroundRemovalFragment.Build(builder, parameters, registry);
         _easyRemBgFragment.Build(builder, parameters, registry);
 
-        // 10. Save
+        // 12. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/image"

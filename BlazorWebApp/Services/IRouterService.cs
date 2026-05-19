@@ -32,5 +32,13 @@ namespace BlazorWebApp.Services
         /// <param name="workflow">The workflow to execute.</param>
         /// <returns>The generated video result.</returns>
         Task<GeneratedVideos> PostVideoGenerationAsync(GenerationParameters parameters, Workflow workflow);
+
+        /// <summary>
+        /// Executes an audio generation workflow using the unified GenerationParameters model.
+        /// </summary>
+        /// <param name="parameters">The unified generation parameters.</param>
+        /// <param name="workflow">The workflow to execute.</param>
+        /// <returns>The generated audio result.</returns>
+        Task<GeneratedAudios> PostAudioGenerationAsync(GenerationParameters parameters, Workflow workflow);
     }
 }

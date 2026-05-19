@@ -33,7 +33,7 @@
                         {
                             @foreach (var lora in group.Loras)
                             {
-                                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                                <LoraCard Lora="lora" IsDualModel="IsDualModel" HighTargetLabel="@HighTargetLabel" LowTargetLabel="@LowTargetLabel" BothTargetLabel="@BothTargetLabel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
                             }
                         }
                     </div>
@@ -67,7 +67,7 @@
                         {
                             @foreach (var lora in group.Loras)
                             {
-                                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                                <LoraCard Lora="lora" IsDualModel="IsDualModel" HighTargetLabel="@HighTargetLabel" LowTargetLabel="@LowTargetLabel" BothTargetLabel="@BothTargetLabel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
                             }
                         }
                     </div>
@@ -80,9 +80,15 @@
     [Parameter]
     public Backend Backend { get; set; }
     [Parameter]
-    public List<Lora> Loras { get; set; }
+    public List<Lora> Loras { get; set; } = new();
     [Parameter]
     public bool IsDualModel { get; set; }
+    [Parameter]
+    public string HighTargetLabel { get; set; } = "H";
+    [Parameter]
+    public string LowTargetLabel { get; set; } = "L";
+    [Parameter]
+    public string BothTargetLabel { get; set; } = "Both";
     [Parameter]
     public EventCallback OnLorasUpdated { get; set; }
 

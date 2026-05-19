@@ -10,11 +10,11 @@
 
 @*
     WorkflowAssetsPanel - A collapsible panel containing workflow asset selectors.
-    
-    This component wraps WorkflowAssetSelector in an expansion panel for use in generation pages.
+
+This component wraps WorkflowAssetSelector in an expansion panel for use in generation pages.
     It provides a clean way to manage model/asset selection without cluttering the main form.
-    
-    Usage:
+
+Usage:
     <WorkflowAssetsPanel Mode="ModeType.Txt2Img" />
     <WorkflowAssetsPanel Mode="ModeType.Img2Vid" Workflow="@currentWorkflow" />
 *@
@@ -22,9 +22,7 @@
 @if (HasAssets)
 {
     <MudExpansionPanels Elevation="0">
-        <MudExpansionPanel Text="@PanelTitle" 
-                           IsInitiallyExpanded="@IsInitiallyExpanded"
-                           Class="workflow-assets-panel">
+        <MudExpansionPanel Text="@PanelTitle" IsInitiallyExpanded="@IsInitiallyExpanded" Class="workflow-assets-panel">
             <TitleContent>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                     <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" />
@@ -39,13 +37,8 @@
             </TitleContent>
             <ChildContent>
                 <MudPaper Elevation="0" Class="pa-3">
-                    <WorkflowAssetSelector Mode="@Mode" 
-                                           Workflow="@GetWorkflow()"
-                                           Columns="@Columns"
-                                           Dense="true"
-                                           Variant="Variant.Outlined"
-                                           ShowEmptyMessage="true"
-                                           OnAssetChanged="HandleAssetChanged" />
+                    <WorkflowAssetSelector Mode="@Mode" Workflow="@GetWorkflow()" Columns="@Columns" Dense="true"
+                                           Variant="Variant.Outlined" ShowEmptyMessage="true" OnAssetChanged="HandleAssetChanged" />
                 </MudPaper>
             </ChildContent>
         </MudExpansionPanel>
@@ -155,6 +148,8 @@
             ModeType.Txt2Img => "Txt2Img",
             ModeType.Img2Img => "Img2Img",
             ModeType.Img2Vid => "Img2Vid",
+            ModeType.Txt2Mus => "Txt2Mus",
+            ModeType.Voi2Voi => "Voi2Voi",
             ModeType.Extras => "Upscale",
             _ => Mode.ToString()
         };

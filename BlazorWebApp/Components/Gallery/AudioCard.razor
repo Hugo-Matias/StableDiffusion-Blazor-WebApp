@@ -1,0 +1,257 @@
+@using System.Diagnostics
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
+@using Microsoft.JSInterop
+@inject IDatabaseService DB
+@inject IGalleryService Gallery
+@inject IIOService IO
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div id="@_elementId"
+     class="audio-card @(UseFixedSize ? "fixed-size" : "") @(_isHovered || _isMenuOpen ? "hovered" : "")"
+     @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+    @if (ShowSelectionCheckbox)
+    {
+        <div class="audio-select">
+            <MudCheckBox T="bool" Checked="_isSelected" CheckedChanged="HandleSelected" Size="Size.Small"
+                         Color="Color.Primary" />
+        </div>
+    }
+
+    <div class="audio-rating @(_isHovered || _isMenuOpen || Audio.Score > 0 ? "visible" : "")">
+        <MudRating SelectedValue="Audio.Score" SelectedValueChanged="SetScore" MaxValue="3" Size="Size.Small"
+                   Color="Color.Warning" />
+    </div>
+
+    <div class="audio-visual">
+        <canvas class="audio-waveform" width="420" height="210"></canvas>
+        <div class="audio-glow"></div>
+        <div class="audio-glyph"><i class="fa-solid fa-wave-square"></i></div>
+        <audio class="audio-element" src="@AudioSource" preload="metadata"></audio>
+    </div>
+
+    <div class="audio-info">
+        <MudText Typo="Typo.caption" Class="audio-title">@DisplayName</MudText>
+        @if (!string.IsNullOrWhiteSpace(Audio.Prompt))
+        {
+            <MudText Typo="Typo.caption" Class="audio-prompt">@Audio.Prompt</MudText>
+        }
+    </div>
+
+    <button class="audio-fav @(Audio.Favorite ? "active" : "")"
+            title="@(Audio.Favorite ? "Remove from favorites" : "Add to favorites")" @onclick="ToggleFavorite">
+        <i class="@(Audio.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+    </button>
+
+    <div class="audio-menu-trigger @(_isHovered || _isMenuOpen ? "visible" : "")">
+        <button type="button" class="audio-menu-button" title="Actions" @onclick="ToggleActionMenu">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+    </div>
+
+    @if (_isMenuOpen)
+    {
+        <div class="audio-action-rail">
+            <button type="button" class="audio-action-btn danger" title="Delete"
+                    @onclick="@(() => RunActionAsync(DeleteAudio))">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button type="button" class="audio-action-btn primary" title="Open file"
+                    @onclick="@(() => RunAction(OpenFile))">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </button>
+            <button type="button" class="audio-action-btn secondary" title="Open in Explorer"
+                    @onclick="@(() => RunAction(OpenFileInExplorer))">
+                <i class="fa-solid fa-folder-open"></i>
+            </button>
+            <button type="button" class="audio-action-btn tertiary" title="Set Project"
+                    @onclick="@(() => RunActionAsync(ShowSwitchProjectDialog))">
+                <i class="fa-solid fa-layer-group"></i>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GeneratedAudio Audio { get; set; } = new();
+    [Parameter] public int Index { get; set; }
+    [Parameter] public EventCallback<GeneratedAudio> OnDeleteAudio { get; set; }
+    [Parameter] public EventCallback<GeneratedAudio> OnAudioChanged { get; set; }
+    [Parameter] public bool ShowSelectionCheckbox { get; set; }
+    [Parameter] public bool UseFixedSize { get; set; }
+
+    private readonly string _elementId = $"audio-card-{Guid.NewGuid():N}";
+    private IJSObjectReference? _module;
+    private bool _isHovered;
+    private bool _isMenuOpen;
+    private bool _isSelected;
+
+    private string AudioSource => !string.IsNullOrWhiteSpace(Audio.AudioData)
+        ? $"data:audio/mpeg;base64,{Audio.AudioData}"
+        : IO.GetImageStaticFile(Audio.FilePath);
+
+    private string DisplayName => string.IsNullOrWhiteSpace(Audio.Filename)
+        ? Path.GetFileName(Audio.FilePath)
+        : Audio.Filename;
+
+    protected override void OnParametersSet()
+    {
+        _isSelected = Audio.Id > 0 && Gallery.SelectedImageIds.Contains(Audio.Id);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/AudioCard.js");
+            await _module.InvokeVoidAsync("initialize", _elementId, AudioSource);
+        }
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (_module != null)
+        {
+            await _module.InvokeVoidAsync("play", _elementId);
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        CloseActionMenu();
+        if (_module != null)
+        {
+            await _module.InvokeVoidAsync("pause", _elementId);
+        }
+    }
+
+    private async Task ToggleFavorite()
+    {
+        Audio.Favorite = !Audio.Favorite;
+        if (Audio.Favorite && Audio.Score == 0)
+        {
+            Audio.Score = 3;
+        }
+
+        await PersistEntityAsync();
+        await OnAudioChanged.InvokeAsync(Audio);
+    }
+
+    private async Task SetScore(int score)
+    {
+        Audio.Score = score;
+        await PersistEntityAsync();
+        await OnAudioChanged.InvokeAsync(Audio);
+    }
+
+    private async Task PersistEntityAsync()
+    {
+        var entity = await GetEntityAsync();
+        if (entity == null) return;
+
+        entity.Favorite = Audio.Favorite;
+        entity.Score = Audio.Score;
+        await DB.UpdateImage(entity);
+    }
+
+    private async Task<Image?> GetEntityAsync()
+    {
+        return Audio.Id > 0 ? await DB.GetImageById(Audio.Id) : null;
+    }
+
+    private void OpenFile()
+    {
+        if (!File.Exists(Audio.FilePath)) return;
+        Process.Start(new ProcessStartInfo(Audio.FilePath) { UseShellExecute = true });
+    }
+
+    private void OpenFileInExplorer()
+    {
+        if (string.IsNullOrWhiteSpace(Audio.FilePath)) return;
+        Process.Start("explorer.exe", $"/select, {Audio.FilePath}");
+    }
+
+    private async Task DeleteAudio()
+    {
+        if (OnDeleteAudio.HasDelegate)
+        {
+            await OnDeleteAudio.InvokeAsync(Audio);
+            return;
+        }
+
+        var entity = await GetEntityAsync();
+        if (entity != null)
+        {
+            await DB.DeleteImage(entity);
+            Snackbar.Add("Audio deleted successfully.", Severity.Success);
+        }
+    }
+
+    private async Task ShowSwitchProjectDialog()
+    {
+        var entity = await GetEntityAsync();
+        if (entity == null) return;
+
+        var param = new DialogParameters { { "Images", new List<Image> { entity } } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var updatedImages = (List<Image>)result.Data;
+            await DB.UpdateImages(updatedImages);
+            Snackbar.Add("Audio project was changed.", Severity.Success);
+        }
+    }
+
+    private void HandleSelected(bool isChecked)
+    {
+        if (Audio.Id <= 0) return;
+
+        if (isChecked) Gallery.AddSelectedImage(Audio.Id);
+        else Gallery.RemoveSelectedImage(Audio.Id);
+
+        _isSelected = isChecked;
+    }
+
+    private void ToggleActionMenu()
+    {
+        _isMenuOpen = !_isMenuOpen;
+        _isHovered = _isMenuOpen;
+    }
+
+    private void CloseActionMenu()
+    {
+        _isMenuOpen = false;
+        _isHovered = false;
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        CloseActionMenu();
+        await action();
+    }
+
+    private void RunAction(Action action)
+    {
+        CloseActionMenu();
+        action();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module != null)
+        {
+            try
+            {
+                await _module.InvokeVoidAsync("dispose", _elementId);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}

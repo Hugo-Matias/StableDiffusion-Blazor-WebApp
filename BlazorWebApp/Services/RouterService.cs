@@ -47,7 +47,7 @@ namespace BlazorWebApp.Services
                 throw new ArgumentNullException(nameof(workflow), "Workflow is required for generation");
             }
 
-            _logger.LogInformation("Routing generation request to ComfyUI for workflow: {WorkflowTitle} (Mode: {Mode})", 
+            _logger.LogInformation("Routing generation request to ComfyUI for workflow: {WorkflowTitle} (Mode: {Mode})",
                 workflow.Title, workflow.Mode);
 
             return await _capi.PostGenerationAsync(parameters, _backend.ComfyWSClientId, workflow);
@@ -68,10 +68,31 @@ namespace BlazorWebApp.Services
                 throw new ArgumentNullException(nameof(workflow), "Workflow is required for video generation");
             }
 
-            _logger.LogInformation("Routing video generation request to ComfyUI for workflow: {WorkflowTitle}", 
+            _logger.LogInformation("Routing video generation request to ComfyUI for workflow: {WorkflowTitle}",
                 workflow.Title);
 
             return await _capi.PostVideoGenerationAsync(parameters, _backend.ComfyWSClientId, workflow);
+        }
+
+        /// <inheritdoc />
+        public async Task<GeneratedAudios> PostAudioGenerationAsync(GenerationParameters parameters, Workflow workflow)
+        {
+            if (!_backend.IsBackendAvailable)
+            {
+                _logger.LogError("ComfyUI backend not available for audio generation");
+                throw new InvalidOperationException("ComfyUI backend not available");
+            }
+
+            if (workflow == null)
+            {
+                _logger.LogError("No workflow provided for audio generation");
+                throw new ArgumentNullException(nameof(workflow), "Workflow is required for audio generation");
+            }
+
+            _logger.LogInformation("Routing audio generation request to ComfyUI for workflow: {WorkflowTitle}",
+                workflow.Title);
+
+            return await _capi.PostAudioGenerationAsync(parameters, _backend.ComfyWSClientId, workflow);
         }
     }
 }
