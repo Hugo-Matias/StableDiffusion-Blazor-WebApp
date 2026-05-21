@@ -11,7 +11,7 @@ namespace BlazorWebApp.Workflows.Templates.Flux;
 /// <summary>
 /// Flux2 Klein Txt2Img workflow implementation using the fluent builder API.
 /// Uses the SamplerCustomAdvanced pipeline with Flux2Scheduler, CFGGuider, and RandomNoise.
-/// Pipeline: LoadDiffusion -> LoRA -> EmptyLatent -> Prompts -> SamplerCustomAdvanced -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
+/// Pipeline: LoadDiffusion -> LoRA -> EmptyLatent -> Prompts -> SamplerCustomAdvanced -> VaeDecode -> [SeedVR2] -> [UltimateSDUpscale] -> [Detailer] -> Save
 /// </summary>
 public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
 {
@@ -26,6 +26,7 @@ public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
 
     // Enhancement fragments
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
+    private readonly UltimateSdUpscaleFragment _ultimateSdUpscaleFragment = new();
 
     // Detailer fragments
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
@@ -75,6 +76,7 @@ public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
         yield return _emptyLatentFragment;
         yield return _samplerCustomAdvancedFragment;
         yield return _seedVR2UpscaleFragment;
+        yield return _ultimateSdUpscaleFragment;
         yield return _detailerFragment;
     }
 
@@ -155,7 +157,10 @@ public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
             });
         }
 
-        // 8. Detailer (conditional) - supports chained passes
+        // 8. Ultimate SD Upscale (conditional)
+        _ultimateSdUpscaleFragment.Build(builder, parameters, registry);
+
+        // 9. Detailer (conditional) - supports chained passes
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
@@ -212,7 +217,7 @@ public class Flux2KleinTxt2ImgWorkflow : IWorkflowBuilder
             }
         }
 
-        // 9. Save
+        // 10. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/image"

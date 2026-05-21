@@ -4,6 +4,7 @@ using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
+using BlazorWebApp.Workflows.Fragments.Flux;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using static BlazorWebApp.Data.Enums;
@@ -33,6 +34,16 @@ public partial class Generate : IDisposable
     // Editor
     private ImageEditorModal? _editorModal;
     private string? _editingSourceId;
+
+    private FragmentReference? ReferenceLatentSettingsReference => ParameterService.OptionalFragments
+        .FirstOrDefault(fragment => string.Equals(fragment.Id, "reference_latent_settings", StringComparison.Ordinal));
+
+    private bool SupportsSourceInpaintMode => ReferenceLatentSettingsReference?.Schema?.Parameters.ContainsKey("edit_mode") == true;
+
+    private bool IsInpaintMode => string.Equals(
+        ParameterService.GetFragmentProperty(ReferenceLatentSettingsReference, "edit_mode", ReferenceLatentSettingsFragment.EditModeRegular),
+        ReferenceLatentSettingsFragment.EditModeInpaint,
+        StringComparison.OrdinalIgnoreCase);
 
     #endregion
 
@@ -318,11 +329,13 @@ public partial class Generate : IDisposable
     {
         if (Session.PendingSourceMedia.Count > 0)
         {
+            var resetEditorState = false;
             foreach (var pending in Session.PendingSourceMedia)
             {
                 var sourceData = pending.Data;
                 var sourceFilePath = pending.FilePath;
                 string? sourceFilename = null;
+                var isImageSource = string.Equals(pending.SourceType, "image", StringComparison.OrdinalIgnoreCase);
 
                 if (IsVideoSource(pending.SourceType) && string.IsNullOrWhiteSpace(sourceData) && !string.IsNullOrWhiteSpace(sourceFilePath))
                 {
@@ -359,18 +372,30 @@ public partial class Generate : IDisposable
                         Type = pending.SourceType,
                         Data = sourceData,
                         Filename = sourceFilename,
-                        FilePath = sourceFilePath
+                        FilePath = sourceFilePath,
+                        Width = pending.Width,
+                        Height = pending.Height
                     };
+                    resetEditorState |= isImageSource;
                     Logger.LogDebug("Created new source slot '{SourceId}' from pending", newKey);
                 }
                 else
                 {
                     if (Parameters.Sources.TryGetValue(pending.SourceKey, out var existingSource))
                     {
+                        resetEditorState |= isImageSource && !string.Equals(existingSource.Data, sourceData, StringComparison.Ordinal);
                         existingSource.Type = pending.SourceType;
                         existingSource.Data = sourceData;
                         existingSource.Filename = sourceFilename;
                         existingSource.FilePath = sourceFilePath;
+                        existingSource.Width = pending.Width;
+                        existingSource.Height = pending.Height;
+                        if (isImageSource)
+                        {
+                            existingSource.MaskData = null;
+                            existingSource.MaskFilename = null;
+                            existingSource.MaskFilePath = null;
+                        }
                     }
                     else
                     {
@@ -380,11 +405,18 @@ public partial class Generate : IDisposable
                             Type = pending.SourceType,
                             Data = sourceData,
                             Filename = sourceFilename,
-                            FilePath = sourceFilePath
+                            FilePath = sourceFilePath,
+                            Width = pending.Width,
+                            Height = pending.Height
                         };
+                        resetEditorState |= isImageSource;
                     }
                     Logger.LogDebug("Loaded pending media into source '{SourceId}'", pending.SourceKey);
                 }
+            }
+            if (resetEditorState)
+            {
+                Session.ResetImageEditorState();
             }
             Session.PendingSourceMedia.Clear();
         }
@@ -588,11 +620,31 @@ public partial class Generate : IDisposable
         }
     }
 
+    private async Task HandleInpaintModeChanged(bool isInpaintMode)
+    {
+        var fragment = ReferenceLatentSettingsReference;
+        if (fragment == null)
+        {
+            return;
+        }
+
+        var editMode = isInpaintMode
+            ? ReferenceLatentSettingsFragment.EditModeInpaint
+            : ReferenceLatentSettingsFragment.EditModeRegular;
+        ParameterService.SetFragmentProperty(fragment, "edit_mode", editMode, notify: true);
+        await State.SaveState();
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task HandleEditorApply((string image, string? mask) result)
     {
         if (!string.IsNullOrEmpty(_editingSourceId) && Parameters.Sources.TryGetValue(_editingSourceId, out var source))
         {
             source.Data = result.image;
+            source.MaskData = string.IsNullOrWhiteSpace(result.mask) ? null : result.mask;
+            source.MaskFilename = null;
+            source.MaskFilePath = null;
+            await State.SaveState();
             await InvokeAsync(StateHasChanged);
         }
         _editingSourceId = null;

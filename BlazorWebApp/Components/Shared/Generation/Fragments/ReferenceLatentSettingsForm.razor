@@ -1,29 +1,19 @@
 @using BlazorWebApp.Attributes
 @using BlazorWebApp.Models
+@using BlazorWebApp.Workflows.Models
 @attribute [FragmentComponent("ReferenceLatentSettingsForm")]
 @inject IGenerationParameterService ParameterService
 
 <MudGrid Spacing="2">
-    <MudItem xs="6">
-        <MudSlider T="double"
-                   @bind-Value="_localMegapixels"
-                   @bind-Value:after="OnMegapixelsChanged"
-                   Min="_megapixelsMin"
-                   Max="_megapixelsMax"
-                   Step="_megapixelsStep"
-                   Variant="Variant.Filled"
-                   ValueLabel>
-            <small>Megapixels:</small> @_localMegapixels.ToString("F1")
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localMegapixels" @bind-Value:after="OnMegapixelsChanged"
+                   Min="_megapixelsMin" Max="_megapixelsMax" Step="_megapixelsStep" Variant="Variant.Filled" ValueLabel>
+            <small>@MegapixelsLabel:</small> @_localMegapixels.ToString("F1")
         </MudSlider>
     </MudItem>
-    <MudItem xs="6">
-        <MudSlider T="int"
-                   @bind-Value="_localResolutionSteps"
-                   @bind-Value:after="OnResolutionStepsChanged"
-                   Min="_resolutionStepsMin"
-                   Max="_resolutionStepsMax"
-                   Step="_resolutionStepsStep"
-                   Variant="Variant.Filled"
+    <MudItem xs="12" sm="6">
+        <MudSlider T="int" @bind-Value="_localResolutionSteps" @bind-Value:after="OnResolutionStepsChanged"
+                   Min="_resolutionStepsMin" Max="_resolutionStepsMax" Step="_resolutionStepsStep" Variant="Variant.Filled"
                    ValueLabel>
             <small>Resolution Steps:</small> @_localResolutionSteps
         </MudSlider>
@@ -39,6 +29,15 @@
 
     private double _megapixelsMin = 0.1, _megapixelsMax = 4.0, _megapixelsStep = 0.1;
     private int _resolutionStepsMin = 1, _resolutionStepsMax = 64, _resolutionStepsStep = 1;
+
+    private string MegapixelsLabel
+    {
+        get
+        {
+            var size = ResolveReferenceTargetSize();
+            return size.HasValue ? $"Megapixels ({size.Value.Width}x{size.Value.Height})" : "Megapixels";
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -79,5 +78,18 @@
     {
         ParameterService.SetFragmentProperty(Fragment, "resolution_steps", _localResolutionSteps, notify: true);
         await OnChanged.InvokeAsync();
+    }
+
+    private WorkflowImageSize? ResolveReferenceTargetSize()
+    {
+        var source = ParameterService.Current.Sources
+            .Where(kvp => kvp.Key.StartsWith("reference_image") && kvp.Value.HasData)
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => kvp.Value)
+            .FirstOrDefault(source => source.Width is > 0 && source.Height is > 0);
+
+        return source == null
+            ? null
+            : WorkflowSizing.ScaleToTotalPixels(source.Width, source.Height, _localMegapixels, _localResolutionSteps);
     }
 }

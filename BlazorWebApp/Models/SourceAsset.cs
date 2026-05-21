@@ -32,6 +32,21 @@ namespace BlazorWebApp.Models
         public string? FilePath { get; set; }
 
         /// <summary>
+        /// Optional black/white PNG mask data for inpainting. White pixels are edited.
+        /// </summary>
+        public string? MaskData { get; set; }
+
+        /// <summary>
+        /// Uploaded mask filename if available in ComfyUI input storage.
+        /// </summary>
+        public string? MaskFilename { get; set; }
+
+        /// <summary>
+        /// Optional local mask file path.
+        /// </summary>
+        public string? MaskFilePath { get; set; }
+
+        /// <summary>
         /// Width of the source (if known).
         /// </summary>
         public int? Width { get; set; }
@@ -55,6 +70,13 @@ namespace BlazorWebApp.Models
         /// Whether this source has valid data.
         /// </summary>
         public bool HasData => !string.IsNullOrWhiteSpace(Data) || !string.IsNullOrWhiteSpace(FilePath);
+
+        /// <summary>
+        /// Whether this source has mask data available for inpainting.
+        /// </summary>
+        public bool HasMask => !string.IsNullOrWhiteSpace(MaskData) ||
+                       !string.IsNullOrWhiteSpace(MaskFilename) ||
+                       !string.IsNullOrWhiteSpace(MaskFilePath);
 
         /// <summary>
         /// Gets the data without the base64 header prefix.
@@ -81,6 +103,9 @@ namespace BlazorWebApp.Models
                 Data = Data,
                 Filename = Filename,
                 FilePath = FilePath,
+                MaskData = MaskData,
+                MaskFilename = MaskFilename,
+                MaskFilePath = MaskFilePath,
                 Width = Width,
                 Height = Height,
                 VideoOptions = VideoOptions?.Clone(),
@@ -96,6 +121,9 @@ namespace BlazorWebApp.Models
             Data = null;
             Filename = null;
             FilePath = null;
+            MaskData = null;
+            MaskFilename = null;
+            MaskFilePath = null;
             Width = null;
             Height = null;
         }

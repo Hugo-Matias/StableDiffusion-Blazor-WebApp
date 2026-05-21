@@ -239,7 +239,9 @@ public class MediaSendToService : IMediaSendToService
             Data: data,
             FilePath: resolvedPath,
             Label: target.SourceLabel,
-            IsNewSlot: target.IsNewSlot));
+            IsNewSlot: target.IsNewSlot,
+            Width: asset.Width > 0 ? asset.Width : null,
+            Height: asset.Height > 0 ? asset.Height : null));
         _session.NotifyPendingSourceMedia();
 
         _navManager.NavigateTo($"/generate/{target.Workflow.Id}");

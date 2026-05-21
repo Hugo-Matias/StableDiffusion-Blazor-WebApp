@@ -145,6 +145,48 @@ public class MediaSendToServiceTests
     }
 
     [Fact]
+    public async Task SendSourceToTargetAsync_ForWorkflowSource_ShouldStoreSourceDimensions()
+    {
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "image");
+        try
+        {
+            var pendingMedia = new List<PendingSourceMedia>();
+            var session = new Mock<ISessionService>();
+            session.SetupGet(service => service.PendingSourceMedia).Returns(pendingMedia);
+            var io = new Mock<IIOService>();
+            io.Setup(service => service.ResolveFilePath("source.png")).Returns(tempFile);
+            io.Setup(service => service.GetBase64FromFile(tempFile)).Returns("aW1hZ2U=");
+            var nav = new TestNavigationManager();
+            nav.SetUri("http://localhost/", "http://localhost/gallery");
+            var workflow = CreateWorkflow("Klein Edit", ModelBase.Flux, ModeType.Img2Img, "reference_image", "Reference Image", "image");
+            var service = new MediaSendToService(
+                Mock.Of<IBackendService>(),
+                Mock.Of<IStateService>(),
+                Mock.Of<ICharacterRepository>(),
+                session.Object,
+                io.Object,
+                Mock.Of<IOrchestratorService>(),
+                nav,
+                Mock.Of<MudBlazor.ISnackbar>());
+
+            await service.SendSourceToTargetAsync(
+                new Image { Id = 12, Path = "source.png", Width = 832, Height = 1248 },
+                new MediaSendToTarget(workflow, "reference_image", "Reference Image", "image", IsNewSlot: false));
+
+            var pending = pendingMedia.Should().ContainSingle().Subject;
+            pending.Width.Should().Be(832);
+            pending.Height.Should().Be(1248);
+            nav.Uri.Should().Be($"http://localhost/generate/{workflow.Id}");
+            session.Verify(service => service.NotifyPendingSourceMedia(), Times.Once);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public async Task SendSourceToTargetAsync_ForCharactersWithSelectedCharacter_ShouldCreateOrLoadSheet()
     {
         var tempFile = Path.GetTempFileName();

@@ -43,6 +43,7 @@ public class Flux2KleinGridRefWorkflow : IWorkflowBuilder
     private readonly FluxKleinReferenceGridFragment _referenceGridFragment = new();
     private readonly FluxKleinGridRefConditioningFragment _conditioningFragment = new();
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
+    private readonly UltimateSdUpscaleFragment _ultimateSdUpscaleFragment = new();
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
     private readonly DetailerFragment _detailerFragment = new();
 
@@ -143,6 +144,7 @@ public class Flux2KleinGridRefWorkflow : IWorkflowBuilder
         yield return _emptyLatentFragment;
         yield return _samplerFragment;
         yield return _seedVR2UpscaleFragment;
+        yield return _ultimateSdUpscaleFragment;
         yield return _detailerFragment;
     }
 
@@ -227,6 +229,7 @@ public class Flux2KleinGridRefWorkflow : IWorkflowBuilder
         _samplerFragment.Build(builder, parameters, registry);
         _vaeDecodeFragment.Build(builder, registry);
         _seedVR2UpscaleFragment.Build(builder, parameters, registry);
+        _ultimateSdUpscaleFragment.Build(builder, parameters, registry);
         BuildDetailerIfActive(builder, registry, parameters, promptsFragment);
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {

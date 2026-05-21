@@ -1,6 +1,7 @@
 @using BlazorWebApp.Models
 @using BlazorWebApp.Components.Shared.Image
 @using BlazorWebApp.Components.Shared.Generation
+@inject ISessionService Session
 
 @* Individual source input (image or video) - reuses ImageInput for images *@
 
@@ -63,7 +64,7 @@
     {
         @* Image input - reuse ImageInput component for drag/drop, clipboard, and editor *@
         <ImageInput ImageData="@Source.Data" ImageDataChanged="HandleImageChanged" Title="@DisplayLabel"
-                    OnImageLoaded="HandleImageLoaded" OnEditClicked="HandleEditClicked"
+                    MaskImageData="@MaskPreviewData" OnImageLoaded="HandleImageLoaded" OnEditClicked="HandleEditClicked"
                     OnBlankCanvasClicked="HandleBlankCanvasClicked" MaxFileSizeMB="50" AutoResize="false" />
     }
 </div>
@@ -92,6 +93,7 @@
 
     private string DisplayLabel => string.IsNullOrWhiteSpace(SourceDefinition?.Label) ? Source.Label :
 SourceDefinition.Label;
+    private string? MaskPreviewData => ResolveMaskPreviewData();
 
     // Audio trim state (mirrors AudioSourceOptions but tracks duration locally)
     private double _audioDuration;
@@ -113,6 +115,20 @@ _audioDuration - _audioTrimStart));
         }
     }
 
+    private string? ResolveMaskPreviewData()
+    {
+        if (!string.IsNullOrWhiteSpace(Source.MaskData))
+        {
+            return Source.MaskData.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? Source.MaskData
+                : $"/api/source-preview?filename={Uri.EscapeDataString(Source.MaskData)}";
+        }
+
+        return string.IsNullOrWhiteSpace(Source.MaskFilename)
+            ? null
+            : $"/api/source-preview?filename={Uri.EscapeDataString(Source.MaskFilename)}";
+    }
+
     /// <summary>
     /// Callback when edit is clicked (for image editor integration).
     /// </summary>
@@ -127,6 +143,7 @@ _audioDuration - _audioTrimStart));
 
     private async Task HandleImageChanged(string imageData)
     {
+        var imageChanged = !string.Equals(Source.Data, imageData, StringComparison.Ordinal);
         if (string.IsNullOrWhiteSpace(imageData))
         {
             Source.Clear();
@@ -135,15 +152,22 @@ _audioDuration - _audioTrimStart));
         {
             Source.Data = imageData;
             Source.Filename = null; // Clear filename since it's from drag/drop or clipboard
+            Source.MaskData = null;
+            Source.MaskFilename = null;
+            Source.MaskFilePath = null;
+        }
+        if (imageChanged)
+        {
+            Session.ResetImageEditorState();
         }
         await OnSourceChanged.InvokeAsync((SourceId, Source));
     }
 
-    private void HandleImageLoaded((int width, int height) dimensions)
+    private async Task HandleImageLoaded((int width, int height) dimensions)
     {
-        // Store dimensions if needed for workflow processing
         Source.Width = dimensions.width;
         Source.Height = dimensions.height;
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
     }
 
     private async Task HandleEditClicked()

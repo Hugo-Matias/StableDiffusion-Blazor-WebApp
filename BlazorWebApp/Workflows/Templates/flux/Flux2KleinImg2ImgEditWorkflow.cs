@@ -13,7 +13,7 @@ namespace BlazorWebApp.Workflows.Templates.Flux;
 /// Flux2 Klein Image Edit workflow using the fluent builder API.
 /// Supports multiple reference images chained through ReferenceLatent nodes.
 /// Uses the SamplerCustomAdvanced pipeline with Flux2Scheduler, CFGGuider, and RandomNoise.
-/// Pipeline: LoadDiffusion -> LoRA -> Prompts -> [ReferenceLatent x N] -> GetImageSize -> EmptyLatent(ref dims) -> SamplerCustomAdvanced(ref dims) -> VaeDecode -> [SeedVR2] -> [Detailer] -> Save
+/// Pipeline: LoadDiffusion -> LoRA -> Prompts -> [ReferenceLatent x N] -> GetImageSize -> EmptyLatent(ref dims) -> SamplerCustomAdvanced(ref dims) -> VaeDecode -> [SeedVR2] -> [UltimateSDUpscale] -> [Detailer] -> Save
 /// </summary>
 public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
 {
@@ -23,6 +23,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
     private readonly PromptsFragment _promptsFragment = new();
     private readonly ReferenceLatentFragment _referenceLatentFragment = new();
     private readonly EmptyLatentFragment _emptyLatentFragment = new();
+    private readonly InpaintConditioningFragment _inpaintConditioningFragment = new();
     private readonly SamplerCustomAdvancedFragment _samplerCustomAdvancedFragment = new();
     private readonly VaeDecodeFragment _vaeDecodeFragment = new();
     private readonly SaveFragment _saveFragment = new();
@@ -32,6 +33,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
 
     // Enhancement fragments
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
+    private readonly UltimateSdUpscaleFragment _ultimateSdUpscaleFragment = new();
 
     // Detailer fragments
     private readonly LoadDiffusionWithPromptsFragment _loadDiffusionWithPromptsFragment = new();
@@ -92,6 +94,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
         yield return _samplerCustomAdvancedFragment;
         yield return _referenceLatentSettingsFragment;
         yield return _seedVR2UpscaleFragment;
+        yield return _ultimateSdUpscaleFragment;
         yield return _detailerFragment;
     }
 
@@ -103,6 +106,10 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
         var promptsFragment = parameters.GetFragment("prompts");
         var samplerFragment = parameters.GetFragment("main_sampler");
         var referenceLatentSettings = parameters.GetFragment("reference_latent_settings");
+        var referenceMegapixels = referenceLatentSettings?.GetDouble("megapixels", 1.0) ?? 1.0;
+        var referenceResolutionSteps = referenceLatentSettings?.GetInt("resolution_steps", 1) ?? 1;
+        var editMode = referenceLatentSettings?.GetString("edit_mode", ReferenceLatentSettingsFragment.EditModeRegular)
+            ?? ReferenceLatentSettingsFragment.EditModeRegular;
 
         // Collect all reference image sources (reference_image, reference_image_1, reference_image_2, ...)
         var referenceImages = parameters.Sources
@@ -112,7 +119,17 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
 
         // Get first image path for size reference
         var firstSource = referenceImages.FirstOrDefault();
+        var firstSourceAsset = firstSource.Value;
         var firstImagePath = firstSource.Value?.Filename ?? firstSource.Value?.FilePath ?? "";
+        var maskImagePath = firstSourceAsset?.MaskFilename ?? firstSourceAsset?.MaskFilePath ?? firstSourceAsset?.MaskData ?? "";
+        var useInpaint = string.Equals(editMode, ReferenceLatentSettingsFragment.EditModeInpaint, StringComparison.OrdinalIgnoreCase)
+            && firstSourceAsset?.HasMask == true
+            && !string.IsNullOrWhiteSpace(maskImagePath);
+        var upscaleBaseSize = WorkflowSizing.ScaleToTotalPixels(
+            firstSourceAsset?.Width,
+            firstSourceAsset?.Height,
+            referenceMegapixels,
+            referenceResolutionSteps);
 
         // 1. Load models (UNet, CLIP[flux2], VAE)
         _loadDiffusionFragment.Build(builder, registry, new LoadDiffusionFragment.Parameters
@@ -145,8 +162,8 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
                 Image = imagePath,
                 Index = i,
                 UpscaleMethod = "lanczos",
-                Megapixels = referenceLatentSettings?.GetDouble("megapixels", 1.0) ?? 1.0,
-                ResolutionSteps = referenceLatentSettings?.GetInt("resolution_steps", 1) ?? 1
+                Megapixels = referenceMegapixels,
+                ResolutionSteps = referenceResolutionSteps
             });
         }
 
@@ -154,14 +171,28 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
         var widthRef = registry.GetRef("image_size_width");
         var heightRef = registry.GetRef("image_size_height");
 
-        // 6. Create empty latent (Flux2 latent space) using reference image dimensions
-        _emptyLatentFragment.Build(builder, registry, new EmptyLatentFragment.Parameters
+        // 6. Create latent input for the sampler.
+        if (useInpaint)
         {
-            BatchSize = 1,
-            LatentClass = "EmptyFlux2LatentImage",
-            WidthRef = widthRef,
-            HeightRef = heightRef
-        });
+            _inpaintConditioningFragment.Build(builder, registry, new InpaintConditioningFragment.Parameters
+            {
+                MaskImage = maskImagePath,
+                PixelsRef = ("ref_image_scale_0", 0),
+                Megapixels = referenceMegapixels,
+                ResolutionSteps = referenceResolutionSteps,
+                NoiseMask = true
+            });
+        }
+        else
+        {
+            _emptyLatentFragment.Build(builder, registry, new EmptyLatentFragment.Parameters
+            {
+                BatchSize = 1,
+                LatentClass = "EmptyFlux2LatentImage",
+                WidthRef = widthRef,
+                HeightRef = heightRef
+            });
+        }
 
         // 7. Sample (SamplerCustomAdvanced pipeline) using reference image dimensions
         var resolvedSeed = samplerFragment?.GetLong("seed", -1) ?? -1;
@@ -199,7 +230,10 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
             });
         }
 
-        // 10. Detailer (conditional) - supports chained passes
+        // 10. Ultimate SD Upscale (conditional)
+        _ultimateSdUpscaleFragment.Build(builder, parameters, registry, baseSize: upscaleBaseSize);
+
+        // 11. Detailer (conditional) - supports chained passes
         var detailerFragment = parameters.GetFragment("detailer");
         if (detailerFragment?.IsActive == true)
         {
@@ -253,7 +287,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
             }
         }
 
-        // 11. Save
+        // 12. Save
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/image"

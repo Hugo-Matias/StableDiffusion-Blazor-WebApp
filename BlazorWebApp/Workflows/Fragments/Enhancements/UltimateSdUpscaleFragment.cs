@@ -267,6 +267,24 @@ public class UltimateSdUpscaleFragment : IFragmentBuilder
         NodeRegistry registry,
         string scope = "",
         string scopeTitle = "")
+        => BuildInternal(builder, parameters, registry, baseSize: null, scope, scopeTitle);
+
+    public void Build(
+        ComfyWorkflowBuilder builder,
+        GenerationParameters parameters,
+        NodeRegistry registry,
+        WorkflowImageSize baseSize,
+        string scope = "",
+        string scopeTitle = "")
+        => BuildInternal(builder, parameters, registry, baseSize, scope, scopeTitle);
+
+    private void BuildInternal(
+        ComfyWorkflowBuilder builder,
+        GenerationParameters parameters,
+        NodeRegistry registry,
+        WorkflowImageSize? baseSize,
+        string scope,
+        string scopeTitle)
     {
         var fragment = parameters.GetFragment(Id);
         if (fragment?.IsActive != true)
@@ -305,8 +323,8 @@ public class UltimateSdUpscaleFragment : IFragmentBuilder
             ForceUniformTiles = fragment.GetBool("force_uniform_tiles", true),
             TiledDecode = fragment.GetBool("tiled_decode", false),
             BatchSize = fragment.GetInt("batch_size", 1),
-            BaseWidth = latentFragment?.GetInt("width", 1024) ?? 1024,
-            BaseHeight = latentFragment?.GetInt("height", 1024) ?? 1024,
+            BaseWidth = baseSize?.Width ?? latentFragment?.GetInt("width", 1024) ?? 1024,
+            BaseHeight = baseSize?.Height ?? latentFragment?.GetInt("height", 1024) ?? 1024,
             Scope = scope,
             ScopeTitle = scopeTitle
         });
@@ -328,8 +346,12 @@ public class UltimateSdUpscaleFragment : IFragmentBuilder
             .Title($"{scopeTitle}Load Ultimate SD Upscale Model")
             .Input("model_name", parameters.UpscaleModel));
 
-        var tileWidth = parameters.AutoTileSize ? CalculateTileSize(parameters.BaseWidth, parameters.UpscaleBy) : AlignToStep(parameters.TileWidth, 8, 64, 8192);
-        var tileHeight = parameters.AutoTileSize ? CalculateTileSize(parameters.BaseHeight, parameters.UpscaleBy) : AlignToStep(parameters.TileHeight, 8, 64, 8192);
+        var tileWidth = parameters.AutoTileSize
+            ? WorkflowSizing.CalculateUltimateSdTileSize(parameters.BaseWidth, parameters.UpscaleBy)
+            : WorkflowSizing.AlignToStep(parameters.TileWidth, 8, 64, 8192);
+        var tileHeight = parameters.AutoTileSize
+            ? WorkflowSizing.CalculateUltimateSdTileSize(parameters.BaseHeight, parameters.UpscaleBy)
+            : WorkflowSizing.AlignToStep(parameters.TileHeight, 8, 64, 8192);
 
         builder.AddNode(upscaleNodeId, node => node
             .Type("UltimateSDUpscale")
@@ -362,14 +384,5 @@ public class UltimateSdUpscaleFragment : IFragmentBuilder
             .InputFromNode("upscale_model", modelLoaderNodeId, 0));
 
         registry.Register("image_output", upscaleNodeId, 0);
-    }
-
-    private static int CalculateTileSize(int baseSize, double upscaleBy)
-        => AlignToStep((int)(upscaleBy * baseSize / 2 + 32), 8, 64, 8192);
-
-    private static int AlignToStep(int value, int step, int min, int max)
-    {
-        var clamped = Math.Clamp(value, min, max);
-        return Math.Max(min, (clamped / step) * step);
     }
 }

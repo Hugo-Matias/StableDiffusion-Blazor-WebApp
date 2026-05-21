@@ -5,7 +5,15 @@ namespace BlazorWebApp.Services
     /// <summary>
     /// Represents source media to be loaded into a specific workflow source slot.
     /// </summary>
-    public record PendingSourceMedia(string SourceKey, string SourceType, string? Data, string? FilePath, string? Label = null, bool IsNewSlot = false);
+    public record PendingSourceMedia(
+        string SourceKey,
+        string SourceType,
+        string? Data,
+        string? FilePath,
+        string? Label = null,
+        bool IsNewSlot = false,
+        int? Width = null,
+        int? Height = null);
 
     /// <summary>
     /// Service for managing session-scoped UI state (canvas, image editor, videos).

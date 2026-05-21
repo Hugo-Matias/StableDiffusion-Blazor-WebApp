@@ -63,8 +63,9 @@
             @if (HasSources)
             {
                 <SourcesPanel Sources="@Parameters.Sources" SourceDefinitions="@_selectedWorkflow?.Sources"
-                              OnSourceChanged="HandleSourceChanged" OnSourceAdded="HandleSourceAdded"
-                              OnSourceRemoved="HandleSourceRemoved" OnEditClicked="HandleEditClicked"
+                              SupportsInpaintMode="@SupportsSourceInpaintMode" IsInpaintMode="@IsInpaintMode"
+                              IsInpaintModeChanged="HandleInpaintModeChanged" OnSourceChanged="HandleSourceChanged"
+                              OnSourceAdded="HandleSourceAdded" OnSourceRemoved="HandleSourceRemoved" OnEditClicked="HandleEditClicked"
                               OnBlankCanvasClicked="HandleBlankCanvasClicked" />
             }
 

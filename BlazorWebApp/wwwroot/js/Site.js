@@ -64,6 +64,190 @@ window.civitaiModelNavigation = {
   },
 };
 
+window.assetViewerPanZoom = (function () {
+  let stageEl = null;
+  let mediaEl = null;
+  let indicatorEl = null;
+  let dragging = false;
+  let pointerId = null;
+  let panX = 0;
+  let panY = 0;
+  let zoom = 1;
+  let startX = 0;
+  let startY = 0;
+  let startPanX = 0;
+  let startPanY = 0;
+  let minZoom = 0.25;
+  let maxZoom = 5;
+  let zoomStep = 0.15;
+  let animationFrame = 0;
+  let indicatorTimer = 0;
+  let onPointerDown = null;
+  let onPointerMove = null;
+  let onPointerUp = null;
+  let onWheel = null;
+  const INDICATOR_HIDE_DELAY = 800;
+
+  function clampZoom(value) {
+    return Math.max(minZoom, Math.min(maxZoom, value));
+  }
+
+  function applyTransform() {
+    if (!mediaEl) return;
+    mediaEl.style.setProperty("--asset-pan-x", panX.toFixed(3) + "px");
+    mediaEl.style.setProperty("--asset-pan-y", panY.toFixed(3) + "px");
+    mediaEl.style.setProperty("--asset-zoom", zoom.toFixed(4));
+  }
+
+  function scheduleTransform() {
+    if (animationFrame) return;
+    animationFrame = requestAnimationFrame(function () {
+      animationFrame = 0;
+      applyTransform();
+    });
+  }
+
+  function setDragging(value) {
+    dragging = !!value;
+    if (stageEl) stageEl.classList.toggle("dragging", dragging);
+    if (mediaEl) mediaEl.classList.toggle("dragging", dragging);
+  }
+
+  function showIndicator() {
+    if (!indicatorEl) return;
+    indicatorEl.textContent = Math.round(zoom * 100) + "%";
+    indicatorEl.classList.add("visible");
+    if (indicatorTimer) clearTimeout(indicatorTimer);
+    indicatorTimer = setTimeout(function () {
+      if (indicatorEl) indicatorEl.classList.remove("visible");
+      indicatorTimer = 0;
+    }, INDICATOR_HIDE_DELAY);
+  }
+
+  function setZoom(value, show) {
+    const nextZoom = clampZoom(value);
+    if (nextZoom === zoom) return;
+    zoom = nextZoom;
+    scheduleTransform();
+    if (show) showIndicator();
+  }
+
+  function resetState(show) {
+    panX = 0;
+    panY = 0;
+    zoom = 1;
+    scheduleTransform();
+    if (show) showIndicator();
+  }
+
+  function releasePointer(e) {
+    if (!stageEl || pointerId === null) return;
+    try {
+      stageEl.releasePointerCapture(pointerId);
+    } catch (error) {
+      // Pointer capture may already be released by the browser.
+    }
+    pointerId = null;
+  }
+
+  return {
+    attach: function (stage, media, indicator, min, max, step) {
+      window.assetViewerPanZoom.detach();
+      if (!stage || !media) return;
+
+      stageEl = stage;
+      mediaEl = media;
+      indicatorEl = indicator || null;
+      minZoom = typeof min === "number" ? min : minZoom;
+      maxZoom = typeof max === "number" ? max : maxZoom;
+      zoomStep = typeof step === "number" ? step : zoomStep;
+      resetState(false);
+      applyTransform();
+
+      onPointerDown = function (e) {
+        if (e.button !== 0 || !stageEl || !mediaEl) return;
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startPanX = panX;
+        startPanY = panY;
+        setDragging(true);
+        try {
+          stageEl.setPointerCapture(pointerId);
+        } catch (error) {
+          // Pointer capture is an optimization, not a requirement.
+        }
+        e.preventDefault();
+      };
+
+      onPointerMove = function (e) {
+        if (!dragging) return;
+        if (pointerId !== null && e.pointerId !== pointerId) return;
+        panX = startPanX + e.clientX - startX;
+        panY = startPanY + e.clientY - startY;
+        scheduleTransform();
+        e.preventDefault();
+      };
+
+      onPointerUp = function (e) {
+        if (!dragging) return;
+        if (pointerId !== null && e.pointerId !== pointerId) return;
+        releasePointer(e);
+        setDragging(false);
+      };
+
+      onWheel = function (e) {
+        e.preventDefault();
+        setZoom(zoom + (e.deltaY > 0 ? -zoomStep : zoomStep), true);
+      };
+
+      stageEl.addEventListener("pointerdown", onPointerDown);
+      stageEl.addEventListener("pointermove", onPointerMove);
+      stageEl.addEventListener("pointerup", onPointerUp);
+      stageEl.addEventListener("pointercancel", onPointerUp);
+      stageEl.addEventListener("wheel", onWheel, { passive: false });
+    },
+    detach: function () {
+      if (stageEl && onPointerDown)
+        stageEl.removeEventListener("pointerdown", onPointerDown);
+      if (stageEl && onPointerMove)
+        stageEl.removeEventListener("pointermove", onPointerMove);
+      if (stageEl && onPointerUp) {
+        stageEl.removeEventListener("pointerup", onPointerUp);
+        stageEl.removeEventListener("pointercancel", onPointerUp);
+      }
+      if (stageEl && onWheel) stageEl.removeEventListener("wheel", onWheel);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (indicatorTimer) clearTimeout(indicatorTimer);
+      if (indicatorEl) indicatorEl.classList.remove("visible");
+      if (stageEl) stageEl.classList.remove("dragging");
+      if (mediaEl) {
+        mediaEl.classList.remove("dragging");
+        mediaEl.style.removeProperty("--asset-pan-x");
+        mediaEl.style.removeProperty("--asset-pan-y");
+        mediaEl.style.removeProperty("--asset-zoom");
+      }
+      stageEl = null;
+      mediaEl = null;
+      indicatorEl = null;
+      dragging = false;
+      pointerId = null;
+      panX = 0;
+      panY = 0;
+      zoom = 1;
+      animationFrame = 0;
+      indicatorTimer = 0;
+      onPointerDown = onPointerMove = onPointerUp = onWheel = null;
+    },
+    reset: function () {
+      resetState(true);
+    },
+    zoomBy: function (delta) {
+      setZoom(zoom + (typeof delta === "number" ? delta : 0), true);
+    },
+  };
+})();
+
 window.assetViewerCompare = (function () {
   let stageEl = null;
   let frameEl = null;
@@ -73,8 +257,16 @@ window.assetViewerCompare = (function () {
   let onMove = null;
   let onDown = null;
   let onUp = null;
+  let onResize = null;
+  let onImageLoad = null;
+  let mediaEl = null;
+  let pointerActive = false;
   let handleTimer = 0;
   const HANDLE_HIDE_DELAY = 1800;
+
+  function setActiveAreaVisible(value) {
+    pointerActive = !!value;
+  }
 
   function showHandle() {
     if (!frameEl) return;
@@ -102,9 +294,34 @@ window.assetViewerCompare = (function () {
     }
   }
 
-  function pointerInsideStage(e) {
-    if (!stageEl) return false;
-    const r = stageEl.getBoundingClientRect();
+  function updateFrameBounds() {
+    if (!stageEl || !frameEl) return null;
+    if (!mediaEl || !stageEl.contains(mediaEl)) {
+      mediaEl = stageEl.querySelector("img.viewer-media");
+      if (mediaEl && onImageLoad) mediaEl.addEventListener("load", onImageLoad);
+    }
+    if (!mediaEl) return null;
+
+    const stageRect = stageEl.getBoundingClientRect();
+    const mediaRect = mediaEl.getBoundingClientRect();
+    if (
+      stageRect.width <= 0 ||
+      stageRect.height <= 0 ||
+      mediaRect.width <= 0 ||
+      mediaRect.height <= 0
+    )
+      return null;
+
+    frameEl.style.left = mediaRect.left - stageRect.left + "px";
+    frameEl.style.top = mediaRect.top - stageRect.top + "px";
+    frameEl.style.width = mediaRect.width + "px";
+    frameEl.style.height = mediaRect.height + "px";
+    return mediaRect;
+  }
+
+  function pointerInsideActiveArea(e) {
+    const r = updateFrameBounds();
+    if (!r) return false;
     if (r.width <= 0 || r.height <= 0) return false;
     return (
       e.clientX >= r.left &&
@@ -115,8 +332,9 @@ window.assetViewerCompare = (function () {
   }
 
   function computeFromEvent(e) {
-    if (!stageEl) return null;
-    const r = stageEl.getBoundingClientRect();
+    if (!frameEl) return null;
+    const r = updateFrameBounds();
+    if (!r) return null;
     if (r.width <= 0) return null;
     return (e.clientX - r.left) / r.width;
   }
@@ -130,18 +348,30 @@ window.assetViewerCompare = (function () {
       frameEl = frame;
       locked = false;
       dragging = false;
+      pointerActive = false;
+      onImageLoad = function () {
+        updateFrameBounds();
+      };
+      onResize = function () {
+        updateFrameBounds();
+      };
+      mediaEl = stageEl ? stageEl.querySelector("img.viewer-media") : null;
+      if (mediaEl) mediaEl.addEventListener("load", onImageLoad);
+      updateFrameBounds();
+      setActiveAreaVisible(false);
       applySplit(typeof initialSplit === "number" ? initialSplit : 0.5);
 
       onMove = function (e) {
         if (!stageEl) return;
-        const inside = pointerInsideStage(e);
+        const inside = pointerInsideActiveArea(e);
+        setActiveAreaVisible(inside);
         // Handle is auto-hidden; only reveal it while locked AND the cursor is
-        // moving over the stage. A timer hides it again after a short idle.
+        // moving over the image. A timer hides it again after a short idle.
         if (locked && inside) {
           showHandle();
         }
         // While dragging the handle we always track. Otherwise: skip when locked,
-        // and only act when the cursor is over the stage rect (so toolbar/info-panel
+        // and only act when the cursor is over the image rect (so toolbar/info-panel
         // hovers don't snap the slider).
         if (!dragging) {
           if (locked) return;
@@ -170,6 +400,7 @@ window.assetViewerCompare = (function () {
         if (dragging) {
           setTimeout(function () {
             dragging = false;
+            setActiveAreaVisible(pointerActive);
           }, 50);
         }
       };
@@ -180,20 +411,27 @@ window.assetViewerCompare = (function () {
       document.addEventListener("mousemove", onMove, true);
       document.addEventListener("mousedown", onDown, true);
       document.addEventListener("mouseup", onUp, true);
+      window.addEventListener("resize", onResize);
     },
     detach: function () {
       if (onMove) document.removeEventListener("mousemove", onMove, true);
       if (onDown) document.removeEventListener("mousedown", onDown, true);
       if (onUp) document.removeEventListener("mouseup", onUp, true);
+      if (onResize) window.removeEventListener("resize", onResize);
+      if (mediaEl && onImageLoad)
+        mediaEl.removeEventListener("load", onImageLoad);
       hideHandleNow();
       stageEl = null;
       frameEl = null;
-      onMove = onDown = onUp = null;
+      mediaEl = null;
+      onMove = onDown = onUp = onResize = onImageLoad = null;
       locked = false;
       dragging = false;
+      pointerActive = false;
     },
     setLocked: function (value) {
       locked = !!value;
+      setActiveAreaVisible(pointerActive);
       if (!locked) hideHandleNow();
     },
     setSplit: function (value) {
@@ -204,6 +442,14 @@ window.assetViewerCompare = (function () {
     },
     wasDragging: function () {
       return dragging;
+    },
+    isPointInsideActiveArea: function (clientX, clientY) {
+      const inside = pointerInsideActiveArea({
+        clientX: clientX,
+        clientY: clientY,
+      });
+      setActiveAreaVisible(inside);
+      return inside;
     },
   };
 })();

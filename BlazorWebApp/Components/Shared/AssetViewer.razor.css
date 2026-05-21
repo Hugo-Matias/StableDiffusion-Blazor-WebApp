@@ -65,6 +65,13 @@
   max-width: none;
   max-height: none;
   cursor: grab;
+  transform: translate3d(var(--asset-pan-x, 0px), var(--asset-pan-y, 0px), 0)
+    scale(var(--asset-zoom, 1));
+  transition: opacity 0.2s ease-in-out;
+  transform-origin: center center;
+  will-change: transform;
+  backface-visibility: hidden;
+  touch-action: none;
 }
 
 .viewer-media.pan-mode.dragging {
@@ -317,7 +324,12 @@
   font-weight: 600;
   pointer-events: none;
   z-index: 10001;
-  animation: fadeIn 0.15s ease;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.zoom-indicator.visible {
+  opacity: 1;
 }
 
 /* Asset type indicator */
@@ -407,29 +419,39 @@
 
 /* ===== A/B Compare ===== */
 
-/* While compare is active, the stage shows a crosshair-style cursor by default,
-   indicating the live cursor-tracking mode. When locked, default cursor is restored. */
+/* While compare is active, only the rendered image is an active compare target.
+   Backdrop clicks still bubble to the stage and close the viewer. */
 .asset-stage.compare-mode {
-  cursor: ew-resize;
+  cursor: default;
 }
 
 .asset-stage.compare-mode.compare-locked {
+  cursor: default;
+}
+
+.asset-stage.compare-mode .viewer-media {
+  cursor: ew-resize;
+}
+
+.asset-stage.compare-mode.compare-locked .viewer-media {
   cursor: pointer;
 }
 
-/* Frame matches the stage padding-box exactly so absolute children align with the
-   centered base image. */
+/* JS sizes this frame to the rendered image bounds so compare chrome never leaks
+   into the letterboxed/backdrop area. */
 .compare-frame {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  right: 20px;
-  bottom: 100px;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  border-radius: 4px;
   pointer-events: none;
 }
 
-/* The source overlay is sized to the same letterbox area as the base image and is
-   clipped to reveal only the portion to the right of the split. */
+/* The source overlay is sized to the same visible image area as the base image and
+   is clipped to reveal only the portion to the right of the split. */
 .compare-overlay {
   position: absolute;
   inset: 0;
@@ -491,7 +513,7 @@
 }
 
 /* Handle is auto-shown by JS only when locked AND the cursor is moving over the
-   stage; it fades back out after a short idle. */
+  image; it fades back out after a short idle. */
 .compare-frame.handle-visible .compare-handle {
   opacity: 1;
   pointer-events: auto;

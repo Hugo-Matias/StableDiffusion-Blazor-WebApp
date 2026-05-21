@@ -1,6 +1,7 @@
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Workflows.Fragments.Core;
+using BlazorWebApp.Workflows.Fragments.Enhancements;
 using BlazorWebApp.Workflows.Fragments.Flux;
 using BlazorWebApp.Workflows.Models;
 using GenerationParameters = BlazorWebApp.Models.GenerationParameters;
@@ -29,6 +30,7 @@ public class Flux2KleinAdonisUpscaleWorkflow : IWorkflowBuilder
 
     // Settings fragments (UI-only)
     private readonly AdonisSettingsFragment _adonisSettingsFragment = new();
+    private readonly UltimateSdUpscaleFragment _ultimateSdUpscaleFragment = new();
 
     // Hardcoded Adonis LoRAs (file names match upstream workflow)
     private const string AdonisBaseLora = "Util/adonis_base.safetensors";
@@ -99,6 +101,7 @@ public class Flux2KleinAdonisUpscaleWorkflow : IWorkflowBuilder
         yield return _promptsFragment;
         yield return _adonisSettingsFragment;
         yield return _samplerFragment;
+        yield return _ultimateSdUpscaleFragment;
     }
 
     public ComfyWorkflow Build(GenerationParameters parameters)
@@ -280,8 +283,10 @@ public class Flux2KleinAdonisUpscaleWorkflow : IWorkflowBuilder
             ModelOverride = refineSamplerModelRef
         });
 
-        // 14. VAE decode and save.
+        // 14. VAE decode, optional tiled SD refinement, and save.
         _vaeDecodeFragment.Build(builder, registry);
+        registry.Register("model_output", refineSamplerModelRef.nodeId, refineSamplerModelRef.outputIndex);
+        _ultimateSdUpscaleFragment.Build(builder, parameters, registry);
         _saveFragment.Build(builder, registry, new SaveFragment.Parameters
         {
             FilenamePrefix = "tmp/image"

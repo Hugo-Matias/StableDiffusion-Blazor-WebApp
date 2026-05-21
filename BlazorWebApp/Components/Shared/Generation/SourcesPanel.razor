@@ -11,13 +11,23 @@
                 Sources
             </MudText>
             <MudSpacer />
+            @if (SupportsInpaintMode)
+            {
+                <MudTooltip
+                    Text="Switch between regular reference editing and masked inpainting for workflows that support source masks.">
+                    <MudChip Size="Size.Small" Icon="@InpaintModeIcon" Color="@(IsInpaintMode ? Color.Primary : Color.Default)"
+                             Variant="@(IsInpaintMode ? Variant.Filled : Variant.Outlined)" OnClick="ToggleInpaintMode">
+                        @InpaintModeLabel
+                    </MudChip>
+                </MudTooltip>
+            }
             @if (_multiSourceDefinition != null)
             {
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary"
                                Title="Add reference image" OnClick="AddMultiSource" />
             }
         </div>
-        
+
         @if (Sources.Count == 1 && _multiSourceDefinition == null)
         {
             @* Single source, no multi-source - no tabs needed *@
@@ -102,8 +112,19 @@
     [Parameter]
     public EventCallback<string> OnBlankCanvasClicked { get; set; }
 
+    [Parameter]
+    public bool SupportsInpaintMode { get; set; }
+
+    [Parameter]
+    public bool IsInpaintMode { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsInpaintModeChanged { get; set; }
+
     private WorkflowSource? _multiSourceDefinition;
     private int _activeTabIndex;
+    private string InpaintModeLabel => IsInpaintMode ? "Inpaint" : "Edit";
+    private string InpaintModeIcon => IsInpaintMode ? Icons.Material.Filled.Brush : Icons.Material.Filled.Edit;
 
     protected override void OnParametersSet()
     {
@@ -180,6 +201,11 @@
             if (_activeTabIndex >= Sources.Count)
                 _activeTabIndex = Sources.Count - 1;
         }
+    }
+
+    private async Task ToggleInpaintMode()
+    {
+        await IsInpaintModeChanged.InvokeAsync(!IsInpaintMode);
     }
 
     private async Task HandleSourceChanged((string sourceId, SourceAsset source) args)

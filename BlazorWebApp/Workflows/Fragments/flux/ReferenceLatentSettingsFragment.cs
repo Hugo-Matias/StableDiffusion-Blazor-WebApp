@@ -11,6 +11,9 @@ namespace BlazorWebApp.Workflows.Fragments.Flux;
 /// </summary>
 public class ReferenceLatentSettingsFragment : IFragmentBuilder
 {
+    public const string EditModeRegular = "regular";
+    public const string EditModeInpaint = "inpaint";
+
     public FragmentMetadata Metadata => new()
     {
         Id = "reference_latent_settings",
@@ -22,6 +25,14 @@ public class ReferenceLatentSettingsFragment : IFragmentBuilder
         Collapsible = false,
         Parameters =
         [
+            new FragmentParameter
+            {
+                Name = "edit_mode",
+                Label = "Edit Mode",
+                Type = ParameterType.Select,
+                Options = [EditModeRegular, EditModeInpaint],
+                DefaultValue = EditModeRegular
+            },
             new FragmentParameter
             {
                 Name = "megapixels",

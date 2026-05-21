@@ -1656,6 +1656,50 @@ namespace BlazorWebApp.Services
                         _logger.LogDebug("Uploaded source video from file path: {FilePath} -> {Filename}", resolvedPath, uploadedFilename);
                     }
                 }
+
+                await UploadSourceMaskAsync(source, tempId);
+            }
+        }
+
+        private async Task UploadSourceMaskAsync(SourceAsset source, Guid tempId)
+        {
+            if (!source.HasMask)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(source.MaskData))
+            {
+                if (source.MaskData.StartsWith("data:") || source.MaskData.Length > 260)
+                {
+                    var uploadedFilename = await UploadImageAsync(source.MaskData, tempId);
+                    source.MaskData = uploadedFilename;
+                    source.MaskFilename = uploadedFilename;
+                    _logger.LogDebug("Uploaded source mask from data: {Filename}", uploadedFilename);
+                }
+                else if (string.IsNullOrWhiteSpace(source.MaskFilename))
+                {
+                    source.MaskFilename = source.MaskData;
+                }
+
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(source.MaskFilePath))
+            {
+                var resolvedPath = _io.ResolveFilePath(source.MaskFilePath);
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                {
+                    return;
+                }
+
+                var base64 = _io.GetBase64FromFile(resolvedPath);
+                if (!string.IsNullOrWhiteSpace(base64))
+                {
+                    var uploadedFilename = await UploadImageAsync(base64, tempId);
+                    source.MaskFilename = uploadedFilename;
+                    _logger.LogDebug("Uploaded source mask from file path: {FilePath} -> {Filename}", resolvedPath, uploadedFilename);
+                }
             }
         }
 

@@ -1,4 +1,5 @@
 @using BlazorWebApp.Attributes
+@using BlazorWebApp.Workflows.Models
 @attribute [FragmentComponent("UltimateSdUpscaleForm")]
 @inject IGenerationParameterService ParameterService
 
@@ -329,20 +330,48 @@
 
     private void RefreshResizeInfo()
     {
-        var baseWidth = 1024;
-        var baseHeight = 1024;
-
-        if (ParameterService.PrimaryLatentFragment != null)
-        {
-            baseWidth = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", baseWidth);
-            baseHeight = ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", baseHeight);
-        }
+        var baseSize = ResolveResizeHintBaseSize();
+        var baseWidth = baseSize.Width;
+        var baseHeight = baseSize.Height;
 
         var targetWidth = (int)(baseWidth * _localUpscaleBy);
         var targetHeight = (int)(baseHeight * _localUpscaleBy);
-        var tileWidth = _localAutoTileSize ? CalculateTileSize(baseWidth, _localUpscaleBy) : _localTileWidth;
-        var tileHeight = _localAutoTileSize ? CalculateTileSize(baseHeight, _localUpscaleBy) : _localTileHeight;
+        var tileWidth = _localAutoTileSize ? WorkflowSizing.CalculateUltimateSdTileSize(baseWidth, _localUpscaleBy) : _localTileWidth;
+        var tileHeight = _localAutoTileSize ? WorkflowSizing.CalculateUltimateSdTileSize(baseHeight, _localUpscaleBy) : _localTileHeight;
         _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetWidth}x{targetHeight} px</strong> ({_localUpscaleBy:F2}x) | Tile: <strong>{tileWidth}x{tileHeight}</strong>");
+    }
+
+    private WorkflowImageSize ResolveResizeHintBaseSize()
+    {
+        if (ParameterService.PrimaryLatentFragment != null)
+        {
+            return new WorkflowImageSize(
+                ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", 1024),
+                ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", 1024));
+        }
+
+        var referenceSource = ParameterService.Current.Sources
+            .Where(kvp => kvp.Key.StartsWith("reference_image") && kvp.Value.HasData)
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => kvp.Value)
+            .FirstOrDefault(source => source.Width is > 0 && source.Height is > 0);
+
+        if (referenceSource != null)
+        {
+            var referenceSettings = ParameterService.Current.GetFragment("reference_latent_settings");
+            return WorkflowSizing.ScaleToTotalPixels(
+                referenceSource.Width,
+                referenceSource.Height,
+                referenceSettings?.GetDouble("megapixels", 1.0) ?? 1.0,
+                referenceSettings?.GetInt("resolution_steps", 1) ?? 1);
+        }
+
+        var source = ParameterService.Current.Sources.Values
+            .FirstOrDefault(source => source.HasData && source.Width is > 0 && source.Height is > 0);
+
+        return source != null
+            ? new WorkflowImageSize(source.Width!.Value, source.Height!.Value)
+            : new WorkflowImageSize(1024, 1024);
     }
 
     private ParameterConstraints Constraint(string parameterName)
@@ -355,10 +384,4 @@
     private double GetMaxDouble(string parameterName, double fallback) => Constraint(parameterName).GetMax(fallback);
     private double GetStepDouble(string parameterName, double fallback) => Constraint(parameterName).GetStep(fallback);
 
-    private static int CalculateTileSize(int baseSize, double upscaleBy)
-    {
-        var value = (int)(upscaleBy * baseSize / 2 + 32);
-        var clamped = Math.Clamp(value, 64, 8192);
-        return Math.Max(64, (clamped / 8) * 8);
-    }
 }
