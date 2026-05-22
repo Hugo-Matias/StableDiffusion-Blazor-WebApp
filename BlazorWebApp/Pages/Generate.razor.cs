@@ -470,15 +470,16 @@ public partial class Generate : IDisposable
 
     private async Task HandlePromptChanged(string value)
     {
-        // Write TO service (with notification for UI updates)
-        ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Positive, value, notify: true);
+        // notify: false - explicit StateHasChanged below handles the re-render;
+        // publishing the event would cause a second redundant render per keystroke.
+        ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Positive, value, notify: false);
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleNegativePromptChanged(string value)
     {
-        // Write TO service (with notification for UI updates)
-        ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Negative, value, notify: true);
+        // notify: false - same reason as HandlePromptChanged.
+        ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Negative, value, notify: false);
         await InvokeAsync(StateHasChanged);
     }
 

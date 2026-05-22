@@ -848,6 +848,12 @@ namespace BlazorWebApp.Migrations
                     b.Property<string>("TriggerWords")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("VersionDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VersionName")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TypeId")
                         .HasColumnType("INTEGER");
 

@@ -961,17 +961,24 @@ namespace BlazorWebApp.Services
         public async Task<bool> DownloadImageAsPng(string url, string path, bool overwrite = true)
         {
             if (File.Exists(path) && !overwrite) return false;
-            var httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(url);
-            var response = await httpClient.GetByteArrayAsync(url);
-            Directory.CreateDirectory(new FileInfo(path).DirectoryName);
-            var imageData = _magick.ConvertToPng(response);
-            if (imageData?.Length > 0)
+            try
             {
-                await File.WriteAllBytesAsync(path, imageData);
-                return true;
+                using var httpClient = new HttpClient();
+                var response = await httpClient.GetByteArrayAsync(url);
+                Directory.CreateDirectory(new FileInfo(path).DirectoryName!);
+                var imageData = _magick.ConvertToPng(response);
+                if (imageData?.Length > 0)
+                {
+                    await File.WriteAllBytesAsync(path, imageData);
+                    return true;
+                }
+                return false;
             }
-            return false;
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download image {Url}", url);
+                return false;
+            }
         }
 
         private void NotifyStateChanged(bool success = true, int count = 0)

@@ -38,7 +38,29 @@ window.civitaiModelNavigation = {
       return window.scrollY || document.documentElement.scrollTop || 0;
     return container.scrollTop || 0;
   },
-  restoreResults: function (container, anchorId, fallbackScrollTop) {
+  watchScroll: function (container, storageKey) {
+    if (!container || !storageKey) return;
+    if (container.__civitaiScrollWatcherKey === storageKey) return;
+    if (container.__civitaiScrollWatcher) {
+      container.removeEventListener("scroll", container.__civitaiScrollWatcher);
+    }
+
+    const watcher = function () {
+      try {
+        sessionStorage.setItem(storageKey, String(container.scrollTop || 0));
+      } catch (e) {}
+    };
+
+    container.__civitaiScrollWatcher = watcher;
+    container.__civitaiScrollWatcherKey = storageKey;
+    container.addEventListener("scroll", watcher, { passive: true });
+  },
+  restoreResults: function (
+    container,
+    anchorId,
+    fallbackScrollTop,
+    storageKey,
+  ) {
     requestAnimationFrame(function () {
       const anchor = anchorId ? document.getElementById(anchorId) : null;
       if (anchor) {
@@ -50,14 +72,30 @@ window.civitaiModelNavigation = {
         return;
       }
 
+      let storedScrollTop = null;
+      if (storageKey) {
+        try {
+          const storedValue = sessionStorage.getItem(storageKey);
+          storedScrollTop = storedValue === null ? null : Number(storedValue);
+        } catch (e) {
+          storedScrollTop = null;
+        }
+      }
+
+      const scrollTop =
+        typeof storedScrollTop === "number" && !Number.isNaN(storedScrollTop)
+          ? storedScrollTop
+          : typeof fallbackScrollTop === "number"
+            ? fallbackScrollTop
+            : 0;
+
       if (container) {
-        container.scrollTop =
-          typeof fallbackScrollTop === "number" ? fallbackScrollTop : 0;
+        container.scrollTop = scrollTop;
         return;
       }
 
       window.scrollTo({
-        top: typeof fallbackScrollTop === "number" ? fallbackScrollTop : 0,
+        top: scrollTop,
         behavior: "auto",
       });
     });

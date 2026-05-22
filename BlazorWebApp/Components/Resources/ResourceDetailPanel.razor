@@ -29,17 +29,6 @@
             }
             else
             {
-                @if (Resource.Files?.Count > 1)
-                {
-                    <MudSelect T="LocalResourceFile" Label="File" Variant="Variant.Text" Value="_selectedFile"
-                               ValueChanged="SelectFile" Dense ToStringFunc="FileLabel">
-                        @foreach (var file in Resource.Files)
-                        {
-                            <MudSelectItem Value="file">@FileLabel(file)</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-
                 <div class="resource-detail__meta-card">
                     <div class="resource-detail__chip-row">
                         <MudChip T="string" Text="@Resource.Type.Name"
@@ -98,7 +87,7 @@
                                 var isSelected = _selectedTriggerWords.Contains(capturedWord);
                                 <span @ondblclick="@(() => SoloTriggerWord(capturedWord))" @ondblclick:preventDefault
                                       @ondblclick:stopPropagation>
-                                    <MudChip T="string" Color="@(isSelected? Color.Primary: Color.Default)" Size="Size.Small" Label
+                                    <MudChip T="string" Color="@(isSelected ? Color.Primary : Color.Default)" Size="Size.Small" Label
                                              Variant="@(isSelected ? Variant.Filled : Variant.Text)"
                                              OnClick="@(() => ToggleTriggerWord(capturedWord))">
                                         @capturedWord
@@ -244,6 +233,21 @@
                 </div>
             </div>
 
+            @if (Resource.Files?.Count > 1)
+            {
+                <div class="resource-detail__file-tabs">
+                    <MudTabs Class="resource-detail__file-tabs-control" ActivePanelIndex="ActiveFileIndex"
+                             ActivePanelIndexChanged="HandleFileTabChanged" Elevation="0" Rounded="true" Centered="false"
+                             MinimumTabWidth="160px" AlwaysShowScrollButtons="true">
+                        @foreach (var file in Resource.Files)
+                        {
+                            <MudTabPanel Text="@FileTabLabel(file)" Icon="fa-solid fa-file"
+                                         IconColor="@(file.IsEnabled ? Color.Success : Color.Warning)" ToolTip="@file.Filename" />
+                        }
+                    </MudTabs>
+                </div>
+            }
+
             @if (_selectedFile == null)
             {
                 <div class="app-empty-state">
@@ -324,9 +328,9 @@
                 <section class="resource-detail__section">
                     <MudText Typo="Typo.h6">Description</MudText>
                     <div class="resource-detail__prose">
-                        @if (!string.IsNullOrWhiteSpace(_selectedFile.Description))
+                        @if (!string.IsNullOrWhiteSpace(Resource.Description))
                         {
-                            @((MarkupString)_selectedFile.Description)
+                            @((MarkupString)Resource.Description)
                         }
                         else
                         {
@@ -334,6 +338,16 @@
                         }
                     </div>
                 </section>
+
+                @if (!string.IsNullOrWhiteSpace(_selectedFile.VersionDescription))
+                {
+                    <section class="resource-detail__section">
+                        <MudText Typo="Typo.h6">@($"Version notes - {FileTabLabel(_selectedFile)}")</MudText>
+                        <div class="resource-detail__prose">
+                            @((MarkupString)_selectedFile.VersionDescription)
+                        </div>
+                    </section>
+                }
 
                 @if (_entity != null)
                 {
@@ -345,6 +359,18 @@
                             </MudItem>
                             <MudItem xs="12" md="6">
                                 <MudTextField @bind-Value="_editAuthor" Label="Author" Variant="Variant.Text" Dense Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editVersionName" Label="Version Name" Variant="Variant.Text" Dense
+                                              Clearable />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editDescription" Label="Description" Variant="Variant.Text" Dense
+                                              Lines="3" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_editVersionDescription" Label="Version Notes" Variant="Variant.Text"
+                                              Dense Lines="3" />
                             </MudItem>
                             <MudItem xs="12" md="4">
                                 <MudSelect T="string" @bind-Value="_editType" Label="Type" Variant="Variant.Text" Dense>
@@ -414,6 +440,9 @@
     private string? _editBaseModel;
     private int? _editModelId;
     private int? _editVersionId;
+    private string? _editVersionName;
+    private string? _editDescription;
+    private string? _editVersionDescription;
     private string? _tagText;
     private string? _triggerWordText;
 
@@ -470,6 +499,29 @@ StringComparison.InvariantCultureIgnoreCase)
         return file.SizeKb > 0 ? $"{label} ({Parser.ParseSizeKb(file.SizeKb)})" : label;
     }
 
+    private static string FileTabLabel(LocalResourceFile? file)
+    {
+        if (file == null) return string.Empty;
+        if (!string.IsNullOrWhiteSpace(file.VersionName)) return file.VersionName;
+        return string.IsNullOrWhiteSpace(file.Title) ? Path.GetFileNameWithoutExtension(file.Filename) : file.Title;
+    }
+
+    private int ActiveFileIndex
+    {
+        get
+        {
+            if (Resource.Files == null || Resource.Files.Count == 0 || _selectedFile == null) return 0;
+            var index = Resource.Files.FindIndex(file => file.ResourceId == _selectedFile.ResourceId);
+            return index >= 0 ? index : 0;
+        }
+    }
+
+    private async Task HandleFileTabChanged(int index)
+    {
+        if (Resource.Files == null || index < 0 || index >= Resource.Files.Count) return;
+        await SelectFile(Resource.Files[index]);
+    }
+
     private void LoadEditState()
     {
         if (_entity == null) return;
@@ -480,6 +532,9 @@ StringComparison.InvariantCultureIgnoreCase)
         _editBaseModel = _entity.BaseModel;
         _editModelId = _entity.CivitaiModelId;
         _editVersionId = _entity.CivitaiModelVersionId;
+        _editVersionName = _entity.VersionName;
+        _editDescription = _entity.Description;
+        _editVersionDescription = _entity.VersionDescription;
         _tagText = string.Join(", ", _entity.Tags ?? new List<string>());
         _triggerWordText = string.Join(", ", _entity.TriggerWords ?? new List<string>());
     }
@@ -608,6 +663,9 @@ StringComparison.InvariantCultureIgnoreCase)
         _entity.BaseModel = string.IsNullOrWhiteSpace(_editBaseModel) ? null : _editBaseModel.Trim();
         _entity.CivitaiModelId = _editModelId;
         _entity.CivitaiModelVersionId = _editVersionId;
+        _entity.VersionName = string.IsNullOrWhiteSpace(_editVersionName) ? null : _editVersionName.Trim();
+        _entity.Description = string.IsNullOrWhiteSpace(_editDescription) ? null : _editDescription.Trim();
+        _entity.VersionDescription = string.IsNullOrWhiteSpace(_editVersionDescription) ? null : _editVersionDescription.Trim();
         _entity.Type = ResolveResourceType(_editType);
         _entity.SubType = string.IsNullOrWhiteSpace(_editSubtype) ? null : new ResourceSubType { Name = _editSubtype.Trim() };
         _entity.Tags = SplitList(_tagText);

@@ -40,7 +40,7 @@
                 @(_isDownloading ? "Downloading..." : _buttonText)
             </MudButton>
             <MudButton Class="send-to-btn" StartIcon="fa-solid fa-images" OnClick="SaveAllImagesClick"
-                       Disabled="_isSavingImages || Version.Images == null || Version.Images.Count == 0">
+                       Disabled="_isSavingImages || Version.Id <= 0">
                 @(_isSavingImages ? "Saving..." : "Save All")
             </MudButton>
         </div>
@@ -256,10 +256,15 @@
                     break;
             }
 
-            if (downloadResourceImages && Version.Images != null && Version.Images.Count > 0)
+            if (downloadResourceImages)
             {
-                await SaveImage(Version.Images[0], Version.Id, isPreview: true, showSnackbar: false);
-                await SaveAllImagesInternal(showProgress: false);
+                var maxResourceImages = Math.Max(0, Settings.Settings.Resources.Civitai.ResourceImageDownloadLimit);
+                var images = await ResolveImagesForSaving(maxResourceImages);
+                if (images.Count > 0)
+                {
+                    await SaveImage(images[0], Version.Id, isPreview: true, showSnackbar: false);
+                    await SaveImagesInternal(images, showProgress: false);
+                }
             }
 
             await OnDownloadCompleted.InvokeAsync();
@@ -272,12 +277,24 @@
 
     private async Task SaveAllImagesClick()
     {
-        await SaveAllImagesInternal(showProgress: true);
+        var images = await ResolveImagesForSaving(maxImages: 0);
+        await SaveImagesInternal(images, showProgress: true);
     }
 
-    private async Task SaveAllImagesInternal(bool showProgress)
+    private async Task<List<CivitaiImageDto>> ResolveImagesForSaving(int maxImages)
     {
-        if (Version.Images == null || Version.Images.Count == 0) return;
+        var images = await Civitai.GetModelVersionImages(Version.Id, maxImages);
+        if (images.Count > 0) return images;
+
+        if (Version.Images == null || Version.Images.Count == 0) return new();
+        return maxImages > 0
+            ? Version.Images.Take(maxImages).ToList()
+            : Version.Images;
+    }
+
+    private async Task SaveImagesInternal(IReadOnlyList<CivitaiImageDto> images, bool showProgress)
+    {
+        if (images.Count == 0) return;
 
         _isSavingImages = true;
         var index = 1;
@@ -286,9 +303,9 @@
         var progress = new BaseProgress() { BarColor = Color.Secondary };
         if (showProgress) Progress.Add(progress);
 
-        foreach (var image in Version.Images)
+        foreach (var image in images)
         {
-            var pct = (index * 100) / Version.Images.Count;
+            var pct = (index * 100) / images.Count;
             if (showProgress) Progress.Update(progress.Id, pct);
             try
             {
@@ -314,7 +331,8 @@
         _isSavingImages = false;
     }
 
-    private async Task<bool> SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
+    private async Task<bool> SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false,
+bool showSnackbar = true)
     {
         var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
         {

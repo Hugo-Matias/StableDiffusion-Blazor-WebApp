@@ -12,6 +12,25 @@
   width: 100%;
 }
 
+.resource-detail__file-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--resource-detail-gap) / 4);
+  min-width: 0;
+}
+
+.resource-detail__file-tabs-control {
+  width: 100%;
+}
+
+::deep .resource-detail__file-tabs-control .mud-tabs-panels {
+  display: none;
+}
+
+::deep .resource-detail__file-tabs-control .mud-tab {
+  text-transform: none;
+}
+
 .resource-detail__meta-card,
 .resource-detail__section {
   display: flex;

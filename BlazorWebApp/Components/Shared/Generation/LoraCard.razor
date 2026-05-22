@@ -86,7 +86,38 @@
         var resource = await ResourceCache.FindByFilenameAsync(path);
         if (resource == null) return (null, null);
         var img = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", path);
-        return (string.IsNullOrEmpty(img) ? null : img, string.IsNullOrWhiteSpace(resource.Title) ? null : resource.Title);
+        var displayName = await ResolveDisplayName(resource, path);
+        return (string.IsNullOrEmpty(img) ? null : img, displayName);
+    }
+
+    private async Task<string?> ResolveDisplayName(Resource resource, string path)
+    {
+        var title = resource.Title ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(title)) return null;
+
+        var resources = await ResourceCache.GetCachedResourcesAsync();
+        var hasSiblingResources = resources.Any(candidate =>
+            candidate.Id != resource.Id &&
+            string.Equals(candidate.Title, title, StringComparison.OrdinalIgnoreCase));
+
+        if (hasSiblingResources)
+        {
+            var versionLabel = ResolveVersionLabel(resource, path, title);
+            if (!string.IsNullOrWhiteSpace(versionLabel)) return $"{title} - {versionLabel}";
+        }
+
+        return title;
+    }
+
+    private static string? ResolveVersionLabel(Resource resource, string path, string title)
+    {
+        if (!string.IsNullOrWhiteSpace(resource.VersionName)) return resource.VersionName;
+
+        var filename = string.IsNullOrWhiteSpace(resource.Filename) ? path : resource.Filename;
+        var stem = Path.GetFileNameWithoutExtension(filename);
+        if (!string.IsNullOrWhiteSpace(stem) && !stem.Equals(title, StringComparison.OrdinalIgnoreCase)) return stem;
+
+        return resource.CivitaiModelVersionId.HasValue ? $"Version {resource.CivitaiModelVersionId.Value}" : null;
     }
 
     private async Task TogglePath()

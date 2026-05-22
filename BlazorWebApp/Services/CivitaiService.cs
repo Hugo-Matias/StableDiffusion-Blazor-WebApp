@@ -130,6 +130,46 @@ namespace BlazorWebApp.Services
             return image;
         }
 
+        public async Task<List<CivitaiImageDto>> GetModelVersionImages(int modelVersionId, int maxImages = 0)
+        {
+            var images = new List<CivitaiImageDto>();
+            if (modelVersionId <= 0) return images;
+
+            var pageLimit = maxImages > 0 ? Math.Clamp(maxImages, 1, 100) : 100;
+            string? cursor = null;
+            var visitedCursors = new HashSet<string>(StringComparer.Ordinal);
+
+            for (var page = 0; page < MaxImageLookupPages; page++)
+            {
+                var param = new Dictionary<string, string?>
+                {
+                    ["modelVersionId"] = modelVersionId.ToString(),
+                    ["limit"] = pageLimit.ToString()
+                };
+
+                if (!string.IsNullOrWhiteSpace(cursor))
+                    param["cursor"] = cursor;
+
+                var baseAddress = _httpClient.BaseAddress ?? new Uri("https://civitai.com/api/");
+                var url = QueryHelpers.AddQueryString(new Uri(baseAddress, "v1/images").ToString(), param);
+                var response = NormalizeImagesResponse(await GetCivitaiJsonAsync<CivitaiImagesDto>(url, $"model version {modelVersionId} images"), url);
+
+                foreach (var image in response.Images)
+                {
+                    await PrepareImageAsync(image, $"model version {modelVersionId} image {image.Id}");
+                    images.Add(image);
+                    if (maxImages > 0 && images.Count >= maxImages)
+                        return DistinctImages(images);
+                }
+
+                cursor = response.Metadata.NextCursor;
+                if (string.IsNullOrWhiteSpace(cursor) || !visitedCursors.Add(cursor))
+                    break;
+            }
+
+            return DistinctImages(images);
+        }
+
         public async Task<CivitaiImageDto?> GetImageByModelVersionId(int modelVersionId, CivitaiImageDto imageDto)
         {
             if (imageDto == null) return null;
@@ -155,6 +195,15 @@ namespace BlazorWebApp.Services
 
             await PrepareImageAsync(image, $"model version {modelVersionId} image {image.Id}");
             return image;
+        }
+
+        private static List<CivitaiImageDto> DistinctImages(IEnumerable<CivitaiImageDto> images)
+        {
+            return images
+                .Where(image => image != null && !string.IsNullOrWhiteSpace(image.Url))
+                .GroupBy(image => image.Id > 0 ? image.Id.ToString() : image.Url, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
         }
 
         private async Task<T?> GetCivitaiJsonAsync<T>(string endpoint, string context)

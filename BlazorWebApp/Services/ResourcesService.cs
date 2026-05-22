@@ -56,10 +56,11 @@ namespace BlazorWebApp.Services
                         var createdResource = resources.FirstOrDefault(r => r.Title == entity.Title)!;
                         var file = new LocalResourceFile(entity);
                         file.ImageSrc = _io.GetResourceImagePath(createdResource.Type.Name, file.Filename);
-                        file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+                        file.Title = ResolveResourceFileTitle(file);
                         file.IsEnabled = entity.IsEnabled;
                         createdResource.Files.Insert(0, file);
                         createdResource.ImageSrc = file.ImageSrc;
+                        if (string.IsNullOrWhiteSpace(createdResource.Description)) createdResource.Description = entity.Description;
                         if (entity.CreatedDate > createdResource.CreatedDate) createdResource.CreatedDate = entity.CreatedDate;
                     }
                     else
@@ -76,7 +77,7 @@ namespace BlazorWebApp.Services
             var resource = new LocalResource(entity);
             var file = new LocalResourceFile(entity);
             file.ImageSrc = _io.GetResourceImagePath(resource.Type.Name, file.Filename);
-            file.Title = Path.GetFileNameWithoutExtension(file.Filename);
+            file.Title = ResolveResourceFileTitle(file);
             file.IsEnabled = entity.IsEnabled;
             resource.ImageSrc = file.ImageSrc;
             resource.Files = new() { file };
@@ -97,6 +98,11 @@ namespace BlazorWebApp.Services
             }
             return resource;
         }
+
+        private static string ResolveResourceFileTitle(LocalResourceFile file)
+            => string.IsNullOrWhiteSpace(file.VersionName)
+                ? Path.GetFileNameWithoutExtension(file.Filename)
+                : file.VersionName;
 
         public async Task<LocalResourceFile?> GetResourceFileInfo(string resourceType, string? resourceSubtype, LocalResourceFile file)
         {

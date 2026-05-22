@@ -439,6 +439,7 @@ namespace BlazorWebApp.Models
         public List<string> DisabledFamilies { get; set; } = new();
         public List<string> DisabledModels { get; set; } = new();
         public bool DownloadResourceImages { get; set; } = true;
+        public int ResourceImageDownloadLimit { get; set; } = 0;
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 

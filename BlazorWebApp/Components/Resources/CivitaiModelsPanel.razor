@@ -2,6 +2,7 @@
 @inject IStateService State
 @inject ISettingsService Settings
 @inject CivitaiService Api
+@inject CivitaiModelsPanelState PanelState
 @inject IDatabaseService DB
 @inject IEventService Events
 @inject IJSRuntime JS
@@ -185,12 +186,13 @@ else
     private bool _isSearching;
     private bool _isLoadingModelDetail;
     private bool _restoreResultsAfterRender;
-    private CivitaiModelsDto _models;
+    private CivitaiModelsDto? _models;
     private CivitaiModelDto? _selectedModel;
     private ElementReference _resultsScrollContainer;
     private string? _lastResultAnchorId;
     private double _lastResultsScrollTop;
     private IEnumerable<string> _selectedBaseModels = new List<string> { "All" };
+    private const string ResultsScrollStorageKey = "civitai.models.results.scrollTop";
 
     public void Dispose()
     {
@@ -210,13 +212,24 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_models != null && _selectedModel == null && !_isSearching)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("civitaiModelNavigation.watchScroll", _resultsScrollContainer, ResultsScrollStorageKey);
+            }
+            catch
+            {
+            }
+        }
+
         if (!_restoreResultsAfterRender) return;
 
         _restoreResultsAfterRender = false;
         try
         {
             await JS.InvokeVoidAsync("civitaiModelNavigation.restoreResults", _resultsScrollContainer, _lastResultAnchorId,
-_lastResultsScrollTop);
+_lastResultsScrollTop, ResultsScrollStorageKey);
         }
         catch
         {
@@ -253,8 +266,19 @@ _lastResultsScrollTop);
     {
         _isSearching = true;
         _selectedModel = null;
+        PanelState.SelectedModel = null;
         SetState();
         _models = await Api.GetModels(Request);
+        PanelState.Models = _models;
+        PanelState.LastResultAnchorId = null;
+        PanelState.LastResultsScrollTop = 0;
+        try
+        {
+            await JS.InvokeVoidAsync("sessionStorage.setItem", ResultsScrollStorageKey, "0");
+        }
+        catch
+        {
+        }
         await State.SaveState();
         _isSearching = false;
     }
@@ -271,13 +295,16 @@ _lastResultsScrollTop);
     private async Task ShowInfo(CivitaiModelsModelDto modelsModel)
     {
         _lastResultAnchorId = GetModelCardId(modelsModel);
+        PanelState.LastResultAnchorId = _lastResultAnchorId;
         try
         {
             _lastResultsScrollTop = await JS.InvokeAsync<double>("civitaiModelNavigation.getScrollTop", _resultsScrollContainer);
+            PanelState.LastResultsScrollTop = _lastResultsScrollTop;
         }
         catch
         {
             _lastResultsScrollTop = 0;
+            PanelState.LastResultsScrollTop = 0;
         }
 
         _isLoadingModelDetail = true;
@@ -286,6 +313,7 @@ _lastResultsScrollTop);
         try
         {
             _selectedModel = await Api.GetModel(modelsModel.Id);
+            PanelState.SelectedModel = _selectedModel;
         }
         catch
         {
@@ -300,6 +328,7 @@ _lastResultsScrollTop);
     private async Task ReturnToResults()
     {
         _selectedModel = null;
+        PanelState.SelectedModel = null;
         _isLoadingModelDetail = false;
         _restoreResultsAfterRender = true;
         await InvokeAsync(StateHasChanged);
@@ -319,9 +348,12 @@ _lastResultsScrollTop);
 
     private async Task LoadMore(string url)
     {
+        if (_models == null) return;
+
         var content = await Api.GetModelsFromUrl(url);
         _models.Metadata = content.Metadata;
         _models.Models.AddRange(content.Models);
+        PanelState.Models = _models;
     }
 
     private async Task<float> CheckModelExists(CivitaiModelsModelDto model)
@@ -405,6 +437,11 @@ _lastResultsScrollTop);
         Request.Hidden = State.State.Civitai.Models.Hidden;
         Request.IsPrimaryFileOnly = State.State.Civitai.Models.IsPrimaryFileOnly;
         Request.Hash = State.State.Civitai.Models.Hash;
+        _models = PanelState.Models;
+        _selectedModel = PanelState.SelectedModel;
+        _lastResultAnchorId = _selectedModel == null ? null : PanelState.LastResultAnchorId;
+        _lastResultsScrollTop = PanelState.LastResultsScrollTop;
+        _restoreResultsAfterRender = _models != null && _selectedModel == null;
     }
 
     private void SetState()

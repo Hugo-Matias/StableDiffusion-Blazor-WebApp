@@ -1,4 +1,5 @@
 @using System.IO
+@using BlazorWebApp.Data.Entities
 @using static BlazorWebApp.Data.Enums
 @inject IRouterService Router
 @inject IOrchestratorService M
@@ -230,7 +231,7 @@
                     if (!baseModelGroup.ContainsKey(subTypeName))
                         baseModelGroup[subTypeName] = new();
                     baseModelGroup[subTypeName].Add(fn);
-                    _titles[fn] = string.IsNullOrWhiteSpace(resource.Title) ? Path.GetFileNameWithoutExtension(fn) : resource.Title;
+                    _titles[fn] = ResolveDisplayTitle(resource, allResources, fn);
 
                     var imgSrc = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", fn);
                     if (!string.IsNullOrEmpty(imgSrc))
@@ -290,7 +291,41 @@
     private string GetDisplayTitle(string fn)
         => _titles.TryGetValue(fn, out var title) && !string.IsNullOrWhiteSpace(title)
             ? title
-            : Path.GetFileNameWithoutExtension(fn);
+            : Path.GetFileNameWithoutExtension(fn) ?? fn;
+
+    private static string ResolveDisplayTitle(Resource resource, IReadOnlyCollection<Resource> resources, string path)
+    {
+        var resourceTitle = resource.Title ?? string.Empty;
+        var title = string.IsNullOrWhiteSpace(resourceTitle)
+            ? Path.GetFileNameWithoutExtension(path) ?? path
+            : resourceTitle;
+
+        if (!HasSiblingResources(resource, resources)) return title;
+
+        var versionLabel = ResolveVersionLabel(resource, path, title);
+        return string.IsNullOrWhiteSpace(versionLabel) ? title : $"{title} - {versionLabel}";
+    }
+
+    private static bool HasSiblingResources(Resource resource, IEnumerable<Resource> resources)
+    {
+        var title = resource.Title ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(title)) return false;
+
+        return resources.Any(candidate =>
+            candidate.Id != resource.Id &&
+            string.Equals(candidate.Title, title, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? ResolveVersionLabel(Resource resource, string path, string title)
+    {
+        if (!string.IsNullOrWhiteSpace(resource.VersionName)) return resource.VersionName;
+
+        var filename = string.IsNullOrWhiteSpace(resource.Filename) ? path : resource.Filename;
+        var stem = Path.GetFileNameWithoutExtension(filename);
+        if (!string.IsNullOrWhiteSpace(stem) && !stem.Equals(title, StringComparison.OrdinalIgnoreCase)) return stem;
+
+        return resource.CivitaiModelVersionId.HasValue ? $"Version {resource.CivitaiModelVersionId.Value}" : null;
+    }
 
     private bool IsAdded(string fn) =>
         Loras.Any(l => string.Equals(l.Path, fn, StringComparison.OrdinalIgnoreCase));
