@@ -396,6 +396,7 @@ namespace BlazorWebApp.Models
         public ResourceSearchSettingsModel Search { get; set; } = new();
         public ResourceWeightSettingsModel Weight { get; set; } = new();
         public CivitaiSettingsModel Civitai { get; set; } = new();
+        public HuggingFaceSettingsModel HuggingFace { get; set; } = new();
         public DanbooruSettingsModel Danbooru { get; set; } = new();
         public bool OrderByDescending { get; set; } = false;
         public List<string> OrderByOptions { get; set; } = new()
@@ -455,6 +456,20 @@ namespace BlazorWebApp.Models
     {
         public string BlacklistTags { get; set; } = "censored, bar censor, blur censor, mosaic censoring, character censor, novelty censor, convenient censoring, signature, artist name, twitter username, virtual youtuber";
         public List<string> SavedSearches { get; set; } = new() { "order:rank", "order:random score:>700 filetype:png,jpg" };
+    }
+
+    public class HuggingFaceSettingsModel
+    {
+        public string? ApiToken { get; set; }
+        public HuggingFaceLimitSettingsModel Limit { get; set; } = new();
+    }
+
+    public class HuggingFaceLimitSettingsModel
+    {
+        public int Value { get; set; } = 20;
+        public int Min { get; set; } = 5;
+        public int Max { get; set; } = 100;
+        public int Step { get; set; } = 5;
     }
     #endregion
 

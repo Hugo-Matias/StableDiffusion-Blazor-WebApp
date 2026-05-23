@@ -107,6 +107,7 @@ namespace BlazorWebApp.Services
         Task<bool> CheckResourceExistsByFilename(string filename);
         Task<bool> CheckResourceExistsByModelId(int id);
         Task<bool> CheckResourceExistsByModelVersionId(int id);
+        Task<bool> CheckResourceExistsByHuggingFaceModelId(string modelId);
         Task<List<int>> GetActiveResourceIds();
 
         // Resource Image Operations

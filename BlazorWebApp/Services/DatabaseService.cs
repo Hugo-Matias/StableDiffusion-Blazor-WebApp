@@ -1052,6 +1052,12 @@ namespace BlazorWebApp.Services
             return await context.Resources.AnyAsync(r => r.CivitaiModelVersionId == id);
         }
 
+        public async Task<bool> CheckResourceExistsByHuggingFaceModelId(string modelId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Resources.AnyAsync(r => r.HuggingFaceModelId == modelId);
+        }
+
         public async Task<bool> CreateResourceImage(ResourceImage image)
         {
             using var context = await _factory.CreateDbContextAsync();

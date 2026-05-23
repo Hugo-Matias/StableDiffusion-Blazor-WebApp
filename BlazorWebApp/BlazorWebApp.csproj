@@ -39,6 +39,7 @@
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
+    <PackageReference Include="Markdig" Version="0.40.0" />
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.9.1" />
     <PackageReference Include="MetadataExtractor" Version="2.9.0-rc3" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />

@@ -1,0 +1,54 @@
+@using BlazorWebApp.Data.Dtos.HuggingFace
+
+<div class="hf-model-row @(Selected ? "hf-model-row--selected" : "")" @onclick="@(() => OnSelect.InvokeAsync(Model))">
+    <div class="hf-model-row__main">
+        <div class="hf-model-row__title-line">
+            <span class="hf-model-row__title" title="@Model.DisplayName">@Model.DisplayName</span>
+            <div class="hf-model-row__badges">
+                @if (!string.IsNullOrWhiteSpace(Model.PipelineTag))
+                {
+                    <span class="hf-badge hf-badge--pipeline">@Model.PipelineTag</span>
+                }
+                @if (Model.IsGated)
+                {
+                    <span class="hf-badge hf-badge--gated">Gated</span>
+                }
+                @if (Model.Private)
+                {
+                    <span class="hf-badge hf-badge--private">Private</span>
+                }
+            </div>
+        </div>
+        <span class="hf-model-row__author">by @Model.ResolvedAuthor</span>
+        @if (Model.CardData?.BaseModelString is string baseModel)
+        {
+            <span class="hf-model-row__base" title="@baseModel">@baseModel</span>
+        }
+    </div>
+
+    <div class="hf-model-row__stats">
+        <span class="hf-stat" title="Downloads">
+            <MudIcon Icon="fa-solid fa-download" Size="Size.Small" Class="hf-stat-icon" />
+            @FormatCount(Model.Downloads)
+        </span>
+        <span class="hf-stat" title="Likes">
+            <MudIcon Icon="fa-solid fa-heart" Size="Size.Small" Class="hf-stat-icon" />
+            @FormatCount(Model.Likes)
+        </span>
+        @if (Model.LastModified is DateTime dt)
+        {
+            <span class="hf-stat hf-stat--date">@dt.ToString("MMM yyyy")</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public HuggingFaceModelSummaryDto Model { get; set; } = default!;
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback<HuggingFaceModelSummaryDto> OnSelect { get; set; }
+
+    private static string FormatCount(int value) =>
+        value >= 1_000_000 ? $"{value / 1_000_000.0:F1}M" :
+        value >= 1_000 ? $"{value / 1_000.0:F1}K" :
+        value.ToString();
+}

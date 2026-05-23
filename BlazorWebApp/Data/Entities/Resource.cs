@@ -10,6 +10,10 @@ namespace BlazorWebApp.Data.Entities
         public string? Author { get; set; }
         public int? CivitaiModelId { get; set; }
         public int? CivitaiModelVersionId { get; set; }
+        public string? HuggingFaceModelId { get; set; }
+        public string? HuggingFaceRevision { get; set; }
+        public string? HuggingFaceFilePath { get; set; }
+        public string? HuggingFaceSha { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
         public string? BaseModel { get; set; }

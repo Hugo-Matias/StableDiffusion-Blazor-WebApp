@@ -1,0 +1,213 @@
+@using BlazorWebApp.Data.Dtos.HuggingFace
+@inject IStateService State
+@inject IHuggingFaceService Api
+@inject ISnackbar Snackbar
+
+@if (_selectedModel != null)
+{
+    <HuggingFaceDetailPanel Model="_selectedModel" OnBack="ReturnToResults" />
+}
+else
+{
+    <TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.HuggingFace.SidebarCollapsed" SidebarTitle="Filters">
+        <Sidebar>
+            <EditForm Model="_request" OnSubmit="Search">
+                <MudStack Spacing="2">
+                    <MudTextField @bind-Value="_request.Query" Label="Search" Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" Clearable Variant="Variant.Text" Dense="true" />
+
+                    <MudDivider Class="my-1" />
+
+                    <MudSelect @bind-Value="_request.PipelineTag" Label="Task" Clearable AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft" Variant="Variant.Text" Dense="true">
+                        <MudSelectItem T="string?" Value="@((string?)null)">All tasks</MudSelectItem>
+                        @foreach (var tag in PipelineTags)
+                        {
+                            <MudSelectItem Value="@tag">@tag</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect @bind-Value="_request.Library" Label="Library" Clearable AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft" Variant="Variant.Text" Dense="true">
+                        <MudSelectItem T="string?" Value="@((string?)null)">All libraries</MudSelectItem>
+                        @foreach (var lib in Libraries)
+                        {
+                            <MudSelectItem Value="@lib">@lib</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="_request.Author" Label="Author" Adornment="Adornment.Start"
+                                  AdornmentIcon="fa-solid fa-user" Clearable Variant="Variant.Text" Dense="true" />
+
+                    <MudSelect @bind-Value="_request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
+                               TransformOrigin="Origin.TopLeft" Variant="Variant.Text" Dense="true">
+                        @foreach (HuggingFaceSort sort in Enum.GetValues(typeof(HuggingFaceSort)))
+                        {
+                            <MudSelectItem Value="@sort">@sort</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSlider @bind-Value="_request.Limit" Min="10" Max="100" Step="10">
+                        <small>Results:</small> @_request.Limit
+                    </MudSlider>
+
+                    <MudDivider Class="my-1" />
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Class="mt-3">
+                        Search
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </Sidebar>
+        <Content>
+            @if (_isSearching && _models.Count == 0)
+            {
+                <LoadingSpinner />
+            }
+            else if (_models.Count > 0)
+            {
+                <div class="hf-results-list">
+                    @foreach (var model in _models)
+                    {
+                        <HuggingFaceModelCard Model="model" Selected="@(_selectedModel?.Id == model.Id)" OnSelect="SelectModel" />
+                    }
+                </div>
+
+                <div class="hf-load-more">
+                    @if (_isSearching)
+                    {
+                        <LoadingSpinner />
+                    }
+                    else if (_nextCursor != null)
+                    {
+                        <MudButton Class="w-50" OnClick="LoadMore" Variant="Variant.Outlined" Color="Color.Primary">
+                            Load More
+                        </MudButton>
+                    }
+                </div>
+            }
+            else if (_hasSearched)
+            {
+                <div class="hf-empty-state">
+                    <MudIcon Icon="fa-brands fa-hugging-face" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">No models found.</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Try adjusting your search filters.</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="hf-empty-state">
+                    <MudIcon Icon="fa-brands fa-hugging-face" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">Search HuggingFace models</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Use the filters on the left to find models.</MudText>
+                </div>
+            }
+        </Content>
+    </TwoColumnLayout>
+}
+
+@code {
+    private static readonly string[] PipelineTags =
+    [
+        "text-to-image",
+        "image-to-image",
+        "image-to-video",
+        "text-to-video",
+        "inpainting",
+        "depth-estimation",
+        "image-segmentation",
+        "object-detection",
+        "text-generation",
+        "text2text-generation",
+        "feature-extraction",
+    ];
+
+    private static readonly string[] Libraries =
+    [
+        "diffusers",
+        "safetensors",
+        "transformers",
+        "gguf",
+        "pytorch",
+        "keras",
+    ];
+
+    private HuggingFaceModelsRequest _request = new();
+    private List<HuggingFaceModelSummaryDto> _models = new();
+    private string? _nextCursor;
+    private bool _isSearching;
+    private bool _hasSearched;
+    private HuggingFaceModelSummaryDto? _selectedModel;
+
+    protected override void OnInitialized()
+    {
+        var hf = State.State.HuggingFace;
+        _request.Query = hf.Query;
+        _request.Author = hf.Author;
+        _request.PipelineTag = hf.PipelineTag;
+        _request.Library = hf.Library;
+        _request.Sort = hf.Sort;
+        _request.Limit = hf.Limit;
+    }
+
+    private async Task Search()
+    {
+        _request.Cursor = null;
+        _models.Clear();
+        _nextCursor = null;
+        _hasSearched = true;
+
+        SyncToAppState();
+        await FetchPage();
+    }
+
+    private async Task LoadMore()
+    {
+        if (_nextCursor is null) return;
+        _request.Cursor = _nextCursor;
+        await FetchPage();
+    }
+
+    private async Task FetchPage()
+    {
+        _isSearching = true;
+        StateHasChanged();
+        try
+        {
+            var (models, cursor) = await Api.GetModelsAsync(_request);
+            _models.AddRange(models);
+            _nextCursor = cursor;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"HuggingFace search failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSearching = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectModel(HuggingFaceModelSummaryDto model)
+    {
+        _selectedModel = model;
+    }
+
+    private void ReturnToResults()
+    {
+        _selectedModel = null;
+    }
+
+    private void SyncToAppState()
+    {
+        var hf = State.State.HuggingFace;
+        hf.Query = _request.Query ?? string.Empty;
+        hf.Author = _request.Author;
+        hf.PipelineTag = _request.PipelineTag;
+        hf.Library = _request.Library;
+        hf.Sort = _request.Sort;
+        hf.Limit = _request.Limit;
+    }
+}

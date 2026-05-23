@@ -27,6 +27,8 @@ builder.Services.AddSingleton<IComfyUIService>(sp => sp.GetRequiredService<Comfy
 builder.Services.AddHttpClient<CivitaiService>();
 builder.Services.AddScoped<ICivitaiResourceImageService, CivitaiResourceImageService>();
 builder.Services.AddScoped<CivitaiModelsPanelState>();
+builder.Services.AddHttpClient<HuggingFaceService>();
+builder.Services.AddScoped<IHuggingFaceService>(sp => sp.GetRequiredService<HuggingFaceService>());
 builder.Services.Configure<BlazorWebApp.Models.DanbooruOptions>(builder.Configuration.GetSection(BlazorWebApp.Models.DanbooruOptions.SectionName));
 builder.Services.AddHttpClient<DanbooruService>();
 builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });

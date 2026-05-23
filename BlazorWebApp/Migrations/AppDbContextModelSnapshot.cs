@@ -826,6 +826,18 @@ namespace BlazorWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("HuggingFaceFilePath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HuggingFaceModelId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HuggingFaceRevision")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HuggingFaceSha")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
 

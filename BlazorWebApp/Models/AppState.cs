@@ -1,5 +1,6 @@
 ﻿using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Converters;
+using BlazorWebApp.Data.Dtos.HuggingFace;
 using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Extensions;
@@ -21,6 +22,7 @@ namespace BlazorWebApp.Models
         public AppStateResources Resources { get; set; } = new();
         public AppStateCivitai Civitai { get; set; } = new();
         public AppStateDanbooru Danbooru { get; set; } = new();
+        public AppStateHuggingFace HuggingFace { get; set; } = new();
         public AppStateCharacter Character { get; set; } = new();
         public AppStateScripts Scripts { get; set; } = new();
 
@@ -365,6 +367,18 @@ namespace BlazorWebApp.Models
     {
         public int ActiveTabIndex { get; set; } = 0;
         public string SearchString { get; set; } = "order:rank";
+    }
+
+    public class AppStateHuggingFace
+    {
+        public int ActiveTabIndex { get; set; } = 0;
+        public bool SidebarCollapsed { get; set; } = false;
+        public string Query { get; set; } = string.Empty;
+        public string? Author { get; set; }
+        public string? PipelineTag { get; set; }
+        public string? Library { get; set; }
+        public HuggingFaceSort Sort { get; set; } = HuggingFaceSort.Downloads;
+        public int Limit { get; set; } = 20;
     }
 
     public class AppStatePrompts
