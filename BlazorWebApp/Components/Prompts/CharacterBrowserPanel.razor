@@ -1,0 +1,522 @@
+@inject ICharacterBrowserService CharService
+
+<div class="char-browser-panel">
+
+    @* Toolbar *@
+    <div class="char-toolbar">
+        <div class="char-toolbar-row">
+            <MudTextField T="string"
+                          Value="_searchText"
+                          Placeholder="Search characters..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="char-search"
+                          ValueChanged="HandleSearchChanged" />
+        </div>
+
+        <div class="char-toolbar-row">
+            <MudToggleIconButton Toggled="_favoritesOnly"
+                                 Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                 ToggledIcon="@Icons.Material.Filled.Favorite"
+                                 Color="Color.Default"
+                                 ToggledColor="Color.Error"
+                                 Size="Size.Small"
+                                 Title="@(_favoritesOnly ? "Show All" : "Favorites Only")"
+                                 ToggledChanged="HandleFavoritesToggled" />
+
+            <MudSelect T="CharacterSortMode"
+                       Value="_sortMode"
+                       Dense="true"
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="char-sort-select"
+                       ValueChanged="HandleSortChanged">
+                <MudSelectItem Value="CharacterSortMode.PostCount">Post Count</MudSelectItem>
+                <MudSelectItem Value="CharacterSortMode.Name">Name</MudSelectItem>
+                <MudSelectItem Value="CharacterSortMode.Copyright">Series</MudSelectItem>
+                <MudSelectItem Value="CharacterSortMode.Random">Random</MudSelectItem>
+            </MudSelect>
+
+            <MudToggleIconButton Toggled="_sortDescending"
+                                 Icon="@Icons.Material.Filled.ArrowUpward"
+                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward"
+                                 Color="Color.Default"
+                                 ToggledColor="Color.Info"
+                                 Size="Size.Small"
+                                 Title="@(_sortDescending ? "Descending" : "Ascending")"
+                                 ToggledChanged="HandleSortDirectionChanged" />
+
+            @if (_sortMode == CharacterSortMode.Random)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
+                               Size="Size.Small"
+                               Color="Color.Warning"
+                               Title="Re-randomize"
+                               OnClick="HandleReshuffle" />
+            }
+
+            <MudNumericField T="int" Value="_pageSize" ValueChanged="HandlePageSizeChanged"
+                             Label="Per page" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             Min="25" Max="200" Step="25" Class="char-perpage-field" />
+
+            <MudToggleIconButton Toggled="_showFilters"
+                                 Icon="@Icons.Material.Filled.FilterList"
+                                 ToggledIcon="@Icons.Material.Filled.FilterListOff"
+                                 Color="@(HasActiveFilters ? Color.Warning : Color.Default)"
+                                 ToggledColor="@(HasActiveFilters ? Color.Warning : Color.Info)"
+                                 Size="Size.Small"
+                                 Title="Toggle filters"
+                                 ToggledChanged="v => _showFilters = v" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                           Size="Size.Small"
+                           Color="@(_showGenerator ? Color.Info : Color.Default)"
+                           Title="Generate preview images"
+                           OnClick="() => _showGenerator = !_showGenerator" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.GridView"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 0 ? Color.Info : Color.Default)"
+                           Title="Compact"
+                           OnClick="() => _cardDensity = 0" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewModule"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 1 ? Color.Info : Color.Default)"
+                           Title="Normal"
+                           OnClick="() => _cardDensity = 1" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewComfy"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 2 ? Color.Info : Color.Default)"
+                           Title="Large"
+                           OnClick="() => _cardDensity = 2" />
+        </div>
+
+        @* Generator panel *@
+        @if (_showGenerator)
+        {
+            <MudPaper Class="pa-3 mt-1" Elevation="2">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                        Generates preview images using your active generation settings, make sure you are on the desired workflow.
+                        Each character trigger is prepended to your current positive prompt.
+                        Set batch size to 0 to generate all characters in the current list.
+                    </MudText>
+
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudNumericField T="int" Value="_genBatchSize"
+                                         ValueChanged="v => _genBatchSize = v"
+                                         Label="Batch size (0=all)"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Min="0"
+                                         Style="max-width:130px;" />
+
+                        <MudCheckBox T="bool" @bind-Value="_genSkipExisting"
+                                     Label="Skip existing"
+                                     Dense Size="Size.Small" />
+
+                        <MudCheckBox T="bool" @bind-Value="_genUseTags"
+                                     Label="Use full tags"
+                                     Dense Size="Size.Small"
+                                     title="When on, all character tags are used as the prompt. When off, only the trigger/series text is used." />
+
+                        @if (CharService.PreviewProgress.IsRunning)
+                        {
+                            <MudButton OnClick="StopGeneration"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Stop"
+                                       Size="Size.Small">
+                                Stop
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton OnClick="StartGeneration"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                                       Size="Size.Small">
+                                Generate
+                            </MudButton>
+                        }
+                    </MudStack>
+
+                    @if (CharService.PreviewProgress.IsRunning || CharService.PreviewProgress.Current > 0)
+                    {
+                        <MudStack Spacing="1">
+                            <MudProgressLinear Value="@CharService.PreviewProgress.Current"
+                                               Max="@(CharService.PreviewProgress.Total > 0 ? CharService.PreviewProgress.Total : 1)"
+                                               Color="Color.Info"
+                                               Rounded
+                                               Size="Size.Medium" />
+                            <MudText Typo="Typo.caption" Style="opacity:0.7;">
+                                @CharService.PreviewProgress.Current / @CharService.PreviewProgress.Total
+                                @if (!string.IsNullOrEmpty(CharService.PreviewProgress.CurrentSlug))
+                                {
+                                    <text> &ndash; @CharService.PreviewProgress.CurrentSlug</text>
+                                }
+                                @if (CharService.PreviewProgress.Skipped > 0)
+                                {
+                                    <text> (@CharService.PreviewProgress.Skipped skipped)</text>
+                                }
+                                @if (CharService.PreviewProgress.Failed > 0)
+                                {
+                                    <text> (@CharService.PreviewProgress.Failed failed)</text>
+                                }
+                            </MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+
+        @* Filter section *@
+        @if (_showFilters)
+        {
+            <div class="char-filter-section">
+
+                @* Gender chips *@
+                <div class="char-filter-group">
+                    <span class="char-filter-label">Gender</span>
+                    <div class="char-chip-row">
+                        @foreach (var kv in CharacterBrowserService.GenderTagMap)
+                        {
+                            var genderKey = kv.Key;
+                            var isActive = _selectedGender == genderKey;
+                            <button class="char-filter-chip @(isActive ? "active" : "")"
+                                    @onclick="() => ToggleGender(genderKey)">
+                                @kv.Value
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @* Series / Copyright *@
+                <div class="char-filter-group">
+                    <span class="char-filter-label">Series</span>
+                    <MudAutocomplete T="string"
+                                     Value="_selectedCopyright"
+                                     SearchFunc="SearchCopyrights"
+                                     ValueChanged="HandleCopyrightChanged"
+                                     Placeholder="All series..."
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Clearable="true"
+                                     Class="char-copyright-select"
+                                     Dense="true"
+                                     ResetValueOnEmptyText="true"
+                                     MaxItems="30" />
+                </div>
+
+                @* Hair Color *@
+                <div class="char-filter-group">
+                    <span class="char-filter-label">Hair Color</span>
+                    <div class="char-chip-row char-chip-wrap">
+                        @foreach (var color in CharService.HairColorFacets)
+                        {
+                            var isActive = _selectedHairColor == color;
+                            <button class="char-filter-chip hair @(isActive ? "active" : "")"
+                                    @onclick="() => ToggleHairColor(color)">
+                                @TrimHair(color)
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @* Eye Color *@
+                <div class="char-filter-group">
+                    <span class="char-filter-label">Eye Color</span>
+                    <div class="char-chip-row char-chip-wrap">
+                        @foreach (var color in CharService.EyeColorFacets)
+                        {
+                            var isActive = _selectedEyeColor == color;
+                            <button class="char-filter-chip eye @(isActive ? "active" : "")"
+                                    @onclick="() => ToggleEyeColor(color)">
+                                @TrimEyes(color)
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @* Hair Length *@
+                <div class="char-filter-group">
+                    <span class="char-filter-label">Hair Length</span>
+                    <div class="char-chip-row">
+                        @foreach (var len in CharService.HairLengthFacets)
+                        {
+                            var isActive = _selectedHairLength == len;
+                            <button class="char-filter-chip length @(isActive ? "active" : "")"
+                                    @onclick="() => ToggleHairLength(len)">
+                                @TrimLength(len)
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @if (HasActiveFilters)
+                {
+                    <button class="char-clear-filters" @onclick="ClearFilters">
+                        <i class="fa-solid fa-xmark"></i> Clear filters
+                    </button>
+                }
+            </div>
+        }
+
+        <MudText Typo="Typo.caption" Style="opacity:0.6; text-align:right; padding: 0 2px;">
+            @_filteredCharacters.Count.ToString("N0") characters
+        </MudText>
+    </div>
+
+    @* Card Grid *@
+    <div class="char-grid-container @(_cardDensity == 0 ? "char-grid-sm" : _cardDensity == 2 ? "char-grid-lg" : "")">
+        @if (_filteredCharacters.Count == 0)
+        {
+            <div class="char-empty">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Dark" />
+                <MudText Typo="Typo.body2" Color="Color.Dark">No characters found</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var character in GetPagedCharacters())
+            {
+                <CharacterCard Character="character"
+                               CacheBust="_generationVersion"
+                               OnSelected="HandleCharacterSelected"
+                               OnTagsSelected="HandleTagsSelected"
+                               OnFavoriteChanged="HandleFavoriteChanged" />
+            }
+        }
+    </div>
+
+    @* Pagination *@
+    @if (_totalPages > 1)
+    {
+        <div class="char-pagination">
+            <MudPagination Count="_totalPages" Selected="_currentPage" SelectedChanged="HandlePageChanged"
+                           Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                           BoundaryCount="1" MiddleCount="3" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+
+    private List<AnimaCharacter> _filteredCharacters = new();
+
+    private string _searchText = string.Empty;
+    private CharacterSortMode _sortMode = CharacterSortMode.PostCount;
+    private bool _sortDescending = true;
+    private bool _favoritesOnly = false;
+    private bool _showFilters = false;
+    private int? _randomSeed;
+
+    // Filters
+    private string? _selectedCopyright;
+    private string? _selectedHairColor;
+    private string? _selectedHairLength;
+    private string? _selectedEyeColor;
+    private string? _selectedGender;
+
+    // Pagination
+    private int _pageSize = 50;
+    private int _currentPage = 1;
+    private int _totalPages;
+
+    // Generator
+    private bool _showGenerator;
+    private int _genBatchSize = 0;
+    private bool _genSkipExisting = true;
+    private bool _genUseTags = false;
+    private CancellationTokenSource? _cts;
+    private long _generationVersion;
+
+    // Card density: 0=compact, 1=normal, 2=large
+    private int _cardDensity = 1;
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrEmpty(_selectedCopyright) ||
+        !string.IsNullOrEmpty(_selectedHairColor) ||
+        !string.IsNullOrEmpty(_selectedHairLength) ||
+        !string.IsNullOrEmpty(_selectedEyeColor) ||
+        !string.IsNullOrEmpty(_selectedGender);
+
+    protected override void OnInitialized() => RefreshList();
+
+    private void RefreshList()
+    {
+        _filteredCharacters = CharService.GetCharacters(
+            search: _searchText,
+            sort: _sortMode,
+            descending: _sortDescending,
+            favoritesOnly: _favoritesOnly,
+            randomSeed: _randomSeed,
+            copyright: _selectedCopyright,
+            hairColor: _selectedHairColor,
+            hairLength: _selectedHairLength,
+            eyeColor: _selectedEyeColor,
+            gender: _selectedGender);
+
+        _totalPages = (int)Math.Ceiling(_filteredCharacters.Count / (double)_pageSize);
+        if (_currentPage > _totalPages) _currentPage = 1;
+    }
+
+    private IEnumerable<AnimaCharacter> GetPagedCharacters() =>
+        _filteredCharacters.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+
+    private void HandleSearchChanged(string value)
+    {
+        _searchText = value;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void HandleFavoritesToggled(bool value)
+    {
+        _favoritesOnly = value;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void HandleSortChanged(CharacterSortMode value)
+    {
+        _sortMode = value;
+        if (value == CharacterSortMode.Random) _randomSeed = Random.Shared.Next();
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void HandleSortDirectionChanged(bool value)
+    {
+        _sortDescending = value;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void HandleReshuffle()
+    {
+        _randomSeed = Random.Shared.Next();
+        RefreshList();
+    }
+
+    private void HandlePageSizeChanged(int value)
+    {
+        _pageSize = value;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void HandlePageChanged(int page)
+    {
+        _currentPage = page;
+    }
+
+    private void HandleCopyrightChanged(string? value)
+    {
+        _selectedCopyright = value;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void ToggleGender(string key)
+    {
+        _selectedGender = _selectedGender == key ? null : key;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void ToggleHairColor(string color)
+    {
+        _selectedHairColor = _selectedHairColor == color ? null : color;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void ToggleHairLength(string len)
+    {
+        _selectedHairLength = _selectedHairLength == len ? null : len;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void ToggleEyeColor(string color)
+    {
+        _selectedEyeColor = _selectedEyeColor == color ? null : color;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private void ClearFilters()
+    {
+        _selectedCopyright = null;
+        _selectedHairColor = null;
+        _selectedHairLength = null;
+        _selectedEyeColor = null;
+        _selectedGender = null;
+        _currentPage = 1;
+        RefreshList();
+    }
+
+    private Task<IEnumerable<string>> SearchCopyrights(string text)
+    {
+        var all = CharService.GetAllCopyrights();
+        IEnumerable<string> results = string.IsNullOrWhiteSpace(text)
+            ? all.Take(30)
+            : all.Where(c => c.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(30);
+        return Task.FromResult(results);
+    }
+
+    private async Task HandleCharacterSelected(AnimaCharacter character)
+    {
+        await OnAppendTags.InvokeAsync(new AppendedTags
+        {
+            Tags = character.Trigger.EscapeParenthesis(),
+            IsPrefix = true
+        });
+    }
+
+    private async Task HandleTagsSelected(string tags)
+    {
+        await OnAppendTags.InvokeAsync(new AppendedTags
+        {
+            Tags = tags,
+            IsPrefix = true
+        });
+    }
+
+    private void HandleFavoriteChanged() => RefreshList();
+
+    private async Task StartGeneration()
+    {
+        _cts = new CancellationTokenSource();
+        StateHasChanged();
+
+        await CharService.GenerateBatchPreviewsAsync(
+            _filteredCharacters,
+            _genBatchSize,
+            _genSkipExisting,
+            _genUseTags,
+            _cts.Token,
+            async () =>
+            {
+                _generationVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                await InvokeAsync(StateHasChanged);
+            });
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StopGeneration() => _cts?.Cancel();
+
+    // Display helpers
+    private static string TrimHair(string s)   => s.Replace(" hair", "");
+    private static string TrimEyes(string s)   => s.Replace(" eyes", "");
+    private static string TrimLength(string s) => s.Replace(" hair", "").Replace("very ", "v.").Replace("absurdly ", "abs.");
+}

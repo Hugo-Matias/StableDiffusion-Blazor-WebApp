@@ -4,77 +4,58 @@
 <div class="artist-browser-panel">
     @* Toolbar *@
     <div class="artist-toolbar">
-        <MudTextField T="string"
-                      Value="_searchText"
-                      Placeholder="Search artists..."
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true"
-                      DebounceInterval="300"
-                      Clearable="true"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Class="artist-search"
-                      ValueChanged="HandleSearchChanged" />
+        <MudTextField T="string" Value="_searchText" Placeholder="Search artists..." Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true" DebounceInterval="300" Clearable="true"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="artist-search" ValueChanged="HandleSearchChanged" />
 
         <div class="artist-toolbar-controls">
-            <MudToggleIconButton Toggled="_favoritesOnly"
-                                 Icon="@Icons.Material.Outlined.FavoriteBorder"
-                                 ToggledIcon="@Icons.Material.Filled.Favorite"
-                                 Color="Color.Default"
-                                 ToggledColor="Color.Error"
-                                 Size="Size.Small"
-                                 Title="@(_favoritesOnly ? "Show All" : "Favorites Only")"
+            <MudToggleIconButton Toggled="_favoritesOnly" Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                 ToggledIcon="@Icons.Material.Filled.Favorite" Color="Color.Default" ToggledColor="Color.Error"
+                                 Size="Size.Small" Title="@(_favoritesOnly ? "Show All" : "Favorites Only")"
                                  ToggledChanged="HandleFavoritesToggled" />
 
-            <MudSelect T="ArtistSortMode"
-                       Value="_sortMode"
-                       Dense="true"
-                       Margin="Margin.Dense"
-                       Variant="Variant.Outlined"
-                       Class="artist-sort-select"
-                       ValueChanged="HandleSortChanged">
+            <MudSelect T="ArtistSortMode" Value="_sortMode" Dense="true" Margin="Margin.Dense"
+                       Variant="Variant.Outlined" Class="artist-sort-select" ValueChanged="HandleSortChanged">
                 <MudSelectItem Value="ArtistSortMode.PostCount">Post Count</MudSelectItem>
                 <MudSelectItem Value="ArtistSortMode.Name">Name</MudSelectItem>
                 <MudSelectItem Value="ArtistSortMode.Random">Random</MudSelectItem>
             </MudSelect>
 
-            <MudToggleIconButton Toggled="_sortDescending"
-                                 Icon="@Icons.Material.Filled.ArrowUpward"
-                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward"
-                                 Color="Color.Default"
-                                 ToggledColor="Color.Info"
-                                 Size="Size.Small"
-                                 Title="@(_sortDescending ? "Descending" : "Ascending")"
+            <MudToggleIconButton Toggled="_sortDescending" Icon="@Icons.Material.Filled.ArrowUpward"
+                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward" Color="Color.Default" ToggledColor="Color.Info"
+                                 Size="Size.Small" Title="@(_sortDescending ? "Descending" : "Ascending")"
                                  ToggledChanged="HandleSortDirectionChanged" />
 
-            <MudNumericField T="int" Value="_pageSize" ValueChanged="HandlePageSizeChanged"
-                             Label="Per page" Variant="Variant.Outlined" Margin="Margin.Dense"
-                             Min="10" Max="200" Step="25" Class="artist-perpage-field" />
+            <MudNumericField T="int" Value="_pageSize" ValueChanged="HandlePageSizeChanged" Label="Per page"
+                             Variant="Variant.Outlined" Margin="Margin.Dense" Min="10" Max="200" Step="25"
+                             Class="artist-perpage-field" />
 
             @if (_sortMode == ArtistSortMode.Random)
             {
-                <MudIconButton Icon="@Icons.Material.Filled.Shuffle"
-                               Size="Size.Small"
-                               Color="Color.Warning"
-                               Title="Re-randomize"
-                               OnClick="HandleReshuffle" />
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" Size="Size.Small" Color="Color.Warning"
+                               Title="Re-randomize" OnClick="HandleReshuffle" />
             }
 
-            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
-                           Size="Size.Small"
-                           Color="@(_showGenerator ? Color.Info : Color.Default)"
-                           Title="Generate preview images"
+            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Small"
+                           Color="@(_showGenerator ? Color.Info : Color.Default)" Title="Generate preview images"
                            OnClick="() => _showGenerator = !_showGenerator" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.GridView" Size="Size.Small"
+                           Color="@(_cardDensity == 0 ? Color.Info : Color.Default)" Title="Compact"
+                           OnClick="() => _cardDensity = 0" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small"
+                           Color="@(_cardDensity == 1 ? Color.Info : Color.Default)" Title="Normal"
+                           OnClick="() => _cardDensity = 1" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewComfy" Size="Size.Small"
+                           Color="@(_cardDensity == 2 ? Color.Info : Color.Default)" Title="Large"
+                           OnClick="() => _cardDensity = 2" />
         </div>
 
         @if (_allUserTags.Count > 0)
         {
             <MudSelect T="string" MultiSelection SelectedValues="_selectedUserTags"
-                       SelectedValuesChanged="HandleUserTagFilterChanged"
-                       Label="Filter by tags" Dense Margin="Margin.Dense"
-                       Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.Label"
-                       Class="artist-tag-filter" Clearable>
+                       SelectedValuesChanged="HandleUserTagFilterChanged" Label="Filter by tags" Dense Margin="Margin.Dense"
+                       Variant="Variant.Outlined" AdornmentIcon="@Icons.Material.Filled.Label" Class="artist-tag-filter" Clearable>
                 @foreach (var tag in _allUserTags)
                 {
                     <MudSelectItem T="string" Value="tag">@tag</MudSelectItem>
@@ -114,13 +95,15 @@
                         }
                     </div>
                     <MudText Typo="Typo.caption" Style="opacity:0.6;">
-                        Generates preview images for the current artist list using your active txt2img settings. Each artist tag is prepended to your current prompt. A baseline image without any artist tag is always generated first for comparison. Set batch size to 0 to generate all artists in the current list.
+                        Generates preview images for the current artist list using your active txt2img settings. Each artist
+                        tag is prepended to your current prompt. A baseline image without any artist tag is always generated
+                        first for comparison. Set batch size to 0 to generate all artists in the current list.
                     </MudText>
                 </div>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                     <MudNumericField T="int" Value="_batchSize" ValueChanged="v => _batchSize = v"
-                                     Label="Batch size (0=all)" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                     Min="0" Style="max-width:120px;" />
+                                     Label="Batch size (0=all)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0"
+                                     Style="max-width:120px;" />
                     <MudCheckBox T="bool" @bind-Checked="_skipExisting" Label="Skip existing" Dense Size="Size.Small" />
                     @if (ArtistService.PreviewProgress.IsRunning)
                     {
@@ -142,8 +125,7 @@
                 {
                     <MudStack Spacing="1">
                         <MudProgressLinear Value="@ArtistService.PreviewProgress.Current"
-                                           Max="@ArtistService.PreviewProgress.Total"
-                                           Color="Color.Info" Rounded Size="Size.Medium" />
+                                           Max="@ArtistService.PreviewProgress.Total" Color="Color.Info" Rounded Size="Size.Medium" />
                         <MudText Typo="Typo.caption" Style="opacity:0.7;">
                             @ArtistService.PreviewProgress.Current / @ArtistService.PreviewProgress.Total
                             @if (!string.IsNullOrEmpty(ArtistService.PreviewProgress.CurrentSlug))
@@ -162,7 +144,8 @@
     }
 
     @* Card Grid *@
-    <div class="artist-grid-container">
+    <div
+        class="artist-grid-container @(_cardDensity == 0 ? "artist-grid-sm" : _cardDensity == 2 ? "artist-grid-lg" : "")">
         @if (_filteredArtists.Count == 0)
         {
             <div class="artist-empty">
@@ -174,11 +157,8 @@
         {
             @foreach (var artist in GetPagedArtists())
             {
-                <ArtistCard Artist="artist"
-                            OnSelected="HandleArtistSelected"
-                            OnFavoriteChanged="HandleFavoriteChanged"
-                            OnUserTagsChanged="HandleUserTagsChanged"
-                            CacheBust="_generationVersion" />
+                <ArtistCard Artist="artist" OnSelected="HandleArtistSelected" OnFavoriteChanged="HandleFavoriteChanged"
+                            OnUserTagsChanged="HandleUserTagsChanged" CacheBust="_generationVersion" />
             }
         }
     </div>
@@ -187,9 +167,8 @@
     @if (_totalPages > 1)
     {
         <div class="artist-pagination">
-            <MudPagination Count="_totalPages" Selected="_currentPage" SelectedChanged="HandlePageChanged"
-                          Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
-                          BoundaryCount="1" MiddleCount="3" />
+            <MudPagination Count="_totalPages" Selected="_currentPage" SelectedChanged="HandlePageChanged" Size="Size.Small"
+                           Variant="Variant.Outlined" Color="Color.Info" BoundaryCount="1" MiddleCount="3" />
         </div>
     }
 </div>
@@ -210,6 +189,9 @@
     private bool _skipExisting = true;
     private CancellationTokenSource? _cts;
     private long _generationVersion;
+
+    // Card density: 0=compact, 1=normal, 2=large
+    private int _cardDensity = 1;
 
     private int _currentPage = 1;
     private int _pageSize = 25;
@@ -292,7 +274,7 @@
     {
         await OnAppendTags.InvokeAsync(new AppendedTags
         {
-            Tags = artist.Tag,
+            Tags = artist.Tag.EscapeParenthesis(),
             IsPrefix = true
         });
     }

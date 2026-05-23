@@ -387,6 +387,7 @@ namespace BlazorWebApp.Models
         public AppStatePromptsWildcards Wildcards { get; set; } = new();
         public AppStatePromptsLLM LLM { get; set; } = new();
         public List<string> FavoriteArtists { get; set; } = new();
+        public List<string> FavoriteCharacters { get; set; } = new();
     }
 
     public class AppStatePromptsLLM

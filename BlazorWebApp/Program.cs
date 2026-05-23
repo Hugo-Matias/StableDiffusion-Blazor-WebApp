@@ -217,6 +217,9 @@ builder.Services.AddSingleton<ITokenizerService, TokenizerService>();
 // Artist browser service for Anima style gallery artist tags
 builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
 
+// Character browser service for animadex.net character gallery
+builder.Services.AddSingleton<ICharacterBrowserService, CharacterBrowserService>();
+
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 

@@ -1,0 +1,197 @@
+/* ===========================================
+   Character Browser Panel
+   =========================================== */
+
+.char-browser-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+
+/* ===========================================
+   Toolbar
+   =========================================== */
+
+.char-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+  flex-shrink: 0;
+}
+
+.char-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.char-search {
+  width: 100%;
+}
+
+.char-sort-select {
+  min-width: 110px;
+  max-width: 130px;
+}
+
+::deep .char-perpage-field {
+  max-width: 100px;
+}
+
+/* ===========================================
+   Filter Section
+   =========================================== */
+
+.char-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--mud-palette-drawer-background);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.char-filter-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.char-filter-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--mud-palette-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 60px;
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+
+.char-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.char-chip-wrap {
+  flex-wrap: wrap;
+}
+
+.char-filter-chip {
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.char-filter-chip:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--mud-palette-text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.char-filter-chip.active {
+  border-color: var(--mud-palette-info);
+  color: var(--mud-palette-info);
+  background: rgba(var(--mud-palette-info-rgb), 0.12);
+}
+
+.char-filter-chip.hair.active {
+  border-color: rgb(255, 152, 0);
+  color: rgb(255, 152, 0);
+  background: rgba(255, 152, 0, 0.12);
+}
+.char-filter-chip.eye.active {
+  border-color: rgb(33, 150, 243);
+  color: rgb(33, 150, 243);
+  background: rgba(33, 150, 243, 0.12);
+}
+.char-filter-chip.length.active {
+  border-color: rgb(76, 175, 80);
+  color: rgb(76, 175, 80);
+  background: rgba(76, 175, 80, 0.12);
+}
+
+.char-copyright-select {
+  flex: 1;
+  min-width: 160px;
+}
+
+.char-clear-filters {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--mud-palette-error);
+  background: transparent;
+  color: var(--mud-palette-error);
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.char-clear-filters:hover {
+  background: rgba(var(--mud-palette-error-rgb), 0.12);
+}
+
+/* ===========================================
+   Card Grid
+   =========================================== */
+
+.char-grid-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  align-content: start;
+  padding: 2px;
+}
+
+.char-grid-container.char-grid-sm {
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+}
+
+.char-grid-container.char-grid-lg {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* ===========================================
+   Empty State
+   =========================================== */
+
+.char-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 16px;
+  opacity: 0.5;
+}
+
+/* ===========================================
+   Pagination
+   =========================================== */
+
+.char-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  flex-shrink: 0;
+}
