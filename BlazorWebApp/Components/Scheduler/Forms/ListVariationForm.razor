@@ -1,0 +1,60 @@
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+@using System.Text.Json
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds" />
+
+    <MudText Typo="Typo.subtitle2" Class="mt-1">Values (one per line)</MudText>
+    <MudTextField T="string" Value="_valuesText" ValueChanged="OnValuesTextChanged"
+                  Lines="6" Variant="Variant.Text"
+                  HelperText="Each non-empty line becomes one iteration value. Numbers and true/false parse automatically." />
+
+    <MudText Typo="Typo.caption">Iterations: @Variation.Values.Count</MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public ListVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // List accepts any targetable dimension except Output (routing is a SetOutputDirective concern).
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Lora,
+        ParameterTargetPicker.TargetKind.Asset,
+        ParameterTargetPicker.TargetKind.Prompt,
+    };
+
+    private string _valuesText = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _valuesText = Variation.Values.Count == 0
+            ? string.Empty
+            : string.Join("\n", Variation.Values.Select(v => v?.ToString() ?? string.Empty));
+    }
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+
+    private void OnValuesTextChanged(string? text)
+    {
+        _valuesText = text ?? string.Empty;
+        Variation.Values = (_valuesText)
+            .Split('\n', StringSplitOptions.TrimEntries)
+            .Where(s => s.Length > 0)
+            .Select(ParseValue)
+            .ToList();
+    }
+
+    private static object? ParseValue(string text)
+    {
+        if (bool.TryParse(text, out var b)) return b;
+        if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var i)) return i;
+        if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+        return text;
+    }
+}
+

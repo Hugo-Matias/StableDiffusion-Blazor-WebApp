@@ -1,0 +1,126 @@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("QwenPoseTransferSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudStack Spacing="2">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudSlider T="int" @bind-Value="_scaleLength" @bind-Value:after="OnScaleLengthChanged" Min="512" Max="2048"
+                       Step="8" ValueLabel>
+                <small>Long Side:</small> @_scaleLength
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <MudNumericField T="int" Label="Pose Batch" @bind-Value="_poseBatchSize"
+                             @bind-Value:after="OnPoseBatchSizeChanged" Variant="Variant.Text" Dense="true" Min="1" Max="64"
+                             Step="1" />
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <MudSlider T="double" @bind-Value="_scoreThreshold" @bind-Value:after="OnScoreThresholdChanged" Min="0"
+                       Max="1" Step="0.01" ValueLabel>
+                <small>Score:</small> @_scoreThreshold.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="6" sm="3">
+            <MudCheckBox T="bool" Label="Body" @bind-Value="_drawBody" @bind-Value:after="OnDrawBodyChanged"
+                         Dense="true" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudCheckBox T="bool" Label="Hands" @bind-Value="_drawHands" @bind-Value:after="OnDrawHandsChanged"
+                         Dense="true" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudCheckBox T="bool" Label="Face" @bind-Value="_drawFace" @bind-Value:after="OnDrawFaceChanged"
+                         Dense="true" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudCheckBox T="bool" Label="Feet" @bind-Value="_drawFeet" @bind-Value:after="OnDrawFeetChanged"
+                         Dense="true" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudSlider T="int" @bind-Value="_stickWidth" @bind-Value:after="OnStickWidthChanged" Min="1" Max="16"
+                       Step="1" ValueLabel>
+                <small>Stick Width:</small> @_stickWidth
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSlider T="int" @bind-Value="_facePointSize" @bind-Value:after="OnFacePointSizeChanged" Min="1" Max="16"
+                       Step="1" ValueLabel>
+                <small>Face Point:</small> @_facePointSize
+            </MudSlider>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudSlider T="double" @bind-Value="_lightningLoraStrength"
+                       @bind-Value:after="OnLightningLoraStrengthChanged" Min="-2" Max="2" Step="0.05" ValueLabel>
+                <small>Lightning LoRA:</small> @_lightningLoraStrength.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSlider T="double" @bind-Value="_consistencyLoraStrength"
+                       @bind-Value:after="OnConsistencyLoraStrengthChanged" Min="-2" Max="2" Step="0.05" ValueLabel>
+                <small>Consistency LoRA:</small> @_consistencyLoraStrength.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _scaleLength = 1280;
+    private int _poseBatchSize = 16;
+    private bool _drawBody = true;
+    private bool _drawHands = true;
+    private bool _drawFace;
+    private bool _drawFeet;
+    private int _stickWidth = 4;
+    private int _facePointSize = 2;
+    private double _scoreThreshold = 0.3;
+    private double _lightningLoraStrength = 1.0;
+    private double _consistencyLoraStrength = 0.6;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _scaleLength = ParameterService.GetFragmentProperty(Fragment, "scale_length", 1280);
+        _poseBatchSize = ParameterService.GetFragmentProperty(Fragment, "pose_batch_size", 16);
+        _drawBody = ParameterService.GetFragmentProperty(Fragment, "draw_body", true);
+        _drawHands = ParameterService.GetFragmentProperty(Fragment, "draw_hands", true);
+        _drawFace = ParameterService.GetFragmentProperty(Fragment, "draw_face", false);
+        _drawFeet = ParameterService.GetFragmentProperty(Fragment, "draw_feet", false);
+        _stickWidth = ParameterService.GetFragmentProperty(Fragment, "stick_width", 4);
+        _facePointSize = ParameterService.GetFragmentProperty(Fragment, "face_point_size", 2);
+        _scoreThreshold = ParameterService.GetFragmentProperty(Fragment, "score_threshold", 0.3);
+        _lightningLoraStrength = ParameterService.GetFragmentProperty(Fragment, "lightning_lora_strength", 1.0);
+        _consistencyLoraStrength = ParameterService.GetFragmentProperty(Fragment, "consistency_lora_strength", 0.6);
+    }
+
+    private async Task SetValue<T>(string key, T value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnScaleLengthChanged() => SetValue("scale_length", _scaleLength);
+    private Task OnPoseBatchSizeChanged() => SetValue("pose_batch_size", _poseBatchSize);
+    private Task OnDrawBodyChanged() => SetValue("draw_body", _drawBody);
+    private Task OnDrawHandsChanged() => SetValue("draw_hands", _drawHands);
+    private Task OnDrawFaceChanged() => SetValue("draw_face", _drawFace);
+    private Task OnDrawFeetChanged() => SetValue("draw_feet", _drawFeet);
+    private Task OnStickWidthChanged() => SetValue("stick_width", _stickWidth);
+    private Task OnFacePointSizeChanged() => SetValue("face_point_size", _facePointSize);
+    private Task OnScoreThresholdChanged() => SetValue("score_threshold", _scoreThreshold);
+    private Task OnLightningLoraStrengthChanged() => SetValue("lightning_lora_strength", _lightningLoraStrength);
+    private Task OnConsistencyLoraStrengthChanged() => SetValue("consistency_lora_strength", _consistencyLoraStrength);
+}

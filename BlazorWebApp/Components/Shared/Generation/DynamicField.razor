@@ -1,0 +1,491 @@
+@using BlazorWebApp.Models
+@using MudBlazor.Utilities
+@inject IGenerationParameterService ParameterService
+
+@* Renders a single field based on FieldSchema type *@
+
+@switch (Field.Type?.ToLowerInvariant())
+{
+    case "slider":
+        <MudSlider T="double"
+                   @bind-Value="_localDoubleValue"
+                   @bind-Value:after="OnDoubleValueChanged"
+                   Min="@(Field.Min ?? 0)"
+                   Max="@(Field.Max ?? 100)"
+                   Step="@(Field.Step ?? 1)"
+                   Variant="Variant.Filled"
+                   ValueLabel="true">
+            <small>@Field.Label:</small> @GetDisplayValue()
+        </MudSlider>
+        break;
+
+    case "numeric":
+        <MudNumericField T="double"
+                         @bind-Value="_localDoubleValue"
+                         @bind-Value:after="OnDoubleValueChanged"
+                         Label="@Field.Label"
+                         Min="@(Field.Min ?? double.MinValue)"
+                         Max="@(Field.Max ?? double.MaxValue)" />
+        break;
+
+    case "seed":
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.End">
+            <MudNumericField T="long"
+                             @bind-Value="_localLongValue"
+                             @bind-Value:after="OnLongValueChanged"
+                             Label="@Field.Label"
+                             Min="@((long)(Field.Min ?? -1))"
+                             Style="flex-grow: 1;" />
+            <MudIconButton Icon="@Icons.Material.Filled.Casino"
+                           Size="Size.Small"
+                           Title="Randomize"
+                           OnClick="RandomizeSeed" />
+        </MudStack>
+        break;
+
+    case "select":
+        <MudSelect T="string"
+                   @bind-Value="_localStringValue"
+                   @bind-Value:after="OnStringValueChanged"
+                   Label="@Field.Label"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in GetSelectOptions())
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+
+    case "file":
+        @* File selector for model files - uses pre-resolved options *@
+        <MudSelect T="string"
+                   @bind-Value="_localStringValue"
+                   @bind-Value:after="OnStringValueChanged"
+                   Label="@Field.Label"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in GetFileOptions())
+            {
+                <MudSelectItem Value="@option">@System.IO.Path.GetFileName(option)</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+
+    case "text":
+        <MudTextField T="string"
+                      @bind-Value="_localStringValue"
+                      @bind-Value:after="OnStringValueChanged"
+                      Label="@Field.Label"
+                      Variant="Variant.Outlined" />
+        break;
+
+    case "textarea":
+        <MudTextField T="string"
+                      @bind-Value="_localStringValue"
+                      @bind-Value:after="OnStringValueChanged"
+                      Label="@Field.Label"
+                      Lines="@(Field.Rows ?? 3)"
+                      Variant="Variant.Outlined" />
+        break;
+
+    case "checkbox":
+        <MudCheckBox T="bool"
+                     @bind-Value="_localBoolValue"
+                     @bind-Value:after="OnBoolValueChanged"
+                     Label="@Field.Label" />
+        break;
+
+    case "switch":
+        <MudSwitch T="bool"
+                   @bind-Value="_localBoolValue"
+                   @bind-Value:after="OnBoolValueChanged"
+                   Label="@Field.Label" />
+        break;
+
+    case "color":
+        <MudColorPicker @bind-Value="_localColorValue"
+                        @bind-Value:after="OnColorValueChanged"
+                        Label="@Field.Label"
+                        DisableAlpha="true" />
+        break;
+
+    case "resolution":
+        @* Width/Height with aspect ratio lock *@
+        <MudStack Spacing="1">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudNumericField T="int"
+                                 @bind-Value="_localWidth"
+                                 @bind-Value:after="OnWidthChanged"
+                                 Label="Width"
+                                 Min="@((int)(Field.Min ?? 64))"
+                                 Max="@((int)(Field.Max ?? 4096))"
+                                 Step="@((int)(Field.Step ?? 64))"
+                                 Style="flex: 1;" />
+                <MudIconButton Icon="@(_lockAspectRatio ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                               Size="Size.Small"
+                               Title="@(_lockAspectRatio ? "Unlock aspect ratio" : "Lock aspect ratio")"
+                               OnClick="ToggleAspectRatioLock" />
+                <MudNumericField T="int"
+                                 @bind-Value="_localHeight"
+                                 @bind-Value:after="OnHeightChanged"
+                                 Label="Height"
+                                 Min="@((int)(Field.Min ?? 64))"
+                                 Max="@((int)(Field.Max ?? 4096))"
+                                 Step="@((int)(Field.Step ?? 64))"
+                                 Style="flex: 1;" />
+            </MudStack>
+            <MudStack Row="true" Spacing="1" Justify="Justify.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" 
+                               Size="Size.Small" 
+                               Title="Swap width/height"
+                               OnClick="SwapDimensions" />
+            </MudStack>
+        </MudStack>
+        break;
+
+    case "group":
+        @* Nested field container *@
+        <MudPaper Elevation="0" Class="pa-2 mb-2" Style="border: 1px solid rgba(255,255,255,0.1);">
+            @if (!string.IsNullOrEmpty(Field.Label))
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@Field.Label</MudText>
+            }
+            @if (Field.Fields != null)
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var nestedField in Field.Fields)
+                    {
+                        <MudItem xs="@nestedField.Column">
+                            <DynamicField Field="@nestedField" 
+                                          Values="@Values" 
+                                          FragmentId="@FragmentId"
+                                          OnValueChanged="@OnValueChanged" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudPaper>
+        break;
+
+    default:
+        <MudText Typo="Typo.caption" Color="Color.Warning">
+            Unknown field type: @Field.Type
+        </MudText>
+        break;
+}
+
+@if (!string.IsNullOrEmpty(Field.Tooltip) && Field.Type?.ToLowerInvariant() != "group")
+{
+    <MudTooltip Text="@Field.Tooltip" Placement="Placement.Top">
+        <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Class="ml-1" Style="opacity: 0.5;" />
+    </MudTooltip>
+}
+
+@code {
+    /// <summary>
+    /// The field schema defining the field type and properties.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FieldSchema Field { get; set; } = new();
+
+    /// <summary>
+    /// The values dictionary to read/write from.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, object?> Values { get; set; } = new();
+
+    /// <summary>
+    /// The fragment ID for accessing pre-resolved options.
+    /// </summary>
+    [Parameter]
+    public string FragmentId { get; set; } = "";
+
+    /// <summary>
+    /// Callback when the value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string key, object? value)> OnValueChanged { get; set; }
+
+    private string ParameterKey => Field.Parameter;
+
+    #region Local State
+    
+    // Local state variables that sync with Values dictionary
+    private double _localDoubleValue;
+    private long _localLongValue;
+    private string _localStringValue = "";
+    private bool _localBoolValue;
+    private MudColor _localColorValue = new MudColor("#FFFFFF");
+    
+    // Resolution field state
+    private int _localWidth = 512;
+    private int _localHeight = 512;
+    private bool _lockAspectRatio = false;
+    private double _aspectRatio = 1.0;
+    
+    protected override void OnParametersSet()
+    {
+        // Sync local state from Values dictionary based on field type
+        switch (Field.Type?.ToLowerInvariant())
+        {
+            case "slider":
+            case "numeric":
+                _localDoubleValue = GetDoubleValueFromDict();
+                break;
+            case "seed":
+                _localLongValue = GetLongValueFromDict();
+                break;
+            case "select":
+            case "file":
+            case "text":
+            case "textarea":
+                _localStringValue = GetStringValueFromDict();
+                break;
+            case "checkbox":
+            case "switch":
+                _localBoolValue = GetBoolValueFromDict();
+                break;
+            case "color":
+                _localColorValue = GetMudColorFromDict();
+                break;
+            case "resolution":
+                _localWidth = GetIntValueFromDict("width", 512);
+                _localHeight = GetIntValueFromDict("height", 512);
+                if (_localWidth > 0 && _localHeight > 0)
+                    _aspectRatio = (double)_localWidth / _localHeight;
+                break;
+        }
+    }
+    
+    #endregion
+
+    #region Value Getters (from Dictionary)
+
+    private double GetDoubleValueFromDict()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            try
+            {
+                return Convert.ToDouble(value);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private long GetLongValueFromDict()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            try
+            {
+                return Convert.ToInt64(value);
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
+    private string GetStringValueFromDict()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            return value.ToString() ?? "";
+        }
+        return "";
+    }
+
+    private bool GetBoolValueFromDict()
+    {
+        if (Values.TryGetValue(ParameterKey, out var value) && value != null)
+        {
+            if (value is bool b) return b;
+            if (bool.TryParse(value.ToString(), out var parsed)) return parsed;
+        }
+        return false;
+    }
+
+    private int GetIntValueFromDict(string key, int defaultValue)
+    {
+        if (Values.TryGetValue(key, out var value) && value != null)
+        {
+            try
+            {
+                return Convert.ToInt32(value);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        return defaultValue;
+    }
+
+    private MudColor GetMudColorFromDict()
+    {
+        var colorString = GetStringValueFromDict();
+        if (!string.IsNullOrEmpty(colorString))
+        {
+            try
+            {
+                return new MudColor(colorString);
+            }
+            catch
+            {
+                // Fallback to white
+            }
+        }
+        return new MudColor("#FFFFFF");
+    }
+
+    private string GetDisplayValue()
+    {
+        // Format based on step precision
+        if (Field.Step.HasValue && Field.Step.Value < 1)
+        {
+            var decimals = (int)Math.Ceiling(-Math.Log10(Field.Step.Value));
+            return _localDoubleValue.ToString($"F{decimals}");
+        }
+        return _localDoubleValue.ToString("F0");
+    }
+
+    #endregion
+
+    #region Value Changed Handlers
+
+    private async Task OnDoubleValueChanged()
+    {
+        Values[ParameterKey] = _localDoubleValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localDoubleValue));
+    }
+
+    private async Task OnLongValueChanged()
+    {
+        Values[ParameterKey] = _localLongValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localLongValue));
+    }
+
+    private async Task OnStringValueChanged()
+    {
+        Values[ParameterKey] = _localStringValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localStringValue));
+    }
+
+    private async Task OnBoolValueChanged()
+    {
+        Values[ParameterKey] = _localBoolValue;
+        await OnValueChanged.InvokeAsync((ParameterKey, _localBoolValue));
+    }
+
+    private async Task OnColorValueChanged()
+    {
+        var colorString = _localColorValue.ToString();
+        Values[ParameterKey] = colorString;
+        await OnValueChanged.InvokeAsync((ParameterKey, colorString));
+    }
+
+    private async Task RandomizeSeed()
+    {
+        _localLongValue = -1;
+        Values[ParameterKey] = -1L;
+        await OnValueChanged.InvokeAsync((ParameterKey, -1L));
+    }
+
+    #endregion
+
+    #region Resolution Field Handlers
+
+    private async Task OnWidthChanged()
+    {
+        if (_lockAspectRatio && _aspectRatio > 0)
+        {
+            _localHeight = (int)Math.Round(_localWidth / _aspectRatio);
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    private async Task OnHeightChanged()
+    {
+        if (_lockAspectRatio && _aspectRatio > 0)
+        {
+            _localWidth = (int)Math.Round(_localHeight * _aspectRatio);
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    private void ToggleAspectRatioLock()
+    {
+        _lockAspectRatio = !_lockAspectRatio;
+        if (_lockAspectRatio && _localWidth > 0 && _localHeight > 0)
+        {
+            _aspectRatio = (double)_localWidth / _localHeight;
+        }
+    }
+
+    private async Task SwapDimensions()
+    {
+        (_localWidth, _localHeight) = (_localHeight, _localWidth);
+        if (_lockAspectRatio)
+        {
+            _aspectRatio = 1.0 / _aspectRatio;
+        }
+        
+        Values["width"] = _localWidth;
+        Values["height"] = _localHeight;
+        await OnValueChanged.InvokeAsync(("width", _localWidth));
+        await OnValueChanged.InvokeAsync(("height", _localHeight));
+    }
+
+    #endregion
+
+    #region Select/File Options
+
+    private IEnumerable<string> GetSelectOptions()
+    {
+        // First check for static options
+        if (Field.Options != null && Field.Options.Count > 0)
+        {
+            return Field.Options;
+        }
+
+        // Then check for pre-resolved options from initialization
+        if (!string.IsNullOrEmpty(FragmentId) && Field.HasDynamicSource)
+        {
+            var resolved = ParameterService.GetResolvedOptions(FragmentId, ParameterKey);
+            if (resolved.Count > 0)
+                return resolved;
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    private IEnumerable<string> GetFileOptions()
+    {
+        if (!string.IsNullOrEmpty(FragmentId) && Field.HasDynamicSource)
+        {
+            var resolved = ParameterService.GetResolvedOptions(FragmentId, ParameterKey);
+            if (resolved.Count > 0)
+                return resolved;
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    #endregion
+}

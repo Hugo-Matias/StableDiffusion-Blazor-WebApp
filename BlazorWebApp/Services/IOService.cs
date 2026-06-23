@@ -1,13 +1,14 @@
 ﻿using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
+using MetadataExtractor;
 using System.Text.RegularExpressions;
+using Directory = System.IO.Directory;
 
 namespace BlazorWebApp.Services
 {
-    public class IOService
+    public class IOService : IIOService
     {
         private readonly IConfiguration _configuration;
-        private readonly string[] _imagePaths = new string[3] { "ImagesPathLocal", "ImagesPathCloud", "ImagesPathVault" };
 
         public IOService(IConfiguration configuration)
         {
@@ -25,6 +26,7 @@ namespace BlazorWebApp.Services
 
         public DirectoryInfo? GetFolderByName(string path, string folderName)
         {
+            if (!Directory.Exists(path)) return null;
             var dir = Directory.GetDirectories(path, $"{folderName}*").FirstOrDefault();
             if (dir == null) return null;
             return new DirectoryInfo(dir);
@@ -89,6 +91,10 @@ namespace BlazorWebApp.Services
                 if (extensionsWhitelist != null)
                 {
                     query = query.Where(f => extensionsWhitelist.Contains(f.Extension));
+                }
+                if (!string.IsNullOrWhiteSpace(ignorePath))
+                {
+                    query = query.Where(f => !f.FullName.Contains(ignorePath));
                 }
                 query = query.OrderBy(f => f.Name);
                 files.AddRange(query.ToList());
@@ -155,22 +161,24 @@ namespace BlazorWebApp.Services
 
         public string GetImageStaticFile(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || path.StartsWith("/image/") || path.StartsWith("http")) return path;
-            foreach (var imagePath in _imagePaths)
+            if (string.IsNullOrWhiteSpace(path) || path.StartsWith("/image/") || path.StartsWith("/files/") || path.StartsWith("http")) return path;
+            var normalizedImagePath = Parser.NormalizePath(_configuration["OutputDir"]);
+            if (string.IsNullOrWhiteSpace(normalizedImagePath)) return string.Empty;
+
+            string normalizedPath;
+            try
             {
-                var normalizedPath = Parser.NormalizePath(path);
-                var normalizedImagePath = Parser.NormalizePath(_configuration[imagePath]);
-                if (normalizedPath.Contains(normalizedImagePath))
-                {
-                    var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
-                    return imagePath switch
-                    {
-                        "ImagesPathLocal" => "/image/local" + imageFile,
-                        "ImagesPathCloud" => "/image/cloud" + imageFile,
-                        "ImagesPathVault" => "/image/vault" + imageFile,
-                        _ => string.Empty
-                    };
-                }
+                normalizedPath = Parser.NormalizePath(path);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+            if (normalizedPath.Contains(normalizedImagePath))
+            {
+                var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
+                return "/image" + imageFile;
             }
             return string.Empty;
         }
@@ -178,28 +186,85 @@ namespace BlazorWebApp.Services
         public string GetResourceImagePath(string type, string filename)
         {
             var previewPath = $"{type}/{Path.GetFileNameWithoutExtension(filename)}";
-            if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".png"))) return $"./files/resource_previews/{previewPath}.png";
-            else if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + ".jpg"))) return $"./files/resource_previews/{previewPath}.jpg";
-            else return string.Empty;
+            foreach (var extension in new[] { ".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm", ".mov", ".m4v" })
+            {
+                if (File.Exists(Path.Join(_configuration["ResourcePreviewsPath"], previewPath + extension)))
+                    return $"./files/resource_previews/{previewPath}{extension}";
+            }
+
+            return string.Empty;
         }
 
         public string GetBase64FromFile(string path)
         {
-            if (!File.Exists(path)) return string.Empty;
+            var resolvedPath = ResolveFilePath(path);
+            if (!File.Exists(resolvedPath)) return string.Empty;
 
-            var bytes = File.ReadAllBytes(path);
+            var bytes = File.ReadAllBytes(resolvedPath);
 
             return Convert.ToBase64String(bytes);
         }
 
         public async Task<string?> GetBase64FromFileAsync(string path)
         {
-            if (!File.Exists(path)) return null;
+            var resolvedPath = ResolveFilePath(path);
+            if (!File.Exists(resolvedPath)) return null;
 
-            //var bytes = await GetByteArray(path);
-            var bytes = await File.ReadAllBytesAsync(path);
+            //var bytes = await GetByteArray(resolvedPath);
+            var bytes = await File.ReadAllBytesAsync(resolvedPath);
 
             return Convert.ToBase64String(bytes);
+        }
+
+        public string ResolveFilePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return path;
+
+            // Already a filesystem path (absolute or relative)
+            if (File.Exists(path)) return path;
+
+            // Map web request paths to filesystem paths
+            if (path.StartsWith("/files/danbooru/", StringComparison.OrdinalIgnoreCase))
+            {
+                var danbooruPath = _configuration["Danbooru:SavedMediaPath"];
+                if (!string.IsNullOrEmpty(danbooruPath))
+                {
+                    var relativePath = path.Substring("/files/danbooru/".Length);
+                    return Path.Combine(danbooruPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/image/", StringComparison.OrdinalIgnoreCase))
+            {
+                var outputDir = _configuration["OutputDir"];
+                if (!string.IsNullOrEmpty(outputDir))
+                {
+                    var relativePath = Uri.UnescapeDataString(path.Substring("/image/".Length));
+                    return Path.Combine(outputDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/files/resources/", StringComparison.OrdinalIgnoreCase))
+            {
+                var resourcesPath = _configuration["ResourcesPath"];
+                if (!string.IsNullOrEmpty(resourcesPath))
+                {
+                    var relativePath = path.Substring("/files/resources/".Length);
+                    return Path.Combine(resourcesPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            if (path.StartsWith("/files/resource_previews/", StringComparison.OrdinalIgnoreCase))
+            {
+                var previewsPath = _configuration["ResourcePreviewsPath"];
+                if (!string.IsNullOrEmpty(previewsPath))
+                {
+                    var relativePath = path.Substring("/files/resource_previews/".Length);
+                    return Path.Combine(previewsPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                }
+            }
+
+            return path;
         }
 
         public int GetFileIndex(string path, Outdir dir)
@@ -277,6 +342,45 @@ namespace BlazorWebApp.Services
         {
             CheckDirectory(path);
             await File.WriteAllBytesAsync(path, data);
+        }
+
+        public async Task<string?> ReadMetadata(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return null;
+
+            try
+            {
+                var extension = Path.GetExtension(path)?.ToLowerInvariant();
+                var directories = ImageMetadataReader.ReadMetadata(path);
+
+                if (extension is ".mp4" or ".mov" or ".m4v")
+                {
+                    // No workflow details on the metadata for videos using QuickTime, return early
+                    return null;
+                }
+
+                // For PNG images, look for tEXt chunk
+                var pngTextDir = directories.FirstOrDefault(d => d.Name == "PNG-tEXt");
+                if (pngTextDir?.Tags?.Count > 0)
+                    return pngTextDir.Tags[0].Description;
+
+                // For JPEG/other images, try Exif or XMP
+                var exifDir = directories.FirstOrDefault(d => d.Name.Contains("Exif"));
+                if (exifDir != null)
+                {
+                    var userComment = exifDir.Tags.FirstOrDefault(t => t.Name == "User Comment");
+                    if (userComment != null && !string.IsNullOrWhiteSpace(userComment.Description))
+                        return userComment.Description;
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                // Failed to read metadata, return null
+                return null;
+            }
         }
 
         private void CheckDirectory(string path)

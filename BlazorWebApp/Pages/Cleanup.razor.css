@@ -1,0 +1,277 @@
+.cleanup-page {
+  --cleanup-card-min: 180px;
+  --cleanup-list-gap: var(--app-gutter-inner);
+  --cleanup-preview-size: 3.75rem;
+  --cleanup-preview-offset: 1.1rem;
+  --cleanup-preview-stack-width: calc(
+    var(--cleanup-preview-size) + (var(--cleanup-preview-offset) * 4)
+  );
+  max-width: var(--app-shell-max-width);
+  margin: 0 auto;
+  padding: var(--app-gutter-outer);
+}
+
+.cleanup-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-inner);
+}
+
+.cleanup-toolbar-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--cleanup-card-min), 1fr));
+  gap: var(--app-gutter-inner);
+  align-items: end;
+}
+
+.cleanup-toolbar-actions,
+.cleanup-review-actions,
+.cleanup-group-actions,
+.cleanup-member-actions,
+.cleanup-storage-summary,
+.cleanup-workflow-summary,
+.cleanup-missing-report-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-gutter-inner);
+}
+
+.cleanup-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.cleanup-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--app-gutter-inner);
+  align-items: center;
+}
+
+.cleanup-progress-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--app-gutter-inner) / 4);
+  min-width: 0;
+}
+
+.cleanup-review-content,
+.cleanup-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cleanup-list-gap);
+}
+
+.cleanup-storage-summary,
+.cleanup-workflow-summary {
+  margin-top: calc(var(--app-gutter-inner) / 2);
+}
+
+.cleanup-review-header,
+.cleanup-member-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+}
+
+.cleanup-group-header {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--app-gutter-inner);
+}
+
+.cleanup-group-card {
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: var(--app-gutter-inner);
+}
+
+.cleanup-expand-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--mud-palette-text-primary);
+  background: transparent;
+}
+
+.cleanup-group-preview {
+  position: relative;
+  width: var(--cleanup-preview-stack-width);
+  height: var(--cleanup-preview-size);
+  flex: 0 0 var(--cleanup-preview-stack-width);
+}
+
+.cleanup-preview-image,
+.cleanup-group-preview-placeholder {
+  position: absolute;
+  inset: 0 auto auto
+    calc(var(--cleanup-preview-index, 0) * var(--cleanup-preview-offset));
+  width: var(--cleanup-preview-size);
+  height: var(--cleanup-preview-size);
+  overflow: hidden;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: calc(var(--app-surface-radius) / 2);
+  background: var(--mud-palette-surface);
+  box-shadow: 0 0 calc(var(--app-gutter-inner) / 2) rgba(0, 0, 0, 0.28);
+  z-index: var(--cleanup-preview-z, 1);
+}
+
+.cleanup-preview-image {
+  display: block;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cleanup-preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cleanup-group-preview-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mud-palette-text-secondary);
+}
+
+.cleanup-group-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cleanup-group-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--app-gutter-inner);
+}
+
+.cleanup-group-action {
+  flex: 0 1 auto;
+  min-width: max-content;
+  padding: calc(var(--app-gutter-inner) / 2)
+    calc(var(--app-gutter-inner) * 0.75);
+}
+
+.cleanup-group-body {
+  margin-top: var(--app-gutter-inner);
+  padding-top: var(--app-gutter-inner);
+  border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.cleanup-missing-report {
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: var(--app-gutter-inner);
+}
+
+.cleanup-missing-report-header {
+  justify-content: space-between;
+  margin-bottom: var(--app-gutter-inner);
+}
+
+.cleanup-missing-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+}
+
+.cleanup-missing-report-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--app-gutter-inner);
+  align-items: center;
+  min-width: 0;
+}
+
+.cleanup-group-explanation {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-inner);
+  margin-top: var(--app-gutter-inner);
+  padding-top: var(--app-gutter-inner);
+  border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.cleanup-group-explanation-copy {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+  min-width: 0;
+}
+
+.cleanup-group-loading {
+  padding: var(--app-surface-padding);
+}
+
+.cleanup-member-grid {
+  --app-card-min: var(--cleanup-card-min);
+  margin-top: var(--app-gutter-inner);
+}
+
+.cleanup-member-card {
+  min-width: 0;
+}
+
+.cleanup-member-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+  margin-bottom: var(--app-gutter-inner);
+}
+
+.cleanup-load-more {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--app-gutter-inner);
+}
+
+@media (max-width: 900px) {
+  .cleanup-review-header,
+  .cleanup-group-header,
+  .cleanup-member-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cleanup-group-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cleanup-group-preview {
+    grid-column: 1 / -1;
+  }
+
+  .cleanup-group-title,
+  .cleanup-group-metrics,
+  .cleanup-group-actions {
+    grid-column: 1 / -1;
+  }
+
+  .cleanup-toolbar-actions,
+  .cleanup-review-actions,
+  .cleanup-group-actions,
+  .cleanup-member-actions,
+  .cleanup-group-metrics {
+    justify-content: flex-start;
+  }
+
+  .cleanup-progress-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cleanup-missing-report-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cleanup-progress-copy {
+    align-items: flex-start;
+  }
+}

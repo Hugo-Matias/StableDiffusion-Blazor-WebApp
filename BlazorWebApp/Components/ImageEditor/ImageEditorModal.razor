@@ -1,0 +1,1648 @@
+@using BlazorWebApp.Models
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject ISessionService Session
+@inject ILogger<ImageEditorModal> Logger
+@implements IAsyncDisposable
+
+@if (_isVisible)
+{
+    <div class="image-editor-overlay" @onclick="HandleOverlayClick" @onclick:stopPropagation="true">
+        <div class="image-editor-modal" @onclick:stopPropagation="true">
+            @* Title Bar *@
+            <div class="image-editor-titlebar">
+                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="w-100">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" />
+                        <MudText Typo="Typo.h6">Image Editor</MudText>
+                        @if (_state.IsDirty)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Unsaved</MudChip>
+                        }
+                        @if (_state.HasMask)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">Mask</MudChip>
+                        }
+                        @if (_state.HasSelection)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Selection</MudChip>
+                        }
+                    </MudStack>
+                    <MudStack Row Spacing="1">
+                        <MudTooltip Text="Fit to View (Ctrl+0)">
+                            <MudIconButton Icon="@Icons.Material.Filled.FitScreen" Size="Size.Small" OnClick="FitToView" />
+                        </MudTooltip>
+                        <MudTooltip Text="Actual Size (Ctrl+1)">
+                            <MudIconButton Icon="@Icons.Material.Filled.AspectRatio" Size="Size.Small" OnClick="ZoomToActual" />
+                        </MudTooltip>
+                        <MudText Typo="Typo.body2" Class="align-self-center px-2">@($"{(_state.ZoomLevel * 100):F0}%")</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="Cancel" />
+                    </MudStack>
+                </MudStack>
+            </div>
+            
+            <div class="image-editor-container" @ref="_containerRef">
+                @* Toolbar *@
+                <div class="image-editor-toolbar">
+                    <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                        @* Drawing Tools *@
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="Brush (B)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Brush" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Brush ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Brush))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Eraser (E)">
+                                <MudIconButton Icon="@Icons.Material.Filled.AutoFixOff" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Eraser ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Eraser))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Color Picker (I)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Colorize" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.ColorPicker ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.ColorPicker))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Select (V)">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenWith" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Select ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Select))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Crop (C)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Crop" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Crop ? Color.Error : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Crop))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Pan (Hold Space)">
+                                <MudIconButton Icon="@Icons.Material.Filled.PanTool" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.Pan ? Color.Primary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.Pan))" />
+                            </MudTooltip>
+                        </MudButtonGroup>
+                        
+                        <MudDivider Vertical FlexItem Class="mx-2" />
+                        
+                        @* Mask Tools *@
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="Mask Brush (M) - Draw inpainting mask">
+                                <MudIconButton Icon="@Icons.Material.Filled.FormatColorFill" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.MaskBrush ? Color.Secondary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.MaskBrush))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Mask Eraser - Erase from mask">
+                                <MudIconButton Icon="@Icons.Material.Filled.DoNotDisturb" 
+                                               Color="@(_state.CurrentTool == ImageEditorTool.MaskEraser ? Color.Secondary : Color.Default)"
+                                               OnClick="@(() => SetTool(ImageEditorTool.MaskEraser))" />
+                            </MudTooltip>
+                        </MudButtonGroup>
+                        
+                        <MudDivider Vertical FlexItem Class="mx-2" />
+                        
+                        @* Selection Tools *@
+                        @{
+                            var isSelectionTool = _state.CurrentTool == ImageEditorTool.SelectRect 
+                                || _state.CurrentTool == ImageEditorTool.SelectEllipse 
+                                || _state.CurrentTool == ImageEditorTool.SelectLasso;
+                            var currentSelectionTool = _state.CurrentTool switch
+                            {
+                                ImageEditorTool.SelectEllipse => ImageEditorTool.SelectEllipse,
+                                ImageEditorTool.SelectLasso => ImageEditorTool.SelectLasso,
+                                _ => ImageEditorTool.SelectRect
+                            };
+                            var selectionIcon = _state.ActiveSelectionType switch
+                            {
+                                "ellipse" => Icons.Material.Filled.RadioButtonUnchecked,
+                                "lasso" => Icons.Material.Filled.Gesture,
+                                _ => Icons.Material.Filled.CropSquare
+                            };
+                            var selectionTooltip = _state.ActiveSelectionType switch
+                            {
+                                "ellipse" => "Ellipse Selection (O)",
+                                "lasso" => "Lasso Selection (L)",
+                                _ => "Rectangle Selection (R)"
+                            };
+                        }
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="@selectionTooltip">
+                                <MudIconButton Icon="@selectionIcon" 
+                                               Color="@(isSelectionTool ? Color.Info : Color.Default)"
+                                               OnClick="CycleOrSetSelectionTool" />
+                            </MudTooltip>
+                            <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" Dense>
+                                <MudMenuItem Icon="@Icons.Material.Filled.CropSquare" 
+                                             OnClick="@(() => SetSelectionTool("rect"))">
+                                    Rectangle (R)
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.RadioButtonUnchecked" 
+                                             OnClick="@(() => SetSelectionTool("ellipse"))">
+                                    Ellipse (O)
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Gesture" 
+                                             OnClick="@(() => SetSelectionTool("lasso"))">
+                                    Lasso (L)
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudButtonGroup>
+                        
+                        @* Selection Actions (when selection exists) *@
+                        @if (_state.HasSelection)
+                        {
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Add Selection to Mask (Enter)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                                   Color="Color.Secondary"
+                                                   OnClick="AddSelectionToMask" />
+                                </MudTooltip>
+                                <MudTooltip Text="Subtract Selection from Mask (Shift+Enter)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove" 
+                                                   Color="Color.Secondary"
+                                                   OnClick="SubtractSelectionFromMask" />
+                                </MudTooltip>
+                                <MudTooltip Text="Clear Selection (Escape)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                   OnClick="ClearSelection" />
+                                </MudTooltip>
+                                <MudTooltip Text="Invert Selection (Ctrl+Shift+I)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.InvertColors" 
+                                                   OnClick="InvertSelection" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+
+                        @if (_state.CurrentTool == ImageEditorTool.Crop)
+                        {
+                            <MudDivider Vertical FlexItem Class="mx-2" />
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Crop to Region">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.Crop"
+                                               Disabled="@(!_state.HasCropRegion)"
+                                               OnClick="ApplyCrop">
+                                        Crop
+                                    </MudButton>
+                                </MudTooltip>
+                                <MudTooltip Text="Clear Crop Region (Escape)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   Disabled="@(!_state.HasCropRegion)"
+                                                   OnClick="ClearCrop" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+                        
+                        @* Brush Settings - Contextual based on tool *@
+                        @{
+                            var showColorPicker = _state.CurrentTool == ImageEditorTool.Brush 
+                                || _state.CurrentTool == ImageEditorTool.MaskBrush 
+                                || _state.CurrentTool == ImageEditorTool.ColorPicker;
+                            var showBrushSize = _state.CurrentTool == ImageEditorTool.Brush 
+                                || _state.CurrentTool == ImageEditorTool.Eraser
+                                || _state.CurrentTool == ImageEditorTool.MaskBrush 
+                                || _state.CurrentTool == ImageEditorTool.MaskEraser;
+                            var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
+                            var showBrushSettings = showColorPicker || showBrushSize;
+                        }
+                        
+                        @if (showBrushSettings)
+                        {
+                            <MudDivider Vertical FlexItem Class="mx-2" />
+                            
+                            @* Color Picker - for brush tools and color picker tool *@
+                            @if (showColorPicker)
+                            {
+                                var currentColor = isMaskTool ? _state.MaskOverlayColor : _state.BrushColor;
+                                var colorTooltip = isMaskTool ? "Mask Overlay Color" : "Brush Color";
+                                
+                                <MudTooltip Text="@colorTooltip">
+                                    <div class="color-picker-wrapper" style="background-color: @currentColor;">
+                                        <input type="color" 
+                                               value="@currentColor" 
+                                               @onchange="HandleColorChange"
+                                               class="color-picker-input" />
+                                    </div>
+                                </MudTooltip>
+                            }
+                            
+                            @* Brush Size - for all brush/eraser tools *@
+                            @if (showBrushSize)
+                            {
+                                <MudTooltip Text="Brush Size ([ / ])">
+                                    <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="brush-size-control">
+                                        <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" />
+                                        <MudSlider T="int" 
+                                                   Value="_state.BrushSize" 
+                                                   ValueChanged="HandleBrushSizeChange"
+                                                   Min="1" 
+                                                   Max="200" 
+                                                   Step="1"
+                                                   Style="width: 120px;" />
+                                        <MudText Typo="Typo.caption" Style="min-width: 35px;">@(_state.BrushSize)px</MudText>
+                                    </MudStack>
+                                </MudTooltip>
+                            }
+                        }
+                        
+                        <MudDivider Vertical FlexItem Class="mx-2" />
+                        
+                        @* Undo/Redo *@
+                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                            <MudTooltip Text="Undo (Ctrl+Z)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Undo" 
+                                               Disabled="@(!_state.CanUndo)"
+                                               OnClick="Undo" />
+                            </MudTooltip>
+                            <MudTooltip Text="Redo (Ctrl+Y)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Redo" 
+                                               Disabled="@(!_state.CanRedo)"
+                                               OnClick="Redo" />
+                            </MudTooltip>
+                        </MudButtonGroup>
+                        
+                        @* Import Image *@
+                        <MudTooltip Text="Import Image (Drag & Drop, Paste, or Click)">
+                            <MudFileUpload T="IBrowserFile" 
+                                           Accept="image/*" 
+                                           FilesChanged="HandleFileImport"
+                                           MaximumFileCount="1"
+                                           Class="import-button-wrapper">
+                                <ButtonTemplate>
+                                    <MudIconButton HtmlTag="label"
+                                                   Icon="@Icons.Material.Filled.AddPhotoAlternate" 
+                                                   Size="Size.Small"
+                                                   Variant="Variant.Outlined"
+                                                   Color="Color.Default"
+                                                   for="@context" />
+                                </ButtonTemplate>
+                            </MudFileUpload>
+                        </MudTooltip>
+                        
+                        @* Clear Actions *@
+                        <MudMenu Icon="@Icons.Material.Filled.LayersClear" Size="Size.Small" Variant="Variant.Outlined">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Brush" OnClick="ClearDrawing">Clear Drawing</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.FormatColorFill" OnClick="ClearMask" Disabled="@(!_state.HasMask)">Clear Mask</MudMenuItem>
+                        </MudMenu>
+                        
+                        @* Object Actions (when in Select mode) *@
+                        @if (_state.CurrentTool == ImageEditorTool.Select)
+                        {
+                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                <MudTooltip Text="Flip Horizontal (Ctrl+Shift+H)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Flip" 
+                                                   OnClick="FlipHorizontal" />
+                                </MudTooltip>
+                                <MudTooltip Text="Flip Vertical (Ctrl+Shift+V)">
+                                    <MudIconButton OnClick="FlipVertical">
+                                        <MudIcon Icon="@Icons.Material.Filled.Flip" Style="transform: rotate(90deg);" />
+                                    </MudIconButton>
+                                </MudTooltip>
+                                <MudTooltip Text="Duplicate (Ctrl+D)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                                   OnClick="DuplicateSelection" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete (Del)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                   OnClick="DeleteSelection" />
+                                </MudTooltip>
+                            </MudButtonGroup>
+                        }
+                        
+                        <MudSpacer />
+                        
+                        @* Layer Controls (Right side) *@
+                        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                            @if (_state.HasMask)
+                            {
+                                var previewIcon = _state.MaskPreviewMode switch
+                                {
+                                    MaskPreviewMode.Binary => Icons.Material.Filled.Gradient,
+                                    MaskPreviewMode.MarchingAnts => Icons.Material.Filled.BorderStyle,
+                                    MaskPreviewMode.Blackout => Icons.Material.Filled.DarkMode,
+                                    MaskPreviewMode.Whiteout => Icons.Material.Filled.LightMode,
+                                    _ => Icons.Material.Filled.Layers
+                                };
+                                var previewTooltip = _state.MaskPreviewMode switch
+                                {
+                                    MaskPreviewMode.Binary => "Binary (B/W API preview)",
+                                    MaskPreviewMode.MarchingAnts => "Dashed (outline)",
+                                    MaskPreviewMode.Blackout => "Blackout (show masked areas)",
+                                    MaskPreviewMode.Whiteout => "Whiteout (highlight changes)",
+                                    _ => "Overlay (colored stripes)"
+                                };
+                                
+                                @* Mask Preview Mode - Dropdown with cycling *@
+                                <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                                    <MudTooltip Text="@($"Mask Preview: {previewTooltip} - Click to cycle")">
+                                        <MudIconButton Icon="@previewIcon" 
+                                                       Size="Size.Small"
+                                                       Color="Color.Secondary"
+                                                       OnClick="CycleMaskPreviewMode" />
+                                    </MudTooltip>
+                                    <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" Dense>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Layers" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Overlay))">
+                                            Overlay (colored stripes)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Gradient" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Binary))">
+                                            Binary (B/W API preview)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.BorderStyle" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.MarchingAnts))">
+                                            Dashed (outline)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.DarkMode" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Blackout))">
+                                            Blackout (show masked areas)
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.LightMode" 
+                                                     OnClick="@(() => SetMaskPreviewMode(MaskPreviewMode.Whiteout))">
+                                            Whiteout (highlight changes)
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </MudButtonGroup>
+                                
+                                <MudTooltip Text="Toggle Mask Visibility">
+                                    <MudIconButton Icon="@(_state.MaskVisible ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)" 
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   OnClick="ToggleMaskVisibility" />
+                                </MudTooltip>
+                                <MudTooltip Text="Mask Opacity">
+                                    <MudSlider T="float" 
+                                               Value="_state.MaskOpacity" 
+                                               ValueChanged="HandleMaskOpacityChange"
+                                               Min="0.1f" 
+                                               Max="1.0f" 
+                                               Step="0.1f"
+                                               Style="width: 80px;" />
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                        
+                        @* Image Info *@
+                        @if (_state.GetCanvasWidth() > 0)
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">
+                                @(_state.GetCanvasWidth()) x @(_state.GetCanvasHeight()) px
+                            </MudText>
+                        }
+                    </MudStack>
+                </div>
+                
+                @* Canvas Area with Layer Panel *@
+                <div class="image-editor-canvas-area">
+                    <div class="image-editor-canvas-main" id="canvas-wrapper-@_sessionId">
+                        <canvas @key="_canvasId" id="@_canvasId"></canvas>
+                        
+                        @if (_isLoading)
+                        {
+                            <div class="canvas-loading-overlay">
+                                <MudProgressCircular Indeterminate Color="Color.Primary" Size="Size.Large" />
+                                <MudText Typo="Typo.body1" Class="mt-3">Loading editor...</MudText>
+                            </div>
+                        }
+                        
+                        @* Layer Panel *@
+                        <LayerPanel Layers="_state.Layers"
+                                    ActiveLayerId=@(_state.ActiveLayerId)
+                                    MaxLayerCount="@ImageEditorState.MaxLayerCount"
+                                    OnLayerSelected="HandleLayerSelected"
+                                    OnAddLayer="HandleAddLayer"
+                                    OnDeleteLayer="HandleDeleteLayer"
+                                    OnVisibilityChanged="HandleLayerVisibilityChanged"
+                                    OnLockChanged="HandleLayerLockChanged"
+                                    OnOpacityChanged="HandleLayerOpacityChanged"
+                                    OnRename="HandleLayerRename"
+                                    OnReorder="HandleLayerReorder" />
+                    </div>
+                </div>
+                
+                @* Footer / Status Bar *@
+                <div class="image-editor-footer">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
+                        <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                            @* Zoom Controls *@
+                            <MudSlider T="float" 
+                                       Value="_state.ZoomLevel" 
+                                       ValueChanged="HandleZoomSliderChange"
+                                       Min="0.1f" 
+                                       Max="5.0f" 
+                                       Step="0.1f"
+                                       Style="width: 150px;" />
+                            
+                            @if (_cursorX >= 0 && _cursorY >= 0)
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    X: @_cursorX, Y: @_cursorY
+                                </MudText>
+                            }
+                            
+                            @* Tool indicator *@
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@GetToolColor()">
+                                @GetToolDisplayName()
+                            </MudChip>
+                            
+                            @* Active layer indicator *@
+                            @if (_state.ActiveLayer != null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                    @_state.ActiveLayer.Name
+                                </MudChip>
+                            }
+                        </MudStack>
+                        
+                        <MudStack Row Spacing="2">
+                            <MudButton Variant="Variant.Outlined" 
+                                       Color="Color.Default" 
+                                       OnClick="Cancel">
+                                Cancel
+                            </MudButton>
+                            <MudTooltip Text="Save current edits and close. Preserves layers for further editing. The original base image remains unchanged." Delay="600" Duration="1000">
+                                <MudButton Variant="Variant.Outlined" 
+                                           Color="Color.Primary" 
+                                           OnClick="Save"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    Save
+                                </MudButton>
+                            </MudTooltip>
+                            <MudTooltip Text="Flatten all visible layers into a new image and apply as the new base. This commits all edits permanently." Delay="600" Duration="1000">
+                                <MudButton Variant="Variant.Filled" 
+                                           Color="Color.Primary" 
+                                           OnClick="Apply"
+                                           StartIcon="@Icons.Material.Filled.Check">
+                                    Apply
+                                </MudButton>
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback<(string image, string? mask)> OnApply { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    
+    // Private state
+    private bool _isVisible;
+    private bool _isLoading;
+    private bool _isInitialized;
+    private bool _isInitializing;
+    private string _sessionId = "";
+    private string _canvasId = "";
+    private ImageEditorState _state = new();
+    private int _cursorX = -1;
+    private int _cursorY = -1;
+    
+    // Pending image data
+    private string? _pendingImageData;
+    private int _pendingWidth;
+    private int _pendingHeight;
+    private bool _pendingIsBlank;
+    
+    // Element references
+    private ElementReference _containerRef;
+
+    private const string ImageEditorModuleVersion = "20260506-crop-tool-v5";
+    
+    // JS Interop
+    private IJSObjectReference? _jsModule;
+    private IJSObjectReference? _editorInstance;
+    private DotNetObjectReference<ImageEditorModal>? _dotNetRef;
+    
+    private static int _instanceCounter = 0;
+    
+    protected override void OnInitialized()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isVisible && _isLoading && !_isInitialized)
+        {
+            await InitializeEditorAsync();
+        }
+    }
+    
+    public async Task Open(string? imageData = null)
+    {
+        Logger.LogInformation("Opening image editor with image: {HasImage}", !string.IsNullOrWhiteSpace(imageData));
+        
+        await CleanupEditorAsync();
+        
+        _instanceCounter++;
+        _sessionId = $"{DateTime.Now.Ticks}-{_instanceCounter}";
+        _canvasId = $"editor-canvas-{_sessionId}";
+        
+        _isVisible = true;
+        _isLoading = true;
+        _isInitialized = false;
+        
+        // Check if we should restore previous state (has saved canvas with layers)
+        if (Session.ImageEditorState != null && Session.ImageEditorState.CanvasJson != null && Session.ImageEditorState.Layers.Count > 0)
+        {
+            // Restore previous session - use the PRESERVED base image, not the input
+            _state = Session.ImageEditorState;
+            _pendingImageData = _state.BaseImageData; // Use the original base, not the new input
+            _pendingIsBlank = _state.IsBlankCanvas;
+            _pendingWidth = _state.BlankCanvasWidth;
+            _pendingHeight = _state.BlankCanvasHeight;
+            Logger.LogInformation("Restoring previous editor state with {LayerCount} layers, using preserved base image", _state.Layers.Count);
+        }
+        else
+        {
+            // Fresh session - use the provided image data
+            _state.Reset();
+            _pendingImageData = imageData;
+            _pendingIsBlank = string.IsNullOrWhiteSpace(imageData);
+            _pendingWidth = 1024;
+            _pendingHeight = 1024;
+            
+            // Store the original base image
+            if (!_pendingIsBlank)
+            {
+                _state.BaseImageData = imageData;
+            }
+        }
+        
+        StateHasChanged();
+    }
+    
+    public async Task OpenBlank(int width = 1024, int height = 1024)
+    {
+        Logger.LogInformation("Opening blank canvas: {Width}x{Height}", width, height);
+        
+        await CleanupEditorAsync();
+        
+        _instanceCounter++;
+        _sessionId = $"{DateTime.Now.Ticks}-{_instanceCounter}";
+        _canvasId = $"editor-canvas-{_sessionId}";
+        
+        _isVisible = true;
+        _isLoading = true;
+        _isInitialized = false;
+        
+        // Check if we should restore previous state (has saved canvas with layers)
+        if (Session.ImageEditorState != null && Session.ImageEditorState.CanvasJson != null && Session.ImageEditorState.Layers.Count > 0 && Session.ImageEditorState.IsBlankCanvas)
+        {
+            // Restore previous blank canvas session
+            _state = Session.ImageEditorState;
+            _pendingImageData = null;
+            _pendingIsBlank = true;
+            _pendingWidth = _state.BlankCanvasWidth;
+            _pendingHeight = _state.BlankCanvasHeight;
+            Logger.LogInformation("Restoring previous blank canvas state with {LayerCount} layers", _state.Layers.Count);
+        }
+        else
+        {
+            // Fresh blank canvas
+            _state.Reset();
+            _state.IsBlankCanvas = true;
+            _state.BlankCanvasWidth = width;
+            _state.BlankCanvasHeight = height;
+            _pendingImageData = null;
+            _pendingIsBlank = true;
+            _pendingWidth = width;
+            _pendingHeight = height;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task InitializeEditorAsync()
+    {
+        if (_isInitialized || _isInitializing) return;
+        _isInitializing = true;
+        
+        try
+        {
+            await Task.Delay(200);
+            
+            var canvasExists = await JS.InvokeAsync<bool>("eval", $"document.getElementById('{_canvasId}') !== null");
+            if (!canvasExists)
+            {
+                Logger.LogWarning("Canvas element {CanvasId} not found in DOM, waiting longer...", _canvasId);
+                await Task.Delay(200);
+            }
+            
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", $"./js/ImageEditor/ImageEditor.js?v={ImageEditorModuleVersion}");
+            
+            _editorInstance = await _jsModule.InvokeAsync<IJSObjectReference>(
+                "init", 
+                _canvasId, 
+                _dotNetRef,
+                new { 
+                    maxCanvasSize = 4096,
+                    maxHistorySize = _state.MaxHistorySize,
+                    defaultBrushSize = _state.BrushSize,
+                    defaultBrushColor = _state.BrushColor,
+                    maskColor = _state.MaskOverlayColor,
+                    maskOpacity = _state.MaskOpacity
+                }
+            );
+            
+            _isInitialized = true;
+            
+            await ResizeCanvasAsync();
+            
+            if (_pendingIsBlank)
+            {
+                await CreateBlankCanvasAsync(_pendingWidth, _pendingHeight);
+            }
+            else if (!string.IsNullOrWhiteSpace(_pendingImageData))
+            {
+                await LoadImageAsync(_pendingImageData);
+            }
+            
+            // Restore layer state if available
+            if (_state.CanvasJson != null && _editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("loadState", _state.CanvasJson);
+            }
+            
+            // Sync the current tool with JS (ensures cursor matches tool button state)
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setTool", GetJsToolName(_state.CurrentTool));
+            }
+            
+            Logger.LogInformation("Image editor initialized successfully with {LayerCount} layers", _state.Layers.Count);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize ImageEditor");
+        }
+        finally
+        {
+            _isInitializing = false;
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task ResizeCanvasAsync()
+    {
+        if (_editorInstance == null) return;
+        
+        try
+        {
+            var dimensions = await JS.InvokeAsync<int[]>("eval", $@"
+                (function() {{
+                    var el = document.getElementById('canvas-wrapper-{_sessionId}');
+                    if (el) {{
+                        return [el.clientWidth || 800, el.clientHeight || 600];
+                    }}
+                    return [800, 600];
+                }})()
+            ");
+            
+            await _editorInstance.InvokeVoidAsync("resize", dimensions[0], dimensions[1]);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to resize canvas");
+        }
+    }
+    
+    private async Task LoadImageAsync(string imageData)
+    {
+        if (_editorInstance == null) return;
+        
+        // Only update BaseImageData if this is a fresh session (not restoring)
+        // When restoring, BaseImageData is already set correctly
+        if (string.IsNullOrWhiteSpace(_state.BaseImageData))
+        {
+            _state.BaseImageData = imageData;
+        }
+        _state.IsBlankCanvas = false;
+        
+        try
+        {
+            await _editorInstance.InvokeAsync<object>("loadImage", imageData);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load image into canvas");
+            throw;
+        }
+    }
+    
+    private async Task CreateBlankCanvasAsync(int width, int height)
+    {
+        if (_editorInstance == null) return;
+        
+        _state.IsBlankCanvas = true;
+        _state.BlankCanvasWidth = width;
+        _state.BlankCanvasHeight = height;
+        
+        await _editorInstance.InvokeVoidAsync("createBlankCanvas", width, height, "#FFFFFF");
+    }
+    
+    // ==================== Tool Methods ====================
+    
+    private async Task SetTool(ImageEditorTool tool)
+    {
+        _state.CurrentTool = tool;
+        
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("setTool", GetJsToolName(tool));
+        }
+        
+        StateHasChanged();
+    }
+
+    private static string GetJsToolName(ImageEditorTool tool) => tool switch
+    {
+        ImageEditorTool.ColorPicker => "colorpicker",
+        ImageEditorTool.MaskBrush => "maskbrush",
+        ImageEditorTool.MaskEraser => "maskeraser",
+        ImageEditorTool.SelectRect => "selectrect",
+        ImageEditorTool.SelectEllipse => "selectellipse",
+        ImageEditorTool.SelectLasso => "selectlasso",
+        ImageEditorTool.Crop => "crop",
+        _ => tool.ToString().ToLowerInvariant()
+    };
+    
+    private async Task SetSelectionTool(string type)
+    {
+        _state.ActiveSelectionType = type;
+        
+        var tool = type switch
+        {
+            "ellipse" => ImageEditorTool.SelectEllipse,
+            "lasso" => ImageEditorTool.SelectLasso,
+            _ => ImageEditorTool.SelectRect
+        };
+        
+        await SetTool(tool);
+    }
+    
+    private async Task CycleOrSetSelectionTool()
+    {
+        var isSelectionTool = _state.CurrentTool == ImageEditorTool.SelectRect 
+            || _state.CurrentTool == ImageEditorTool.SelectEllipse 
+            || _state.CurrentTool == ImageEditorTool.SelectLasso;
+        
+        if (isSelectionTool)
+        {
+            // Cycle to next selection type
+            var nextType = _state.ActiveSelectionType switch
+            {
+                "rect" => "ellipse",
+                "ellipse" => "lasso",
+                "lasso" => "rect",
+                _ => "rect"
+            };
+            await SetSelectionTool(nextType);
+        }
+        else
+        {
+            // Not currently a selection tool, just set the current type
+            await SetSelectionTool(_state.ActiveSelectionType ?? "rect");
+        }
+    }
+    
+    private string GetToolDisplayName() => _state.CurrentTool switch
+    {
+        ImageEditorTool.Brush => "Brush",
+        ImageEditorTool.Eraser => "Eraser",
+        ImageEditorTool.ColorPicker => "Color Picker",
+        ImageEditorTool.Pan => "Pan",
+        ImageEditorTool.MaskBrush => "Mask Brush",
+        ImageEditorTool.MaskEraser => "Mask Eraser",
+        ImageEditorTool.Fill => "Fill",
+        ImageEditorTool.Select => "Select",
+        ImageEditorTool.SelectRect => "Rect Select",
+        ImageEditorTool.SelectEllipse => "Ellipse Select",
+        ImageEditorTool.SelectLasso => "Lasso Select",
+        ImageEditorTool.Crop => "Crop",
+        _ => "Unknown"
+    };
+    
+    private Color GetToolColor() => _state.CurrentTool switch
+    {
+        ImageEditorTool.MaskBrush or ImageEditorTool.MaskEraser => Color.Secondary,
+        ImageEditorTool.Crop => Color.Error,
+        ImageEditorTool.Select => Color.Info,
+        ImageEditorTool.SelectRect or ImageEditorTool.SelectEllipse or ImageEditorTool.SelectLasso => Color.Info,
+        _ => Color.Primary
+    };
+
+    private async Task ApplyCrop()
+    {
+        if (_editorInstance == null || !_state.HasCropRegion)
+        {
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Cropping edited image (flattening crop region to new source)...");
+
+            var cropResult = await _editorInstance.InvokeAsync<JsonElement?>("applyCrop");
+            if (!cropResult.HasValue)
+            {
+                Logger.LogWarning("Crop did not produce an image result");
+                return;
+            }
+
+            var result = cropResult.Value;
+            if (!result.TryGetProperty("image", out var imageElement))
+            {
+                Logger.LogWarning("Crop result did not contain image data");
+                return;
+            }
+
+            var imageData = imageElement.GetString();
+            if (string.IsNullOrWhiteSpace(imageData))
+            {
+                Logger.LogWarning("Cropped image data is empty");
+                return;
+            }
+
+            var width = result.TryGetProperty("width", out var widthElement) ? widthElement.GetInt32() : 0;
+            var height = result.TryGetProperty("height", out var heightElement) ? heightElement.GetInt32() : 0;
+
+            _state.ResetLayersToBase();
+            _state.BaseImageData = imageData;
+            _state.BaseImageWidth = width;
+            _state.BaseImageHeight = height;
+            _state.IsBlankCanvas = false;
+            _state.CanvasJson = null;
+            _state.HasCropRegion = false;
+            _state.HasMask = false;
+            _state.MaskData = null;
+            Session.ImageEditorState = _state;
+
+            await CleanupEditorAsync();
+
+            _isVisible = false;
+            StateHasChanged();
+
+            await OnApply.InvokeAsync((imageData, null));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to crop image");
+        }
+    }
+
+    private async Task ClearCrop()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearCrop");
+        }
+    }
+    
+    private async Task AddSelectionToMask()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("selectionToMask", "add");
+        }
+    }
+    
+    private async Task SubtractSelectionFromMask()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("selectionToMask", "subtract");
+        }
+    }
+    
+    private async Task ClearSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearSelection");
+        }
+    }
+    
+    private async Task InvertSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("invertSelection");
+        }
+    }
+    
+    private async Task HandleColorChange(ChangeEventArgs e)
+    {
+        var color = e.Value?.ToString() ?? "#FFFFFF";
+        var isMaskTool = _state.CurrentTool == ImageEditorTool.MaskBrush || _state.CurrentTool == ImageEditorTool.MaskEraser;
+        
+        if (isMaskTool)
+        {
+            _state.MaskOverlayColor = color;
+            
+            if (_editorInstance != null)
+            {
+                // Update the mask display color
+                await _editorInstance.InvokeVoidAsync("setMaskDisplayColor", color);
+            }
+        }
+        else
+        {
+            _state.BrushColor = color;
+            
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setBrush", new { color });
+            }
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task HandleBrushSizeChange(int size)
+    {
+        _state.BrushSize = size;
+        
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("setBrush", new { size });
+        }
+    }
+    
+    private async Task HandleMaskOpacityChange(float opacity)
+    {
+        _state.MaskOpacity = opacity;
+        
+        if (_editorInstance != null)
+        {
+            // Use the new mask display opacity method
+            await _editorInstance.InvokeVoidAsync("setMaskDisplayOpacity", opacity);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task ToggleMaskVisibility()
+    {
+        _state.MaskVisible = !_state.MaskVisible;
+        
+        if (_editorInstance != null)
+        {
+            // Use the new mask visibility method
+            await _editorInstance.InvokeVoidAsync("setMaskVisibility", _state.MaskVisible);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task SetMaskPreviewMode(MaskPreviewMode mode)
+    {
+        _state.MaskPreviewMode = mode;
+        
+        if (_editorInstance != null)
+        {
+            var modeString = mode switch
+            {
+                MaskPreviewMode.Binary => "binary",
+                MaskPreviewMode.MarchingAnts => "marchingants",
+                MaskPreviewMode.Blackout => "blackout",
+                MaskPreviewMode.Whiteout => "whiteout",
+                _ => "overlay"
+            };
+            await _editorInstance.InvokeVoidAsync("setMaskPreviewMode", modeString);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task CycleMaskPreviewMode()
+    {
+        if (_editorInstance != null)
+        {
+            var newMode = await _editorInstance.InvokeAsync<string>("cycleMaskPreviewMode");
+            _state.MaskPreviewMode = newMode switch
+            {
+                "binary" => MaskPreviewMode.Binary,
+                "marchingants" => MaskPreviewMode.MarchingAnts,
+                "blackout" => MaskPreviewMode.Blackout,
+                "whiteout" => MaskPreviewMode.Whiteout,
+                _ => MaskPreviewMode.Overlay
+            };
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleZoomSliderChange(float zoom)
+    {
+        _state.ZoomLevel = zoom;
+        
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("setZoom", zoom);
+        }
+    }
+    
+    private async Task FitToView()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("fitToView");
+        }
+    }
+    
+    private async Task ZoomToActual()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("zoomToActual");
+        }
+    }
+    
+    private async Task Undo()
+    {
+        if (_editorInstance == null || !_state.CanUndo) return;
+        
+        var currentState = await _editorInstance.InvokeAsync<string>("getState");
+        var previousState = _state.PopUndoState(currentState);
+        
+        if (previousState != null)
+        {
+            await _editorInstance.InvokeVoidAsync("loadState", previousState);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task Redo()
+    {
+        if (_editorInstance == null || !_state.CanRedo) return;
+        
+        var currentState = await _editorInstance.InvokeAsync<string>("getState");
+        var nextState = _state.PopRedoState(currentState);
+        
+        if (nextState != null)
+        {
+            await _editorInstance.InvokeVoidAsync("loadState", nextState);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task ClearDrawing()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearDrawing");
+        }
+    }
+    
+    private async Task ClearMask()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("clearMask");
+            _state.HasMask = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task FlipHorizontal()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("flipSelection", "horizontal");
+        }
+    }
+    
+    private async Task FlipVertical()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("flipSelection", "vertical");
+        }
+    }
+    
+    private async Task DuplicateSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("duplicateSelection");
+        }
+    }
+    
+    private async Task DeleteSelection()
+    {
+        if (_editorInstance != null)
+        {
+            await _editorInstance.InvokeVoidAsync("deleteSelection");
+        }
+    }
+    
+    private async Task HandleFileImport(IBrowserFile? file)
+    {
+        if (file == null || _editorInstance == null) return;
+        
+        try
+        {
+            // Validate file type
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                Logger.LogWarning("Invalid file type for import: {ContentType}", file.ContentType);
+                return;
+            }
+            
+            // Limit file size to 10MB
+            const long maxSize = 10 * 1024 * 1024;
+            if (file.Size > maxSize)
+            {
+                Logger.LogWarning("File too large for import: {Size} bytes", file.Size);
+                return;
+            }
+            
+            // Read file as data URL
+            using var stream = file.OpenReadStream(maxSize);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{file.ContentType};base64,{base64}";
+            
+            // Import via JavaScript
+            await _editorInstance.InvokeVoidAsync("importImage", dataUrl);
+            
+            Logger.LogInformation("Imported image file: {FileName}", file.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to import image file");
+        }
+    }
+    
+    // ==================== Actions ====================
+    
+    /// <summary>
+    /// Save: Exports flattened image for use, but preserves original base image and layer state for re-editing
+    /// </summary>
+    private async Task Save()
+    {
+        if (_editorInstance == null) 
+        {
+            Logger.LogWarning("Cannot save - editor instance is null");
+            return;
+        }
+        
+        try
+        {
+            Logger.LogInformation("Saving edited image (preserving layers and original base)...");
+            
+            // Export the flattened visible image
+            var imageData = await _editorInstance.InvokeAsync<string>("exportImage", true);
+            var maskData = await _editorInstance.InvokeAsync<string?>("exportMask");
+            
+            Logger.LogInformation("Export complete. Image data length: {ImageLength}, Mask: {HasMask}", 
+                imageData?.Length ?? 0, 
+                !string.IsNullOrWhiteSpace(maskData));
+            
+            if (string.IsNullOrWhiteSpace(imageData))
+            {
+                Logger.LogWarning("Exported image data is empty");
+                return;
+            }
+            
+            // Store mask data in state
+            if (!string.IsNullOrWhiteSpace(maskData))
+            {
+                _state.MaskData = maskData;
+            }
+            
+            // Save canvas state for re-editing - but keep the ORIGINAL base image
+            _state.CanvasJson = await _editorInstance.InvokeAsync<string>("getState");
+            // Note: BaseImageData stays as the original, not the flattened export
+            _state.IsDirty = false;
+            Session.ImageEditorState = _state;
+            Logger.LogInformation("Saved editor state with {LayerCount} layers, original base preserved", _state.Layers.Count);
+            
+            await CleanupEditorAsync();
+            
+            _isVisible = false;
+            StateHasChanged();
+            
+            // Send the flattened image for use (but original base is preserved in state)
+            await OnApply.InvokeAsync((imageData, maskData));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save image");
+        }
+    }
+    
+    /// <summary>
+    /// Apply: Flattens all layers into a new base image, resets layer state
+    /// </summary>
+    private async Task Apply()
+    {
+        if (_editorInstance == null) 
+        {
+            Logger.LogWarning("Cannot apply - editor instance is null");
+            return;
+        }
+        
+        try
+        {
+            Logger.LogInformation("Applying edited image (flattening to new base)...");
+            
+            var imageData = await _editorInstance.InvokeAsync<string>("exportImage", true);
+            var maskData = await _editorInstance.InvokeAsync<string?>("exportMask");
+            
+            Logger.LogInformation("Export complete. Image data length: {ImageLength}, Mask: {HasMask}", 
+                imageData?.Length ?? 0, 
+                !string.IsNullOrWhiteSpace(maskData));
+            
+            if (string.IsNullOrWhiteSpace(imageData))
+            {
+                Logger.LogWarning("Exported image data is empty");
+                return;
+            }
+            
+            // Store mask data
+            if (!string.IsNullOrWhiteSpace(maskData))
+            {
+                _state.MaskData = maskData;
+            }
+            
+            // Flatten & Apply - reset layers, use exported image as new base
+            _state.ResetLayersToBase();
+            _state.BaseImageData = imageData; // NEW base image is the flattened result
+            _state.CanvasJson = null; // Clear saved state
+            Session.ImageEditorState = _state;
+            Logger.LogInformation("Applied and flattened - new base image created");
+            
+            await CleanupEditorAsync();
+            
+            _isVisible = false;
+            StateHasChanged();
+            
+            await OnApply.InvokeAsync((imageData, maskData));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to apply image");
+        }
+    }
+    
+    private async Task Cancel()
+    {
+        await CleanupEditorAsync();
+        
+        _isVisible = false;
+        StateHasChanged();
+        await OnCancel.InvokeAsync();
+    }
+    
+    private async Task CleanupEditorAsync()
+    {
+        if (_editorInstance != null)
+        {
+            try
+            {
+                await _editorInstance.InvokeVoidAsync("dispose");
+                await _editorInstance.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error during editor cleanup");
+            }
+            finally
+            {
+                _editorInstance = null;
+            }
+        }
+        
+        _isInitialized = false;
+    }
+    
+    // ==================== JS Callbacks ====================
+    
+    [JSInvokable]
+    public void OnImageLoaded(int width, int height)
+    {
+        _state.BaseImageWidth = width;
+        _state.BaseImageHeight = height;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnZoomChanged(float zoom)
+    {
+        _state.ZoomLevel = zoom;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnColorPicked(string color)
+    {
+        _state.BrushColor = color;
+        InvokeAsync(async () =>
+        {
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setBrush", new { color });
+            }
+            StateHasChanged();
+        });
+    }
+    
+    [JSInvokable]
+    public void OnToolChangeRequested(string tool)
+    {
+        if (Enum.TryParse<ImageEditorTool>(tool, true, out var parsedTool))
+        {
+            InvokeAsync(() => SetTool(parsedTool));
+        }
+    }
+    
+    [JSInvokable]
+    public void OnBrushSizeChangeRequested(int delta)
+    {
+        var newSize = Math.Clamp(_state.BrushSize + delta, 1, 200);
+        _state.BrushSize = newSize;
+        
+        InvokeAsync(async () => 
+        {
+            if (_editorInstance != null)
+            {
+                await _editorInstance.InvokeVoidAsync("setBrush", new { size = newSize });
+            }
+            StateHasChanged();
+        });
+    }
+    
+    [JSInvokable]
+    public void OnCursorPositionChanged(int x, int y)
+    {
+        _cursorX = x;
+        _cursorY = y;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnSaveState(string state)
+    {
+        _state.PushUndoState(state);
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public async Task OnUndoRequested()
+    {
+        await Undo();
+    }
+    
+    [JSInvokable]
+    public async Task OnRedoRequested()
+    {
+        await Redo();
+    }
+    
+    [JSInvokable]
+    public void OnMaskChanged(bool hasMask)
+    {
+        _state.HasMask = hasMask;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnSelectionChanged(bool hasSelection)
+    {
+        _state.HasSelection = hasSelection;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnCropRegionChanged(bool hasCropRegion)
+    {
+        _state.HasCropRegion = hasCropRegion;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnCropRequested()
+    {
+        return InvokeAsync(ApplyCrop);
+    }
+    
+    [JSInvokable]
+    public void OnSelectionTypeChanged(string selectionType)
+    {
+        _state.ActiveSelectionType = selectionType;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnMaskPreviewModeChanged(string mode)
+    {
+        _state.MaskPreviewMode = mode switch
+        {
+            "binary" => MaskPreviewMode.Binary,
+            "marchingants" => MaskPreviewMode.MarchingAnts,
+            "blackout" => MaskPreviewMode.Blackout,
+            "whiteout" => MaskPreviewMode.Whiteout,
+            _ => MaskPreviewMode.Overlay
+        };
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnCanvasModified()
+    {
+        _state.IsDirty = true;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnImageImported(int width, int height)
+    {
+        Logger.LogInformation("Image imported: {Width}x{Height}", width, height);
+        _state.IsDirty = true;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    [JSInvokable]
+    public void OnLayerChanged(JsonElement layerState)
+    {
+        try
+        {
+            // Update layers from JS state
+            if (layerState.TryGetProperty("layers", out var layersElement))
+            {
+                _state.Layers.Clear();
+                foreach (var layerJson in layersElement.EnumerateArray())
+                {
+                    var layer = new LayerInfo
+                    {
+                        Id = layerJson.GetProperty("id").GetString() ?? "",
+                        Name = layerJson.GetProperty("name").GetString() ?? "Layer",
+                        IsVisible = layerJson.GetProperty("visible").GetBoolean(),
+                        IsLocked = layerJson.GetProperty("locked").GetBoolean(),
+                        Opacity = (float)layerJson.GetProperty("opacity").GetDouble(),
+                        Order = layerJson.GetProperty("order").GetInt32(),
+                        LayerType = Enum.TryParse<LayerType>(layerJson.GetProperty("type").GetString(), true, out var lt) ? lt : LayerType.Drawing
+                    };
+                    _state.Layers.Add(layer);
+                }
+            }
+            
+            if (layerState.TryGetProperty("activeLayerId", out var activeIdElement))
+            {
+                _state.ActiveLayerId = activeIdElement.GetString();
+            }
+            
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to parse layer state from JS");
+        }
+    }
+    
+    // ==================== Layer Panel Event Handlers ====================
+    
+    private async Task HandleLayerSelected(string layerId)
+    {
+        if (_editorInstance == null) return;
+        
+        var success = await _editorInstance.InvokeAsync<bool>("setActiveLayer", layerId);
+        if (success)
+        {
+            _state.ActiveLayerId = layerId;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleAddLayer()
+    {
+        if (_editorInstance == null) return;
+        
+        var layerName = $"Layer {_state.Layers.Count}";
+        var result = await _editorInstance.InvokeAsync<JsonElement?>("addLayer", layerName, "drawing");
+        
+        if (result.HasValue)
+        {
+            _state.IsDirty = true;
+        }
+    }
+    
+    private async Task HandleDeleteLayer(string layerId)
+    {
+        if (_editorInstance == null) return;
+        
+        var success = await _editorInstance.InvokeAsync<bool>("removeLayer", layerId);
+        if (success)
+        {
+            _state.IsDirty = true;
+        }
+    }
+    
+    private async Task HandleLayerVisibilityChanged((string layerId, bool visible) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { visible = args.visible });
+        
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.IsVisible = args.visible;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerLockChanged((string layerId, bool locked) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { locked = args.locked });
+        
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.IsLocked = args.locked;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerOpacityChanged((string layerId, float opacity) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { opacity = args.opacity });
+        
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.Opacity = args.opacity;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerRename((string layerId, string name) args)
+    {
+        if (_editorInstance == null) return;
+        
+        await _editorInstance.InvokeVoidAsync("updateLayer", args.layerId, new { name = args.name });
+        
+        var layer = _state.Layers.FirstOrDefault(l => l.Id == args.layerId);
+        if (layer != null)
+        {
+            layer.Name = args.name;
+            _state.IsDirty = true;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleLayerReorder((string layerId, int direction) args)
+    {
+        if (_editorInstance == null) 
+        {
+            Logger.LogWarning("Cannot reorder layer - editor instance is null");
+            return;
+        }
+        
+        Logger.LogInformation("Reordering layer {LayerId} in direction {Direction}", args.layerId, args.direction);
+        
+        var success = await _editorInstance.InvokeAsync<bool>("reorderLayer", args.layerId, args.direction);
+        
+        Logger.LogInformation("Reorder result: {Success}", success);
+        
+        if (success)
+        {
+            _state.IsDirty = true;
+        }
+    }
+    
+    private void HandleOverlayClick()
+    {
+        // Do nothing - user must click Cancel or Apply to close
+    }
+    
+    // ==================== Cleanup ====================
+    
+    public async ValueTask DisposeAsync()
+    {
+        await CleanupEditorAsync();
+        
+        try
+        {
+            if (_jsModule != null)
+            {
+                await _jsModule.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit disconnected, ignore
+        }
+        
+        _dotNetRef?.Dispose();
+    }
+}

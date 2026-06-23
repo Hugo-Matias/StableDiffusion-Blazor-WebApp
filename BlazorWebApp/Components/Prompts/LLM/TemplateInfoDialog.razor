@@ -1,0 +1,82 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="@_name"
+                          Label="Template Name"
+                          Variant="Variant.Text"
+                          Required
+                          RequiredError="Name is required"
+                          Placeholder="e.g., Story Generator, Code Explainer"
+                          FullWidth
+                          Immediate />
+            
+            <MudTextField @bind-Value="@_description"
+                          Label="Description"
+                          Variant="Variant.Text"
+                          Lines="3"
+                          Placeholder="Describe what this template does..."
+                          FullWidth
+                          Immediate />
+            
+            @if (IsDefault)
+            {
+                <MudAlert Severity="Severity.Info" Dense>
+                    This is a default template. You can edit its name and description, but it will remain marked as default.
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="string.IsNullOrWhiteSpace(_name)">
+            @(IsDefault ? "Save Changes" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string? Name { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+    
+    [Parameter]
+    public bool IsDefault { get; set; }
+
+    private string _name = "";
+    private string _description = "";
+
+    protected override void OnParametersSet()
+    {
+        _name = Name ?? "";
+        _description = Description ?? "";
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Template name is required", Severity.Warning);
+            return;
+        }
+
+        var result = new Dictionary<string, string>
+        {
+            ["Name"] = _name.Trim(),
+            ["Description"] = _description.Trim()
+        };
+
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

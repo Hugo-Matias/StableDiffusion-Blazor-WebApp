@@ -1,0 +1,126 @@
+@*
+    FragmentSlider - Reusable slider component that binds to fragment parameters.
+    Reduces boilerplate in fragment forms.
+*@
+
+<MudSlider T="@T"
+           Value="@CurrentValue"
+           ValueChanged="@HandleValueChanged"
+           Min="@Min"
+           Max="@Max"
+           Step="@Step"
+           Variant="@Variant"
+           ValueLabel="@ValueLabel">
+    <small>@Label:</small> @FormatValue(CurrentValue)
+</MudSlider>
+
+@code {
+    /// <summary>
+    /// The values dictionary to read/write from.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, object?> Values { get; set; } = new();
+
+    /// <summary>
+    /// The parameter name in the values dictionary.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Parameter { get; set; } = "";
+
+    /// <summary>
+    /// The display label.
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    /// <summary>
+    /// Minimum value.
+    /// </summary>
+    [Parameter]
+    public T Min { get; set; } = default!;
+
+    /// <summary>
+    /// Maximum value.
+    /// </summary>
+    [Parameter]
+    public T Max { get; set; } = default!;
+
+    /// <summary>
+    /// Step increment.
+    /// </summary>
+    [Parameter]
+    public T Step { get; set; } = default!;
+
+    /// <summary>
+    /// Default value if not found in Values.
+    /// </summary>
+    [Parameter]
+    public T DefaultValue { get; set; } = default!;
+
+    /// <summary>
+    /// Variant for the slider.
+    /// </summary>
+    [Parameter]
+    public Variant Variant { get; set; } = Variant.Filled;
+
+    /// <summary>
+    /// Whether to show the value label.
+    /// </summary>
+    [Parameter]
+    public bool ValueLabel { get; set; } = true;
+
+    /// <summary>
+    /// Format string for displaying the value.
+    /// </summary>
+    [Parameter]
+    public string? Format { get; set; }
+
+    /// <summary>
+    /// Callback when value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<T> OnValueChanged { get; set; }
+
+    /// <summary>
+    /// Callback when any value changes (no parameter).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private T CurrentValue
+    {
+        get
+        {
+            if (Values.TryGetValue(Parameter, out var value) && value != null)
+            {
+                try
+                {
+                    return (T)Convert.ChangeType(value, typeof(T));
+                }
+                catch
+                {
+                    return DefaultValue;
+                }
+            }
+            return DefaultValue;
+        }
+    }
+
+    private async Task HandleValueChanged(T value)
+    {
+        Values[Parameter] = value;
+        await OnValueChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+
+    private string FormatValue(T value)
+    {
+        if (Format != null && value is IFormattable formattable)
+        {
+            return formattable.ToString(Format, null);
+        }
+        return value?.ToString() ?? "";
+    }
+}
+
+@typeparam T

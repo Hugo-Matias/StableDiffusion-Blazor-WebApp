@@ -1,7 +1,47 @@
 ﻿::deep .navbar-horizontal {
 	display: flex;
+	align-items: center;
 }
+
 
 ::deep .mud-nav-item {
 	width: initial;
+}
+
+/* Compact mode: hide the text label on inactive nav links so only the icon is shown.
+   The active link keeps its label visible so the user can see the current page.
+   Labels are never shown on hover to avoid layout shift (bad UX when elements move
+   under the cursor); a MudTooltip is used instead for discoverability. */
+::deep .navbar-horizontal .mud-nav-link .nav-label {
+	display: none;
+	margin-left: 0.25rem;
+}
+
+::deep .navbar-horizontal .mud-nav-link.active .nav-label {
+	display: inline;
+}
+
+/* Keep icons centered when the label is hidden */
+::deep .navbar-horizontal .mud-nav-link {
+	justify-content: center;
+}
+
+/* Icon sizing tiers:
+   - Logo (brand) icon is sized by MainLayout (largest).
+   - Page nav icons use --nav-page-size (slightly larger than before for better
+	 legibility at icon-only sizes). Workflow strip uses its own token and is
+	 intentionally larger than page icons for emphasis. */
+::deep .navbar-horizontal .nav-icon {
+	--nav-page-size: 1.15rem;
+	font-size: var(--nav-page-size) !important;
+	width: var(--nav-page-size) !important;
+	height: var(--nav-page-size) !important;
+}
+
+/* Disabled Generate nav link state: used when no workflow is available for the
+   current base. Block the click and dim the icon/label. */
+::deep .navbar-horizontal .mud-nav-link.nav-disabled {
+	pointer-events: none;
+	opacity: 0.45;
+	cursor: not-allowed;
 }

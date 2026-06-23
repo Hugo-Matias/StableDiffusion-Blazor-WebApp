@@ -1,0 +1,34 @@
+using BlazorWebApp.Models;
+
+namespace BlazorWebApp.Services
+{
+    /// <summary>
+    /// Service for managing backend (ComfyUI) availability and operations.
+    /// Handles health checks, backend-dependent resources, and output path configuration.
+    /// </summary>
+    public interface IBackendService
+    {
+        bool IsBackendAvailable { get; }
+        
+        /// <summary>
+        /// Output path configuration loaded from appsettings.json
+        /// </summary>
+        OutputPathsOptions OutputPaths { get; }
+        
+        /// <summary>
+        /// WebSocket client ID for ComfyUI connection.
+        /// Generated on each connection attempt.
+        /// </summary>
+        string ComfyWSClientId { get; set; }
+
+        Task<bool> CheckBackendAvailability();
+        void StartMonitoring(int intervalSeconds = 30);
+        void StopMonitoring();
+        Task LoadBackendDependentResources();
+        
+        /// <summary>
+        /// Gets the full output path for a specific output type
+        /// </summary>
+        string GetOutputPath(Outdir outdir);
+    }
+}

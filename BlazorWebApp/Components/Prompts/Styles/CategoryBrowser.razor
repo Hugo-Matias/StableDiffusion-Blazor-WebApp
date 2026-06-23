@@ -1,0 +1,189 @@
+@inject IDatabaseService DB
+
+<div class="category-browser">
+    <MudStack Spacing="3">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h6">Categories</MudText>
+            <MudTooltip Text="Refresh categories">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                               Size="Size.Small" 
+                               OnClick="LoadCategories" />
+            </MudTooltip>
+        </MudStack>
+        
+        <MudDivider />
+        
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate Color="Color.Primary" />
+        }
+        else
+        {
+            <MudList Clickable Dense>
+                @* All Prompts *@
+                <MudListItem OnClick="() => HandleCategorySelected(null)"
+                             Class="@GetCategoryItemClass(null)">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.AllInclusive" Size="Size.Small" />
+                            <MudText Typo="Typo.body1"><strong>All Prompts</strong></MudText>
+                        </MudStack>
+                        <MudChip Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                            @_totalCount
+                        </MudChip>
+                    </MudStack>
+                </MudListItem>
+                
+                @* Favorites *@
+                <MudListItem OnClick="() => HandleCategorySelected(FAVORITES_FILTER)"
+                             Class="@GetCategoryItemClass(FAVORITES_FILTER)">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                            <MudText Typo="Typo.body1">Favorites</MudText>
+                        </MudStack>
+                        <MudChip Size="Size.Small" Color="Color.Error" Variant="Variant.Text">
+                            @_favoriteCount
+                        </MudChip>
+                    </MudStack>
+                </MudListItem>
+                
+                @* Pinned *@
+                <MudListItem OnClick="() => HandleCategorySelected(PINNED_FILTER)"
+                             Class="@GetCategoryItemClass(PINNED_FILTER)">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Primary" />
+                            <MudText Typo="Typo.body1">Pinned</MudText>
+                        </MudStack>
+                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">
+                            @_pinnedCount
+                        </MudChip>
+                    </MudStack>
+                </MudListItem>
+                
+                @* Uncategorized *@
+                <MudListItem OnClick="() => HandleCategorySelected(UNCATEGORIZED_FILTER)"
+                             Class="@GetCategoryItemClass(UNCATEGORIZED_FILTER)">
+                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Small" />
+                            <MudText Typo="Typo.body1">Uncategorized</MudText>
+                        </MudStack>
+                        <MudChip Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                            @_uncategorizedCount
+                        </MudChip>
+                    </MudStack>
+                </MudListItem>
+                
+                <MudDivider Class="my-2" />
+                
+                @* Custom Categories *@
+                @if (_categories != null && _categories.Any())
+                {
+                    foreach (var category in _categories)
+                    {
+                        <MudListItem OnClick="() => HandleCategorySelected(category.Name)"
+                                     Class="@GetCategoryItemClass(category.Name)">
+                            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info" />
+                                    <MudText Typo="Typo.body1">@category.Name</MudText>
+                                </MudStack>
+                                <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                    @category.Count
+                                </MudChip>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                }
+                else if (!_isLoading)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-2">
+                        No custom categories yet
+                    </MudText>
+                }
+            </MudList>
+        }
+    </MudStack>
+</div>
+
+@code {
+    private const string FAVORITES_FILTER = "__favorites__";
+    private const string PINNED_FILTER = "__pinned__";
+    private const string UNCATEGORIZED_FILTER = "__uncategorized__";
+    
+    [Parameter]
+    public EventCallback<string?> OnCategorySelected { get; set; }
+    
+    private bool _isLoading = true;
+    private string? _selectedCategory = null;
+    private List<CategoryInfo> _categories = new();
+    private int _totalCount = 0;
+    private int _favoriteCount = 0;
+    private int _pinnedCount = 0;
+    private int _uncategorizedCount = 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+    
+    private async Task LoadCategories()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            // Get all prompts to calculate counts
+            var allPrompts = await DB.GetPrompts();
+            _totalCount = allPrompts.Count;
+            
+            // Calculate special category counts
+            _favoriteCount = allPrompts.Count(p => p.IsFavorite);
+            _pinnedCount = allPrompts.Count(p => p.IsPinned);
+            _uncategorizedCount = allPrompts.Count(p => string.IsNullOrWhiteSpace(p.Category));
+            
+            // Get custom categories with counts
+            var categoryNames = await DB.GetAllPromptCategories();
+            _categories = categoryNames.Select(name => new CategoryInfo
+            {
+                Name = name,
+                Count = allPrompts.Count(p => p.Category == name)
+            }).OrderBy(c => c.Name).ToList();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleCategorySelected(string? category)
+    {
+        _selectedCategory = category;
+        await OnCategorySelected.InvokeAsync(category);
+    }
+    
+    private string GetCategoryItemClass(string? category)
+    {
+        var baseClass = "category-item";
+        if (_selectedCategory == category)
+        {
+            return $"{baseClass} category-item-selected";
+        }
+        return baseClass;
+    }
+    
+    public async Task RefreshCategories()
+    {
+        await LoadCategories();
+    }
+    
+    private class CategoryInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
+}

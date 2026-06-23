@@ -1,0 +1,202 @@
+@using static BlazorWebApp.Data.Enums
+@inject IResourceCacheService ResourceCache
+
+<MudText Typo="Typo.caption" Class="mb-1">Loras</MudText>
+<LoraSelectorPanel Backend="Backend" Loras="Loras" IsDualModel="IsDualModel" OnLorasUpdated="OnLorasUpdated" />
+@if (Loras != null && Loras.Count > 0)
+{
+    <div class="loras-panels-flush">
+        @if (_enabledGroups.Any())
+        {
+            <MudExpansionPanel Text=@($"Enabled Loras ({_enabledCount})") @bind-IsExpanded=_isEnabledExpanded
+                               Style="background-color: transparent; background-image: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--mud-palette-divider);">
+                @foreach (var group in _enabledGroups)
+                {
+                    if (group.Loras.Count == 0) continue;
+
+                    var groupKey = "enabled|" + group.SubTypeName;
+                    var isCollapsed = _collapsedLoraGroups.Contains(groupKey);
+
+                    <div class="lora-subtype-group">
+                        <div class="lora-subtype-toggle" @onclick="() => ToggleGroup(groupKey)">
+                            <MudDivider />
+                            <span class="lora-subtype-label">
+                                <i
+                                class="@(_collapsedLoraGroups.Contains(groupKey) ? "fa-solid fa-chevron-right lora-chevron" : "fa-solid fa-chevron-down lora-chevron")"></i>
+                                @group.SubTypeName
+                                <sup class="lora-count">(@group.Loras.Count)</sup>
+                            </span>
+                            <MudDivider />
+                        </div>
+
+                        @if (!isCollapsed)
+                        {
+                            @foreach (var lora in group.Loras)
+                            {
+                                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                            }
+                        }
+                    </div>
+                }
+            </MudExpansionPanel>
+        }
+        @if (_disabledGroups.Any())
+        {
+            <MudExpansionPanel Text=@($"Disabled Loras ({_disabledCount})") @bind-IsExpanded=_isDisabledExpanded
+                               Style="background-color: transparent; background-image: none; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--mud-palette-divider);">
+                @foreach (var group in _disabledGroups)
+                {
+                    if (group.Loras.Count == 0) continue;
+
+                    var groupKey = "disabled|" + group.SubTypeName;
+                    var isCollapsed = _collapsedLoraGroups.Contains(groupKey);
+
+                    <div class="lora-subtype-group">
+                        <div class="lora-subtype-toggle" @onclick="() => ToggleGroup(groupKey)">
+                            <MudDivider />
+                            <span class="lora-subtype-label">
+                                <i
+                                class="@(_collapsedLoraGroups.Contains(groupKey) ? "fa-solid fa-chevron-right lora-chevron" : "fa-solid fa-chevron-down lora-chevron")"></i>
+                                @group.SubTypeName
+                                <sup class="lora-count">(@group.Loras.Count)</sup>
+                            </span>
+                            <MudDivider />
+                        </div>
+
+                        @if (!isCollapsed)
+                        {
+                            @foreach (var lora in group.Loras)
+                            {
+                                <LoraCard Lora="lora" IsDualModel="IsDualModel" OnRemoveLora="RemoveLora" OnLoraChanged="UpdateLora" />
+                            }
+                        }
+                    </div>
+                }
+            </MudExpansionPanel>
+        }
+    </div>
+}
+@code {
+    [Parameter]
+    public Backend Backend { get; set; }
+    [Parameter]
+    public List<Lora> Loras { get; set; }
+    [Parameter]
+    public bool IsDualModel { get; set; }
+    [Parameter]
+    public EventCallback OnLorasUpdated { get; set; }
+
+    private bool _isEnabledExpanded = true;
+    private bool _isDisabledExpanded = false;
+
+    // Grouped LoRA lists keyed by SubType
+    private List<LoraGroup> _enabledGroups = new();
+    private List<LoraGroup> _disabledGroups = new();
+    private int _enabledCount;
+    private int _disabledCount;
+    private HashSet<string> _collapsedLoraGroups = new();
+
+    protected override void OnInitialized()
+    {
+        if (Loras == null) Loras = new List<Lora>();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        await BuildGroupsAsync();
+    }
+
+    private void ToggleGroup(string groupKey)
+    {
+        if (_collapsedLoraGroups.Contains(groupKey))
+            _collapsedLoraGroups.Remove(groupKey);
+        else
+            _collapsedLoraGroups.Add(groupKey);
+        StateHasChanged();
+    }
+
+    private async Task BuildGroupsAsync()
+    {
+        _enabledCount = 0;
+        _disabledCount = 0;
+        _enabledGroups = new List<LoraGroup>();
+        _disabledGroups = new List<LoraGroup>();
+
+        if (Loras.Count == 0) return;
+
+        // Build path -> subtype lookup from resource cache
+        var allResources = await ResourceCache.GetCachedResourcesAsync();
+        var subtypeMap = allResources
+            .Where(r => !string.IsNullOrEmpty(r.Filename))
+            .ToDictionary(
+                r => System.IO.Path.GetFileName(r.Filename).ToLowerInvariant(),
+                r => (r.SubType?.Name),
+                StringComparer.OrdinalIgnoreCase);
+
+        // Group enabled LoRAs by subtype
+        var enabledLoras = Loras.Where(l => l.IsEnabled).ToList();
+        _enabledCount = enabledLoras.Count;
+        if (enabledLoras.Any())
+        {
+            var enabledDict = new Dictionary<string, List<Lora>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var lora in enabledLoras)
+            {
+                var subTypeName = GetSubTypeForLora(lora, subtypeMap);
+                if (!enabledDict.ContainsKey(subTypeName))
+                    enabledDict[subTypeName] = new();
+                enabledDict[subTypeName].Add(lora);
+            }
+
+            foreach (var kvp in enabledDict)
+            {
+                _enabledGroups.Add(new LoraGroup { SubTypeName = kvp.Key, Loras = kvp.Value });
+            }
+        }
+
+        // Group disabled LoRAs by subtype
+        var disabledLoras = Loras.Where(l => !l.IsEnabled).ToList();
+        _disabledCount = disabledLoras.Count;
+        if (disabledLoras.Any())
+        {
+            var disabledDict = new Dictionary<string, List<Lora>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var lora in disabledLoras)
+            {
+                var subTypeName = GetSubTypeForLora(lora, subtypeMap);
+                if (!disabledDict.ContainsKey(subTypeName))
+                    disabledDict[subTypeName] = new();
+                disabledDict[subTypeName].Add(lora);
+            }
+
+            foreach (var kvp in disabledDict)
+            {
+                _disabledGroups.Add(new LoraGroup { SubTypeName = kvp.Key, Loras = kvp.Value });
+            }
+        }
+    }
+
+    private static string GetSubTypeForLora(Lora lora, Dictionary<string, string?> subtypeMap)
+    {
+        if (string.IsNullOrWhiteSpace(lora.Path)) return "(Unknown)";
+        var fileName = System.IO.Path.GetFileName(lora.Path).ToLowerInvariant();
+        if (!subtypeMap.TryGetValue(fileName, out var sub)) return "(Unknown)";
+        return string.IsNullOrWhiteSpace(sub) ? "(Unknown)" : sub;
+    }
+
+    public async Task RemoveLora(Lora lora)
+    {
+        Loras.Remove(lora);
+        await OnLorasUpdated.InvokeAsync();
+    }
+
+    public async Task UpdateLora(Lora lora)
+    {
+        await OnLorasUpdated.InvokeAsync();
+    }
+
+    private sealed class LoraGroup
+    {
+        public string? SubTypeName { get; set; }
+        public List<Lora> Loras { get; set; } = new();
+    }
+}

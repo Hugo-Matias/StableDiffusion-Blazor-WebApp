@@ -1,0 +1,50 @@
+@*
+    BackgroundRemovalForm - Form for the background_removal fragment.
+
+    Exposes one parameter:
+      - torchscript_jit  ("default" or "auto" - affects inference speed/compatibility)
+
+    Requires comfyui-inspyrenet-rembg to be installed in ComfyUI.
+    When active the workflow outputs a transparent PNG.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("BackgroundRemovalForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect T="string"
+                   Label="TorchScript JIT"
+                   @bind-Value="_localJit"
+                   @bind-Value:after="OnJitChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   HelperText="default = stable; auto = may be faster on some GPUs">
+            @foreach (var opt in _jitOptions)
+            {
+                <MudSelectItem Value="@opt">@opt</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localJit = "default";
+    private readonly string[] _jitOptions = ["default", "on"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        _localJit = ParameterService.GetFragmentProperty(Fragment, "torchscript_jit", "default");
+    }
+
+    private async Task OnJitChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "torchscript_jit", _localJit, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

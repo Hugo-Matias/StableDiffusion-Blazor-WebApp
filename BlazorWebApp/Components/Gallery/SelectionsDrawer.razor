@@ -1,0 +1,266 @@
+@inject IGalleryService Gallery
+@inject IDatabaseService DB
+@inject ISnackbar Snackbar
+
+<div class="selection-manager-overlay @(IsVisible ? "visible" : "")" @onclick="HandleOverlayClick">
+    <aside class="selection-manager-drawer @(IsVisible ? "open" : "")" @onclick:stopPropagation="true">
+        <div class="selection-manager-header">
+            <div class="selection-manager-title">
+                <MudText Typo="Typo.h6">Selection Manager</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Gallery.SelectedImageIds.Count currently selected</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="Close" />
+        </div>
+
+        <div class="selection-manager-body">
+            <div class="selection-manager-toolbar">
+                <div class="selection-manager-toolbar-copy">
+                    <MudText Typo="Typo.subtitle2">Saved selections</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@GetSelectionSummary()</MudText>
+                </div>
+            </div>
+
+            <div class="selection-manager-save-strip">
+                <MudTextField T="string" @bind-Value="_selectionName" Label="Selection name" Variant="Variant.Text"
+                              Dense="true" Disabled="@(Gallery.SelectedImageIds.Count <= 0 || _isSaving)" />
+                <MudButton OnClick="SaveCurrentSelection" Disabled="@(!CanSaveCurrent)" ButtonType="ButtonType.Button"
+                           Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.BookmarkAdd">
+                    Save Current
+                </MudButton>
+            </div>
+
+            @if (_deleteSelectionId.HasValue)
+            {
+                <div class="selection-manager-confirm-strip destructive">
+                    <div class="selection-manager-confirm-copy">
+                        <MudText Typo="Typo.subtitle2">Delete @_deleteSelectionName?</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">This removes the saved set only. Images stay in the gallery.</MudText>
+                    </div>
+                    <div class="selection-manager-confirm-actions">
+                        <MudButton OnClick="CancelDeleteSelection" Variant="Variant.Text" Size="Size.Small">Cancel</MudButton>
+                        <MudButton OnClick="DeletePendingSelection" Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Delete">
+                            Delete
+                        </MudButton>
+                    </div>
+                </div>
+            }
+
+            @if (_isLoading)
+            {
+                <div class="app-empty-state selection-manager-empty">
+                    <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Loading selections</MudText>
+                </div>
+            }
+            else if (_selections.Count == 0)
+            {
+                <div class="app-empty-state selection-manager-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Large" />
+                    <MudText Typo="Typo.body2">No saved selections yet.</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="selection-manager-list">
+                    @foreach (var selection in _selections)
+                    {
+                        <SelectionCard Selection="selection"
+                                       PreviewGeneration="_previewGeneration"
+                                       OnAppendSelection="AppendSelectionToCurrent"
+                                       OnReplaceSelection="ReplaceCurrentSelection"
+                                       OnAppendCurrentToSelection="AppendCurrentToSavedSelection"
+                                       OnReplaceSavedSelection="ReplaceSavedSelection"
+                                       OnRequestDeleteSelection="RequestDeleteSelection" />
+                    }
+                </div>
+            }
+        </div>
+    </aside>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private List<Selection> _selections = new();
+    private string _selectionName = CreateDefaultSelectionName();
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _wasVisible;
+    private int _previewGeneration;
+    private int? _deleteSelectionId;
+    private string? _deleteSelectionName;
+
+    private bool CanSaveCurrent => Gallery.SelectedImageIds.Count > 0 && !_isSaving && !string.IsNullOrWhiteSpace(_selectionName);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && !_wasVisible)
+        {
+            _selectionName = CreateDefaultSelectionName();
+            ClearPendingActions();
+            _previewGeneration++;
+            await LoadSelectionsAsync();
+        }
+
+        _wasVisible = IsVisible;
+    }
+
+    private async Task LoadSelectionsAsync()
+    {
+        _isLoading = true;
+        _selections = await DB.GetSelections();
+        _isLoading = false;
+    }
+
+    private async Task SaveCurrentSelection()
+    {
+        if (!CanSaveCurrent)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        var selection = new Selection
+        {
+            Name = _selectionName.Trim(),
+            Images = await DB.GetImages(Gallery.SelectedImageIds)
+        };
+
+        await DB.CreateSelection(selection);
+        _selectionName = CreateDefaultSelectionName();
+        await RefreshSelectionsAsync();
+        _isSaving = false;
+        Snackbar.Add("Selection saved.", Severity.Success);
+    }
+
+    private async Task AppendSelectionToCurrent(Selection selection)
+    {
+        var currentSelection = await DB.GetSelection(selection.Id);
+        if (currentSelection is null)
+        {
+            Snackbar.Add("Selection was not found.", Severity.Warning);
+            return;
+        }
+
+        Gallery.AddSelectedImages(currentSelection.Images.Select(image => image.Id));
+        Snackbar.Add("Selection appended.", Severity.Success);
+        await Close();
+    }
+
+    private async Task ReplaceCurrentSelection(Selection selection)
+    {
+        var currentSelection = await DB.GetSelection(selection.Id);
+        if (currentSelection is null)
+        {
+            Snackbar.Add("Selection was not found.", Severity.Warning);
+            return;
+        }
+
+        Gallery.ReplaceSelectedImages(currentSelection.Images.Select(image => image.Id).ToList());
+        Snackbar.Add("Selection applied.", Severity.Success);
+        await Close();
+    }
+
+    private async Task AppendCurrentToSavedSelection(int id)
+    {
+        if (Gallery.SelectedImageIds.Count == 0)
+        {
+            Snackbar.Add("Select images before updating a saved selection.", Severity.Info);
+            return;
+        }
+
+        var existing = await DB.GetSelection(id);
+        if (existing is null)
+        {
+            Snackbar.Add("Selection was not found.", Severity.Warning);
+            await RefreshSelectionsAsync();
+            return;
+        }
+
+        var combined = existing.Images.Select(image => image.Id).Union(Gallery.SelectedImageIds).ToList();
+        await DB.UpdateSelection(id, combined);
+        await RefreshSelectionsAsync();
+        Snackbar.Add("Current images appended to saved selection.", Severity.Success);
+    }
+
+    private async Task ReplaceSavedSelection(int id)
+    {
+        if (Gallery.SelectedImageIds.Count == 0)
+        {
+            Snackbar.Add("Select images before updating a saved selection.", Severity.Info);
+            return;
+        }
+
+        var existing = await DB.GetSelection(id);
+        if (existing is null)
+        {
+            Snackbar.Add("Selection was not found.", Severity.Warning);
+            await RefreshSelectionsAsync();
+            return;
+        }
+
+        await DB.UpdateSelection(id, Gallery.SelectedImageIds.ToList());
+        await RefreshSelectionsAsync();
+        Snackbar.Add("Saved selection replaced.", Severity.Success);
+    }
+
+    private void RequestDeleteSelection(int id)
+    {
+        var selection = _selections.FirstOrDefault(item => item.Id == id);
+        _deleteSelectionId = id;
+        _deleteSelectionName = selection?.Name ?? "selection";
+    }
+
+    private void CancelDeleteSelection() => ClearPendingActions();
+
+    private async Task DeletePendingSelection()
+    {
+        if (!_deleteSelectionId.HasValue)
+        {
+            return;
+        }
+
+        await DB.DeleteSelection(_deleteSelectionId.Value);
+        ClearPendingActions();
+        await RefreshSelectionsAsync();
+        Snackbar.Add("Selection deleted.", Severity.Success);
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        _wasVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    private Task HandleOverlayClick() => Close();
+
+    private async Task RefreshSelectionsAsync()
+    {
+        await LoadSelectionsAsync();
+        _previewGeneration++;
+    }
+
+    private void ClearPendingActions()
+    {
+        _deleteSelectionId = null;
+        _deleteSelectionName = null;
+    }
+
+    private static string CreateDefaultSelectionName() => $"Selection {DateTime.Now:yyyy-MM-dd HHmm}";
+
+    private string GetSelectionSummary()
+    {
+        if (_selections.Count == 0)
+        {
+            return "Save the current gallery selection to reuse it later.";
+        }
+
+        var imageCount = _selections.Sum(selection => selection.Images.Count);
+        return $"{_selections.Count} saved sets, {imageCount} images referenced.";
+    }
+}

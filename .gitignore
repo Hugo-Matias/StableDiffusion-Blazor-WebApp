@@ -372,8 +372,14 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/BlazorWebApp/payload.json
+/BlazorWebApp/payload*.json
 /BlazorWebApp/Data/danbooru.json
 /BlazorWebApp/Data/example.json
 /BlazorWebApp/BlazorDiffusion.json_
 /BlazorWebApp/BlazorWebApp.db_
+/CONTRIBUTING.md
+/BlazorWebApp/payload_img2vid.json
+/BlazorWebApp/Workflows/IMPLEMENTATION_PLAN.md
+/.github/copilot-instructions.md
+/BlazorWebApp/Workflows/Reports
+/BlazorWebApp/wwwroot/images/artists

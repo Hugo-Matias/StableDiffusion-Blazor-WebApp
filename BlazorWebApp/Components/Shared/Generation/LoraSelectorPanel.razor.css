@@ -1,0 +1,296 @@
+/* ==========================================
+   Backdrop (transparent, click-to-close)
+   ========================================== */
+
+.lsp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  cursor: default;
+}
+
+/* ==========================================
+   Root wrapper
+   ========================================== */
+
+.lsp-root {
+  position: relative;
+}
+
+.lsp-root--open {
+  z-index: 401;
+  isolation: isolate;
+}
+
+/* ==========================================
+   Trigger button
+   ========================================== */
+
+.lsp-trigger {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+/* ==========================================
+   Dropdown panel
+   ========================================== */
+
+.lsp-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-top: none;
+  border-radius: 0 0 var(--app-surface-radius) var(--app-surface-radius);
+  overflow: hidden;
+  max-height: 620px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ==========================================
+   Search row
+   ========================================== */
+
+.lsp-search-row {
+  padding: 4px 8px 0;
+  flex-shrink: 0;
+}
+
+.lsp-search-field {
+  width: 100%;
+}
+
+/* ==========================================
+   MudTabs container
+   ========================================== */
+
+.lsp-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lsp-tabs ::deep .mud-tabs-tabbar {
+  flex-shrink: 0;
+}
+
+.lsp-tabs ::deep .mud-tabs-panels {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+::deep .lsp-panel-content {
+  max-height: calc(620px - 108px);
+  overflow-y: auto;
+}
+
+/* ==========================================
+   SubType collapsible group wrapper
+   ========================================== */
+
+.lsp-subtype-group {
+  /* no extra styling, just a container */
+}
+
+/* ==========================================
+   SubType toggle row (divider + chevron + label)
+   ========================================== */
+
+.lsp-subtype-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lsp-subtype-toggle:hover .lsp-subtype-label {
+  color: var(--mud-palette-text-primary);
+}
+
+.lsp-subtype-toggle ::deep .mud-divider {
+  flex: 1;
+}
+
+.lsp-subtype-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.lsp-chevron {
+  font-size: 0.6rem !important;
+  transition: transform 0.2s ease;
+}
+
+.lsp-count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+/* ==========================================
+   Tracked LoRA card grid
+   ========================================== */
+
+.lsp-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.lsp-card {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--app-surface-radius);
+  overflow: hidden;
+  background: var(--mud-palette-background-grey);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.lsp-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 2px var(--mud-palette-primary),
+    0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.lsp-card--added {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.lsp-card--added:hover {
+  transform: none;
+  box-shadow: 0 0 0 2px var(--mud-palette-success);
+}
+
+.lsp-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.lsp-card-no-img {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mud-palette-text-disabled);
+  font-size: 1.5rem;
+}
+
+.lsp-card-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 6px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+  z-index: 2;
+}
+
+.lsp-card-footer span {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.lsp-card-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  background: var(--mud-palette-success);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.65rem;
+  z-index: 3;
+}
+
+/* ==========================================
+   Untracked LoRA list
+   ========================================== */
+
+.lsp-list {
+  padding: 4px 0;
+}
+
+.lsp-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  font-size: 0.82rem;
+}
+
+.lsp-list-item:hover {
+  background-color: var(--mud-palette-action-default-hover);
+}
+
+.lsp-list-item--added {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.lsp-list-item--added:hover {
+  background-color: transparent;
+}
+
+.lsp-list-icon {
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.lsp-list-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mud-palette-text-primary);
+}
+
+.lsp-list-check {
+  color: var(--mud-palette-success);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}

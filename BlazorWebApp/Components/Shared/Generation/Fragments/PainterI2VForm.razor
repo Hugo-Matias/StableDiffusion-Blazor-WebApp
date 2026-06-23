@@ -1,0 +1,127 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("PainterI2VForm")]
+@inject IGenerationParameterService ParameterService
+@inject ISettingsService Settings
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudNumericField Label="Video Length (frames)" 
+                         @bind-Value="_localVideoLength"
+                         @bind-Value:after="OnVideoLengthChanged"
+                         Min="_videoLengthMin" 
+                         Max="_videoLengthMax" 
+                         Step="_videoLengthStep"
+                         HelperText="Number of frames to generate" />
+    </MudItem>
+    
+    <MudItem xs="6">
+        <MudNumericField Label="Shift" 
+                         @bind-Value="_localShift"
+                         @bind-Value:after="OnShiftChanged"
+                         Min="_shiftMin" 
+                         Max="_shiftMax"
+                         HelperText="Model sampling shift parameter" />
+    </MudItem>
+    
+    <MudItem xs="6">
+        <MudSlider @bind-Value="_localMotionAmplitude"
+                   @bind-Value:after="OnMotionAmplitudeChanged"
+                   Min="_motionAmplitudeMin" 
+                   Max="_motionAmplitudeMax" 
+                   Step="_motionAmplitudeStep"
+                   T="double"
+                   Color="Color.Primary"
+                   ValueLabel>
+            Motion Amplitude: @_localMotionAmplitude.ToString("F1")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    private int _localVideoLength;
+    private double _localMotionAmplitude;
+    private int _localShift;
+    
+    // Constraints from schema
+    private int _videoLengthMin = 17;
+    private int _videoLengthMax = 257;
+    private int _videoLengthStep = 8;
+    
+    private double _motionAmplitudeMin = 0.1;
+    private double _motionAmplitudeMax = 3.0;
+    private double _motionAmplitudeStep = 0.1;
+    
+    private int _shiftMin = 1;
+    private int _shiftMax = 20;
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        
+        // Load constraints from schema
+        LoadConstraintsFromSchema();
+        
+        // Sync local state FROM service
+        _localVideoLength = ParameterService.GetFragmentProperty(Fragment, "length", 81);
+        _localMotionAmplitude = ParameterService.GetFragmentProperty(Fragment, "motion_amplitude", 1.1);
+        _localShift = ParameterService.GetFragmentProperty(Fragment, "shift", 5);
+    }
+    
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+        
+        // Video length constraints
+        if (Fragment.Schema.Parameters.TryGetValue("length", out var lengthConstraints))
+        {
+            _videoLengthMin = lengthConstraints.GetMin(17);
+            _videoLengthMax = lengthConstraints.GetMax(257);
+            _videoLengthStep = lengthConstraints.GetStep(8);
+        }
+        
+        // Motion amplitude constraints
+        if (Fragment.Schema.Parameters.TryGetValue("motion_amplitude", out var motionConstraints))
+        {
+            _motionAmplitudeMin = motionConstraints.GetMin(0.1);
+            _motionAmplitudeMax = motionConstraints.GetMax(3.0);
+            _motionAmplitudeStep = motionConstraints.GetStep(0.1);
+        }
+        
+        // Shift constraints
+        if (Fragment.Schema.Parameters.TryGetValue("shift", out var shiftConstraints))
+        {
+            _shiftMin = shiftConstraints.GetMin(1);
+            _shiftMax = shiftConstraints.GetMax(20);
+        }
+    }
+    
+    private async Task OnVideoLengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "length", _localVideoLength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnMotionAmplitudeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "motion_amplitude", _localMotionAmplitude, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnShiftChanged()
+    {
+        // Write to painter fragment
+        ParameterService.SetFragmentProperty(Fragment, "shift", _localShift, notify: false);
+        
+        // Also update both model_sampling fragments
+        ParameterService.SetFragmentValue("model_sampling_high", "shift", _localShift);
+        ParameterService.SetFragmentValue("model_sampling_low", "shift", _localShift);
+        
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+}

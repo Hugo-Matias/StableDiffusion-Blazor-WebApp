@@ -1,0 +1,1102 @@
+@using System.Text.Json
+@using BlazorWebApp.Events
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Persistence
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+@using BlazorWebApp.Services
+@using BlazorWebApp.Workflows.Models
+@inject IJobRepository JobRepo
+@inject IWorkflowService Workflows
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+@inject IEventService Events
+@inject IScheduleSnapshotService SnapshotService
+@inject ISchedulerEditorState EditorState
+@inject ISchedulerService Scheduler
+@inject IWildcardService Wildcards
+@inject NavigationManager Nav
+@inject IInfoService InfoService
+@implements IDisposable
+
+<TwoColumnLayout>
+    <Sidebar>
+        @if (_restoreBanner is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-2" ShowCloseIcon="false" Dense>
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">
+                        <strong>Unsaved draft recovered</strong>
+                        @if (_restoreBanner.UpdatedAt != default)
+                        {
+                            <span> (@_restoreBanner.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</span>
+                        }
+                    </MudText>
+                    <MudStack Row Spacing="1">
+                        <MudButton Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
+                                   OnClick="RestoreDraftAsync">Restore</MudButton>
+                        <MudButton Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined"
+                                   OnClick="DiscardDraftAsync">Discard</MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudAlert>
+        }
+        <div>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                <MudText Typo="Typo.h6">Jobs</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small"
+                               OnClick="NewJobAsync" Title="New job" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="ReloadAsync"
+                               Title="Refresh" />
+            </MudStack>
+            @if (_jobs is null)
+            {
+                <MudProgressLinear Indeterminate Color="Color.Primary" />
+            }
+            else if (_jobs.Count == 0)
+            {
+                <MudText Typo="Typo.caption">No jobs yet. Click + to create one.</MudText>
+            }
+            else
+            {
+                <MudStack Spacing="1">
+                    @foreach (var j in _jobs)
+                    {
+                        var localJob = j;
+                        var isSelected = _editing?.Id == localJob.Id;
+                        <MudButton OnClick="@(() => SelectJobAsync(localJob))"
+                                   Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(isSelected ? Color.Primary : Color.Default)" FullWidth="true" Class="justify-start">
+                            <MudStack Row AlignItems="AlignItems.Center" Style="width:100%;">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                                <div>
+                                    <MudText Typo="Typo.body2"><strong>@localJob.Name</strong></MudText>
+                                    <MudText Typo="Typo.caption">@localJob.Status - @localJob.Actions.Count action(s)</MudText>
+                                </div>
+                            </MudStack>
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+        </div>
+    </Sidebar>
+
+    <Content>
+        @if (_editing is null)
+        {
+            <MudAlert Severity="Severity.Info">Select a job from the list or click + to create a new one.</MudAlert>
+        }
+        else
+        {
+            <div>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
+                    <MudStack>
+                        <MudText Typo="Typo.h6">Edit Job</MudText>
+                        <MudText Typo="Typo.caption">Total generations: <strong>@TotalGenerations</strong></MudText>
+                    </MudStack>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                               OnClick="RunSelectedAsync"
+                               Disabled="@(!CanRunSelected)"
+                               Title="Trigger a new run of this job">Run</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveAsync">@(EditorState.IsDirty ? "Save *" : "Save")</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="DuplicateAsync">Duplicate</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete"
+                               OnClick="DeleteAsync">Delete</MudButton>
+                </MudStack>
+
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_editing.Name" Label="Name" Variant="Variant.Text" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="Guid?" Value="_editing.WorkflowId" ValueChanged="OnWorkflowChanged" Label="Workflow"
+                                   Variant="Variant.Text">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">(None)</MudSelectItem>
+                            @foreach (var wf in _workflows)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)wf.Id)">@wf.Title</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_editing.Description" Label="Description" Variant="Variant.Text"
+                                      Lines="2" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <ProjectFolderSelector @ref="_outputSelector"
+                                               FolderName="@_editing.OutputConfig.FolderName"
+                                               FolderNameChanged="@(v => _editing.OutputConfig.FolderName = v)"
+                                               ProjectName="@_editing.OutputConfig.ProjectName"
+                                               ProjectNameChanged="@(v => _editing.OutputConfig.ProjectName = v)"
+                                               FolderLabel="Default Folder"
+                                               ProjectLabel="Default Project"
+                                               EmptyFolderLabel="(any)"
+                                               EmptyProjectLabel="(default)" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+
+                <JobBaseParamsSummary Parameters="_editing.BaseParameters" />
+
+                <MudDivider Class="my-4" />
+
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudText Typo="Typo.subtitle1">Actions (@_editing.Actions.Count)</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddAction">Add Action</MudButton>
+                </MudStack>
+
+                @for (int i = 0; i < _editing.Actions.Count; i++)
+                {
+                    var idx = i;
+                    var action = _editing.Actions[idx];
+                    <MudPaper Class="pa-3 mb-2" Elevation="0" Outlined>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                            <MudText Typo="Typo.body1"><strong>Action #@(idx + 1)</strong></MudText>
+                            <MudText Typo="Typo.caption">Iterations: <strong>@ComputeIterations(action)</strong></MudText>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Disabled="@(idx == 0)"
+                                           OnClick="() => MoveAction(idx, -1)" Title="Move up" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                           Disabled="@(idx == _editing.Actions.Count - 1)" OnClick="() => MoveAction(idx, 1)" Title="Move down" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small"
+                                           OnClick="() => DuplicateAction(idx)" Title="Duplicate action" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="() => RemoveAction(idx)" Title="Remove action" />
+                        </MudStack>
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="action.Label" Label="Label" Variant="Variant.Text"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int?" Value="action.Limit" ValueChanged="@(v => action.Limit = v)"
+                                                 Label="Limit" Variant="Variant.Text" Margin="Margin.Dense" Clearable />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int" Value="action.Repeat" ValueChanged="@(v => action.Repeat = Math.Max(1, v))"
+                                                 Label="Repeat" Min="1" Variant="Variant.Text" Margin="Margin.Dense"
+                                                 HelperText="Runs the plan N times before advancing." />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudSelect T="PermutationOrder" Value="action.PermutationOrder"
+                                           ValueChanged="@(v => action.PermutationOrder = v)" Label="Permutation"
+                                           Variant="Variant.Text" Margin="Margin.Dense">
+                                    <MudSelectItem T="PermutationOrder" Value="PermutationOrder.Sequential">Sequential
+                                    </MudSelectItem>
+                                    <MudSelectItem T="PermutationOrder" Value="PermutationOrder.Random">Random</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int?" Value="action.RandomPermutationSeed"
+                                                 ValueChanged="@(v => action.RandomPermutationSeed = v)"
+                                                 Label="Permutation seed"
+                                                 Variant="Variant.Text" Margin="Margin.Dense" Clearable
+                                                 Disabled="@(action.PermutationOrder != PermutationOrder.Random)"
+                                                 HelperText="Seeds the shuffle; does not affect the generation seed." />
+                            </MudItem>
+                        </MudGrid>
+
+                        @* Directives *@
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mt-3 mb-1">
+                            <MudText Typo="Typo.subtitle2">Directives (@action.Directives.Count)</MudText>
+                            <MudMenu Label="Add Directive" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Text"
+                                     Size="Size.Small" Dense>
+                                @foreach (var kv in DirectiveTypes)
+                                {
+                                    <MudMenuItem OnClick="() => AddDirective(action, kv.Value)">@kv.Key</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                        @foreach (var d in action.Directives.ToList())
+                        {
+                            var local = d;
+                            <MudPaper Class="pa-2 mb-1 d-flex align-center" Elevation="0" Outlined Style="gap: 8px;">
+                                <MudIcon Icon="@DirectiveIcon(local)" Color="Color.Info" Size="Size.Small" />
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <MudText Typo="Typo.body2"><strong>@DirectiveTitle(local)</strong>@(string.IsNullOrWhiteSpace(local.Label) ? "" : $" - {local.Label}")</MudText>
+                                    <MudText Typo="Typo.caption" Style="overflow-wrap: anywhere;">@DirectiveSummary(local)</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Title="Edit form"
+                                               OnClick="@(() => EditDirectiveAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.DataObject" Size="Size.Small" Title="Edit JSON"
+                                               OnClick="@(() => EditDirectiveJsonAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Title="Duplicate"
+                                               OnClick="@(() => DuplicateDirective(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               Title="Remove"
+                                               OnClick="@(() => action.Directives.Remove(local))" />
+                            </MudPaper>
+                        }
+
+                        @* Variations *@
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mt-3 mb-1">
+                            <MudText Typo="Typo.subtitle2">Variations (@action.Variations.Count)</MudText>
+                            <MudMenu Label="Add Variation" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Text"
+                                     Size="Size.Small" Dense>
+                                @foreach (var kv in VariationTypes)
+                                {
+                                    <MudMenuItem OnClick="() => AddVariation(action, kv.Value)">@kv.Key</MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                        @foreach (var v in action.Variations.ToList())
+                        {
+                            var local = v;
+                            <MudPaper Class="pa-2 mb-1 d-flex align-center" Elevation="0" Outlined Style="gap: 8px;">
+                                <MudIcon Icon="@VariationIcon(local)" Color="Color.Secondary" Size="Size.Small" />
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <MudText Typo="Typo.body2"><strong>@VariationTitle(local)</strong>@(string.IsNullOrWhiteSpace(local.Label) ? "" : $" - {local.Label}")</MudText>
+                                    <MudText Typo="Typo.caption" Style="overflow-wrap: anywhere;">@VariationSummary(local)</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Title="Edit form"
+                                               OnClick="@(() => EditVariationAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.DataObject" Size="Size.Small" Title="Edit JSON"
+                                               OnClick="@(() => EditVariationJsonAsync(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Title="Duplicate"
+                                               OnClick="@(() => DuplicateVariation(action, local))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               Title="Remove"
+                                               OnClick="@(() => action.Variations.Remove(local))" />
+                            </MudPaper>
+                        }
+                    </MudPaper>
+                }
+            </div>
+        }
+    </Content>
+</TwoColumnLayout>
+
+@code {
+    private List<Job>? _jobs;
+    private List<Workflow> _workflows = new();
+    private Job? _editing;
+    private ProjectFolderSelector? _outputSelector;
+
+    /// <summary>
+    /// Cache of wildcard collection sizes keyed by collection name. Populated asynchronously
+    /// by <see cref="PrefetchWildcardSizesAsync"/> and consumed by <see cref="WildcardSize"/>
+    /// when computing the cartesian-product estimate for the "Total generations" readout.
+    /// </summary>
+    private readonly Dictionary<string, int> _wildcardSizes = new(StringComparer.Ordinal);
+
+    /// <summary>Names that have been requested from <see cref="IWildcardService"/> but not yet resolved.</summary>
+    private readonly HashSet<string> _wildcardSizesInFlight = new(StringComparer.Ordinal);
+
+    /// <summary>Hash of the baseline (last load / last save) used to detect user edits.</summary>
+    private string? _baselineHash;
+
+    /// <summary>Persisted draft discovered at mount; surfaces the restore banner.</summary>
+    private SchedulerDraftRecord? _restoreBanner;
+
+    /// <summary>Unregister handle for the navigation-guard handler.</summary>
+    private IDisposable? _locationChangingRegistration;
+
+    private static readonly Dictionary<string, Func<Directive>> DirectiveTypes = new()
+    {
+        ["SetValue"] = () => new SetValueDirective(),
+        ["AppendPrompt"] = () => new AppendPromptDirective { Text = "" },
+        ["ReplacePrompt"] = () => new ReplacePromptDirective { Search = "", Replace = "" },
+        ["AddLora"] = () => new AddLoraDirective(),
+        ["RemoveLora"] = () => new RemoveLoraDirective(),
+        ["ToggleLora"] = () => new ToggleLoraDirective(),
+        ["AddPromptStyle"] = () => new AddPromptStyleDirective { StyleNames = new() },
+        ["SwapAsset"] = () => new SwapAssetDirective(),
+        ["SetOutput"] = () => new SetOutputDirective(),
+    };
+
+    private static readonly Dictionary<string, Func<Variation>> VariationTypes = new()
+    {
+        ["List"] = () => new ListVariation { Values = new() },
+        ["Range"] = () => new RangeVariation(),
+        ["Random"] = () => new RandomVariation(),
+        ["Wildcard"] = () => new WildcardVariation { CollectionName = "" },
+        ["LLM"] = () => new LlmVariation { BasePrompt = "" },
+        ["SearchReplace"] = () => new SearchReplaceVariation { Search = "", Replacements = new() },
+        ["Toggle"] = () => new ToggleVariation(),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<JobCompletedEventArgs>(OnJobEvent);
+        Events.Subscribe<SchedulerDraftChangedEventArgs>(OnDraftChanged);
+        _workflows = Workflows.GetWorkflows() ?? new();
+        await ReloadAsync();
+
+        // Register a navigation guard that prompts when leaving with unsaved changes.
+        _locationChangingRegistration = Nav.RegisterLocationChangingHandler(OnLocationChangingAsync);
+
+        // If the state already holds a draft (tab switch inside the app), re-bind it.
+        if (EditorState.Draft is not null)
+        {
+            _editing = EditorState.Draft;
+            _baselineHash = ComputeHash(_editing);
+        }
+        else
+        {
+            // Cold start: check for a persisted draft and surface a restore banner.
+            _restoreBanner = await EditorState.LoadPersistedAsync();
+        }
+
+        // If the Generate page just handed us a snapshot, load it into the form.
+        var pending = SnapshotService.Consume();
+        if (pending is not null)
+        {
+            await SetEditingAsync(pending, editingJobId: null);
+            _restoreBanner = null;
+            Snackbar.Add("Parameters loaded from Generate. Adjust actions then Save.", Severity.Normal);
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_editing is null || _baselineHash is null) return;
+
+        // Kick off wildcard collection-size lookups needed by the "Total generations" estimate.
+        // Fire-and-forget: each resolved size re-triggers a render via StateHasChanged so the
+        // count stabilizes once the async lookups complete.
+        _ = PrefetchWildcardSizesAsync();
+
+        // Poll-style dirty detection: comparing serialized hashes catches any binding
+        // mutation without instrumenting every field.
+        var currentHash = ComputeHash(_editing);
+        if (!string.Equals(currentHash, _baselineHash, StringComparison.Ordinal) && !EditorState.IsDirty)
+        {
+            EditorState.MarkDirty();
+        }
+        else if (string.Equals(currentHash, _baselineHash, StringComparison.Ordinal) && EditorState.IsDirty)
+        {
+            // User reverted manually; re-baseline to clear the dirty flag.
+            EditorState.SetBaseline(_editing, EditorState.EditingJobId);
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _jobs = await JobRepo.ListAsync();
+        StateHasChanged();
+    }
+
+    private void SelectJob(Job? job) => _editing = job;
+    private void OnJobSelectionChanged(Job? job) => _editing = job;
+
+    private async void OnJobEvent<T>(T _) where T : EventArgs
+    {
+        await InvokeAsync(ReloadAsync);
+    }
+
+    private void NewJob()
+    {
+        _editing = new Job
+        {
+            Name = "New Job",
+            Status = JobStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+        };
+    }
+
+    // ---- Draft / dirty-state plumbing ----------------------------------
+
+    /// <summary>Loads a job into the editor and captures a fresh baseline.</summary>
+    private void SetEditing(Job? job, Guid? editingJobId)
+    {
+        _editing = job;
+        if (job is not null)
+        {
+            _baselineHash = ComputeHash(job);
+            EditorState.SetBaseline(job, editingJobId);
+        }
+        else
+        {
+            _baselineHash = null;
+        }
+    }
+
+    private Task SetEditingAsync(Job? job, Guid? editingJobId)
+    {
+        SetEditing(job, editingJobId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Prompts the user (Save & switch / Discard & switch / Cancel) when a switch would
+    /// drop unsaved changes. Returns <c>true</c> when the caller should proceed.
+    /// </summary>
+    private async Task<bool> ConfirmSwitchIfDirtyAsync()
+    {
+        if (!EditorState.IsDirty || _editing is null) return true;
+
+        var parameters = new DialogParameters
+        {
+            ["Content"] = new MarkupString($"<p>Unsaved changes for <strong>{_editing.Name}</strong>.</p>" +
+                                           "<p>What would you like to do?</p>"),
+            ["OkButtonText"] = "Save and switch",
+            ["OkButtonColor"] = Color.Success,
+            ["ExtraButtonEnabled"] = true,
+            ["ExtraButtonText"] = "Discard and switch",
+            ["ExtraButtonColor"] = Color.Error,
+            ["CancelButtonText"] = "Cancel",
+        };
+        var dlg = await Dialogs.ShowAsync<ConfirmationDialog>("Unsaved changes", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = false });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled) return false;
+
+        var data = result.Data?.ToString();
+        if (data == "extra")
+        {
+            await EditorState.ClearAsync();
+            return true;
+        }
+        // "ok" -> save then proceed
+        await SaveCoreAsync(skipReload: true);
+        return !EditorState.IsDirty;
+    }
+
+    private async Task SelectJobAsync(Job? job)
+    {
+        if (_editing is not null && job?.Id == _editing.Id) return;
+        if (!await ConfirmSwitchIfDirtyAsync()) return;
+        _restoreBanner = null;
+        SetEditing(job, editingJobId: job?.Id);
+    }
+
+    private async Task NewJobAsync()
+    {
+        if (!await ConfirmSwitchIfDirtyAsync()) return;
+        _restoreBanner = null;
+        var job = new Job
+        {
+            Name = "New Job",
+            Status = JobStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+        };
+        SetEditing(job, editingJobId: null);
+    }
+
+    private Task RestoreDraftAsync()
+    {
+        if (_restoreBanner is null) return Task.CompletedTask;
+        SetEditing(_restoreBanner.Draft, _restoreBanner.EditingJobId);
+        // Recovered drafts are by definition unsaved, so re-mark dirty after baseline.
+        EditorState.MarkDirty();
+        _restoreBanner = null;
+        Snackbar.Add("Draft restored", Severity.Info);
+        return Task.CompletedTask;
+    }
+
+    private async Task DiscardDraftAsync()
+    {
+        await EditorState.ClearAsync();
+        _restoreBanner = null;
+        Snackbar.Add("Draft discarded", Severity.Normal);
+    }
+
+    private void OnDraftChanged(SchedulerDraftChangedEventArgs _)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async ValueTask OnLocationChangingAsync(LocationChangingContext context)
+    {
+        if (!EditorState.IsDirty) return;
+        // Staying inside /scheduler doesn't need a prompt.
+        if (context.TargetLocation.Contains("/scheduler", StringComparison.OrdinalIgnoreCase)) return;
+
+        var confirm = await Dialogs.ShowMessageBox("Unsaved changes",
+            "You have unsaved scheduler changes. Leave the page anyway?",
+            yesText: "Leave", cancelText: "Stay");
+        if (confirm != true)
+        {
+            context.PreventNavigation();
+        }
+        else
+        {
+            await EditorState.FlushAsync();
+        }
+    }
+
+    private static string ComputeHash(Job job)
+    {
+        var json = JsonSerializer.Serialize(job, SchedulerJsonOptions.Compact);
+        // Fast content-stable fingerprint; collisions are acceptable since a false
+        // "not dirty" only skips a redundant save.
+        unchecked
+        {
+            long hash = 1469598103934665603L;
+            foreach (var c in json)
+            {
+                hash ^= c;
+                hash *= 1099511628211L;
+            }
+            return hash.ToString("x");
+        }
+    }
+
+    private void OnWorkflowChanged(Guid? workflowId)
+    {
+        if (_editing is not null) _editing.WorkflowId = workflowId;
+    }
+
+    private bool CanRunSelected => _editing is not null
+        && !EditorState.IsDirty
+        && _editing.WorkflowId.HasValue
+        && !Scheduler.RunningJobId.HasValue
+        && _editing.Status is not JobStatus.Running and not JobStatus.Paused;
+
+    private async Task RunSelectedAsync()
+    {
+        if (_editing is null) return;
+        if (EditorState.IsDirty)
+        {
+            Snackbar.Add("Save your changes before starting a run.", Severity.Warning);
+            return;
+        }
+        if (_editing.WorkflowId is null)
+        {
+            Snackbar.Add("Assign a workflow to this job before running.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var jobId = _editing.Id;
+            // Fire-and-forget: the scheduler drives progress events; we just navigate to Runs.
+            _ = Scheduler.RunAsync(jobId);
+            Snackbar.Add($"Run triggered for '{_editing.Name}'.", Severity.Info);
+            await Task.Yield();
+            Nav.NavigateTo("/scheduler/runs");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Run failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Task SaveAsync() => SaveCoreAsync(skipReload: false);
+
+    private async Task SaveCoreAsync(bool skipReload)
+    {
+        if (_editing is null) return;
+
+        if (_outputSelector?.HasMissingValues == true)
+        {
+            Snackbar.Add("Default Project or Folder references a value that no longer exists. Pick a valid option or clear it.", Severity.Error);
+            return;
+        }
+
+        // CreateAsync if brand new; UpdateDefinitionAsync otherwise so mid-run editor saves
+        // preserve the job's run history, counter, and live progress state.
+        var existing = await JobRepo.GetByIdAsync(_editing.Id);
+        if (existing is null)
+        {
+            await JobRepo.CreateAsync(_editing);
+        }
+        else
+        {
+            await JobRepo.UpdateDefinitionAsync(_editing);
+
+            // Re-hydrate runtime-owned fields into the in-memory editor copy so the UI reflects
+            // what was actually persisted (runs/counter/state can have advanced during editing).
+            _editing.Runs = existing.Runs ?? new();
+            _editing.RunCounter = existing.RunCounter;
+            _editing.RunState = existing.RunState ?? new();
+            _editing.LastRunAt = existing.LastRunAt;
+            if (existing.Status is JobStatus.Running or JobStatus.Paused)
+            {
+                _editing.Status = existing.Status;
+            }
+        }
+
+        // Successful save -> clear draft state and rebase.
+        _baselineHash = ComputeHash(_editing);
+        await EditorState.ClearAsync();
+        EditorState.SetBaseline(_editing, _editing.Id);
+
+        Snackbar.Add($"Saved '{_editing.Name}'", Severity.Success);
+        if (!skipReload) await ReloadAsync();
+    }
+
+    private async Task DuplicateAsync()
+    {
+        if (_editing is null) return;
+
+        var json = JsonSerializer.Serialize(_editing, SchedulerJsonOptions.Compact);
+        var clone = JsonSerializer.Deserialize<Job>(json, SchedulerJsonOptions.Compact)!;
+        clone.Id = Guid.NewGuid();
+        clone.Name = _editing.Name + " (copy)";
+        clone.Status = JobStatus.Draft;
+        clone.CreatedAt = DateTime.UtcNow;
+        clone.LastRunAt = null;
+        clone.RunState = new JobRunState();
+        await JobRepo.CreateAsync(clone);
+        SetEditing(clone, clone.Id);
+        Snackbar.Add("Job duplicated", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editing is null) return;
+
+        var ok = await Dialogs.ShowMessageBox("Delete job",
+            $"Delete '{_editing.Name}'? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (ok != true) return;
+
+        await JobRepo.DeleteAsync(_editing.Id);
+        _editing = null;
+        _baselineHash = null;
+        await EditorState.ClearAsync();
+        Snackbar.Add("Job deleted", Severity.Success);
+        await ReloadAsync();
+    }
+
+    private void AddAction()
+    {
+        if (_editing is null) return;
+        _editing.Actions.Add(new JobAction
+        {
+            Order = _editing.Actions.Count,
+            Label = $"Action {_editing.Actions.Count + 1}",
+        });
+    }
+
+    private void RemoveAction(int index)
+    {
+        if (_editing is null) return;
+        _editing.Actions.RemoveAt(index);
+        for (int i = 0; i < _editing.Actions.Count; i++)
+            _editing.Actions[i].Order = i;
+    }
+
+    private void MoveAction(int index, int delta)
+    {
+        if (_editing is null) return;
+        var newIdx = index + delta;
+        if (newIdx < 0 || newIdx >= _editing.Actions.Count) return;
+        (_editing.Actions[index], _editing.Actions[newIdx]) =
+            (_editing.Actions[newIdx], _editing.Actions[index]);
+        for (int i = 0; i < _editing.Actions.Count; i++)
+            _editing.Actions[i].Order = i;
+    }
+
+    /// <summary>Deep-clones an action via JSON round-trip and inserts it right after the source.</summary>
+    private void DuplicateAction(int index)
+    {
+        if (_editing is null) return;
+        var source = _editing.Actions[index];
+        var clone = DeepClone(source);
+        clone.Label = string.IsNullOrEmpty(source.Label) ? "(copy)" : $"{source.Label} (copy)";
+        _editing.Actions.Insert(index + 1, clone);
+        for (int i = 0; i < _editing.Actions.Count; i++)
+            _editing.Actions[i].Order = i;
+    }
+
+    /// <summary>Deep-clones a directive and appends it after the source within the action.</summary>
+    private void DuplicateDirective(JobAction action, Directive source)
+    {
+        var clone = DeepClonePolymorphic<Directive>(source);
+        var idx = action.Directives.IndexOf(source);
+        if (idx < 0) action.Directives.Add(clone);
+        else action.Directives.Insert(idx + 1, clone);
+    }
+
+    /// <summary>Deep-clones a variation and appends it after the source within the action.</summary>
+    private void DuplicateVariation(JobAction action, Variation source)
+    {
+        var clone = DeepClonePolymorphic<Variation>(source);
+        var idx = action.Variations.IndexOf(source);
+        if (idx < 0) action.Variations.Add(clone);
+        else action.Variations.Insert(idx + 1, clone);
+    }
+
+    private static JobAction DeepClone(JobAction a)
+    {
+        var json = JsonSerializer.Serialize(a, SchedulerJsonOptions.Compact);
+        return JsonSerializer.Deserialize<JobAction>(json, SchedulerJsonOptions.Compact)!;
+    }
+
+    // Serialize against the declared base type so $type discriminators are emitted; deserializing
+    // as the concrete runtime type would drop them and round-trip would fail.
+    private static T DeepClonePolymorphic<T>(T value) where T : class
+    {
+        var json = JsonSerializer.Serialize(value, typeof(T), SchedulerJsonOptions.Compact);
+        return JsonSerializer.Deserialize<T>(json, SchedulerJsonOptions.Compact)!;
+    }
+
+    private async Task AddDirective(JobAction action, Func<Directive> factory)
+    {
+        if (_editing is null) return;
+        var seed = factory();
+        HighlightDirectiveHelp(seed);
+        var parameters = new DialogParameters
+        {
+            ["Initial"] = seed,
+            ["Job"] = _editing,
+        };
+        var dlg = await Dialogs.ShowAsync<DirectiveEditorDialog>("New Directive", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not Directive created) return;
+        action.Directives.Add(created);
+        StateHasChanged();
+    }
+
+    private async Task AddVariation(JobAction action, Func<Variation> factory)
+    {
+        if (_editing is null) return;
+        var seed = factory();
+        HighlightVariationHelp(seed);
+        var parameters = new DialogParameters
+        {
+            ["Initial"] = seed,
+            ["Job"] = _editing,
+        };
+        var dlg = await Dialogs.ShowAsync<VariationEditorDialog>("New Variation", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not Variation created) return;
+        action.Variations.Add(created);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Form-mode edit for a directive. Falls back to the JSON editor for subtypes not yet
+    /// covered by a form component (tracked in <see cref="DirectiveEditorDialog"/>).
+    /// </summary>
+    private async Task EditDirectiveAsync(JobAction action, Directive directive)
+    {
+        if (_editing is null) return;
+        HighlightDirectiveHelp(directive);
+        var parameters = new DialogParameters
+        {
+            ["Initial"] = directive,
+            ["Job"] = _editing,
+        };
+        var dlg = await Dialogs.ShowAsync<DirectiveEditorDialog>("Edit Directive", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not Directive updated) return;
+        var index = action.Directives.IndexOf(directive);
+        if (index >= 0) action.Directives[index] = updated;
+    }
+
+    private async Task EditVariationAsync(JobAction action, Variation variation)
+    {
+        if (_editing is null) return;
+        HighlightVariationHelp(variation);
+        var parameters = new DialogParameters
+        {
+            ["Initial"] = variation,
+            ["Job"] = _editing,
+        };
+        var dlg = await Dialogs.ShowAsync<VariationEditorDialog>("Edit Variation", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not Variation updated) return;
+        var index = action.Variations.IndexOf(variation);
+        if (index >= 0) action.Variations[index] = updated;
+    }
+
+    private async Task EditDirectiveJsonAsync(JobAction action, Directive directive)
+    {
+        HighlightDirectiveHelp(directive);
+        var updated = await ShowJsonDialogAsync<Directive>(directive, "Edit Directive");
+        if (updated is null) return;
+        var index = action.Directives.IndexOf(directive);
+        if (index >= 0) action.Directives[index] = updated;
+    }
+
+    private async Task EditVariationJsonAsync(JobAction action, Variation variation)
+    {
+        HighlightVariationHelp(variation);
+        var updated = await ShowJsonDialogAsync<Variation>(variation, "Edit Variation");
+        if (updated is null) return;
+        var index = action.Variations.IndexOf(variation);
+        if (index >= 0) action.Variations[index] = updated;
+    }
+
+    /// <summary>Auto-expands the InfoDrawer panel for the directive subtype being edited.</summary>
+    private void HighlightDirectiveHelp(Directive directive)
+    {
+        var kind = directive switch
+        {
+            SetValueDirective => SchedulerInfoContent.DirectiveKinds.SetValue,
+            AppendPromptDirective => SchedulerInfoContent.DirectiveKinds.AppendPrompt,
+            ReplacePromptDirective => SchedulerInfoContent.DirectiveKinds.ReplacePrompt,
+            AddLoraDirective => SchedulerInfoContent.DirectiveKinds.AddLora,
+            RemoveLoraDirective => SchedulerInfoContent.DirectiveKinds.RemoveLora,
+            ToggleLoraDirective => SchedulerInfoContent.DirectiveKinds.ToggleLora,
+            AddPromptStyleDirective => SchedulerInfoContent.DirectiveKinds.AddPromptStyle,
+            SwapAssetDirective => SchedulerInfoContent.DirectiveKinds.SwapAsset,
+            SetOutputDirective => SchedulerInfoContent.DirectiveKinds.SetOutput,
+            _ => null,
+        };
+        if (kind is not null)
+            InfoService.HighlightSection(SchedulerInfoContent.Sections.Directive(kind));
+    }
+
+    private void HighlightVariationHelp(Variation variation)
+    {
+        var kind = variation switch
+        {
+            ListVariation => SchedulerInfoContent.VariationKinds.List,
+            RangeVariation => SchedulerInfoContent.VariationKinds.Range,
+            RandomVariation => SchedulerInfoContent.VariationKinds.Random,
+            WildcardVariation => SchedulerInfoContent.VariationKinds.Wildcard,
+            LlmVariation => SchedulerInfoContent.VariationKinds.Llm,
+            SearchReplaceVariation => SchedulerInfoContent.VariationKinds.SearchReplace,
+            ToggleVariation => SchedulerInfoContent.VariationKinds.Toggle,
+            _ => null,
+        };
+        if (kind is not null)
+            InfoService.HighlightSection(SchedulerInfoContent.Sections.Variation(kind));
+    }
+
+    private async Task<T?> ShowJsonDialogAsync<T>(T value, string title) where T : class
+    {
+        // Serialize against T (the declared base) so the $type discriminator is emitted for polymorphic
+        // values. Serializing against value.GetType() would omit it and round-tripping as T would fail.
+        var json = JsonSerializer.Serialize(value, typeof(T), SchedulerJsonOptions.Default);
+        // Probe deserialization as T before OK succeeds - catches missing/unknown $type early.
+        bool ProbeAsT(string text)
+        {
+            JsonSerializer.Deserialize<T>(text, SchedulerJsonOptions.Default);
+            return true;
+        }
+        var parameters = new DialogParameters
+        {
+            ["Title"] = title,
+            ["InitialJson"] = json,
+            ["ValidateSchema"] = (Func<string, bool>)ProbeAsT,
+        };
+        var dlg = await Dialogs.ShowAsync<SchedulerJsonEditorDialog>(title, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dlg.Result;
+        if (result is null || result.Canceled || result.Data is not string edited) return null;
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<T>(edited, SchedulerJsonOptions.Default);
+            return parsed;
+        }
+        catch (JsonException ex)
+        {
+            Snackbar.Add($"Invalid JSON: {ex.Message}", Severity.Error);
+            return null;
+        }
+    }
+
+    private int ComputeIterations(JobAction action)
+    {
+        if (action.Variations.Count == 0) return Math.Max(1, action.Repeat);
+        long total = 1;
+        foreach (var v in action.Variations)
+        {
+            long size = v switch
+            {
+                ListVariation lv => Math.Max(1, lv.Values?.Count ?? 0),
+                ToggleVariation => 2,
+                RangeVariation r => RangeSize(r),
+                RandomVariation r => Math.Max(1, r.Count),
+                SearchReplaceVariation s => Math.Max(1, s.Replacements?.Count ?? 0),
+                WildcardVariation w => WildcardSize(w),
+                LlmVariation l => Math.Max(1, l.Count),
+                _ => 1,
+            };
+            total *= size;
+            if (total > int.MaxValue) { total = int.MaxValue; break; }
+        }
+        int result = (int)total;
+        if (action.Limit is int lim && lim > 0 && lim < result) result = lim;
+        return result * Math.Max(1, action.Repeat);
+    }
+
+    private static long RangeSize(RangeVariation r)
+    {
+        if (r.Step == 0) return 1;
+        var n = (long)Math.Floor(Math.Abs((r.End - r.Start) / r.Step)) + 1;
+        return Math.Max(1, n);
+    }
+
+    /// <summary>
+    /// Resolves a Wildcard variation's contribution to the cartesian product.
+    /// Count-bounded mode uses <see cref="WildcardVariation.Count"/> directly; full-sweep mode
+    /// reads the collection size from <see cref="_wildcardSizes"/> (prefetched asynchronously by
+    /// <see cref="PrefetchWildcardSizesAsync"/>). While a size is still loading we report 1 so the
+    /// estimate stabilizes on the next render.
+    /// </summary>
+    private long WildcardSize(WildcardVariation w)
+    {
+        if (w.Count is int c && c > 0) return c;
+        if (!string.IsNullOrWhiteSpace(w.CollectionName)
+            && _wildcardSizes.TryGetValue(w.CollectionName, out var size) && size > 0)
+        {
+            return size;
+        }
+        return 1;
+    }
+
+    /// <summary>
+    /// Scans the editing job's wildcard variations whose size is not yet cached and resolves
+    /// them via <see cref="IWildcardService.GetCollectionSize(string)"/>. Triggers a re-render
+    /// after each lookup so the cartesian-product estimate picks up the new value.
+    /// </summary>
+    private async Task PrefetchWildcardSizesAsync()
+    {
+        if (_editing is null) return;
+
+        var names = _editing.Actions
+            .SelectMany(a => a.Variations.OfType<WildcardVariation>())
+            .Where(w => w.Count is null or 0)
+            .Select(w => w.CollectionName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.Ordinal)
+            .Where(n => !_wildcardSizes.ContainsKey(n) && !_wildcardSizesInFlight.Contains(n))
+            .ToList();
+
+        if (names.Count == 0) return;
+
+        foreach (var name in names) _wildcardSizesInFlight.Add(name);
+
+        foreach (var name in names)
+        {
+            try
+            {
+                var size = await Wildcards.GetCollectionSize(name);
+                _wildcardSizes[name] = size;
+            }
+            catch
+            {
+                // Swallow: a failed lookup leaves the name uncached (fallback of 1 applies).
+            }
+            finally
+            {
+                _wildcardSizesInFlight.Remove(name);
+            }
+            StateHasChanged();
+        }
+    }
+
+    private int TotalGenerations => _editing?.Actions.Sum(a => ComputeIterations(a)) ?? 0;
+
+    // ---- Card titles / icons -----------------------------------------------------------
+
+    private static string DirectiveTitle(Directive d) => d switch
+    {
+        SetValueDirective => "Set Value",
+        AppendPromptDirective => "Append Prompt",
+        ReplacePromptDirective => "Replace Prompt",
+        AddLoraDirective => "Add LoRA",
+        RemoveLoraDirective => "Remove LoRA",
+        ToggleLoraDirective => "Toggle LoRA",
+        AddPromptStyleDirective => "Add Prompt Style",
+        SwapAssetDirective => "Swap Asset",
+        SetOutputDirective => "Set Output",
+        _ => d.GetType().Name,
+    };
+
+    private static string DirectiveIcon(Directive d) => d switch
+    {
+        SetValueDirective => Icons.Material.Filled.Edit,
+        AppendPromptDirective => Icons.Material.Filled.AddComment,
+        ReplacePromptDirective => Icons.Material.Filled.FindReplace,
+        AddLoraDirective => Icons.Material.Filled.AddCircle,
+        RemoveLoraDirective => Icons.Material.Filled.RemoveCircle,
+        ToggleLoraDirective => Icons.Material.Filled.ToggleOn,
+        AddPromptStyleDirective => Icons.Material.Filled.Palette,
+        SwapAssetDirective => Icons.Material.Filled.SwapHoriz,
+        SetOutputDirective => Icons.Material.Filled.FolderSpecial,
+        _ => Icons.Material.Filled.Settings,
+    };
+
+    private static string VariationTitle(Variation v) => v switch
+    {
+        ListVariation => "List",
+        RangeVariation => "Range",
+        RandomVariation => "Random",
+        WildcardVariation => "Wildcard",
+        LlmVariation => "LLM",
+        SearchReplaceVariation => "Search / Replace",
+        ToggleVariation => "Toggle",
+        _ => v.GetType().Name,
+    };
+
+    private static string VariationIcon(Variation v) => v switch
+    {
+        ListVariation => Icons.Material.Filled.FormatListBulleted,
+        RangeVariation => Icons.Material.Filled.Straighten,
+        RandomVariation => Icons.Material.Filled.Shuffle,
+        WildcardVariation => Icons.Material.Filled.Casino,
+        LlmVariation => Icons.Material.Filled.SmartToy,
+        SearchReplaceVariation => Icons.Material.Filled.FindReplace,
+        ToggleVariation => Icons.Material.Filled.ToggleOn,
+        _ => Icons.Material.Filled.Science,
+    };
+
+    // ---- Preview summaries -------------------------------------------------------------
+
+    private static string TargetLabel(ParameterTarget? t) => t switch
+    {
+        FragmentTarget f => $"{f.FragmentId}.{f.ParamKey}",
+        LoraTarget l => $"LoRA: {l.LoraName}",
+        AssetTarget a => $"Asset: {a.AssetKey}",
+        PromptTarget p => p.IsNegative ? "Prompt (negative)" : "Prompt (positive)",
+        OutputTarget o => $"Output: {o.Field}",
+        null => "(no target)",
+        _ => t.GetType().Name,
+    };
+
+    private static string DirectiveSummary(Directive d) => d switch
+    {
+        SetValueDirective s => $"{TargetLabel(s.Target)} = {FormatValue(s.Value)}",
+        AppendPromptDirective a => $"{(a.IsPrefix ? "prepend" : "append")} to {(a.IsNegative ? "negative" : "positive")}: \"{Truncate(a.Text, 60)}\"",
+        ReplacePromptDirective r => $"in {(r.IsNegative ? "negative" : "positive")}: \"{Truncate(r.Search, 30)}\" -> \"{Truncate(r.Replace, 30)}\"",
+        AddLoraDirective l => $"{(l.Lora?.Name ?? "(unset)")} @ {l.Lora?.Strength.ToString("0.##") ?? "1"}",
+        RemoveLoraDirective l => $"{l.LoraName}",
+        ToggleLoraDirective l => $"{l.LoraName} -> {(l.Enable ? "enabled" : "disabled")}",
+        AddPromptStyleDirective s => s.StyleNames is { Count: > 0 } ? string.Join(", ", s.StyleNames) : "(no styles)",
+        SwapAssetDirective a => $"{a.AssetKey} -> {Truncate(a.AssetValue, 50)}",
+        SetOutputDirective o => $"project -> {o.ProjectName ?? "(job default)"}",
+        _ => d.GetType().Name,
+    };
+
+    private static string VariationSummary(Variation v) => v switch
+    {
+        ListVariation l => $"{TargetLabel(l.Target)} = [{string.Join(", ", (l.Values ?? new()).Take(3).Select(x => Truncate(x?.ToString(), 15)))}{(l.Values?.Count > 3 ? ", ..." : "")}] ({l.Values?.Count ?? 0} values)",
+        RangeVariation r => $"{TargetLabel(r.Target)} = {r.Start}..{r.End} step {r.Step}{(r.IsInteger ? " (int)" : "")}",
+        RandomVariation r => $"{TargetLabel(r.Target)} = [{r.Min}..{r.Max}] x {r.Count}{(r.IsInteger ? " (int)" : "")}{(r.Seed is int s ? $", seed {s}" : "")}",
+        WildcardVariation w => $"{TargetLabel(w.Target)} <- {(string.IsNullOrEmpty(w.CollectionName) ? "(no collection)" : w.CollectionName)}{(w.Count is int c ? $" x {c}" : "")}",
+        LlmVariation ll => $"{TargetLabel(ll.Target)} <- {(string.IsNullOrEmpty(ll.ModelName) ? "(no model)" : ll.ModelName)} x {ll.Count}",
+        SearchReplaceVariation sr => $"{(sr.IsNegative ? "negative" : "positive")}: \"{Truncate(sr.Search, 20)}\" -> {sr.Replacements?.Count ?? 0} option(s)",
+        ToggleVariation t => $"{TargetLabel(t.Target)} = {FormatValue(t.OnValue)} / {FormatValue(t.OffValue)}",
+        _ => v.GetType().Name,
+    };
+
+    private static string FormatValue(object? v) => v switch
+    {
+        null => "(null)",
+        string s => $"\"{Truncate(s, 40)}\"",
+        _ => Truncate(v.ToString(), 40),
+    };
+
+    private static string Truncate(string? s, int max)
+        => string.IsNullOrEmpty(s) ? "" : (s!.Length <= max ? s : s.Substring(0, max) + "...");
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<JobCompletedEventArgs>(OnJobEvent);
+        Events.Unsubscribe<SchedulerDraftChangedEventArgs>(OnDraftChanged);
+        _locationChangingRegistration?.Dispose();
+    }
+}
+

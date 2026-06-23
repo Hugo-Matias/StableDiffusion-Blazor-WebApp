@@ -1,0 +1,181 @@
+@* Phase 10 - Save dialog for Wildcard Forge drafts. Returns the saved collection id (int)
+   in DialogResult.Data on success, or Cancel. *@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
+@using BlazorWebApp.Services.WildcardForge
+@using BlazorWebApp.Services.WildcardForge.Models
+@inject IWildcardForgeService Forge
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 480px;">
+            <MudToggleGroup T="string" @bind-Value="_mode" SelectionMode="SelectionMode.SingleSelection"
+                            Color="Color.Primary">
+                <MudToggleItem Value="@("new")">New collection</MudToggleItem>
+                <MudToggleItem Value="@("append")" Disabled="@(Collections.Count == 0)">Append</MudToggleItem>
+                <MudToggleItem Value="@("replace")" Disabled="@(Collections.Count == 0)">Replace</MudToggleItem>
+            </MudToggleGroup>
+
+            @if (_mode == "new")
+            {
+                <MudStack Row Spacing="2" AlignItems="AlignItems.End">
+                    <MudTextField T="string" @bind-Value="_name" Label="Name" Variant="Variant.Text" Required="true"
+                                  Class="flex-grow-1" />
+                    <MudTooltip
+                        Text="@(string.IsNullOrWhiteSpace(ModelName) ? "Select an LLM model in the page header first." : "Ask the LLM to suggest name, category, and description from the accepted entries.")">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   Disabled="@(_isSuggesting || string.IsNullOrWhiteSpace(ModelName) || AcceptedCount == 0)"
+                                   StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="SuggestAsync">
+                            @if (_isSuggesting)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                            }
+                            Suggest
+                        </MudButton>
+                    </MudTooltip>
+                </MudStack>
+                <MudTextField T="string" @bind-Value="_category" Label="Category" Variant="Variant.Text"
+                              HelperText="e.g. Fashion & Clothing, Lighting & Atmosphere" />
+                <MudTextField T="string" @bind-Value="_description" Label="Description" Lines="2" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudSelect T="int?" @bind-Value="_targetId" Label="Target collection" Variant="Variant.Text"
+                           Required="true">
+                    @foreach (var c in Collections)
+                    {
+                        <MudSelectItem T="int?" Value="@c.Id">@c.Name (@c.Category)</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (_mode == "replace")
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Replace deletes all existing entries in the target collection.
+                    </MudAlert>
+                }
+            }
+
+            <MudText Typo="Typo.caption">@AcceptedCount accepted entries will be saved with weight 1.0.</MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(!CanSave())" OnClick="SaveAsync">Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ForgeDraftDto Draft { get; set; } = default!;
+    [Parameter] public List<WildcardCollection> Collections { get; set; } = new();
+    [Parameter] public string ModelName { get; set; } = string.Empty;
+
+    private string _mode = "new";
+    private string _name = string.Empty;
+    private string _category = string.Empty;
+    private string _description = string.Empty;
+    private int? _targetId;
+    private bool _isSuggesting;
+
+    private int AcceptedCount => Draft?.Entries.Count(e => e.Accepted && !string.IsNullOrWhiteSpace(e.Value)) ?? 0;
+
+    protected override void OnInitialized()
+    {
+        if (Draft.TargetCollectionId.HasValue)
+        {
+            _mode = "append";
+            _targetId = Draft.TargetCollectionId;
+        }
+        if (!string.IsNullOrWhiteSpace(Draft.SuggestedName)) _name = Draft.SuggestedName!;
+        if (!string.IsNullOrWhiteSpace(Draft.SuggestedCategory)) _category = Draft.SuggestedCategory!;
+        if (!string.IsNullOrWhiteSpace(Draft.SuggestedDescription)) _description = Draft.SuggestedDescription!;
+    }
+
+    private async Task SuggestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ModelName))
+        {
+            Snackbar.Add("Select a model first.", Severity.Warning);
+            return;
+        }
+        _isSuggesting = true;
+        try
+        {
+            // Build a synthetic Describe request from the accepted draft entries.
+            var sample = Draft.Entries
+                .Where(e => e.Accepted && !string.IsNullOrWhiteSpace(e.Value))
+                .Take(8)
+                .Select(e => new BlazorWebApp.Data.Entities.WildcardEntry { Value = e.Value })
+                .ToList();
+            if (sample.Count == 0)
+            {
+                Snackbar.Add("Accept at least one entry before requesting suggestions.", Severity.Warning);
+                return;
+            }
+            var req = new ForgeRequest
+            {
+                Operation = ForgeOperation.Describe,
+                ExistingEntries = sample,
+            };
+            var result = await Forge.RunAsync(req, ModelName);
+            if (!string.IsNullOrWhiteSpace(result.SuggestedName))
+            {
+                _name = result.SuggestedName!; Draft.SuggestedName =
+result.SuggestedName;
+            }
+            if (!string.IsNullOrWhiteSpace(result.SuggestedCategory))
+            {
+                _category = result.SuggestedCategory!;
+                Draft.SuggestedCategory = result.SuggestedCategory;
+            }
+            if (!string.IsNullOrWhiteSpace(result.SuggestedDescription))
+            {
+                _description = result.SuggestedDescription!;
+                Draft.SuggestedDescription = result.SuggestedDescription;
+            }
+            Snackbar.Add("Suggestions filled.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Suggest failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSuggesting = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (AcceptedCount == 0) return false;
+        return _mode switch
+        {
+            "new" => !string.IsNullOrWhiteSpace(_name),
+            "append" or "replace" => _targetId.HasValue,
+            _ => false
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            var id = await Forge.SaveDraftAsync(
+                Draft,
+                _mode,
+                _targetId,
+                _mode == "new" ? _name : null,
+                _mode == "new" ? _category : null,
+                _mode == "new" ? _description : null);
+            MudDialog.Close(DialogResult.Ok(id));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

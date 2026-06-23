@@ -1,0 +1,39 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+
+<MudStack Spacing="2">
+    <MudSelect T="string" @bind-Value="Directive.LoraName" Label="LoRA" Variant="Variant.Text"
+               Dense="true" AnchorOrigin="Origin.BottomCenter">
+        @foreach (var name in _loraNames)
+        {
+            <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+        }
+    </MudSelect>
+    @if (_loraNames.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense>
+            No LoRAs in base parameters. Either add one via AddLora, or type the name directly after switching to JSON.
+        </MudAlert>
+    }
+
+    <MudSwitch T="bool" @bind-Value="Directive.Enable" Color="Color.Primary"
+               Label="@(Directive.Enable ? "Enable this LoRA during iterations" : "Disable this LoRA during iterations")" />
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public ToggleLoraDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private List<string> _loraNames = new();
+
+    protected override void OnParametersSet()
+    {
+        _loraNames = Job?.BaseParameters?.Loras?
+            .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+            .Select(l => l.Name!)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList() ?? new();
+    }
+}
+

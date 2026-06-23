@@ -1,0 +1,52 @@
+.prompt-style-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border-left: 3px solid transparent;
+}
+
+.prompt-style-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.prompt-style-card[data-pinned="true"] {
+    border-left-color: var(--mud-palette-primary);
+}
+
+.prompt-style-card[data-favorite="true"] {
+    border-left-color: var(--mud-palette-error);
+}
+
+.prompt-preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.5;
+    max-height: 3em;
+}
+
+.prompt-style-card .mud-card-header {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.prompt-style-card .mud-card-actions {
+    background-color: rgba(0, 0, 0, 0.01);
+}
+
+/* Dark theme adjustments */
+.mud-theme-dark .prompt-style-card .mud-card-header {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.mud-theme-dark .prompt-style-card .mud-card-actions {
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+    .prompt-style-card .mud-card-actions .mud-stack-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+}

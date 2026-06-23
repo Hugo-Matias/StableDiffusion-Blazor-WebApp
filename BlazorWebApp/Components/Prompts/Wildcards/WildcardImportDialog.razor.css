@@ -1,0 +1,16 @@
+.file-upload-zone {
+    transition: all 0.3s ease;
+}
+
+.file-upload-zone:hover {
+    border-color: var(--mud-palette-primary) !important;
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.preview-list-item {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.preview-list-item:last-child {
+    border-bottom: none;
+}

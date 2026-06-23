@@ -1,0 +1,603 @@
+/* Full-screen overlay */
+.asset-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+/* Container */
+.asset-viewer-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Asset stage */
+.asset-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  padding-bottom: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.asset-stage.pan-mode {
+  cursor: grab;
+  overflow: hidden;
+}
+
+.asset-stage.pan-mode.dragging {
+  cursor: grabbing;
+}
+
+.viewer-media {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.1s ease-out,
+    opacity 0.2s ease-in-out;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 1;
+}
+
+.viewer-media.loading {
+  opacity: 0;
+}
+
+.viewer-media.pan-mode {
+  max-width: none;
+  max-height: none;
+  cursor: grab;
+}
+
+.viewer-media.pan-mode.dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+/* Close button */
+.close-btn {
+  position: fixed !important;
+  top: 20px;
+  right: 20px;
+  z-index: 10100;
+  background: var(--mud-palette-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.close-btn:hover {
+  background: var(--mud-palette-error) !important;
+  color: var(--mud-palette-error-text) !important;
+  border-color: var(--mud-palette-error) !important;
+}
+
+/* Control bar */
+.control-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--mud-palette-surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 12px 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  z-index: 10002;
+}
+
+/* Control sections */
+.control-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-section:not(:last-child) {
+  padding-right: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nav-section {
+  justify-content: center;
+}
+
+.actions-section:first-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+/* Buttons */
+.viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--mud-palette-text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.viewer-btn:hover:not(:disabled) {
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+}
+
+.viewer-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.viewer-btn.active {
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+}
+
+.viewer-btn.active-fav {
+  color: var(--mud-palette-error);
+  background: rgba(var(--mud-palette-error-rgb), 0.25);
+}
+
+.viewer-btn.small {
+  width: 32px;
+  height: 32px;
+}
+
+.viewer-btn.nav-btn {
+  width: 52px;
+  height: 52px;
+  font-size: 1.1rem;
+}
+
+.viewer-btn.nav-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+}
+
+.fav-all-btn {
+  width: 38px;
+  height: 38px;
+}
+
+.fav-all-btn:hover {
+  color: var(--mud-palette-error);
+  background: rgba(var(--mud-palette-error-rgb), 0.2);
+}
+
+/* Slideshow controls */
+.slideshow-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0 10px 0 4px;
+  height: 44px;
+}
+
+.slideshow-input {
+  width: 48px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--mud-palette-text-primary);
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.slideshow-input::-webkit-outer-spin-button,
+.slideshow-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.slideshow-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.slideshow-unit {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  user-select: none;
+}
+
+/* Rating */
+.rating-container {
+  display: flex;
+  align-items: center;
+  padding-left: 4px;
+}
+
+.rating-container ::deep .mud-rating {
+  gap: 4px;
+}
+
+.rating-container ::deep .mud-rating-item {
+  color: rgba(255, 193, 7, 0.3) !important;
+  padding: 4px;
+}
+
+.rating-container ::deep .mud-rating-item:hover,
+.rating-container ::deep .mud-rating-item.mud-rating-item-active {
+  color: #ffc107 !important;
+}
+
+/* Counter */
+.counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 14px;
+  user-select: none;
+  min-width: 100px;
+}
+
+.counter-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.counter-current {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.counter-sep {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.counter-total {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.counter-page-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.counter-page-label {
+  color: var(--mud-palette-primary);
+  font-weight: 500;
+}
+
+.counter-dot {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.counter-total-label {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Zoom indicator */
+.zoom-indicator {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 10001;
+  animation: fadeIn 0.15s ease;
+}
+
+/* Asset type indicator */
+.asset-type-indicator {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  z-index: 10100;
+}
+
+/* Asset Info Style */
+.asset-info {
+  color: var(--mud-palette-text-primary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding: 10px 0;
+}
+
+.asset-info .title {
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.asset-info .description {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.asset-info .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.asset-info .tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--mud-palette-text-primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.loading-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Info Panel Container */
+.info-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: var(--mud-palette-drawer-background);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  z-index: 10150;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.info-panel.open {
+  transform: translateX(0);
+}
+
+/* ===== A/B Compare ===== */
+
+/* While compare is active, the stage shows a crosshair-style cursor by default,
+   indicating the live cursor-tracking mode. When locked, default cursor is restored. */
+.asset-stage.compare-mode {
+  cursor: ew-resize;
+}
+
+.asset-stage.compare-mode.compare-locked {
+  cursor: pointer;
+}
+
+/* Frame matches the stage padding-box exactly so absolute children align with the
+   centered base image. */
+.compare-frame {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  bottom: 100px;
+  pointer-events: none;
+}
+
+/* The source overlay is sized to the same letterbox area as the base image and is
+   clipped to reveal only the portion to the right of the split. */
+.compare-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* clip-path inset(top right bottom left) - left=split% reveals right portion */
+  clip-path: inset(0 0 0 var(--ab-split, 50%));
+  -webkit-clip-path: inset(0 0 0 var(--ab-split, 50%));
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+.compare-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--ab-split, 50%);
+  width: 0;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.compare-divider-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.compare-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.25s ease,
+    transform 0.1s ease,
+    background 0.15s ease;
+}
+
+/* Handle is auto-shown by JS only when locked AND the cursor is moving over the
+   stage; it fades back out after a short idle. */
+.compare-frame.handle-visible .compare-handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.compare-handle:hover {
+  background: var(--mud-palette-primary);
+  border-color: #fff;
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.compare-handle:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(0.96);
+}
+
+/* Side labels - "Generated" stays on the left half, "Source" floats with the divider
+   on the right half. They fade out near the edges to avoid overflowing tiny gaps. */
+.compare-label {
+  position: absolute;
+  top: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.compare-label-base {
+  left: 12px;
+  background: rgba(var(--mud-palette-primary-rgb), 0.85);
+}
+
+.compare-label-source {
+  right: 12px;
+  background: rgba(255, 152, 0, 0.85);
+}
+
+.compare-lock-indicator {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(var(--mud-palette-warning-rgb, 255, 152, 0), 0.92);
+  color: #1a1a1a;
+  padding: 6px 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  z-index: 10100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.15s ease;
+  pointer-events: none;
+}
+
+.compare-source-picker {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 6px 8px;
+  z-index: 10101;
+  max-width: calc(100vw - 200px);
+  overflow-x: auto;
+}
+
+.compare-source-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compare-source-chip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.compare-source-chip.active {
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+  border-color: var(--mud-palette-primary);
+}

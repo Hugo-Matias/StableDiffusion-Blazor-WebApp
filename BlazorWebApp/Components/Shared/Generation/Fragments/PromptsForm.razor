@@ -1,0 +1,954 @@
+@*
+    PromptsForm - Form for prompt input
+    
+    Replaces the generic PromptFields<T> with a simpler string-based API.
+    Handles: prompt, negative prompt, styles, LoRAs, generate button
+    
+    Note: LoRA and Style selections are emitted via callbacks to parent component.
+*@
+@using System.Text.Json
+@using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Events
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("PromptsForm")]
+@inject IIOService IO
+@inject IStateService State
+@inject IBackendService Backend
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
+@inject BlazorWebApp.Scheduler.IScheduleSnapshotService ScheduleSnapshot
+@inject ISnackbar Snackbar
+@inject IPromptHistoryService _promptHistory
+@inject IWorkshopService WorkshopService
+@inject OllamaService OllamaService
+@implements IAsyncDisposable
+@implements IDisposable
+
+<div @ref="_containerRef" tabindex="-1" class="prompts-form-root">
+    <MudPaper Class="pa-6 mb-5 mt-n4 prompts-paper">
+        <MudStack Spacing="3">
+            @* Tabbed prompts: positive / negative. Flush with the paper top
+                       (custom CSS removes tab rounding and aligns the underline to
+                       the paper border) to keep the design simple and continuous.
+                       A bullet indicator is appended to tab labels when the
+                       corresponding field has content, regardless of active tab. *@
+            <MudTabs @bind-ActivePanelIndex="_activePromptTab" Elevation="0" Rounded="false" Border="false"
+                     ApplyEffectsToContainer="true" Class="@($"prompt-tabs prompt-tabs-{GetActiveTabAccent()}")"
+                     PanelClass="pa-0">
+                <MudTabPanel Text="@GetPromptTabLabel()">
+                    <div class="prompt-row">
+                        <div class="prompt-field">
+                            <TextFieldAutocomplete Class="prompt" Lines="2" AutoGrow="true" MaxLines="12" Label=""
+                                                   Value="@Prompt" ValueChanged="HandlePromptValueChanged" OnBlur="HandlePromptBlur"
+                                                   Adornment="Adornment.None" MinCharsToTrigger="2" MaxSuggestions="15"
+                                                   EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                                   EnableDictionary="true"
+                                                   EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled" IsNegative="false"
+                                                   OnLoraSelected="HandleLoraSelected" OnStyleSelected="HandleStyleSelected" />
+                        </div>
+                        <div class="prompt-side">
+                            <div class="undo-redo-buttons">
+                                <MudTooltip Text="Undo last prompt change (Ctrl+Z)" Placement="Placement.Left">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
+                                                   Disabled="@(!_promptHistory.CanUndo)" OnClick="HandleUndo" />
+                                </MudTooltip>
+                                <MudTooltip Text="Redo last undone change (Ctrl+Y)" Placement="Placement.Left">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Redo" Size="Size.Small"
+                                                   Disabled="@(!_promptHistory.CanRedo)" OnClick="HandleRedo" />
+                                </MudTooltip>
+                            </div>
+                            <MudButton StartIcon="fa-solid fa-wand-sparkles" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="() => PromptDrawer.Visible = true" Class="prompt-side-btn prompt-side-util-btn"
+                                       Variant="Variant.Outlined">
+                                Utilities
+                            </MudButton>
+                            <MudTooltip Text="Toggle autocomplete suggestions" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(State.State.Generation.Autocomplete.IsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                    Color="@(State.State.Generation.Autocomplete.IsEnabled ? Color.Primary : Color.Default)"
+                                    Variant="@(State.State.Generation.Autocomplete.IsEnabled ? Variant.Outlined : Variant.Text)"
+                                    Size="Size.Small" Class="prompt-side-chip"
+                                    OnClick="@(() => HandleAutocompleteChanged(!State.State.Generation.Autocomplete.IsEnabled))">
+                                    Autocomplete
+                                </MudChip>
+                            </MudTooltip>
+                            <MudTooltip Text="Toggle fuzzy subsequence matching" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                    Color="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Color.Primary : Color.Default)"
+                                    Variant="Variant.Outlined" Size="Size.Small" Class="prompt-side-chip"
+                                    Disabled="!State.State.Generation.Autocomplete.IsEnabled"
+                                    OnClick="@(() => HandleFuzzySearchChanged(!State.State.Generation.Autocomplete.EnableFuzzySearch))">
+                                    Fuzzy Search
+                                </MudChip>
+                            </MudTooltip>
+                            <MudTooltip Text="Toggle LLM instruction panel" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(_showLLMInstruction ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                    Color="@(_showLLMInstruction ? Color.Primary : Color.Default)"
+                                    Variant="@(_showLLMInstruction ? Variant.Outlined : Variant.Text)" Size="Size.Small"
+                                    Class="prompt-side-chip"
+                                    OnClick="@(() => _showLLMInstruction = !_showLLMInstruction)">
+                                    Instruct
+                                </MudChip>
+                            </MudTooltip>
+                        </div>
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="@GetNegativePromptTabLabel()"
+                             Disabled="@(Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase))">
+                    <div class="prompt-row">
+                        <div class="prompt-field">
+                            <TextFieldAutocomplete Class="negative-prompt" Lines="2" AutoGrow="true" MaxLines="12"
+                                                   Label="" Value="@NegativePrompt" ValueChanged="HandleNegativePromptValueChanged"
+                                                   OnBlur="HandleNegativePromptBlur" Adornment="Adornment.None"
+                                                   Disabled="Backend.IsBackendAvailable && State.State.Generation.WorkflowBase != null && _disableNegativeBases.Contains(State.State.Generation.WorkflowBase)"
+                                                   MinCharsToTrigger="2" MaxSuggestions="15"
+                                                   EnableFuzzyMatching="State.State.Generation.Autocomplete.EnableFuzzySearch"
+                                                   EnableDictionary="true"
+                                                   EnableAutocomplete="State.State.Generation.Autocomplete.IsEnabled" IsNegative="true"
+                                                   OnLoraSelected="HandleLoraSelected" OnStyleSelected="HandleStyleSelected" />
+                        </div>
+                        <div class="prompt-side">
+                            <div class="undo-redo-buttons">
+                                <MudTooltip Text="Undo last prompt change (Ctrl+Z)" Placement="Placement.Left">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Undo" Size="Size.Small"
+                                                   Disabled="@(!_promptHistory.CanUndo)" OnClick="HandleUndo" />
+                                </MudTooltip>
+                                <MudTooltip Text="Redo last undone change (Ctrl+Y)" Placement="Placement.Left">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Redo" Size="Size.Small"
+                                                   Disabled="@(!_promptHistory.CanRedo)" OnClick="HandleRedo" />
+                                </MudTooltip>
+                            </div>
+                            <MudButton StartIcon="fa-solid fa-wand-sparkles" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="() => NegativePromptDrawer.Visible = true"
+                                       Class="prompt-side-btn prompt-side-util-btn" Variant="Variant.Outlined">
+                                Utilities
+                            </MudButton>
+                            <MudTooltip Text="Toggle autocomplete suggestions" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(State.State.Generation.Autocomplete.IsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                    Color="@(State.State.Generation.Autocomplete.IsEnabled ? Color.Primary : Color.Default)"
+                                    Variant="@(State.State.Generation.Autocomplete.IsEnabled ? Variant.Outlined : Variant.Text)"
+                                    Size="Size.Small" Class="prompt-side-chip"
+                                    OnClick="@(() => HandleAutocompleteChanged(!State.State.Generation.Autocomplete.IsEnabled))">
+                                    Autocomplete
+                                </MudChip>
+                            </MudTooltip>
+                            <MudTooltip Text="Toggle fuzzy subsequence matching" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                    Color="@(State.State.Generation.Autocomplete.EnableFuzzySearch ? Color.Primary : Color.Default)"
+                                    Variant="Variant.Outlined" Size="Size.Small" Class="prompt-side-chip"
+                                    Disabled="!State.State.Generation.Autocomplete.IsEnabled"
+                                    OnClick="@(() => HandleFuzzySearchChanged(!State.State.Generation.Autocomplete.EnableFuzzySearch))">
+                                    Fuzzy Search
+                                </MudChip>
+                            </MudTooltip>
+                            <MudTooltip Text="Toggle LLM instruction panel" Placement="Placement.Left">
+                                <MudChip
+                                    Icon="@(_showLLMInstruction ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                    Color="@(_showLLMInstruction ? Color.Primary : Color.Default)"
+                                    Variant="@(_showLLMInstruction ? Variant.Outlined : Variant.Text)" Size="Size.Small"
+                                    Class="prompt-side-chip"
+                                    OnClick="@(() => _showLLMInstruction = !_showLLMInstruction)">
+                                    Instruct
+                                </MudChip>
+                            </MudTooltip>
+                        </div>
+                    </div>
+                </MudTabPanel>
+                @* Styles tab: search + inline apply button, then a checkable list. *@
+                <MudTabPanel Text="@GetStylesTabLabel()">
+                    <div class="styles-panel">
+                        <div class="styles-search-row">
+                            <MudTextField @bind-Value="_stylesSearchText" Placeholder="Search styles..."
+                                          Immediate="true" Variant="Variant.Text" Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Class="styles-search" />
+                            @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
+                            {
+                                <MudTooltip Delay="800" Duration="400"
+                                            Text="Write selected styles to the prompts and clear the list."
+                                            Placement="Placement.Top">
+                                    <MudIconButton Icon="fa-solid fa-pencil" Size="Size.Small" Color="Color.Info"
+                                                   OnClick="WritePrompts" />
+                                </MudTooltip>
+                            }
+                        </div>
+                        <div class="styles-list">
+                            @foreach (var style in GetFilteredStyles())
+                            {
+                                var isSelected = IsStyleSelected(style);
+                                <div class="style-row @(isSelected ? "selected" : "")" @onclick="() => ToggleStyle(style)">
+                                    <MudCheckBox T="bool" Value="isSelected" Dense="true" Size="Size.Small"
+                                                 ReadOnly="true" />
+                                    <span class="style-name">@style.Name</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+
+            @* LLM Instruction Row - Inline prompt editing via chat edit *@
+            <MudCollapse Expanded="@_showLLMInstruction">
+                <div class="llm-instruction-row">
+                    <div class="llm-instruction-field" @ref="_llmInstructionFieldRef">
+                        <MudTextField @bind-Value="_llmInstruction"
+                                      Placeholder="Type instruction to modify the prompt - Enter to send, Shift+Enter for newline"
+                                      Variant="Variant.Text" Lines="1" AutoGrow="true" MaxLines="3" Disabled="@_isProcessingLLM"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_isProcessingLLM ? null : Icons.Material.Filled.Send)"
+                                      AdornmentColor="Color.Primary" OnAdornmentClick="HandleLLMInstructionSend"
+                                      OnKeyDown="HandleLLMInstructionKeyDown" Class="llm-instruction-input" />
+                    </div>
+                    <div class="llm-instruction-verbosity">
+                        <MudTooltip Text="@GetVerbosityTooltip()" Placement="Placement.Top">
+                            <MudSlider T="int" Value="@((int)State.State.Generation.LLM.Verbosity)"
+                                       ValueChanged="HandleVerbosityChanged" Min="0" Max="3" Step="1" Variant="Variant.Filled"
+                                       Size="Size.Small" Disabled="@_isProcessingLLM" Class="verbosity-slider">
+                                <small>@ChatEditPromptBuilder.ToLabel(State.State.Generation.LLM.Verbosity)</small>
+                            </MudSlider>
+                        </MudTooltip>
+                    </div>
+                </div>
+            </MudCollapse>
+
+            @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
+            {
+                <MudChipSet Class="applied-styles-chips" AllClosable="true" OnClose="HandleAppliedChipClosed">
+                    @foreach (var style in State.GenerationParameters.Styles)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Value="@style">@style.Name
+                        </MudChip>
+                    }
+                </MudChipSet>
+            }
+        </MudStack>
+
+        @* Sticky split Generate button that overlaps the paper's bottom edge
+           for a distinctive focal point. Padding-bottom is added to the paper
+           so neither the styles row above nor the button itself cover content. *@
+        <div class="gen-btn-sticky">
+            <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnClearQueue="OnClearQueue"
+                            OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
+        </div>
+    </MudPaper>
+</div>
+
+<TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)"
+           ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+<TagDrawer @ref="NegativePromptDrawer" OnAppendTags="HandleNegativePromptTagAppended"
+           HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags"
+           OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
+
+@code {
+    #region Parameters
+    
+    /// <summary>
+    /// Fragment ID this form is associated with.
+    /// </summary>
+    [Parameter] public string FragmentId { get; set; } = "prompts";
+    
+    /// <summary>
+    /// Current prompt value.
+    /// </summary>
+    [Parameter] public string? Prompt { get; set; }
+    [Parameter] public EventCallback<string> PromptChanged { get; set; }
+    
+    /// <summary>
+    /// Current negative prompt value.
+    /// </summary>
+    [Parameter] public string? NegativePrompt { get; set; }
+    [Parameter] public EventCallback<string> NegativePromptChanged { get; set; }
+    
+    /// <summary>
+    /// Called when generate button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnGenerate { get; set; }
+    
+    /// <summary>
+    /// Called when the user clears the remaining queued prompts.
+    /// </summary>
+    [Parameter] public EventCallback OnClearQueue { get; set; }
+
+    /// <summary>
+    /// Called when interrupt button is clicked.
+    /// </summary>
+    [Parameter] public EventCallback OnInterrupt { get; set; }
+    
+    /// <summary>
+    /// Called when styles selection changes.
+    /// </summary>
+    [Parameter] public EventCallback OnStylesChanged { get; set; }
+    
+    /// <summary>
+    /// Called when a LoRA is selected from autocomplete.
+    /// Parent should add to its LoRA list.
+    /// </summary>
+    [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
+    
+    /// <summary>
+    /// Called when tags are appended to the prompt.
+    /// </summary>
+    [Parameter] public EventCallback<AppendedTags> OnPromptTagAppended { get; set; }
+    
+    /// <summary>
+    /// Called when tags are appended to the negative prompt.
+    /// </summary>
+    [Parameter] public EventCallback<AppendedTags> OnNegativePromptTagAppended { get; set; }
+    
+    /// <summary>
+    /// Whether the generate button is disabled.
+    /// </summary>
+    [Parameter] public bool ButtonDisabled { get; set; }
+    
+    /// <summary>
+    /// Reference to the prompt drawer (can be set externally).
+    /// </summary>
+    [Parameter] public TagDrawer? PromptDrawer { get; set; }
+    
+    /// <summary>
+    /// Reference to the negative prompt drawer (can be set externally).
+    /// </summary>
+    [Parameter] public TagDrawer? NegativePromptDrawer { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #endregion
+    
+    #region Private Fields
+
+    private int _activePromptTab = 0;
+    private bool _isConverging = false;
+    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
+    private List<PromptStyle>? _availableStyles;
+    private string _stylesSearchText = string.Empty;
+    private PromptButton? _buttonTags;
+    private ElementReference _containerRef;
+    private GenerateButton? _generateButtonRef;
+
+    // LLM instruction fields
+    private string _llmInstruction = string.Empty;
+    private bool _isProcessingLLM = false;
+    private bool _showLLMInstruction = false;
+    private string _lastPromptForHistory = string.Empty;
+    private string _lastNegativePromptForHistory = string.Empty;
+
+    private void ScheduleCurrent()
+    {
+        var snapshot = State.GenerationParameters?.Clone() ?? new BlazorWebApp.Models.GenerationParameters();
+        var job = new BlazorWebApp.Scheduler.Models.Job
+        {
+            Name = "New scheduled job",
+            Status = BlazorWebApp.Scheduler.Models.JobStatus.Draft,
+            WorkflowId = snapshot.WorkflowId,
+            BaseParameters = snapshot,
+            Actions = { new BlazorWebApp.Scheduler.Models.JobAction { Order = 0, Label = "Action 1" } },
+        };
+        ScheduleSnapshot.Set(job);
+        Snackbar.Add("Parameters captured. Opening Scheduler Editor...", Severity.Info);
+        NavManager.NavigateTo("/scheduler/editor");
+    }
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<PromptsForm>? _dotNetRef;
+    private ElementReference _llmInstructionFieldRef;
+    
+    #endregion
+    
+    #region Lifecycle
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Load button tags from IOService
+        LoadButtonTags();
+        
+        // Load styles from database
+        await LoadStyles();
+        
+        _dotNetRef = DotNetObjectReference.Create(this);
+        
+        // Subscribe to state changes to update styles when they're loaded
+        Events.Subscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Subscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
+
+        // Initialize prompt history with current state
+        _lastPromptForHistory = Prompt ?? string.Empty;
+        _lastNegativePromptForHistory = NegativePrompt ?? string.Empty;
+        _promptHistory.PushPrompt(_lastPromptForHistory, _lastNegativePromptForHistory);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/Input.js");
+                await _jsModule.InvokeVoidAsync("initializePromptFieldsKeyboard", _containerRef, _dotNetRef);
+            }
+            catch (Exception)
+            {
+                // Keyboard shortcut initialization failed, but component still works
+            }
+        }
+        
+        // Attach Enter-to-send handler when LLM instruction panel is visible
+        if (_showLLMInstruction && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("attachLLMInstructionEnterHandler", _llmInstructionFieldRef);
+            }
+            catch (Exception)
+            {
+                // Non-fatal: Enter-to-send still works via OnKeyDown, but a stray newline may appear
+            }
+        }
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task HandlePromptValueChanged(string value)
+    {
+        await PromptChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task HandleNegativePromptValueChanged(string value)
+    {
+        await NegativePromptChanged.InvokeAsync(value);
+        await OnChanged.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Handles prompt field blur event to persist state to history.
+    /// </summary>
+    private Task HandlePromptBlur(FocusEventArgs e)
+    {
+        PushToHistory();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles negative prompt field blur event to persist state to history.
+    /// </summary>
+    private Task HandleNegativePromptBlur(FocusEventArgs e)
+    {
+        PushToHistory();
+        return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Handles LoRA selection from autocomplete trigger.
+    /// Emits to parent to add to LoRA list.
+    /// </summary>
+    private async Task HandleLoraSelected(Lora lora)
+    {
+        await OnLoraSelected.InvokeAsync(lora);
+    }
+
+    /// <summary>
+    /// Handles style selection from autocomplete trigger.
+    /// Adds the style to the generation state styles list.
+    /// </summary>
+    private async Task HandleStyleSelected(PromptStyle style)
+    {
+        // Get current styles or initialize empty list
+        var currentStyles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
+        
+        // Check if style already exists (avoid duplicates)
+        if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            currentStyles.Add(style);
+            State.GenerationParameters.Styles = currentStyles;
+            await OnStylesChanged.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleStylesSelectionChanged(IEnumerable<PromptStyle> styles)
+    {
+        State.GenerationParameters.Styles = styles.ToList();
+        await OnStylesChanged.InvokeAsync();
+    }
+
+    private async Task HandleLLMPromptApplied(string prompt, bool isNegative)
+    {
+        if (isNegative)
+        {
+            await NegativePromptChanged.InvokeAsync(prompt);
+        }
+        else
+        {
+            await PromptChanged.InvokeAsync(prompt);
+        }
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task HandlePromptTagAppended(AppendedTags tags)
+    {
+        await OnPromptTagAppended.InvokeAsync(tags);
+    }
+    
+    private async Task HandleNegativePromptTagAppended(AppendedTags tags)
+    {
+        await OnNegativePromptTagAppended.InvokeAsync(tags);
+    }
+
+    private async Task WritePrompts()
+    {
+        // Apply styles to current prompts and emit new values
+        var styles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
+        
+        if (styles.Any())
+        {
+            var newPrompt = Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
+            var newNegative = NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(),
+true);
+            
+            await PromptChanged.InvokeAsync(newPrompt);
+            await NegativePromptChanged.InvokeAsync(newNegative);
+            await OnChanged.InvokeAsync();
+            
+            // Clear styles after writing
+            await HandleStylesSelectionChanged(Array.Empty<PromptStyle>());
+        }
+    }
+
+    private async Task HandleAutocompleteChanged(bool value)
+    {
+        State.State.Generation.Autocomplete.IsEnabled = value;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleFuzzySearchChanged(bool value)
+    {
+        State.State.Generation.Autocomplete.EnableFuzzySearch = value;
+        await State.SaveState();
+        StateHasChanged();
+    }
+    
+    #endregion
+    
+    #region State & Styles
+    
+    private async Task LoadStyles()
+    {
+        try
+        {
+            // Load prompts from database and convert to styles
+            var promptResources = await DB.GetPrompts();
+            var styles = new List<PromptStyle>();
+            
+            foreach (var prompt in promptResources)
+            {
+                styles.Add(new PromptStyle(prompt));
+            }
+            
+            // Update available styles list
+            _availableStyles = styles;
+            
+            // If there are currently selected styles in state, preserve them if they still exist
+            if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
+            {
+                var currentStyles = State.GenerationParameters.Styles.ToList();
+                State.GenerationParameters.Styles = styles.Where(s => currentStyles.Any(cs => cs.Name == s.Name)).ToList();
+            }
+            else
+            {
+                // Initialize to empty list if null
+                State.GenerationParameters.Styles = new List<PromptStyle>();
+            }
+        }
+        catch (Exception)
+        {
+            // If styles loading fails, initialize to empty list
+            _availableStyles = new List<PromptStyle>();
+            State.GenerationParameters.Styles ??= new List<PromptStyle>();
+        }
+    }
+
+    private async void HandleStateChanged(StateChangedEventArgs args)
+    {
+        // Reload styles from database when state changes (in case new prompts were added)
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
+    {
+        // Skip reload if this was triggered by our own LoadStyles (would cause infinite recursion)
+        // Only reload when external changes happen (e.g., prompts added/updated/deleted from other components)
+        if (args.ChangeType == "Loaded")
+            return;
+            
+        // Reload styles from database when prompts are added/updated/deleted
+        await LoadStyles();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadButtonTags()
+    {
+        try
+        {
+            var json = IO.GetJsonAsString("Data/example.json");
+            _buttonTags = JsonSerializer.Deserialize<PromptButton>(json, new JsonSerializerOptions()
+            {
+                PropertyNameCaseInsensitive =
+true
+            });
+        }
+        catch
+        {
+            _buttonTags = null;
+        }
+    }
+    
+    #endregion
+    
+    #region LLM Instruction Handling
+
+    /// <summary>
+    /// Handles the send button click or Enter key press on the LLM instruction field.
+    /// Sends the instruction to the LLM via the Workshop service's chat edit functionality.
+    /// </summary>
+    private async Task HandleLLMInstructionSend()
+    {
+        if (string.IsNullOrWhiteSpace(_llmInstruction) || _isProcessingLLM)
+            return;
+
+        var instruction = _llmInstruction.Trim();
+        _isProcessingLLM = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get current settings from shared LLM state
+            var model = State.State.Generation.LLM.Model;
+            var verbosity = State.State.Generation.LLM.Verbosity;
+            var temperature = State.State.Generation.LLM.Options.Temperature;
+
+            // If no model is selected, try to get the first available model
+            if (string.IsNullOrEmpty(model))
+            {
+                var models = await OllamaService.GetModels();
+                if (models.Count == 0)
+                {
+                    Snackbar.Add("No LLM models available. Please check your Ollama service.", Severity.Error);
+                    return;
+                }
+                model = models[0].Name;
+                State.State.Generation.LLM.Model = model;
+                await State.SaveState();
+            }
+
+            // Determine which prompt to edit based on active tab
+            var currentPrompt = _activePromptTab == 1 ? (NegativePrompt ?? string.Empty) : (Prompt ?? string.Empty);
+            
+            if (string.IsNullOrWhiteSpace(currentPrompt))
+            {
+                Snackbar.Add("No prompt to edit. Please enter a prompt first.", Severity.Warning);
+                return;
+            }
+
+            // Build chat messages using the Workshop's ChatEditPromptBuilder
+            var messages = new List<BlazorWebApp.Data.Dtos.Ollama.OllamaChatMessage>
+            {
+                new() { Role = "system", Content = ChatEditPromptBuilder.BuildSystemPrompt(verbosity) },
+                new() { Role = "assistant", Content = currentPrompt },
+                new() { Role = "user", Content = instruction }
+            };
+
+            // Call Ollama with the chat edit system prompt
+            var ollamaOptions = new BlazorWebApp.Data.Dtos.Ollama.OllamaOptions { Temperature = temperature };
+            var response = await OllamaService.SendChatMessage(model, messages, ollamaOptions);
+            var updatedPrompt = response?.Message?.Content ?? currentPrompt;
+
+            // Push current state to history before applying the change
+            PushToHistory();
+
+            // Update the appropriate prompt
+            if (_activePromptTab == 1)
+            {
+                await NegativePromptChanged.InvokeAsync(updatedPrompt);
+            }
+            else
+            {
+                await PromptChanged.InvokeAsync(updatedPrompt);
+            }
+
+            await OnChanged.InvokeAsync();
+
+            // Clear the instruction field
+            _llmInstruction = string.Empty;
+            
+            Snackbar.Add("Prompt updated successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error processing instruction: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessingLLM = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles key presses in the LLM instruction field.
+    /// Enter (without Shift/Ctrl/Alt) triggers the send action.
+    /// </summary>
+    private async Task HandleLLMInstructionKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !e.CtrlKey && !e.AltKey)
+        {
+            await HandleLLMInstructionSend();
+        }
+    }
+
+    /// <summary>
+    /// Pushes the current prompt state to the history stack.
+    /// Called before applying LLM changes or on blur events.
+    /// </summary>
+    private void PushToHistory()
+    {
+        var currentPrompt = Prompt ?? string.Empty;
+        var currentNegative = NegativePrompt ?? string.Empty;
+
+        // Only push if the state has actually changed
+        if (currentPrompt != _lastPromptForHistory || currentNegative != _lastNegativePromptForHistory)
+        {
+            _promptHistory.PushPrompt(currentPrompt, currentNegative);
+            _lastPromptForHistory = currentPrompt;
+            _lastNegativePromptForHistory = currentNegative;
+        }
+    }
+
+    /// <summary>
+    /// Handles the Undo button click.
+    /// Restores the previous prompt state from history.
+    /// </summary>
+    private async Task HandleUndo()
+    {
+        var previous = _promptHistory.Undo();
+        if (previous.HasValue)
+        {
+            await PromptChanged.InvokeAsync(previous.Value.Prompt);
+            await NegativePromptChanged.InvokeAsync(previous.Value.NegativePrompt);
+            await OnChanged.InvokeAsync();
+            _lastPromptForHistory = previous.Value.Prompt;
+            _lastNegativePromptForHistory = previous.Value.NegativePrompt;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles the Redo button click.
+    /// Restores the next prompt state from history.
+    /// </summary>
+    private async Task HandleRedo()
+    {
+        var next = _promptHistory.Redo();
+        if (next.HasValue)
+        {
+            await PromptChanged.InvokeAsync(next.Value.Prompt);
+            await NegativePromptChanged.InvokeAsync(next.Value.NegativePrompt);
+            await OnChanged.InvokeAsync();
+            _lastPromptForHistory = next.Value.Prompt;
+            _lastNegativePromptForHistory = next.Value.NegativePrompt;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles verbosity slider change for inline chat edit instructions.
+    /// </summary>
+    private async Task HandleVerbosityChanged(int verbosity)
+    {
+        State.State.Generation.LLM.Verbosity = (ChatVerbosity)verbosity;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Gets the tooltip text for the current verbosity level.
+    /// </summary>
+    private string GetVerbosityTooltip()
+    {
+        return State.State.Generation.LLM.Verbosity switch
+        {
+            ChatVerbosity.Minimal => "Minimal: Brief, concise changes",
+            ChatVerbosity.Match => "Match: Maintain original prompt style and length",
+            ChatVerbosity.Detailed => "Detailed: Add more descriptive details",
+            ChatVerbosity.Elaborate => "Elaborate: Expand with rich descriptions",
+            _ => "Select verbosity level"
+        };
+    }
+
+    #endregion
+    
+    #region Keyboard Shortcuts
+
+    [JSInvokable]
+    public async Task HandleCtrlEnter()
+    {
+        if (!ButtonDisabled && !_isConverging && _generateButtonRef != null)
+        {
+            _generateButtonRef.Generate();
+        }
+    }
+
+    /// <summary>
+    /// Cycles between prompt tabs. direction = 1 (next) or -1 (previous).
+    /// Invoked from JS on Ctrl+Tab / Ctrl+Shift+Tab.
+    /// </summary>
+    [JSInvokable]
+    public Task HandleTabSwitch(int direction)
+    {
+        const int tabCount = 3;
+        _activePromptTab = ((_activePromptTab + direction) % tabCount + tabCount) % tabCount;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Jumps to a specific prompt tab index. Invoked from JS on Alt+1 / Alt+2 / Alt+3.
+    /// </summary>
+    [JSInvokable]
+    public Task HandleTabSelect(int index)
+    {
+        if (index >= 0 && index <= 2)
+        {
+            _activePromptTab = index;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Builds the positive-prompt tab label, appending a bullet indicator when the
+    /// field has content so users can see populated state across both tabs at a glance.
+    /// </summary>
+    private string GetPromptTabLabel()
+        => string.IsNullOrWhiteSpace(Prompt) ? "Prompt" : "Prompt \u2022";
+
+    private string GetNegativePromptTabLabel()
+        => string.IsNullOrWhiteSpace(NegativePrompt) ? "Negative" : "Negative \u2022";
+
+    /// <summary>
+    /// Builds the styles tab label, appending the selected count when non-zero.
+    /// </summary>
+    private string GetStylesTabLabel()
+    {
+        var count = State.GenerationParameters?.Styles?.Count ?? 0;
+        return count > 0 ? $"Styles ({count})" : "Styles";
+    }
+
+    /// <summary>
+    /// Maps the active tab index to a CSS accent class used to tint the slider,
+    /// the active tab label, and the textarea underline below it.
+    /// </summary>
+    private string GetActiveTabAccent() => _activePromptTab switch
+    {
+        0 => "positive",
+        1 => "negative",
+        2 => "styles",
+        _ => "positive"
+    };
+
+    #endregion
+
+    #region Styles Tab
+
+    /// <summary>
+    /// Returns the filtered list of available styles based on the search text.
+    /// Empty-prompt styles are skipped. Matching is case-insensitive on the Name.
+    /// </summary>
+    private IEnumerable<PromptStyle> GetFilteredStyles()
+    {
+        if (_availableStyles == null) return Enumerable.Empty<PromptStyle>();
+
+        var query = _availableStyles
+            .Where(s => !(string.IsNullOrWhiteSpace(s.Prompt) && string.IsNullOrWhiteSpace(s.NegativePrompt)));
+
+        if (!string.IsNullOrWhiteSpace(_stylesSearchText))
+        {
+            var needle = _stylesSearchText.Trim();
+            query = query.Where(s => s.Name != null
+                && s.Name.Contains(needle, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return query.OrderBy(s => s.Name);
+    }
+
+    private bool IsStyleSelected(PromptStyle style)
+        => State.GenerationParameters?.Styles?.Any(s => s.Name == style.Name) ?? false;
+
+    /// <summary>
+    /// Toggles a style in the selected set. Called from the styles tab checkbox rows.
+    /// </summary>
+    private async Task ToggleStyle(PromptStyle style)
+    {
+        var current = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
+        var existing = current.FirstOrDefault(s => s.Name == style.Name);
+        if (existing != null)
+        {
+            current.Remove(existing);
+        }
+        else
+        {
+            current.Add(style);
+        }
+        await HandleStylesSelectionChanged(current);
+    }
+
+    /// <summary>
+    /// Handles the close-button click on an individual applied-styles chip.
+    /// MudChipSet invokes this with the chip's Value so we can remove it.
+    /// </summary>
+    private async Task HandleAppliedChipClosed(MudChip chip)
+    {
+        if (chip?.Value is not PromptStyle style) return;
+        var current = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
+        var existing = current.FirstOrDefault(s => s.Name == style.Name);
+        if (existing != null)
+        {
+            current.Remove(existing);
+            await HandleStylesSelectionChanged(current);
+        }
+    }
+
+    #endregion
+    
+    #region Dispose
+    
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(HandleStateChanged);
+        Events.Unsubscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        
+        _dotNetRef?.Dispose();
+        if (_jsModule != null)
+        {
+            await _jsModule.DisposeAsync();
+        }
+    }
+    
+    #endregion
+}

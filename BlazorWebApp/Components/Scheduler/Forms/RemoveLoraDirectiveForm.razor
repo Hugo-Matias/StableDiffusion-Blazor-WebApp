@@ -1,0 +1,38 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+
+<MudStack Spacing="2">
+    @if (_loraNames.Count > 0)
+    {
+        <MudSelect T="string" @bind-Value="Directive.LoraName" Label="LoRA" Variant="Variant.Text"
+                   Dense="true" AnchorOrigin="Origin.BottomCenter">
+            @foreach (var name in _loraNames)
+            {
+                <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <MudTextField @bind-Value="Directive.LoraName" Label="LoRA name" Variant="Variant.Text"
+                      HelperText="No LoRAs in base parameters; enter the target name manually." />
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public RemoveLoraDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private List<string> _loraNames = new();
+
+    protected override void OnParametersSet()
+    {
+        _loraNames = Job?.BaseParameters?.Loras?
+            .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+            .Select(l => l.Name!)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList() ?? new();
+    }
+}
+

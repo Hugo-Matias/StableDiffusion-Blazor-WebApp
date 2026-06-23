@@ -1,0 +1,868 @@
+@using BlazorWebApp.Extensions
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@using static BlazorWebApp.Data.Enums;
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject IJSRuntime JS
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject ISessionService Session
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="asset-viewer-overlay" @onkeydown="HandleKeyDown" @onwheel="HandleWheel" @onwheel:preventDefault="_isPanMode"
+         tabindex="0" @ref="_overlayRef">
+        <div class="asset-viewer-container">
+            
+            <!-- Close Button -->
+            <button class="viewer-btn close-btn" @onclick="Close" title="Close (Esc)">
+                <MudIcon Icon="fa-solid fa-xmark" />
+            </button>
+
+            <!-- Main Display -->
+            <div class="asset-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "") @(_isCompareMode ? "compare-mode" : "") @(_isCompareLocked ? "compare-locked" : "")"
+                 @ref="_stageRef" @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
+                @if (CurrentAsset != null && !_isLoadingPage)
+                {
+                    @if (IsCurrentVideo)
+                    {
+                        <video @key="CurrentAsset.Path" class="viewer-media" controls loop muted autoplay
+                               @onclick:stopPropagation="true">
+                            <source src="@GetAssetUrl(CurrentAsset)" />
+                        </video>
+                    }
+                    else
+                    {
+                        <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                             src="@GetAssetUrl(CurrentAsset)" alt="Asset @(_currentIndex + 1)" style="@GetImageTransformStyle()"
+                             draggable="false" @onclick:stopPropagation="@(!_isCompareMode)" />
+                    }
+                }
+                @if (_isLoadingPage)
+                {
+                    <div class="loading-spinner">
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                        <span class="loading-text">Loading page...</span>
+                    </div>
+                }
+
+                @if (_isCompareMode && !IsCurrentVideo && CurrentSource != null && !_isLoadingPage)
+                {
+                    <div class="compare-frame" @ref="_compareFrameRef">
+                        <img class="compare-overlay" src="@GetSourceUrl(CurrentSource)" alt="Source" draggable="false"
+                             @onclick:stopPropagation="true" />
+                        <div class="compare-divider" @onclick:stopPropagation="true">
+                            <div class="compare-divider-line"></div>
+                            <div class="compare-handle">
+                                <MudIcon Icon="fa-solid fa-arrows-left-right" Size="Size.Small" />
+                            </div>
+                        </div>
+                        <span class="compare-label compare-label-base">Generated</span>
+                        <span class="compare-label compare-label-source">@(string.IsNullOrWhiteSpace(CurrentSource.Label) ?
+                                                                                                "Source" : CurrentSource.Label)</span>
+                        </div>
+                        @if (_isCompareLocked)
+                        {
+                            <div class="compare-lock-indicator">
+                                <MudIcon Icon="fa-solid fa-lock" Size="Size.Small" />
+                                <span>Locked &middot; click to unlock</span>
+                            </div>
+                        }
+                        @if (_compareSourceKeys.Count > 1)
+                        {
+                            <div class="compare-source-picker" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true">
+                                @foreach (var key in _compareSourceKeys)
+                                {
+                                    var src = State.GenerationParameters.Sources[key];
+                                    <button class="compare-source-chip @(_currentSourceKey == key ? "active" : "")"
+                                            @onclick="() => SelectCompareSource(key)" type="button" title="@(src.Label ?? key)">
+                                        <span>@(string.IsNullOrWhiteSpace(src.Label) ? key : src.Label)</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Bottom Control Bar -->
+                @if (!_isLoadingPage)
+                {
+                    <div class="control-bar" @onclick:stopPropagation="true">
+                        <!-- Left: Favorite & Rating -->
+                        @if (CurrentAsset?.Id > 0 && (ShowFavorite || ShowScore))
+                        {
+                            <div class="control-section">
+                                @if (ShowFavorite)
+                                {
+                                    <button class="viewer-btn @(CurrentAsset.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
+                                            title="Favorite (F)">
+                                        <MudIcon
+                                        Icon="@(CurrentAsset.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                                    </button>
+                                    @if (TotalCount > 1)
+                                    {
+                                        <button class="viewer-btn fav-all-btn" @onclick="FavoriteAllOnPage" title="Favorite All on Page">
+                                            <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                                        </button>
+                                    }
+                                }
+                                @if (ShowScore)
+                                {
+                                    <div class="rating-container">
+                                        <MudRating SelectedValue="CurrentAsset.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                                                   Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <!-- Center: Navigation -->
+                        <div class="control-section nav-section">
+                            <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
+                                <MudIcon Icon="fa-solid fa-chevron-left" />
+                            </button>
+                        
+                            <div class="counter">
+                                <div class="counter-main">
+                                    <span class="counter-current">@(_currentIndex + 1)</span>
+                                    <span class="counter-sep">/</span>
+                                    <span class="counter-total">@Assets.Count</span>
+                                    <span class="counter-dot">•</span>
+                                    <span class="counter-total-label">@TotalCount</span>
+                                </div>
+                                @if (PageCount > 1)
+                                {
+                                    <div class="counter-page-info">
+                                        <span class="counter-page-label">Page @CurrentPage of @PageCount</span>
+                                    </div>
+                                }
+                            </div>
+                        
+                            <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
+                                <MudIcon Icon="fa-solid fa-chevron-right" />
+                            </button>
+                        </div>
+
+                        <!-- Right: Actions -->
+                        <div class="control-section actions-section">
+                            @if (Assets.Count > 1)
+                            {
+                                <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                                    <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                        <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                                    </button>
+                                </MudTooltip>
+                                <div class="slideshow-controls">
+                                    <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
+                                           min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
+                                    <span class="slideshow-unit">s</span>
+                                </div>
+                            }
+                        
+                            @if (!IsCurrentVideo)
+                            {
+                                <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
+                                    <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
+                                            title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                                        <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
+                                    </button>
+                                </MudTooltip>
+                                @if (_isPanMode)
+                                {
+                                    <MudTooltip Text="Reset View (R)" Delay="300">
+                                        <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
+                                            <MudIcon Icon="fa-solid fa-crosshairs" />
+                                        </button>
+                                    </MudTooltip>
+                                }
+                                @if (HasCompareSources)
+                                {
+                                    <MudTooltip Text="@(_isCompareMode ? "Exit Compare (C)" : "A/B Compare with source (C)")" Delay="300">
+                                        <button class="viewer-btn @(_isCompareMode ? "active" : "")" @onclick="ToggleCompareMode"
+                                                title="@(_isCompareMode ? "Exit Compare" : "A/B Compare")">
+                                            <MudIcon Icon="fa-solid fa-arrows-left-right" />
+                                        </button>
+                                    </MudTooltip>
+                                }
+                            }
+
+                            <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                                <MudIcon Icon="fa-solid fa-circle-info" />
+                            </button>
+                        
+                            @if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path) && ShowOpenInExplorer)
+                            {
+                                <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
+                                    <MudIcon Icon="fa-solid fa-folder-open" />
+                                </button>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(ExternalSourceUrl))
+                            {
+                                <MudTooltip Text="Open source in new tab" Delay="300">
+                                    <a class="viewer-btn" href="@ExternalSourceUrl" target="_blank" rel="noopener noreferrer"
+                                           title="Open source">
+                                        <MudIcon Icon="fa-solid fa-up-right-from-square" />
+                                    </a>
+                                </MudTooltip>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Zoom indicator -->
+                @if (_isPanMode && _showZoomIndicator)
+                {
+                    <div class="zoom-indicator">
+                        @((_zoom * 100).ToString("0"))%
+                    </div>
+                }
+
+                <!-- Asset type indicator -->
+                @if (!_isLoadingPage)
+                {
+                    <div class="asset-type-indicator">
+                        <MudIcon Icon="@(IsCurrentVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
+                    </div>
+                }
+
+                <!-- Info Panel -->
+                <div class="info-panel @(_showInfo ? "open" : "")">
+                    <AssetInfoPanel Asset="CurrentAsset" IsVideo="IsCurrentVideo" ShowKeyboardShortcuts="true"
+                                    SelectedParams="_selectedParams" SelectedParamsChanged="HandleSelectedParamsChanged"
+                                    OnClose="ToggleInfo" OnRequestSaveLocal="ViewerRequestSaveLocal"
+                                    ExternalImageHintText="@ExternalImageHintText" ExternalImageActionText="@ExternalImageActionText"
+                                    ExternalImageActionIcon="@ExternalImageActionIcon"
+                                    ImageToPromptSourceLabel="@ImageToPromptSourceLabel" />
+                </div>
+            </div>
+        </div>
+    }
+
+@code {
+    [Parameter] public List<ImageEntity> Assets { get; set; } = new();
+    [Parameter] public int StartIndex { get; set; } = 0;
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [Parameter] public EventCallback<ImageEntity> OnAssetChanged { get; set; }
+    
+    // Pagination support
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int PageCount { get; set; } = 1;
+    [Parameter] public int TotalCount { get; set; } = 0;
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+
+    // Optional control-bar visibility flags. Defaults preserve existing behaviour for
+    // local-asset consumers (Gallery, Danbooru, Img2Vid, generation tabs). Remote-asset
+    // consumers (e.g., CivitAI) set these to false and may supply ExternalSourceUrl to
+    // surface a "Open source" affordance.
+    [Parameter] public bool ShowFavorite { get; set; } = true;
+    [Parameter] public bool ShowScore { get; set; } = true;
+    [Parameter] public bool ShowOpenInExplorer { get; set; } = true;
+    [Parameter] public string? ExternalSourceUrl { get; set; }
+    [Parameter] public Func<ImageEntity, Task<ImageEntity?>>? OnRequestSaveLocal { get; set; }
+    [Parameter] public string ExternalImageHintText { get; set; } = "Bookmark this image to enable workflow send. Only prompt parameters are available for external images.";
+    [Parameter] public string ExternalImageActionText { get; set; } = "Bookmark";
+    [Parameter] public string ExternalImageActionIcon { get; set; } = "fa-solid fa-bookmark";
+    [Parameter] public string ImageToPromptSourceLabel { get; set; } = "Asset Info";
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private ElementReference _overlayRef;
+    private int _currentIndex;
+    private bool _showInfo;
+    private bool _autoPlay;
+    private System.Timers.Timer? _autoPlayTimer;
+    private float _autoPlayInterval = 5f;
+    private bool _wasVisible;
+    private HashSet<string> _selectedParams = new();
+
+    // Pan & Zoom state
+    private bool _isPanMode;
+    private bool _isDragging;
+    private double _zoom = 1.0;
+    private double _panX = 0;
+    private double _panY = 0;
+    private double _dragStartX;
+    private double _dragStartY;
+    private double _dragStartPanX;
+    private double _dragStartPanY;
+    private bool _showZoomIndicator;
+    private System.Timers.Timer? _zoomIndicatorTimer;
+    private bool _isLoadingPage;
+
+    private const double MinZoom = 0.25;
+    private const double MaxZoom = 5.0;
+    private const double ZoomStep = 0.15;
+
+    // A/B Compare state
+    private ElementReference _stageRef;
+    private ElementReference _compareFrameRef;
+    private bool _isCompareMode;
+    private bool _isCompareLocked;
+    private bool _compareAttached;
+    private double _splitPosition = 0.5; // 0..1, source on left, base on right
+    private string? _currentSourceKey;
+    private List<string> _compareSourceKeys = new();
+    private const double CompareNudgeStep = 0.02;
+    private bool _suppressNextStageClick;
+
+    private ImageEntity? CurrentAsset => _currentIndex >= 0 && _currentIndex < Assets.Count
+        ? Assets[_currentIndex]
+        : null;
+
+    private bool IsCurrentVideo => CurrentAsset?.Path != null && IsVideoFile(CurrentAsset.Path);
+    private Func<ImageEntity, Task<ImageEntity?>>? ViewerRequestSaveLocal => OnRequestSaveLocal == null ? null :
+HandleRequestSaveLocal;
+
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    // ----- A/B Compare helpers -----
+
+    private bool HasCompareSources => GetCompareSourceKeys().Count > 0;
+
+    private BlazorWebApp.Models.SourceAsset? CurrentSource =>
+        _currentSourceKey != null && State.GenerationParameters.Sources.TryGetValue(_currentSourceKey, out var s)
+            ? s
+            : null;
+
+    private List<string> GetCompareSourceKeys()
+    {
+        var sources = State.GenerationParameters?.Sources;
+        if (sources == null || sources.Count == 0) return new();
+        return sources
+            .Where(kvp => IsImageSource(kvp.Value))
+            .Select(kvp => kvp.Key)
+            .ToList();
+    }
+
+    private static bool IsImageSource(BlazorWebApp.Models.SourceAsset s)
+    {
+        if (!s.HasData) return false;
+        // Treat anything not explicitly "video" as comparable. Defensive against missing Type.
+        if (string.Equals(s.Type, "video", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
+    }
+
+    private string GetSourceUrl(BlazorWebApp.Models.SourceAsset source)
+    {
+        // Prefer in-memory data (most accurate to what's loaded). Fall back to disk path.
+        if (!string.IsNullOrWhiteSpace(source.Data))
+        {
+            var data = source.Data!;
+            if (data.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return data;
+            // Raw base64 -> assume png
+            return $"data:image/png;base64,{data}";
+        }
+        if (!string.IsNullOrWhiteSpace(source.FilePath))
+        {
+            try { return IO.GetImageStaticFile(source.FilePath!); } catch { }
+        }
+        return string.Empty;
+    }
+
+    private void HandleSelectedParamsChanged(HashSet<string> selectedParams)
+    {
+        _selectedParams = selectedParams;
+        StateHasChanged();
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (IsVisible && !_wasVisible && Assets.Count > 0)
+        {
+            _currentIndex = Math.Clamp(StartIndex, 0, Assets.Count - 1);
+            ResetZoom();
+            _selectedParams.Clear();
+        }
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !_wasVisible)
+        {
+            await SetBodyScrollLock(true);
+            try { await _overlayRef.FocusAsync(); } catch { }
+        }
+        else if (!IsVisible && _wasVisible)
+        {
+            await SetBodyScrollLock(false);
+        }
+
+        // Attach the JS compare controller once the compare-frame element is in the DOM.
+        if (IsVisible && _isCompareMode && !_compareAttached)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("assetViewerCompare.attach", _stageRef, _compareFrameRef, _splitPosition);
+                _compareAttached = true;
+            }
+            catch { }
+        }
+
+        _wasVisible = IsVisible;
+    }
+
+    private string GetAssetUrl(ImageEntity asset)
+    {
+        if (string.IsNullOrWhiteSpace(asset?.Path)) return string.Empty;
+        
+        try
+        {
+            return IO.GetImageStaticFile(asset.Path);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private async Task SetBodyScrollLock(bool locked)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $"document.body.style.overflow = '{(locked ? "hidden" : "auto")}'");
+        }
+        catch { }
+    }
+
+    private string GetImageTransformStyle()
+    {
+        if (!_isPanMode) return "";
+        return $"transform: translate({_panX}px, {_panY}px) scale({_zoom});";
+    }
+
+    private async Task HandleStageClick(MouseEventArgs e)
+    {
+        if (_isCompareMode)
+        {
+            // Click toggles lock (cursor follow vs frozen). Suppressed if we just finished
+            // a divider drag (HandleMouseUp sets the flag based on JS drag state).
+            if (_suppressNextStageClick)
+            {
+                _suppressNextStageClick = false;
+                return;
+            }
+            _isCompareLocked = !_isCompareLocked;
+            if (_isCompareLocked)
+            {
+                // Snapshot the current split so keyboard nudges resume from where we locked.
+                try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); }
+                catch { }
+            }
+            try { await JS.InvokeVoidAsync("assetViewerCompare.setLocked", _isCompareLocked); }
+            catch { }
+            return;
+        }
+
+        if (!_isPanMode)
+        {
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        StopAutoPlay();
+        _isPanMode = false;
+        await ExitCompareModeAsync();
+        ResetZoom();
+        _selectedParams.Clear();
+        IsVisible = false;
+        await SetBodyScrollLock(false);
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task Next()
+    {
+        if (_isLoadingPage) return;
+
+        if (_currentIndex < Assets.Count - 1)
+        {
+            _currentIndex++;
+            await OnNavigate();
+        }
+        else if (CurrentPage < PageCount)
+        {
+            // Set index to -1 temporarily to hide current asset during page load
+            _isLoadingPage = true;
+            _currentIndex = -1;
+            StateHasChanged(); // Force re-render with no asset showing
+            await Task.Delay(10); // Small delay to ensure render completes
+            await OnPageChange.InvokeAsync(CurrentPage + 1);
+            _currentIndex = 0;
+            _isLoadingPage = false;
+            await OnNavigate();
+        }
+        else
+        {
+            // Cycle back to first page
+            if (PageCount > 1)
+            {
+                _isLoadingPage = true;
+                _currentIndex = -1;
+                StateHasChanged();
+                await Task.Delay(10);
+                await OnPageChange.InvokeAsync(1);
+                _isLoadingPage = false;
+            }
+            _currentIndex = 0;
+            await OnNavigate();
+        }
+    }
+
+    private async Task Previous()
+    {
+        if (_isLoadingPage) return;
+
+        if (_currentIndex > 0)
+        {
+            _currentIndex--;
+            await OnNavigate();
+        }
+        else if (CurrentPage > 1)
+        {
+            // Set index to -1 temporarily to hide current asset during page load
+            _isLoadingPage = true;
+            _currentIndex = -1;
+            StateHasChanged(); // Force re-render with no asset showing
+            await Task.Delay(10); // Small delay to ensure render completes
+            await OnPageChange.InvokeAsync(CurrentPage - 1);
+            _currentIndex = Assets.Count - 1;
+            _isLoadingPage = false;
+            await OnNavigate();
+        }
+        else
+        {
+            // Cycle back to last page
+            if (PageCount > 1)
+            {
+                _isLoadingPage = true;
+                _currentIndex = -1;
+                StateHasChanged();
+                await Task.Delay(10);
+                await OnPageChange.InvokeAsync(PageCount);
+                _isLoadingPage = false;
+            }
+            _currentIndex = Assets.Count - 1;
+            await OnNavigate();
+        }
+    }
+
+    private async Task OnNavigate()
+    {
+        ResetZoom();
+        _selectedParams.Clear();
+        // If compare is active and the new asset is video, exit compare. Source list is
+        // workflow-driven so it doesn't change with navigation.
+        if (_isCompareMode && IsCurrentVideo) await ExitCompareModeAsync();
+        if (CurrentAsset != null) await OnAssetChanged.InvokeAsync(CurrentAsset);
+    }
+
+    private void ToggleInfo() => _showInfo = !_showInfo;
+
+    private async Task<ImageEntity?> HandleRequestSaveLocal(ImageEntity asset)
+    {
+        if (OnRequestSaveLocal == null)
+            return null;
+
+        var localAsset = await OnRequestSaveLocal.Invoke(asset);
+        if (localAsset == null)
+            return null;
+
+        if (_currentIndex >= 0 && _currentIndex < Assets.Count)
+        {
+            Assets[_currentIndex] = localAsset;
+        }
+
+        await OnAssetChanged.InvokeAsync(localAsset);
+        return localAsset;
+    }
+
+    private async Task TogglePanMode()
+    {
+        if (IsCurrentVideo) return;
+        if (_isCompareMode) await ExitCompareModeAsync();
+        _isPanMode = !_isPanMode;
+        if (!_isPanMode) ResetZoom();
+        else _zoom = 1.0;
+    }
+
+    private void ResetZoom()
+    {
+        _zoom = 1.0;
+        _panX = 0;
+        _panY = 0;
+    }
+
+    private async Task ToggleCompareMode()
+    {
+        if (IsCurrentVideo) return;
+        if (_isCompareMode)
+        {
+            await ExitCompareModeAsync();
+            return;
+        }
+
+        _compareSourceKeys = GetCompareSourceKeys();
+        if (_compareSourceKeys.Count == 0) return;
+
+        // Pan/Zoom and Compare are mutually exclusive.
+        if (_isPanMode)
+        {
+            _isPanMode = false;
+            ResetZoom();
+        }
+
+        _currentSourceKey = _compareSourceKeys.Contains(_currentSourceKey ?? string.Empty)
+            ? _currentSourceKey
+            : _compareSourceKeys[0];
+        _splitPosition = 0.5;
+        _isCompareLocked = false;
+        _suppressNextStageClick = false;
+        _isCompareMode = true;
+        _compareAttached = false;
+        // Actual JS attach happens in OnAfterRenderAsync once the compare-frame ref is bound.
+    }
+
+    private async Task ExitCompareModeAsync()
+    {
+        _isCompareMode = false;
+        _isCompareLocked = false;
+        _suppressNextStageClick = false;
+        if (_compareAttached)
+        {
+            _compareAttached = false;
+            try { await JS.InvokeVoidAsync("assetViewerCompare.detach"); }
+            catch { }
+        }
+    }
+
+    private void SelectCompareSource(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+        if (!State.GenerationParameters.Sources.ContainsKey(key)) return;
+        _currentSourceKey = key;
+        // Split persists across source switches; no JS reset required.
+    }
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (!_isPanMode || IsCurrentVideo) return;
+
+        var delta = e.DeltaY > 0 ? -ZoomStep : ZoomStep;
+        var newZoom = Math.Clamp(_zoom + delta, MinZoom, MaxZoom);
+        
+        if (newZoom != _zoom)
+        {
+            _zoom = newZoom;
+            ShowZoomIndicator();
+        }
+    }
+
+    private void ShowZoomIndicator()
+    {
+        _showZoomIndicator = true;
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _zoomIndicatorTimer = new System.Timers.Timer(800);
+        _zoomIndicatorTimer.Elapsed += async (s, e) =>
+        {
+            _showZoomIndicator = false;
+            _zoomIndicatorTimer?.Stop();
+            await InvokeAsync(StateHasChanged);
+        };
+        _zoomIndicatorTimer.AutoReset = false;
+        _zoomIndicatorTimer.Start();
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (e.Button != 0) return;
+        if (_isPanMode && !IsCurrentVideo)
+        {
+            _isDragging = true;
+            _dragStartX = e.ClientX;
+            _dragStartY = e.ClientY;
+            _dragStartPanX = _panX;
+            _dragStartPanY = _panY;
+        }
+        // Compare-mode pointer math is owned by JS (see assetViewerCompare in Site.js).
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (_isDragging)
+        {
+            _panX = _dragStartPanX + (e.ClientX - _dragStartX);
+            _panY = _dragStartPanY + (e.ClientY - _dragStartY);
+        }
+        // Compare-mode mouse tracking is handled in JS to avoid stale rect caches and
+        // round-trip latency. JS writes directly to the --ab-split CSS variable.
+    }
+
+    private async Task HandleMouseUp(MouseEventArgs e)
+    {
+        _isDragging = false;
+        // If the user just released a divider drag, suppress the synthetic click that
+        // bubbles up to the stage so we don't accidentally toggle the lock.
+        if (_isCompareMode)
+        {
+            try
+            {
+                var wasDragging = await JS.InvokeAsync<bool>("assetViewerCompare.wasDragging");
+                if (wasDragging) _suppressNextStageClick = true;
+            }
+            catch { }
+        }
+    }
+
+    private void ToggleAutoPlay()
+    {
+        _autoPlay = !_autoPlay;
+        if (_autoPlay) StartAutoPlay();
+        else StopAutoPlay();
+    }
+
+    private void StartAutoPlay()
+    {
+        StopAutoPlay();
+        _autoPlay = true;
+        _autoPlayTimer = new System.Timers.Timer(Math.Max(_autoPlayInterval, 1) * 1000);
+        _autoPlayTimer.Elapsed += async (s, e) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await Next();
+                StateHasChanged();
+            });
+        };
+        _autoPlayTimer.AutoReset = true;
+        _autoPlayTimer.Start();
+    }
+
+    private void StopAutoPlay()
+    {
+        _autoPlayTimer?.Stop();
+        _autoPlayTimer?.Dispose();
+        _autoPlayTimer = null;
+        _autoPlay = false;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": await Close(); break;
+            case "ArrowLeft": await Previous(); break;
+            case "ArrowRight": await Next(); break;
+            case " ": ToggleAutoPlay(); break;
+            case "i": case "I": ToggleInfo(); break;
+            case "f": case "F": await ToggleFavorite(); break;
+            case "z": case "Z": await TogglePanMode(); break;
+            case "r": case "R": ResetZoom(); break;
+            case "c": case "C": await ToggleCompareMode(); break;
+            case "[":
+                if (_isCompareMode)
+                {
+                    try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); } catch { }
+                    _splitPosition = Math.Clamp(_splitPosition - CompareNudgeStep, 0.0, 1.0);
+                    try { await JS.InvokeVoidAsync("assetViewerCompare.setSplit", _splitPosition); } catch { }
+                }
+                break;
+            case "]":
+                if (_isCompareMode)
+                {
+                    try { _splitPosition = await JS.InvokeAsync<double>("assetViewerCompare.getSplit"); } catch { }
+                    _splitPosition = Math.Clamp(_splitPosition + CompareNudgeStep, 0.0, 1.0);
+                    try { await JS.InvokeVoidAsync("assetViewerCompare.setSplit", _splitPosition); } catch { }
+                }
+                break;
+            case "+":
+            case "=":
+                if (_isPanMode && !IsCurrentVideo)
+                {
+                    _zoom = Math.Min(_zoom + ZoomStep, MaxZoom);
+                    ShowZoomIndicator();
+                }
+                break;
+            case "-":
+            case "_":
+                if (_isPanMode && !IsCurrentVideo)
+                {
+                    _zoom = Math.Max(_zoom - ZoomStep, MinZoom);
+                    ShowZoomIndicator();
+                }
+                break;
+        }
+    }
+
+    private async Task ToggleFavorite()
+    {
+        if (CurrentAsset == null) return;
+        CurrentAsset.Favorite = !CurrentAsset.Favorite;
+        if (CurrentAsset.Favorite && CurrentAsset.Score == 0)
+        {
+            CurrentAsset.Score = 3;
+        }
+        await DB.UpdateImage(CurrentAsset);
+        await OnAssetChanged.InvokeAsync(CurrentAsset);
+    }
+
+    private async Task FavoriteAllOnPage()
+    {
+        foreach (var asset in Assets)
+        {
+            asset.Favorite = true;
+            if (asset.Score == 0)
+            {
+                asset.Score = 3;
+            }
+            await DB.UpdateImage(asset);
+        }
+        await OnAssetChanged.InvokeAsync(CurrentAsset);
+        StateHasChanged();
+    }
+
+    private async Task SetScore(int score)
+    {
+        if (CurrentAsset == null) return;
+        CurrentAsset.Score = score;
+        await DB.UpdateImage(CurrentAsset);
+        await OnAssetChanged.InvokeAsync(CurrentAsset);
+    }
+
+    private void OpenInExplorer()
+    {
+        if (CurrentAsset != null && !string.IsNullOrWhiteSpace(CurrentAsset.Path))
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select, {CurrentAsset.Path}");
+        }
+    }
+
+    public void Dispose()
+    {
+        StopAutoPlay();
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _ = SetBodyScrollLock(false);
+        if (_compareAttached)
+        {
+            _compareAttached = false;
+            try { _ = JS.InvokeVoidAsync("assetViewerCompare.detach"); } catch { }
+        }
+    }
+}

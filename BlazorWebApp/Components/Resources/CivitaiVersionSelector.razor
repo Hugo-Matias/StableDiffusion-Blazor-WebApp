@@ -1,0 +1,62 @@
+@inject IDatabaseService DB
+@using BlazorWebApp.Data.Dtos
+
+@if (Versions != null && Versions.Count > 0)
+{
+    <div class="civitai-version-selector">
+        <MudTabs Class="civitai-version-selector__tabs" ActivePanelIndex="ActiveIndex"
+                 ActivePanelIndexChanged="HandleActivePanelIndexChanged" Elevation="0" Rounded="true" Centered="false"
+                 MinimumTabWidth="160px" AlwaysShowScrollButtons="true">
+            @foreach (var version in Versions)
+            {
+                var status = ResolveStatus(version);
+                var color = CivitaiVersionStatusHelper.ToColor(status);
+                var tooltip = CivitaiVersionStatusHelper.ToTooltip(status);
+                <MudTabPanel Text="@version.Name" Icon="fa-solid fa-server" IconColor="@color" ToolTip="@tooltip" />
+            }
+        </MudTabs>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<CivitaiModelVersionDto> Versions { get; set; } = default!;
+    [Parameter] public CivitaiModelVersionDto? ActiveVersion { get; set; }
+    [Parameter] public EventCallback<CivitaiModelVersionDto> ActiveVersionChanged { get; set; }
+
+    private readonly Dictionary<int, CivitaiVersionStatusHelper.VersionStatus> _statusCache = new();
+
+    private int ActiveIndex
+    {
+        get
+        {
+            if (Versions == null || Versions.Count == 0 || ActiveVersion == null) return 0;
+            var index = Versions.FindIndex(version => version.Id == ActiveVersion.Id);
+            return index >= 0 ? index : 0;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Versions == null) return;
+        foreach (var version in Versions)
+        {
+            if (_statusCache.ContainsKey(version.Id)) continue;
+            _statusCache[version.Id] = await CivitaiVersionStatusHelper.ResolveAsync(DB, version);
+        }
+    }
+
+    private CivitaiVersionStatusHelper.VersionStatus ResolveStatus(CivitaiModelVersionDto version)
+        => _statusCache.TryGetValue(version.Id, out var status) ? status : CivitaiVersionStatusHelper.VersionStatus.Unknown;
+
+    private async Task HandleActivePanelIndexChanged(int index)
+    {
+        if (Versions == null || index < 0 || index >= Versions.Count) return;
+        await SelectVersion(Versions[index]);
+    }
+
+    private async Task SelectVersion(CivitaiModelVersionDto? version)
+    {
+        if (version == null || ReferenceEquals(version, ActiveVersion)) return;
+        await ActiveVersionChanged.InvokeAsync(version);
+    }
+}

@@ -1,0 +1,189 @@
+/* Workflow strip: narrow context bar shown on the Generate page.
+   - Dark theme-following background (no color wash).
+   - Thin saturated accent strip at the bottom, colored by the active
+     workflow's mode - gives the visual cue without dominating the UI.
+   - Active button text picks up the mode color too (no underline needed). */
+
+.workflow-strip {
+  --workflow-strip-height: 3.5rem;
+  --workflow-strip-accent-height: 3px;
+  --workflow-strip-bg: var(--mud-palette-appbar-background);
+
+  /* Mode accent colors - full saturation, used for the bottom strip
+       and for the active button text. */
+  --workflow-strip-accent: var(--mud-palette-primary);
+  --workflow-strip-mode-txt2img: var(--mud-palette-primary);
+  --workflow-strip-mode-img2img: var(--mud-palette-secondary);
+  --workflow-strip-mode-img2vid: var(--mud-palette-tertiary);
+  --workflow-strip-mode-txt2vid: var(--mud-palette-tertiary);
+  --workflow-strip-mode-vid2vid: var(--mud-palette-info);
+
+  /* Active-tab indicator (sits flush with the bottom accent strip so the
+       two read as a single anchored highlight under the selected tab). */
+  --workflow-strip-active-indicator-height: 2px;
+
+  position: relative;
+  height: var(--workflow-strip-height);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--workflow-strip-bg);
+  transition: filter 0.25s ease;
+  padding-top: 0.5rem;
+}
+
+/* Bottom accent strip - thin, full-saturation line that tracks the mode. */
+.workflow-strip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--workflow-strip-accent-height);
+  background: var(--workflow-strip-accent);
+  transition: background-color 0.25s ease;
+}
+
+.workflow-strip.mode-txt2img {
+  --workflow-strip-accent: var(--workflow-strip-mode-txt2img);
+}
+.workflow-strip.mode-img2img {
+  --workflow-strip-accent: var(--workflow-strip-mode-img2img);
+}
+.workflow-strip.mode-img2vid {
+  --workflow-strip-accent: var(--workflow-strip-mode-img2vid);
+}
+.workflow-strip.mode-txt2vid {
+  --workflow-strip-accent: var(--workflow-strip-mode-txt2vid);
+}
+.workflow-strip.mode-vid2vid {
+  --workflow-strip-accent: var(--workflow-strip-mode-vid2vid);
+}
+
+/* Inner container keeps buttons centered as a group when they fit, and scrolls
+   horizontally when there are too many tabs to show on the current viewport.
+   max-width: 100% lets the row cap at the parent width so overflow-x kicks in;
+   margin-inline: auto centers the row while it's narrower than the parent. */
+.workflow-strip-inner {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  height: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scroll-behavior: smooth;
+  /* Reserve room above the bottom accent strip so the scrollbar doesn't
+       overlap the active-tab indicator. */
+  padding-bottom: var(--workflow-strip-accent-height);
+}
+
+.workflow-strip-inner::-webkit-scrollbar {
+  height: 3px;
+}
+.workflow-strip-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+.workflow-strip-inner::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}
+.workflow-strip-inner::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.workflow-strip-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 100%;
+  padding: 0 0.85rem;
+  color: var(--mud-palette-text-secondary);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  /* Keep tabs at full width so the row scrolls instead of squashing. */
+  flex: 0 0 auto;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workflow-strip-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--mud-palette-text-primary);
+}
+
+/* Active state: stronger color, subtle background tint, weight bump,
+   and a per-tab indicator that sits on top of the global bottom strip
+   so the selected tab "owns" the accent. */
+.workflow-strip-btn.active {
+  color: var(--mud-palette-text-primary);
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.workflow-strip-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0;
+  height: var(--workflow-strip-active-indicator-height);
+  background: var(--workflow-strip-accent);
+  border-radius: 2px 2px 0 0;
+  z-index: 1;
+}
+
+/* Active text/icon also picks up the mode color so the selected tab reads
+   as a tinted, pressed-in chip rather than just bolded text. */
+.workflow-strip-btn.active.mode-txt2img {
+  color: var(--workflow-strip-mode-txt2img);
+}
+.workflow-strip-btn.active.mode-img2img {
+  color: var(--workflow-strip-mode-img2img);
+}
+.workflow-strip-btn.active.mode-img2vid {
+  color: var(--workflow-strip-mode-img2vid);
+}
+.workflow-strip-btn.active.mode-txt2vid {
+  color: var(--workflow-strip-mode-txt2vid);
+}
+.workflow-strip-btn.active.mode-vid2vid {
+  color: var(--workflow-strip-mode-vid2vid);
+}
+
+/* Icon sizing - Size.Small on MudIcon is ~1.25rem; we override a touch
+   smaller so icons read as decorative "glitter" next to the labels.
+   Hierarchy: logo (1.75) > page nav (1.15) > workflow (0.95). */
+.workflow-strip-icon {
+  font-size: 0.95rem !important;
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+}
+
+.workflow-strip-label {
+  white-space: nowrap;
+}
+
+/* Pulse animation triggered when the workflow set changes (e.g. base switch). */
+@keyframes workflow-strip-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.35);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.workflow-strip.pulse {
+  animation: workflow-strip-pulse 0.9s ease-out;
+}

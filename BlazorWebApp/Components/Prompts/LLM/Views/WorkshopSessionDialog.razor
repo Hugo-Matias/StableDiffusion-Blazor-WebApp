@@ -1,0 +1,76 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_name" Label="Session Name" Required Variant="Variant.Text" />
+            <MudTextField @bind-Value="_prompt" Label="Root Prompt" Lines="2" AutoGrow="true" MaxLines="8"
+                          Immediate="true" Required Variant="Variant.Text" />
+            @if (_models.Count > 0)
+            {
+                <MudSelect @bind-Value="_model" Label="Model">
+                    @foreach (var m in _models)
+                    {
+                        <MudSelectItem Value="@m.Name">@m.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Confirm"
+                   Disabled="@(_isCreating || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_prompt))">
+            @if (_isCreating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string Prompt { get; set; } = string.Empty;
+    [Parameter] public List<OllamaModel> Models { get; set; } = new();
+
+    private string _name = string.Empty;
+    private string _prompt = string.Empty;
+    private string _model = string.Empty;
+    private List<OllamaModel> _models = new();
+    private bool _isCreating;
+
+    protected override void OnParametersSet()
+    {
+        _name = Name;
+        _prompt = Prompt;
+        _models = Models;
+        if (_models.Count > 0)
+            _model = _models[0].Name;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Confirm()
+    {
+        _isCreating = true;
+        StateHasChanged();
+        await Task.Yield();
+        Dialog.Close(DialogResult.Ok(new WorkshopSessionResult
+        {
+            Name = _name.Trim(),
+            Prompt = _prompt.Trim(),
+            Model = _model,
+        }));
+    }
+
+    public class WorkshopSessionResult
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
+    }
+}

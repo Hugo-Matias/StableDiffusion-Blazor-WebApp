@@ -1,16 +1,871 @@
 ﻿.brand {
-	font-family: 'Helvetica';
-	font-size: 1rem;
-	font-weight: 300;
+  font-family: "Helvetica";
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+/* ===========================================
+   App Layout Tokens (global)
+   -------------------------------------------
+  Single source of truth for page-level
+  spacing, sidebar proportions, and shared
+  surface styling used by the app body shell
+  and the tabbed-page layout components under
+  Components/Layouts/. Tweak values here to
+  re-tune all shell-driven pages at once.
+
+   See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md
+   (Layout section) for usage rules.
+   =========================================== */
+:root {
+  /* Outer gutter: page <-> window/navbar edges. */
+  --app-gutter-outer: 12px;
+  /* Inner gutter: between shell elements (tabs<->panels, sidebar<->content, topbar<->content). */
+  --app-gutter-inner: 8px;
+
+  /* Sidebar proportional width, clamped to a sensible range. */
+  --app-sidebar-width: 22%;
+  --app-sidebar-min: 240px;
+  --app-sidebar-max: 340px;
+  /* Rail width when a collapsible sidebar is collapsed. */
+  --app-sidebar-rail-width: 40px;
+
+  /* Overall app body and tabbed-page max-width clamp; prevents ultra-wide layouts from stretching. */
+  --app-shell-max-width: 1900px;
+
+  /* Shared corner radius for sidebar / topbar / content surfaces. */
+  --app-surface-radius: 4px;
+
+  /* Internal padding for sidebar / topbar / content surfaces. Children render
+	   flush against this padding (they should NOT add their own pa-* classes). */
+  --app-surface-padding: 16px;
+
+  /* Dialog tokens.
+	   Used by app-wide modals (e.g., AssetViewer, CivitAI model dialog) to
+	   replace hard-coded inline sizing (90vw, 85vh, pa-5). Apply via a
+	   wrapper class on the MudDialog content rather than overriding theme
+	   variables, so MudBlazor defaults remain intact for non-app dialogs.
+	   See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md
+	   (App-wide media modal) for usage rules. */
+  --app-dialog-max-width: 1400px;
+  --app-dialog-padding: 16px;
+  --app-dialog-radius: 6px;
+
+  /* Card grid primitive defaults.
+     Consumed by the .app-grid utility below. Per-page overrides may set
+     --app-card-min on the .app-grid element to tune card width without
+     re-declaring the grid rule. See 04-UI-DESIGN-LANGUAGE.md (Card grid). */
+  --app-card-min: 140px;
+  --app-grid-gap: var(--app-gutter-inner);
+}
+
+/* ============================================================
+   App primitives (extracted from /dev/design-testbed prototypes)
+   ============================================================ */
+
+/* Card grid: replaces ad-hoc `repeat(auto-fill, minmax(NNNpx, 1fr))`
+   declarations scattered across component-scoped CSS. Override
+   --app-card-min / --app-grid-gap on the element when a surface needs
+   a different card density. */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--app-card-min), 1fr));
+  gap: var(--app-grid-gap);
+}
+
+/* Unified empty-state primitive: replaces inline opacity / margin-top
+   one-offs in pages like Index.razor and Danbooru.razor. */
+.app-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 8px;
+  color: var(--mud-palette-text-secondary);
+  opacity: 0.7;
+  text-align: center;
 }
 
 /*Bootstrap Overrides*/
 a:hover {
-	color: inherit !important;
+  color: inherit !important;
 }
 
 .generation-info-text {
-	margin-top: 1rem;
-	white-space: pre-line;
-	opacity: 0.4;
+  margin-top: 1rem;
+  white-space: pre-line;
+  opacity: 0.4;
+}
+
+/* 
+ * Fix z-index layering for MudBlazor popovers/dropdowns
+ * MudBlazor renders popovers in a global provider, so we need global CSS.
+ * The TopToolbar expansion panel is at z-index 1301 and backdrop at 1300,
+ * so popovers need to be above both.
+ */
+.mud-popover-provider {
+  z-index: 1500 !important;
+}
+
+.mud-popover {
+  z-index: 1500 !important;
+}
+
+/*
+ * Image Editor Modal - Lock body scroll when editor is open
+ */
+body:has(.image-editor-overlay) {
+  overflow: hidden !important;
+}
+
+/*
+ * Image Editor Modal z-index overrides
+ * The image editor overlay is at z-index 9999, so popovers/tooltips 
+ * inside it need to be even higher.
+ */
+.image-editor-overlay ~ .mud-popover-provider,
+.image-editor-overlay + .mud-popover-provider,
+body:has(.image-editor-overlay) .mud-popover-provider {
+  z-index: 10001 !important;
+}
+
+body:has(.image-editor-overlay) .mud-popover {
+  z-index: 10002 !important;
+}
+
+body:has(.image-editor-overlay) .mud-tooltip {
+  z-index: 10003 !important;
+}
+
+body:has(.image-editor-overlay) .mud-menu-popover {
+  z-index: 10002 !important;
+}
+
+/*
+ * AssetViewer z-index overrides
+ * AssetViewer is a custom fullscreen overlay above the app shell, so MudBlazor
+ * dialogs, popovers, menus, and tooltips opened from its info panel must sit
+ * above the viewer instead of behind it.
+ */
+body:has(.asset-viewer-overlay) .mud-dialog-container,
+body:has(.asset-viewer-overlay) .mud-dialog-provider {
+  z-index: 10200 !important;
+}
+
+body:has(.asset-viewer-overlay) .mud-overlay {
+  z-index: 10190 !important;
+}
+
+body:has(.asset-viewer-overlay) .mud-popover-provider,
+body:has(.asset-viewer-overlay) .mud-popover,
+body:has(.asset-viewer-overlay) .mud-menu-popover {
+  z-index: 10210 !important;
+}
+
+body:has(.asset-viewer-overlay) .mud-tooltip {
+  z-index: 10220 !important;
+}
+
+html:has(.selection-manager-overlay.visible) {
+  overflow: hidden !important;
+}
+
+body:has(.selection-manager-overlay.visible) {
+  overflow: hidden !important;
+}
+
+body:has(.selection-manager-overlay.visible) .mud-popover-provider,
+body:has(.selection-manager-overlay.visible) .mud-popover,
+body:has(.selection-manager-overlay.visible) .mud-menu-popover {
+  z-index: 10210 !important;
+}
+
+body:has(.selection-manager-overlay.visible) .mud-tooltip {
+  z-index: 10220 !important;
+}
+
+/*
+ * Image Editor Layer Panel - Active Layer Styling
+ * These rules ensure the active layer is visually distinct.
+ * Added as global styles because scoped CSS doesn't always apply to MudBlazor child components.
+ */
+.layer-item.active {
+  background: rgba(var(--mud-palette-primary-rgb), 0.2) !important;
+  border-left: 3px solid var(--mud-palette-primary) !important;
+}
+
+.layer-item.active .layer-icon,
+.layer-item.active .layer-icon .mud-icon-root,
+.layer-item.active .layer-icon svg {
+  color: var(--mud-palette-primary) !important;
+  fill: var(--mud-palette-primary) !important;
+}
+
+.layer-item.active .layer-name,
+.layer-item.active .layer-name span {
+  color: var(--mud-palette-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* ===========================================
+   Card Action Menu Styles (Global)
+   Used by ImageCard and VideoCard components
+   Must be global because MudMenuItem renders
+   content in a way that scoped CSS can't reach
+   =========================================== */
+
+/* Action Menu Container */
+.action-menu {
+  padding: 6px 0;
+  min-width: 180px;
+}
+
+.media-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.media-card-actions .more-actions {
+  margin-left: 0;
+}
+
+.media-action-rail-host {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-action-rail-trigger {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.media-action-rail-trigger:hover,
+.media-action-rail-trigger:focus-visible {
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--mud-palette-primary);
+  outline: none;
+}
+
+.media-action-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-action-rail-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.media-action-rail-btn:hover,
+.media-action-rail-btn:focus-visible {
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--mud-palette-primary);
+  outline: none;
+}
+
+.media-action-rail-btn.primary {
+  color: var(--mud-palette-primary);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-primary) 18%,
+    rgba(0, 0, 0, 0.3)
+  );
+}
+
+.media-action-rail-btn.primary:hover,
+.media-action-rail-btn.primary:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-primary) 34%,
+    rgba(0, 0, 0, 0.3)
+  );
+  color: var(--mud-palette-primary-lighten);
+}
+
+.media-action-rail-btn.secondary {
+  color: var(--mud-palette-secondary);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-secondary) 18%,
+    rgba(0, 0, 0, 0.3)
+  );
+}
+
+.media-action-rail-btn.secondary:hover,
+.media-action-rail-btn.secondary:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-secondary) 34%,
+    rgba(0, 0, 0, 0.3)
+  );
+  color: var(--mud-palette-secondary-lighten);
+}
+
+.media-action-rail-btn.tertiary {
+  color: var(--mud-palette-tertiary);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-tertiary) 18%,
+    rgba(0, 0, 0, 0.3)
+  );
+}
+
+.media-action-rail-btn.tertiary:hover,
+.media-action-rail-btn.tertiary:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-tertiary) 34%,
+    rgba(0, 0, 0, 0.3)
+  );
+  color: var(--mud-palette-tertiary-lighten);
+}
+
+.media-action-rail-btn.danger {
+  color: var(--mud-palette-error);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-error) 16%,
+    rgba(0, 0, 0, 0.3)
+  );
+}
+
+.media-action-rail-btn.danger:hover,
+.media-action-rail-btn.danger:focus-visible {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-error) 30%,
+    rgba(0, 0, 0, 0.3)
+  );
+  color: var(--mud-palette-error);
+}
+
+.tile-menu-host .media-action-rail-btn,
+.tile-menu-host .media-action-rail-trigger {
+  border-radius: var(--mud-default-borderradius);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  backdrop-filter: blur(6px);
+}
+
+.tile-menu-host .media-action-rail-trigger {
+  color: var(--mud-palette-text-primary);
+  background: color-mix(in srgb, var(--mud-palette-surface) 86%, transparent);
+}
+
+.media-send-to-action-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.media-send-to-action-btn:hover,
+.media-send-to-action-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--mud-palette-primary);
+  outline: none;
+}
+
+.tile-send-to-action-btn {
+  border-radius: var(--mud-default-borderradius);
+  color: var(--mud-palette-text-primary);
+  background: color-mix(in srgb, var(--mud-palette-surface) 86%, transparent);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  backdrop-filter: blur(6px);
+}
+
+.media-send-to-dialog-list {
+  max-height: min(70vh, 32rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 8px 8px 0;
+}
+
+.media-send-to-dialog-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-send-to-dialog-workflow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.media-send-to-dialog-targets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(10rem, 16rem));
+  gap: 8px;
+}
+
+.media-send-to-dialog-target {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--mud-default-borderradius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--app-gutter-inner);
+  color: var(--mud-palette-text-primary);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-surface) 92%,
+    var(--mud-palette-primary) 8%
+  );
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.25;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+@media (max-width: 720px) {
+  .media-send-to-dialog-targets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .media-send-to-dialog-targets {
+    grid-template-columns: 1fr;
+  }
+}
+
+.media-send-to-dialog-target:hover,
+.media-send-to-dialog-target:focus-visible {
+  border-color: var(--mud-palette-primary);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-surface) 84%,
+    var(--mud-palette-primary) 16%
+  );
+  outline: none;
+}
+
+.menu-section {
+  padding: 4px 0;
+}
+
+.menu-section-title {
+  padding: 6px 16px 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 12px;
+}
+
+/* Menu Items */
+.action-menu .menu-item,
+.action-menu .mud-menu-item {
+  padding: 0 !important;
+  min-height: unset !important;
+}
+
+.action-menu .menu-item,
+.action-menu button.mud-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.action-menu .menu-item:hover .menu-item-content,
+.action-menu .menu-item:focus-visible .menu-item-content,
+.action-menu .mud-menu-item:hover .menu-item-content {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.action-menu .menu-item:focus-visible {
+  outline: none;
+}
+
+.menu-item.danger .menu-item-content {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.action-menu .menu-item.danger:hover .menu-item-content,
+.action-menu .menu-item.danger:focus-visible .menu-item-content,
+.action-menu .mud-list-item.menu-item.danger:hover .menu-item-content {
+  background: rgba(244, 67, 54, 0.15);
+  color: var(--mud-palette-error);
+}
+
+/* Menu Icons */
+.menu-icon {
+  font-size: 0.9rem;
+  width: 18px;
+  text-align: center;
+}
+
+.menu-icon.primary {
+  color: var(--mud-palette-primary);
+}
+
+.menu-icon.secondary {
+  color: var(--mud-palette-secondary);
+}
+
+.menu-icon.tertiary {
+  color: var(--mud-palette-tertiary);
+}
+
+.menu-icon.warning {
+  color: var(--mud-palette-warning);
+}
+
+.menu-icon.info {
+  color: var(--mud-palette-info);
+}
+
+.menu-icon.error {
+  color: var(--mud-palette-error);
+}
+
+/* ===========================================
+   MudButtonGroup Customization
+   Remove vertical divider lines for text variant
+   and increase spacing between buttons
+   =========================================== */
+
+/* Remove vertical divider lines between buttons in text variant */
+.mud-button-group-text
+  .mud-button-group-root
+  .mud-button-root:not(:first-child),
+.mud-button-group-text > .mud-button-root:not(:first-child),
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(
+    .mud-button-group-rtl
+  )
+  .mud-button-root:not(:first-child) {
+  border-left: 0 !important;
+}
+
+/* Also remove any border-right from non-last children */
+.mud-button-group-text .mud-button-group-root .mud-button-root:not(:last-child),
+.mud-button-group-text > .mud-button-root:not(:last-child),
+.mud-button-group-text.mud-button-group-override-styles.mud-button-group-horizontal:not(
+    .mud-button-group-rtl
+  )
+  .mud-button-root:not(:last-child) {
+  border-right: 0 !important;
+}
+
+/* Increase gap between buttons in button groups */
+.mud-button-group-root {
+  gap: 4px !important;
+}
+
+/* Ensure buttons in text variant have some horizontal spacing */
+.mud-button-group-text .mud-button-root {
+  margin-left: 2px !important;
+  margin-right: 2px !important;
+}
+
+/* ===========================================
+   Token Preview Styles
+   For interactive token visualization in LLM Tools
+   =========================================== */
+
+.token-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.token-item {
+  padding: 2px 4px;
+  margin: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: pre;
+  display: inline-block;
+}
+
+/* Color-coded backgrounds with good contrast */
+.token-item[data-color="primary"] {
+  background-color: rgba(var(--mud-palette-primary-rgb), 0.15);
+  color: var(--mud-palette-primary-text);
+}
+
+.token-item[data-color="secondary"] {
+  background-color: rgba(var(--mud-palette-secondary-rgb), 0.15);
+  color: var(--mud-palette-secondary-text);
+}
+
+.token-item[data-color="tertiary"] {
+  background-color: rgba(var(--mud-palette-tertiary-rgb), 0.15);
+  color: var(--mud-palette-tertiary-text);
+}
+
+.token-item[data-color="success"] {
+  background-color: rgba(var(--mud-palette-success-rgb), 0.15);
+  color: var(--mud-palette-success-text);
+}
+
+.token-item[data-color="info"] {
+  background-color: rgba(var(--mud-palette-info-rgb), 0.15);
+  color: var(--mud-palette-info-text);
+}
+
+.token-item[data-color="warning"] {
+  background-color: rgba(var(--mud-palette-warning-rgb), 0.15);
+  color: var(--mud-palette-warning-text);
+}
+
+.token-item[data-color="error"] {
+  background-color: rgba(var(--mud-palette-error-rgb), 0.15);
+  color: var(--mud-palette-error-text);
+}
+
+.token-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+/* Add a subtle border on hover to show token boundaries */
+
+/* ==================================================================
+   Flush generation panels
+   ------------------------------------------------------------------
+   The Generate page uses MudPaper / MudExpansionPanel for the LoRAs
+   and optional feature sections. By default these render as raised
+   surface-colored cards which visually disconnect them from the
+   surrounding parameter column. The rules below render them flush
+   with the page background and use a thin bottom divider as the
+   only affordance that they are expandable sections.
+
+   These are global rules (rather than scoped ::deep) so they apply
+   reliably regardless of how MudBlazor renders its internal DOM.
+   ================================================================== */
+
+.feature-section-flush.mud-paper {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--mud-palette-divider) !important;
+}
+
+.feature-section-flush .feature-section-header {
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.feature-section-flush .feature-section-header:hover {
+  background-color: var(--mud-palette-action-default-hover);
+}
+
+/* LoRAs expansion panels - same flush treatment. Targets both the
+   container and each panel so there is no residual card background. */
+.loras-panels-flush .mud-expansion-panels,
+.loras-panels-flush .mud-expand-panel,
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-header,
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-content,
+.loras-panels-flush .mud-expand-panel .mud-collapse-container {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.loras-panels-flush .mud-expand-panel {
+  box-shadow: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--mud-palette-divider) !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel + .mud-expand-panel {
+  margin-top: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-header {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.loras-panels-flush .mud-expand-panel .mud-expand-panel-content {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.token-item:hover::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .token-preview {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .token-item[data-color="primary"] {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+  }
+
+  .token-item[data-color="secondary"] {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.25);
+  }
+
+  .token-item[data-color="tertiary"] {
+    background-color: rgba(var(--mud-palette-tertiary-rgb), 0.25);
+  }
+
+  .token-item[data-color="success"] {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.25);
+  }
+
+  .token-item[data-color="info"] {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.25);
+  }
+
+  .token-item[data-color="warning"] {
+    background-color: rgba(var(--mud-palette-warning-rgb), 0.25);
+  }
+
+  .token-item[data-color="error"] {
+    background-color: rgba(var(--mud-palette-error-rgb), 0.25);
+  }
+}
+
+/* ===========================================
+   MudToggleGroup global styling
+   -------------------------------------------
+   Softer pill look used app-wide. The default
+   MudBlazor selected state is a flat solid
+   primary fill which reads heavy next to
+   outlined controls. We swap it for a
+   translucent tinted state with a primary
+   border + primary text. Unselected items
+   use a subtle border and gain a hover lift.
+   To opt out on a specific instance, add the
+   class `mud-toggle-group-default` on the
+   MudToggleGroup.
+   =========================================== */
+.mud-toggle-group:not(.mud-toggle-group-default) {
+  background: transparent !important;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: 8px;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item {
+  background: transparent !important;
+  color: var(--mud-palette-text-primary) !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  font-weight: 500;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item:hover:not(.mud-toggle-item-selected):not(.mud-disabled) {
+  background: rgba(var(--mud-palette-primary-rgb), 0.08) !important;
+  color: var(--mud-palette-primary) !important;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default) .mud-toggle-item-selected {
+  background: rgba(var(--mud-palette-primary-rgb), 0.16) !important;
+  color: var(--mud-palette-primary) !important;
+  border-color: rgba(var(--mud-palette-primary-rgb), 0.45) !important;
+}
+
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item-selected
+  .mud-icon-root,
+.mud-toggle-group:not(.mud-toggle-group-default)
+  .mud-toggle-item-selected
+  .mud-typography {
+  color: var(--mud-palette-primary) !important;
+  fill: var(--mud-palette-primary) !important;
 }

@@ -1,0 +1,617 @@
+/* Odditarium Persona Selection - Vertical flow: cards on top, detail below.
+   No flicker: detail panel expands downward, cards never shift position. */
+
+/* ---- Screen fills LLM Tools slot, fixed max width to prevent flicker ---- */
+.odd-persona-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 580px;
+  padding: var(--app-gutter-outer) 16px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---- Header section ---- */
+.odd-persona-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.odd-back-btn {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: 6px;
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.odd-back-btn:hover {
+  background: var(--mud-palette-action-default-hover);
+  color: var(--mud-palette-text-primary);
+}
+
+.odd-persona-title {
+  margin: 0 !important;
+  font-size: 1.6rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(
+    135deg,
+    var(--mud-palette-primary),
+    var(--mud-palette-secondary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.odd-persona-subtitle {
+  margin: 6px auto 0 !important;
+  max-width: 420px;
+  font-size: 0.875rem !important;
+  color: var(--mud-palette-text-secondary) !important;
+}
+
+/* ---- Card Grid (centered, fixed row) ---- */
+.odd-card-grid {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: nowrap;
+  padding: 90px 0 12px; /* top padding reserves bleed space above cards */
+}
+
+/* ---- CCG Card (larger size) ---- */
+.odd-card {
+  --card-accent: var(--mud-palette-primary);
+  position: relative;
+  width: 200px;
+  height: 320px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Idle state - subtle presence */
+.odd-card .odd-card-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  background: var(--mud-palette-background);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: visible;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+/* Hover state - lift + glow (no scale to avoid layout shift) */
+.odd-card--hovered {
+  transform: translateY(-8px);
+  z-index: 3;
+}
+
+.odd-card--hovered .odd-card-frame {
+  border-color: color-mix(
+    in srgb,
+    var(--card-accent) 50%,
+    rgba(255, 255, 255, 0.1)
+  );
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 16px color-mix(in srgb, var(--card-accent) 25%, transparent);
+}
+
+/* Active/Selected state - strongest glow (no scale to avoid layout shift) */
+.odd-card--active {
+  transform: translateY(-10px);
+  z-index: 4;
+}
+
+.odd-card--active .odd-card-frame {
+  border-color: var(--card-accent);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 28px color-mix(in srgb, var(--card-accent) 50%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Corner Ornaments ---- */
+.odd-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.4;
+  transition: opacity 200ms ease;
+}
+
+.odd-card--hovered .odd-corner,
+.odd-card--active .odd-corner {
+  opacity: 1;
+}
+
+.odd-corner::before,
+.odd-corner::after {
+  content: "";
+  position: absolute;
+  background: var(--card-accent);
+}
+
+.odd-corner--tl {
+  top: 6px;
+  left: 6px;
+}
+.odd-corner--tl::before {
+  width: 12px;
+  height: 2px;
+  top: 0;
+  left: 0;
+}
+.odd-corner--tl::after {
+  width: 2px;
+  height: 12px;
+  top: 0;
+  left: 0;
+}
+
+.odd-corner--tr {
+  top: 6px;
+  right: 6px;
+}
+.odd-corner--tr::before {
+  width: 12px;
+  height: 2px;
+  top: 0;
+  right: 0;
+}
+.odd-corner--tr::after {
+  width: 2px;
+  height: 12px;
+  top: 0;
+  right: 0;
+}
+
+.odd-corner--bl {
+  bottom: 6px;
+  left: 6px;
+}
+.odd-corner--bl::before {
+  width: 12px;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+}
+.odd-corner--bl::after {
+  width: 2px;
+  height: 12px;
+  bottom: 0;
+  left: 0;
+}
+
+.odd-corner--br {
+  bottom: 6px;
+  right: 6px;
+}
+.odd-corner--br::before {
+  width: 12px;
+  height: 2px;
+  bottom: 0;
+  right: 0;
+}
+.odd-corner--br::after {
+  width: 2px;
+  height: 12px;
+  bottom: 0;
+  right: 0;
+}
+
+/* ---- Card Art Area (full-bleed: covers the whole card, sits behind info panel) ---- */
+.odd-card-art {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--card-accent) 8%, transparent) 0%,
+    transparent 60%
+  );
+}
+
+.odd-card-img {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+  transition:
+    transform 250ms ease,
+    filter 250ms ease,
+    opacity 150ms ease;
+  z-index: 1;
+}
+
+/* Idle image subtle pulse */
+.odd-card .odd-card-img {
+  animation: odd-idle-breathe 4s ease-in-out infinite;
+}
+
+@keyframes odd-idle-breathe {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-3px);
+  }
+}
+
+/* Hover image - stronger lift + glow */
+.odd-card--hovered .odd-card-img {
+  animation: none;
+  transform: translateX(-50%) translateY(-4px);
+  filter: drop-shadow(
+    0 6px 14px color-mix(in srgb, var(--card-accent) 35%, rgba(0, 0, 0, 0.5))
+  );
+}
+
+/* Active image - strongest effect */
+.odd-card--active .odd-card-img {
+  animation: none;
+  transform: translateX(-50%) translateY(-6px);
+  filter: drop-shadow(
+    0 8px 18px color-mix(in srgb, var(--card-accent) 50%, rgba(0, 0, 0, 0.6))
+  );
+}
+
+/* Art overlay gradient at bottom — sits in front of the art image, fades character feet into info panel */
+.odd-card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    to top,
+    var(--mud-palette-background) 30%,
+    transparent
+  );
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 0 0 12px 12px; /* match frame inner radius to avoid clipped corners */
+}
+
+/* ---- Card Info Panel (compact) — above the art layer ---- */
+.odd-card-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 3;
+  border-radius: 0 0 12px 12px; /* match frame inner radius to avoid clipped corners */
+  background: linear-gradient(
+    to top,
+    var(--mud-palette-background) 65%,
+    transparent
+  );
+}
+
+.odd-card-name {
+  margin: 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--mud-palette-text-primary) !important;
+  line-height: 1.2 !important;
+}
+
+.odd-card-tagline {
+  font-size: 0.68rem;
+  color: var(--card-accent);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.odd-card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.odd-tag {
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--card-accent) 15%, transparent);
+  color: var(--mud-palette-text-secondary);
+  font-weight: 500;
+}
+
+/* ---- Selection Check Mark ---- */
+.odd-card-check {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 5;
+  color: var(--card-accent);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  animation: odd-check-pop 200ms ease-out;
+}
+
+@keyframes odd-check-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---- Detail Panel (below cards, hidden when no focus) ---- */
+.odd-detail-panel {
+  --detail-accent: var(--mud-palette-primary);
+  margin-top: 20px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: var(--mud-palette-surface);
+  border: 1px solid color-mix(in srgb, var(--detail-accent) 25%, transparent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: odd-detail-slide-up 250ms ease-out;
+}
+
+@keyframes odd-detail-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.odd-detail-inner {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Detail text (no image - cards already show it) */
+.odd-detail-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.odd-detail-name {
+  margin: 0 !important;
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  color: var(--mud-palette-text-primary) !important;
+}
+
+.odd-detail-tagline {
+  font-size: 0.8rem;
+  color: var(--detail-accent);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.odd-detail-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.odd-detail-tag {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--detail-accent) 18%, transparent);
+  color: var(--mud-palette-text-primary);
+  font-weight: 500;
+}
+
+.odd-detail-desc {
+  margin: 0 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.6 !important;
+  color: var(--mud-palette-text-secondary) !important;
+}
+
+/* Tone bias preview */
+.odd-detail-tone {
+  margin-top: auto;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--detail-accent) 6%, transparent);
+  border-left: 3px solid var(--detail-accent);
+}
+
+.odd-detail-tone-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--mud-palette-text-disabled);
+  margin-bottom: 4px;
+}
+
+.odd-detail-tone-value {
+  display: block;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--mud-palette-text-secondary);
+  line-height: 1.4;
+}
+
+/* ---- Confirm Bar (bottom) ---- */
+.odd-confirm-bar {
+  margin-top: auto;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.odd-confirm-text {
+  font-size: 0.875rem;
+  color: var(--mud-palette-text-secondary);
+}
+
+.odd-confirm-text--muted {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* Continue button */
+.odd-confirm-btn {
+  --btn-bg: rgba(94, 53, 177, 0.12);
+  --btn-border: rgba(94, 53, 177, 0.4);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  border: 1.5px solid var(--btn-border);
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--mud-palette-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.odd-confirm-btn:hover:not(:disabled) {
+  --btn-bg: rgba(94, 53, 177, 0.2);
+  --btn-border: var(--mud-palette-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(94, 53, 177, 0.2);
+}
+
+.odd-confirm-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- Card entrance animation ---- */
+.odd-card {
+  animation: odd-card-enter 400ms ease-out both;
+}
+
+.odd-card:nth-child(1) {
+  animation-delay: 0ms;
+}
+.odd-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+.odd-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+.odd-card:nth-child(4) {
+  animation-delay: 240ms;
+}
+.odd-card:nth-child(5) {
+  animation-delay: 320ms;
+}
+
+@keyframes odd-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---- Responsive adjustments ---- */
+@media (max-width: 1060px) {
+  .odd-persona-screen {
+    max-width: 780px;
+  }
+
+  .odd-card-grid {
+    gap: 18px;
+    padding-top: 70px;
+  }
+
+  .odd-card {
+    width: 170px;
+    height: 280px;
+  }
+
+  .odd-card-img {
+    width: 200px;
+    bottom: 55px;
+  }
+}
+
+@media (max-width: 900px) {
+  .odd-persona-screen {
+    max-width: 100%;
+  }
+
+  .odd-card-grid {
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 60px;
+  }
+
+  .odd-card {
+    width: 155px;
+    height: 255px;
+  }
+
+  .odd-card-img {
+    width: 180px;
+    bottom: 50px;
+  }
+}

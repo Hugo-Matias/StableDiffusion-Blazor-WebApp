@@ -1,0 +1,296 @@
+@*
+    SamplerForm - Form for sampler.sbn fragment
+    
+    Handles: sampler_name, scheduler, steps, cfg/guidance, denoise, seed
+    
+    Note: CFG vs Guidance is determined by UseGuidance parameter.
+    Flux models use Guidance, other models use CFG Scale.
+    
+    Refactored in Phase 14.3 to use FragmentReference and write directly to ParameterService.
+*@
+@using static BlazorWebApp.Data.Enums
+@using static BlazorWebApp.Models.FragmentKeys
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("SamplerForm")]
+@inject ISettingsService Settings
+@inject IBackendService Backend
+@inject IImageService ImageService
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var sampler in _samplerOptions)
+            {
+                <MudSelectItem Value="@sampler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var scheduler in _schedulerOptions)
+            {
+                <MudSelectItem Value="@scheduler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" 
+                   @bind-Value="_localSteps"
+                   @bind-Value:after="OnStepsChanged"
+                   Min="Settings.Settings.Generation.Shared.Steps.Min" 
+                   Max="Settings.Settings.Generation.Shared.Steps.Max" 
+                   Step="Settings.Settings.Generation.Shared.Steps.Step" 
+                   Variant="Variant.Filled" 
+                   ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+            <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" Size="Size.Small" Title="Restore seed from last generation" />
+        </MudStack>
+    </MudItem>
+    @if (UseGuidance)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localGuidance"
+                       @bind-Value:after="OnGuidanceChanged"
+                       Min="Settings.Settings.Generation.Shared.DistilledCfg.Min" 
+                       Max="Settings.Settings.Generation.Shared.DistilledCfg.Max" 
+                       Step="Settings.Settings.Generation.Shared.DistilledCfg.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>Guidance:</small> @_localGuidance
+            </MudSlider>
+        </MudItem>
+    }
+    else
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localCfgScale"
+                       @bind-Value:after="OnCfgScaleChanged"
+                       Min="Settings.Settings.Generation.Shared.CfgScale.Min" 
+                       Max="Settings.Settings.Generation.Shared.CfgScale.Max" 
+                       Step="Settings.Settings.Generation.Shared.CfgScale.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>CFG Scale:</small> @_localCfgScale
+            </MudSlider>
+        </MudItem>
+    }
+    @if (_showDenoise)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float" 
+                       @bind-Value="_localDenoise"
+                       @bind-Value:after="OnDenoiseChanged"
+                       Min="(float)Settings.Settings.Generation.Shared.Denoising.Min" 
+                       Max="(float)Settings.Settings.Generation.Shared.Denoising.Max" 
+                       Step="(float)Settings.Settings.Generation.Shared.Denoising.Step" 
+                       Variant="Variant.Filled" 
+                       ValueLabel 
+                       TickMarks>
+                <small>Denoise:</small> @_localDenoise.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+    @if (_showEta)
+    {
+        <MudItem xs="6">
+            <MudSlider T="float"
+                       @bind-Value="_localEta"
+                       @bind-Value:after="OnEtaChanged"
+                       Min="_etaConstraints.GetMin(0f)"
+                       Max="_etaConstraints.GetMax(1f)"
+                       Step="_etaConstraints.GetStep(0.01f)"
+                       Variant="Variant.Filled"
+                       ValueLabel
+                       TickMarks>
+                <small>Eta:</small> @_localEta.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    #region Parameters
+    
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Whether to show Guidance slider (Flux) instead of CFG Scale.
+    /// </summary>
+    [Parameter] public bool UseGuidance { get; set; } = false;
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #endregion
+    
+    #region Local State (for MudBlazor binding - prevents snap-back)
+
+    private string? _localSamplerName;
+    private string? _localScheduler;
+    private int _localSteps;
+    private long _localSeed;
+    private float _localCfgScale;
+    private float _localGuidance;
+    private float _localDenoise;
+    private float _localEta;
+    private bool _showDenoise = true;
+    private bool _showEta;
+    private ParameterConstraints _etaConstraints = new();
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _showDenoise = Fragment.Schema?.Parameters.ContainsKey(Params.Denoise) ?? true;
+        _showEta = Fragment.Schema?.Parameters.ContainsKey(Params.Eta) ?? false;
+        _etaConstraints = Fragment.Schema?.GetConstraints(Params.Eta) ?? new ParameterConstraints();
+
+        // Load resolved options from pre-resolution cache
+        _samplerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.SamplerName);
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, Params.Scheduler);
+
+        // Sync local state FROM service
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, Params.Scheduler, "normal");
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, Params.Steps, 20);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, -1L);
+        
+        // CFG vs Guidance - both use "cfg" parameter key, just different UI labels
+        if (UseGuidance)
+        {
+            _localGuidance = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 3.5f);
+        }
+        else
+        {
+            _localCfgScale = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 7.0f);
+        }
+        
+        _localDenoise = ParameterService.GetFragmentProperty(Fragment, Params.Denoise, 1.0f);
+        _localEta = ParameterService.GetFragmentProperty(Fragment, Params.Eta, _etaConstraints.GetMin(0.5f));
+    }
+    
+    #endregion
+    
+    #region Event Handlers
+    
+    private async Task OnSamplerChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.SamplerName, _localSamplerName, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnSchedulerChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Scheduler, _localScheduler, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnStepsChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Steps, _localSteps, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnSeedChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnCfgScaleChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localCfgScale, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnGuidanceChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localGuidance, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnDenoiseChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Denoise, _localDenoise, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnEtaChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Eta, _localEta, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task SetRandomSeed()
+    {
+        _localSeed = -1;
+        
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, -1L, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task RestoreSeed()
+    {
+        // Try to restore seed from last generation (ComfyUI workflow info)
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
+        {
+            var info = ImageService.Images.Info;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                foreach (var nodeProperty in root.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("seed", out var seedEl))
+                    {
+                        if (seedEl.ValueKind == System.Text.Json.JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                        {
+                            _localSeed = seedValue;
+                            
+                            // Write TO service (with notification for UI updates)
+                            ParameterService.SetFragmentProperty(Fragment, Params.Seed, seedValue, notify: true);
+                            await OnChanged.InvokeAsync();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If parsing fails, do nothing
+            }
+        }
+    }
+    
+    #endregion
+}

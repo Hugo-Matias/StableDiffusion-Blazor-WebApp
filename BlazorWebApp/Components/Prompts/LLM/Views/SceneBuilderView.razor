@@ -1,0 +1,248 @@
+@* Scene Builder: Structured-form prompt assembly *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject OllamaService OllamaService
+@inject IDatabaseService DB
+@inject TagPromptService TagService
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudStack Spacing="4">
+    <LLMToolPageDescription Title="Scene Builder" Icon="@Icons.Material.Filled.Movie"
+                            Description="Assemble a prompt from structured fields - subject, style, environment, lighting, mood, action, details. The LLM weaves them into a coherent prompt with optional Danbooru tag normalization." />
+
+    @* Form Fields *@
+    <MudCard Elevation="2" Class="pa-4">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_subject" Label="Subject" Placeholder="e.g., young knight, robot chef"
+                          HelperText="Who or what is the focus?" Lines="2" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_style" Label="Style"
+                          Placeholder="e.g., watercolor, cyberpunk anime, photorealistic" HelperText="Artistic direction"
+                          Lines="2" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_environment" Label="Environment" Placeholder="e.g., misty forest, neon alley"
+                          HelperText="Where is the scene?" Lines="2" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_lighting" Label="Lighting" Placeholder="e.g., golden hour, rim light, candlelit"
+                          HelperText="How is it lit?" Lines="2" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_mood" Label="Mood" Placeholder="e.g., tense, whimsical, serene"
+                          HelperText="Emotional tone" Lines="2" Variant="Variant.Outlined" />
+
+            @* Button Row *@
+            <div class="d-flex gap-2 mt-2 flex-wrap">
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_assembling"
+                           OnClick="OnAssembleClick">
+                    Assemble
+                </MudButton>
+                <MudButton Color="Color.Secondary" Variant="Variant.Outlined"
+                           Disabled="!_hasOutput || string.IsNullOrWhiteSpace(SelectedModel) || _isRefining"
+                           OnClick="RefineAsync">
+                    @if (_isRefining)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Refine with LLM
+                </MudButton>
+                <MudButton Color="Color.Tertiary" Variant="Variant.Outlined"
+                           Disabled="!_hasOutput || string.IsNullOrWhiteSpace(SelectedModel) || _isConverting"
+                           OnClick="ConvertToTagsAsync">
+                    @if (_isConverting)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Convert to Tags
+                </MudButton>
+            </div>
+        </MudStack>
+    </MudCard>
+
+    @* Result Section *@
+    @if (!string.IsNullOrEmpty(_output))
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Result</MudText>
+                <MudTextField Value="_output" ReadOnly="true" Lines="4" Variant="Variant.Outlined" />
+
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                    <MudButton OnClick="CopyAsync" StartIcon="@Icons.Material.Filled.ContentCopy">Copy</MudButton>
+                    <MudButton OnClick="SaveAsStyleAsync" StartIcon="@Icons.Material.Filled.Bookmark">Save as Style
+                    </MudButton>
+                    @if (OnSendToProcess.HasDelegate)
+                    {
+                        <MudButton OnClick="SendToProcessAsync" StartIcon="@Icons.Material.Filled.ForwardToInbox">Send to
+                            Process</MudButton>
+                        }
+                    </div>
+                </MudStack>
+            </MudCard>
+        }
+    </MudStack>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+
+    private bool _assembling;
+    private bool _isRefining;
+    private bool _isConverting;
+    private bool _hasOutput => !string.IsNullOrEmpty(_output);
+    private string _output = string.Empty;
+
+    // Form fields
+    private string _subject = string.Empty;
+    private string _style = string.Empty;
+    private string _environment = string.Empty;
+    private string _lighting = string.Empty;
+    private string _mood = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var sb = State.State.Prompts.LLM.SceneBuilder;
+        _subject = sb.Subject;
+        _environment = sb.Environment;
+        _lighting = sb.Lighting;
+        _mood = sb.Mood;
+        _style = sb.Style;
+        _output = sb.LastAssembled ?? string.Empty;
+    }
+
+    private void OnAssembleClick()
+    {
+        _assembling = true;
+        _output = Assemble();
+        State.State.Prompts.LLM.SceneBuilder.LastAssembled = _output;
+        _ = State.SaveState();
+        _assembling = false;
+    }
+
+    private string Assemble()
+    {
+        var parts = new[] { _subject, _style, _environment, _lighting, _mood }
+            .Select(p => p?.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p));
+        return string.Join(", ", parts!);
+    }
+
+    private async Task RefineAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_output) || string.IsNullOrWhiteSpace(SelectedModel)) return;
+
+        var tpl = await LoadTemplateAsync("Enhance");
+        if (tpl == null)
+        {
+            Snackbar.Add("Enhance template missing. Check System Prompts view.", Severity.Error);
+            return;
+        }
+
+        _isRefining = true;
+        try
+        {
+            var messages = tpl.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content.Replace("{prompt}", _output)
+            }).ToList();
+
+            var response = await OllamaService.SendChatMessage(SelectedModel, messages, null, null, false);
+            var refined = response?.Message?.Content?.Trim();
+            if (!string.IsNullOrWhiteSpace(refined))
+                _output = refined;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Refine failed: {ex.Message}", Severity.Error);
+        }
+        finally { _isRefining = false; }
+    }
+
+    private async Task ConvertToTagsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_output) || string.IsNullOrWhiteSpace(SelectedModel)) return;
+
+        _isConverting = true;
+        try
+        {
+            var request = new TagBuilderRequest(
+                UserInput: _output,
+                Verbosity: TagVerbosity.Standard,
+                Preset: TagModelPreset.Illustrious,
+                CategoryToggles: new Dictionary<TagCategory, bool>
+                {
+                    [TagCategory.General] = true,
+                    [TagCategory.Character] = true,
+                    [TagCategory.Copyright] = true,
+                    [TagCategory.Meta] = true
+                },
+                GroundingPrompt: null);
+            var result = await TagService.BuildAsync(request, SelectedModel, null);
+            if (!string.IsNullOrWhiteSpace(result.FinalPrompt))
+            {
+                _output = result.FinalPrompt;
+                Snackbar.Add("Converted to tags — verbosity=Standard, preset=Illustrious.", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Tag conversion failed: {ex.Message}", Severity.Error);
+        }
+        finally { _isConverting = false; }
+    }
+
+    private async Task<SystemPromptTemplate?> LoadTemplateAsync(string name)
+    {
+        try
+        {
+            var templates = await DB.GetSystemPromptTemplates();
+            return templates.FirstOrDefault(t => t.Name == name);
+        }
+        catch { return null; }
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _output);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch { Snackbar.Add("Failed to copy.", Severity.Error); }
+    }
+
+    private async Task SaveAsStyleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_output)) return;
+
+        var title = string.IsNullOrWhiteSpace(_subject)
+            ? $"Scene ({DateTime.Now:yy-MM-dd HH:mm})"
+            : (_subject.Length > 40 ? _subject[..40] : _subject);
+
+        try
+        {
+            await DB.CreatePrompt(new Prompt
+            {
+                Title = title,
+                Positive = _output,
+                Category = "Scene Builder",
+                Tags = new List<string>
+                {
+                    !string.IsNullOrWhiteSpace(_style) ? $"style:{_style}" : null,
+                    !string.IsNullOrWhiteSpace(_environment) ? $"env:{_environment}" : null,
+                    !string.IsNullOrWhiteSpace(_mood) ? $"mood:{_mood}" : null
+                }.Where(t => t != null).ToList()
+            });
+            Snackbar.Add("Saved to library.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SendToProcessAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_output)) return;
+        await OnSendToProcess.InvokeAsync(_output);
+    }
+}

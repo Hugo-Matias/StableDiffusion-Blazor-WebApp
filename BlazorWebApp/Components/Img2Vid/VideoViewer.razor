@@ -1,0 +1,473 @@
+@inject IIOService IO
+@inject IDatabaseService DB
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="video-viewer-overlay" 
+         @onkeydown="HandleKeyDown"
+         tabindex="0" 
+         @ref="_overlayRef">
+        <div class="video-viewer-container">
+            
+            <!-- Close Button -->
+            <button class="viewer-btn close-btn" @onclick="Close" title="Close (Esc)">
+                <MudIcon Icon="fa-solid fa-xmark" />
+            </button>
+
+            <!-- Main Video Display -->
+            <div class="video-stage" @onclick="HandleStageClick">
+                @if (CurrentVideo != null)
+                {
+                    <video @key="_currentIndex" 
+                           class="viewer-video" 
+                           controls 
+                           loop 
+                           muted 
+                           autoplay
+                           src="@GetVideoUrl(CurrentVideo)"
+                           @onclick:stopPropagation="true">
+                        Your browser does not support the video tag.
+                    </video>
+                }
+            </div>
+
+            <!-- Bottom Control Bar -->
+            <div class="control-bar" @onclick:stopPropagation="true">
+                <!-- Left: Favorite & Rating -->
+                <div class="control-section">
+                    @if (CurrentVideo != null)
+                    {
+                        <button class="viewer-btn @(CurrentVideo.Favorite ? "active-fav" : "")" 
+                                @onclick="ToggleFavorite" 
+                                title="Favorite (F)">
+                            <MudIcon Icon="@(CurrentVideo.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                        </button>
+                        @if (Videos.Count > 1)
+                        {
+                            <button class="viewer-btn fav-all-btn" @onclick="FavoriteAll" title="Favorite All">
+                                <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                            </button>
+                        }
+                        <div class="rating-container">
+                            <MudRating SelectedValue="CurrentVideo.Score" 
+                                       SelectedValueChanged="SetScore" 
+                                       MaxValue="3" 
+                                       Size="Size.Medium"
+                                       FullIcon="fa-solid fa-star"
+                                       EmptyIcon="fa-regular fa-star" />
+                        </div>
+                    }
+                </div>
+
+                <!-- Center: Navigation -->
+                @if (Videos.Count > 1)
+                {
+                    <div class="control-section nav-section">
+                        <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (?)">
+                            <MudIcon Icon="fa-solid fa-chevron-left" />
+                        </button>
+                        
+                        <div class="counter">
+                            <span class="counter-current">@(_currentIndex + 1)</span>
+                            <span class="counter-sep">/</span>
+                            <span class="counter-total">@Videos.Count</span>
+                        </div>
+                        
+                        <button class="viewer-btn nav-btn" @onclick="Next" title="Next (?)">
+                            <MudIcon Icon="fa-solid fa-chevron-right" />
+                        </button>
+                    </div>
+                }
+
+                <!-- Right: Actions -->
+                <div class="control-section actions-section">
+                    @if (Videos.Count > 1)
+                    {
+                        <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                            <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                            </button>
+                        </MudTooltip>
+                        <div class="slideshow-controls">
+                            <input type="number" 
+                                   class="slideshow-input" 
+                                   @bind="_autoPlayInterval" 
+                                   @bind:event="onchange"
+                                   min="1" 
+                                   max="60" 
+                                   step="0.5"
+                                   title="Slideshow interval (seconds)" />
+                            <span class="slideshow-unit">s</span>
+                        </div>
+                    }
+                    
+                    <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                        <MudIcon Icon="fa-solid fa-circle-info" />
+                    </button>
+                    
+                    @if (CurrentVideo != null && !string.IsNullOrWhiteSpace(CurrentVideo.FilePath))
+                    {
+                        <button class="viewer-btn" @onclick="OpenInExplorer" title="Open in Explorer">
+                            <MudIcon Icon="fa-solid fa-folder-open" />
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel @(_showInfo ? "open" : "")">
+                <div class="info-panel-header">
+                    <MudIcon Icon="fa-solid fa-video" Size="Size.Small" />
+                    <span>Video Details</span>
+                    <button class="viewer-btn small" @onclick="ToggleInfo" title="Close">
+                        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
+                    </button>
+                </div>
+                
+                <div class="info-panel-body">
+                    <div class="info-content">
+                        @if (CurrentVideo != null)
+                        {
+                            <!-- Meta Items -->
+                            <div class="meta-grid">
+                                @if (!string.IsNullOrWhiteSpace(CurrentVideo.Filename))
+                                {
+                                    <div class="meta-item full-width" title="@CurrentVideo.Filename">
+                                        <MudIcon Icon="fa-solid fa-file-video" Size="Size.Small" />
+                                        <span class="text-truncate">@CurrentVideo.Filename</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.Width > 0 && CurrentVideo.Height > 0)
+                                {
+                                    <div class="meta-item" title="Resolution">
+                                        <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
+                                        <span>@CurrentVideo.Width x @CurrentVideo.Height</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.FrameCount > 0)
+                                {
+                                    <div class="meta-item" title="Frame Count">
+                                        <MudIcon Icon="fa-solid fa-film" Size="Size.Small" />
+                                        <span>@CurrentVideo.FrameCount frames</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.FrameRate > 0)
+                                {
+                                    <div class="meta-item" title="Frame Rate">
+                                        <MudIcon Icon="fa-solid fa-gauge-high" Size="Size.Small" />
+                                        <span>@CurrentVideo.FrameRate fps</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.Duration > 0)
+                                {
+                                    <div class="meta-item" title="Duration">
+                                        <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
+                                        <span>@CurrentVideo.Duration.ToString("F2")s</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.Seed > 0)
+                                {
+                                    <div class="meta-item" title="Seed">
+                                        <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
+                                        <span>@CurrentVideo.Seed</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.Steps > 0)
+                                {
+                                    <div class="meta-item" title="Steps">
+                                        <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
+                                        <span>@CurrentVideo.Steps steps</span>
+                                    </div>
+                                }
+                                @if (CurrentVideo.CfgScale > 0)
+                                {
+                                    <div class="meta-item" title="CFG Scale">
+                                        <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
+                                        <span>CFG @CurrentVideo.CfgScale</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(CurrentVideo.Sampler))
+                                {
+                                    <div class="meta-item full-width" title="Sampler">
+                                        <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
+                                        <span>@CurrentVideo.Sampler</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(CurrentVideo.Model))
+                                {
+                                    <div class="meta-item full-width" title="Model">
+                                        <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
+                                        <span class="text-truncate">@CurrentVideo.Model</span>
+                                    </div>
+                                }
+                                <div class="meta-item full-width">
+                                    <MudIcon Icon="fa-solid fa-calendar" Size="Size.Small" />
+                                    <span>@CurrentVideo.DateCreated.ToString("MMM dd, yyyy HH:mm")</span>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(CurrentVideo.Prompt))
+                            {
+                                <div class="prompt-block">
+                                    <div class="prompt-header positive" title="Prompt">
+                                        <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                                        <span>Prompt</span>
+                                    </div>
+                                    <div class="prompt-text">@CurrentVideo.Prompt</div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <!-- Keyboard Shortcuts -->
+                    <div class="shortcuts-box">
+                        <div class="shortcuts-title">Keyboard Shortcuts</div>
+                        <div class="shortcut-row"><span>Navigate</span><span class="shortcut-key">? ?</span></div>
+                        <div class="shortcut-row"><span>Favorite</span><span class="shortcut-key">F</span></div>
+                        <div class="shortcut-row"><span>Slideshow</span><span class="shortcut-key">Space</span></div>
+                        <div class="shortcut-row"><span>Details</span><span class="shortcut-key">I</span></div>
+                        <div class="shortcut-row"><span>Close</span><span class="shortcut-key">Esc</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public List<GeneratedVideo> Videos { get; set; } = new();
+    [Parameter] public int StartIndex { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+    [Parameter] public EventCallback<GeneratedVideo> OnVideoChanged { get; set; }
+
+    private ElementReference _overlayRef;
+    private int _currentIndex;
+    private bool _showInfo;
+    private bool _autoPlay;
+    private System.Timers.Timer? _autoPlayTimer;
+    private float _autoPlayInterval = 5f;
+    private bool _wasVisible;
+    private bool _initialized;
+
+    private GeneratedVideo? CurrentVideo => Videos != null && _currentIndex >= 0 && _currentIndex < Videos.Count 
+        ? Videos[_currentIndex] 
+        : null;
+
+    protected override void OnParametersSet()
+    {
+        // Only set the index when the viewer is first opened (transition from not visible to visible)
+        if (IsVisible && !_wasVisible && Videos != null && Videos.Count > 0)
+        {
+            _currentIndex = Math.Clamp(StartIndex, 0, Videos.Count - 1);
+            _initialized = true;
+        }
+        else if (!IsVisible)
+        {
+            _initialized = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !_wasVisible)
+        {
+            await SetBodyScrollLock(true);
+            try { await _overlayRef.FocusAsync(); } catch { }
+        }
+        else if (!IsVisible && _wasVisible)
+        {
+            await SetBodyScrollLock(false);
+        }
+        
+        _wasVisible = IsVisible;
+    }
+
+    private async Task SetBodyScrollLock(bool locked)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $"document.body.style.overflow = '{(locked ? "hidden" : "auto")}'");
+        }
+        catch { }
+    }
+
+    private string GetVideoUrl(GeneratedVideo video)
+    {
+        if (!string.IsNullOrWhiteSpace(video.VideoData))
+        {
+            return $"data:video/mp4;base64,{video.VideoData}";
+        }
+        
+        if (!string.IsNullOrWhiteSpace(video.FilePath))
+        {
+            try
+            {
+                return IO.GetImageStaticFile(video.FilePath);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private void HandleStageClick()
+    {
+        Close();
+    }
+
+    private void Previous()
+    {
+        if (Videos == null || Videos.Count <= 1) return;
+        _currentIndex = (_currentIndex - 1 + Videos.Count) % Videos.Count;
+    }
+
+    private void Next()
+    {
+        if (Videos == null || Videos.Count <= 1) return;
+        _currentIndex = (_currentIndex + 1) % Videos.Count;
+    }
+
+    private void ToggleInfo() => _showInfo = !_showInfo;
+
+    private async Task ToggleFavorite()
+    {
+        if (CurrentVideo == null) return;
+        CurrentVideo.Favorite = !CurrentVideo.Favorite;
+        if (CurrentVideo.Favorite && CurrentVideo.Score == 0)
+        {
+            CurrentVideo.Score = 3;
+        }
+        
+        // Update in database if persisted
+        if (CurrentVideo.Id > 0)
+        {
+            var image = await DB.GetImageById(CurrentVideo.Id);
+            if (image != null)
+            {
+                image.Favorite = CurrentVideo.Favorite;
+                image.Score = CurrentVideo.Score;
+                await DB.UpdateImage(image);
+            }
+        }
+        
+        await OnVideoChanged.InvokeAsync(CurrentVideo);
+    }
+
+    private async Task FavoriteAll()
+    {
+        if (Videos == null) return;
+        
+        foreach (var video in Videos)
+        {
+            video.Favorite = true;
+            if (video.Score == 0)
+            {
+                video.Score = 3;
+            }
+            
+            // Update in database if persisted
+            if (video.Id > 0)
+            {
+                var image = await DB.GetImageById(video.Id);
+                if (image != null)
+                {
+                    image.Favorite = true;
+                    image.Score = video.Score;
+                    await DB.UpdateImage(image);
+                }
+            }
+        }
+        await OnVideoChanged.InvokeAsync(CurrentVideo);
+    }
+
+    private async Task SetScore(int score)
+    {
+        if (CurrentVideo == null) return;
+        CurrentVideo.Score = score;
+        
+        // Update in database if persisted
+        if (CurrentVideo.Id > 0)
+        {
+            var image = await DB.GetImageById(CurrentVideo.Id);
+            if (image != null)
+            {
+                image.Score = score;
+                await DB.UpdateImage(image);
+            }
+        }
+        
+        await OnVideoChanged.InvokeAsync(CurrentVideo);
+    }
+
+    private void ToggleAutoPlay()
+    {
+        _autoPlay = !_autoPlay;
+        if (_autoPlay) StartAutoPlay();
+        else StopAutoPlay();
+    }
+
+    private void StartAutoPlay()
+    {
+        StopAutoPlay();
+        _autoPlay = true;
+        _autoPlayTimer = new System.Timers.Timer(Math.Max(_autoPlayInterval, 1) * 1000);
+        _autoPlayTimer.Elapsed += async (s, e) =>
+        {
+            Next();
+            await InvokeAsync(StateHasChanged);
+        };
+        _autoPlayTimer.AutoReset = true;
+        _autoPlayTimer.Start();
+    }
+
+    private void StopAutoPlay()
+    {
+        _autoPlayTimer?.Stop();
+        _autoPlayTimer?.Dispose();
+        _autoPlayTimer = null;
+        _autoPlay = false;
+    }
+
+    private void OpenInExplorer()
+    {
+        if (CurrentVideo != null && !string.IsNullOrWhiteSpace(CurrentVideo.FilePath))
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select, {CurrentVideo.FilePath}");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": await Close(); break;
+            case "ArrowLeft": Previous(); break;
+            case "ArrowRight": Next(); break;
+            case " ": ToggleAutoPlay(); break;
+            case "i": case "I": ToggleInfo(); break;
+            case "f": case "F": await ToggleFavorite(); break;
+        }
+    }
+
+    private async Task Close()
+    {
+        StopAutoPlay();
+        IsVisible = false;
+        await SetBodyScrollLock(false);
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        StopAutoPlay();
+        _ = SetBodyScrollLock(false);
+    }
+}

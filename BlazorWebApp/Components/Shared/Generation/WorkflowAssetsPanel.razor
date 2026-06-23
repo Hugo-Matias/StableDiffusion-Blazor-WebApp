@@ -1,0 +1,194 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IOrchestratorService M
+@inject IEventService Events
+@inject IWorkflowService WorkflowService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@*
+    WorkflowAssetsPanel - A collapsible panel containing workflow asset selectors.
+    
+    This component wraps WorkflowAssetSelector in an expansion panel for use in generation pages.
+    It provides a clean way to manage model/asset selection without cluttering the main form.
+    
+    Usage:
+    <WorkflowAssetsPanel Mode="ModeType.Txt2Img" />
+    <WorkflowAssetsPanel Mode="ModeType.Img2Vid" Workflow="@currentWorkflow" />
+*@
+
+@if (HasAssets)
+{
+    <MudExpansionPanels Elevation="0">
+        <MudExpansionPanel Text="@PanelTitle" 
+                           IsInitiallyExpanded="@IsInitiallyExpanded"
+                           Class="workflow-assets-panel">
+            <TitleContent>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle2">@PanelTitle</MudText>
+                    @if (_assetsLoaded)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                            @_assetCount assets
+                        </MudChip>
+                    }
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                <MudPaper Elevation="0" Class="pa-3">
+                    <WorkflowAssetSelector Mode="@Mode" 
+                                           Workflow="@GetWorkflow()"
+                                           Columns="@Columns"
+                                           Dense="true"
+                                           Variant="Variant.Outlined"
+                                           ShowEmptyMessage="true"
+                                           OnAssetChanged="HandleAssetChanged" />
+                </MudPaper>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}
+
+@code {
+    /// <summary>
+    /// The generation mode for this panel.
+    /// </summary>
+    [Parameter] public ModeType Mode { get; set; } = ModeType.Txt2Img;
+
+    /// <summary>
+    /// Optional: Override the workflow to use (defaults to current workflow for mode).
+    /// </summary>
+    [Parameter] public Workflow? Workflow { get; set; }
+
+    /// <summary>
+    /// Number of columns for the asset grid (12 = full, 6 = half, 4 = third, etc.)
+    /// </summary>
+    [Parameter] public int Columns { get; set; } = 4;
+
+    /// <summary>
+    /// Whether the panel should be expanded by default.
+    /// </summary>
+    [Parameter] public bool IsInitiallyExpanded { get; set; } = false;
+
+    /// <summary>
+    /// Custom title for the panel. Defaults to "{Mode} Models".
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>
+    /// Callback when any asset value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnAssetsChanged { get; set; }
+
+    private bool _assetsLoaded;
+    private int _assetCount;
+
+    private string PanelTitle => Title ?? $"{GetModeDisplayName()} Models";
+
+    private bool HasAssets => GetWorkflow()?.Assets != null && GetWorkflow()!.Assets!.Count > 0;
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        UpdateAssetCount();
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateAssetCount();
+    }
+
+    private Workflow? GetWorkflow()
+    {
+        if (Workflow != null)
+            return Workflow;
+
+        // Get workflows for the specified mode
+        var workflows = M.GetWorkflowsForMode(Mode);
+        if (workflows == null || workflows.Count == 0)
+            return null;
+
+        // If a specific workflow is selected, use that
+        if (State.State?.Generation?.CurrentWorkflowId.HasValue == true)
+        {
+            var selected = workflows.FirstOrDefault(w => w.Id == State.State.Generation.CurrentWorkflowId.Value);
+            if (selected != null)
+                return selected;
+        }
+
+        // Try to match by WorkflowBase
+        if (State.State?.Generation?.WorkflowBase != default)
+        {
+            var byBase = workflows.FirstOrDefault(w => w.Base == State.State.Generation.WorkflowBase);
+            if (byBase != null)
+                return byBase;
+        }
+
+        // Default to first workflow for this mode
+        return workflows.FirstOrDefault();
+    }
+
+    private void UpdateAssetCount()
+    {
+        var workflow = GetWorkflow();
+        if (workflow?.Assets != null)
+        {
+            _assetCount = workflow.Assets.Count;
+            _assetsLoaded = true;
+        }
+        else
+        {
+            _assetCount = 0;
+            _assetsLoaded = false;
+        }
+    }
+
+    private string GetModeDisplayName()
+    {
+        return Mode switch
+        {
+            ModeType.Txt2Img => "Txt2Img",
+            ModeType.Img2Img => "Img2Img",
+            ModeType.Img2Vid => "Img2Vid",
+            ModeType.Extras => "Upscale",
+            _ => Mode.ToString()
+        };
+    }
+
+    private async Task HandleAssetChanged((string Parameter, string Value) asset)
+    {
+        if (OnAssetsChanged.HasDelegate)
+        {
+            await OnAssetsChanged.InvokeAsync();
+        }
+    }
+
+    private async void OnWorkflowChanged(WorkflowChangedEventArgs args)
+    {
+        UpdateAssetCount();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnWorkflowBaseChanged(StateChangedEventArgs args)
+    {
+        UpdateAssetCount();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnModelsChanged(ModelsChangedEventArgs args)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<ModelsChangedEventArgs>(OnModelsChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+    }
+}

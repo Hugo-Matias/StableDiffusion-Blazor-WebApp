@@ -1,0 +1,297 @@
+@inject IDatabaseService DB
+@inject IGalleryService Gallery
+@inject IIOService IO
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+
+<div class="@GetWrapperClasses()" data-tile-size="@GetTileSizeName()">
+    <div class="gallery-toolbar">
+        <div class="gallery-toolbar-row gallery-primary-actions">
+            <GalleryActionButton Icon="fa-solid fa-window-maximize" Label="Fullscreen" Tone="secondary"
+                                 OnClick="@(() => OpenViewer(0))" />
+            <GalleryActionButton Icon="fa-solid fa-check" Label="Selections" Tone="secondary"
+                                 OnClick="ShowSelectionsDrawer" />
+        </div>
+        @if (Gallery.SelectedImageIds.Count > 0)
+        {
+            <div class="gallery-toolbar-row gallery-selection-actions">
+                <GalleryActionButton Icon="fa-solid fa-layer-group" Label="Set Project" Tone="tertiary"
+                                     OnClick="ShowSwitchProjectDialog" />
+                <GalleryActionButton Icon="fa-solid fa-trash-can" Label="Delete" Tone="error"
+                                     OnClick="ShowDeleteImagesDialog" />
+                <GalleryActionButton Icon="fa-regular fa-square" Label="@($"Deselect ({Gallery.SelectedImageIds.Count})")"
+                                     Tone="warning" OnClick="Gallery.ClearSelectedImages" />
+                <GalleryActionButton Icon="fa-solid fa-check-double" Label="Select All" Tone="info" OnClick="SelectAll" />
+            </div>
+        }
+    </div>
+
+    <div class="gallery-flex">
+        @foreach (var image in Images.Images)
+        {
+            <div class="gallery-item">
+                @if (IsVideoFile(image.Path))
+                {
+                    <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@Images.Images.IndexOf(image)"
+                               OnSelectVideo="OpenViewer" OnDeleteVideo="video => DeleteVideoFromImage(video)"
+                               OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" />
+                }
+                else if (IsPureGallery)
+                {
+                    <GalleryImageTile Image="@image" OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
+                                      OnDeleteImage="DeleteSingleImage" OnCoverChanged="async () => await InvokeAsync(StateHasChanged)"
+                                      ShowSelectionCheckbox="true" />
+                }
+                else
+                {
+                    <ImageCard Image="@image" Target="fullscreen-modal"
+                               OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
+                               OnDeleteImage="async () => await DeleteSingleImage(image)"
+                               OnCoverChanged="async () => await InvokeAsync(StateHasChanged)" ShowSelectionCheckbox="true" />
+                }
+            </div>
+        }
+    </div>
+
+    @if (_isLoadingNext)
+    {
+        <div class="load-more-spinner">
+            <MudProgressCircular Color="Color.Primary" Indeterminate />
+        </div>
+    }
+    else if (!Images.HasNext)
+    {
+        <div class="end-of-results">
+            <MudText Typo="Typo.caption">End of gallery</MudText>
+        </div>
+    }
+</div>
+
+<SelectionsDrawer @bind-IsVisible="_showSelectionsDrawer" />
+
+<AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
+             CurrentPage="Images.CurrentPage" PageCount="1" TotalCount="@(Images.Images?.Count ?? 0)"
+             OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
+
+@code {
+    [Parameter, EditorRequired] public ImagesDto Images { get; set; } = new();
+    [Parameter] public GalleryPresentationMode PresentationMode { get; set; } = GalleryPresentationMode.Rich;
+    [Parameter] public ResourceCardSize TileSize { get; set; } = ResourceCardSize.Medium;
+    [Parameter] public EventCallback OnLoadNextPage { get; set; }
+    [Parameter] public EventCallback OnImagesChanged { get; set; }
+
+    private bool _isLoadingNext;
+    private bool _showSelectionsDrawer;
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private IJSObjectReference? _infiniteScrollModule;
+    private DotNetObjectReference<InfiniteScrollMasonry>? _dotNetRef;
+    private string? _lastLayoutSignature;
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private bool IsPureGallery => PresentationMode == GalleryPresentationMode.Pure;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeInfiniteScroll();
+        }
+
+        await RefreshLayoutIfNeeded();
+    }
+
+    private async Task InitializeInfiniteScroll()
+    {
+        if (_infiniteScrollModule == null)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _infiniteScrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/InfiniteMasonry.js");
+            await _infiniteScrollModule.InvokeAsync<IJSObjectReference>("attachWindowScroll", _dotNetRef, new { threshold = 500 });
+        }
+    }
+
+    private async Task RefreshLayoutIfNeeded()
+    {
+        if (_infiniteScrollModule == null) return;
+
+        var signature = $"{Images.Images?.Count ?? 0}:{PresentationMode}:{TileSize}";
+        if (signature == _lastLayoutSignature) return;
+
+        _lastLayoutSignature = signature;
+        await _infiniteScrollModule.InvokeVoidAsync("refreshLayout");
+    }
+
+    private string GetWrapperClasses()
+    {
+        var classes = "masonry-gallery-wrapper";
+        classes += IsPureGallery ? " pure-gallery-masonry" : " rich-gallery-masonry";
+        classes += $" masonry-size-{GetTileSizeName()}";
+        return classes;
+    }
+
+    private string GetTileSizeName() => TileSize.ToString().ToLowerInvariant();
+
+    [JSInvokable]
+    public async Task LoadNextPage()
+    {
+        if (_isLoadingNext || Images == null || !Images.HasNext) return;
+
+        _isLoadingNext = true;
+        await OnLoadNextPage.InvokeAsync();
+        _isLoadingNext = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private GeneratedVideo ConvertToGeneratedVideo(Image image)
+    {
+        return new GeneratedVideo
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Width = image.Width,
+            Height = image.Height,
+            Prompt = image.Prompt,
+            NegativePrompt = image.NegativePrompt,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
+    private void OpenViewer(int startIndex)
+    {
+        if (Images.Images == null || Images.Images.Count == 0) return;
+
+        _viewerStartIndex = Math.Clamp(startIndex, 0, Images.Images.Count - 1);
+        _showViewer = true;
+    }
+
+    private void HandleViewerClosed()
+    {
+        StateHasChanged();
+    }
+
+    private Task HandleAssetChanged(Image image)
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ShowSelectionsDrawer()
+    {
+        _showSelectionsDrawer = true;
+    }
+
+    private async Task DeleteSingleImage(Image image)
+    {
+        await DB.DeleteImage(image);
+        Images.Images.Remove(image);
+        Snackbar.Add("Item deleted successfully.", Severity.Success);
+        await OnImagesChanged.InvokeAsync();
+    }
+
+    private async Task DeleteVideoFromImage(GeneratedVideo video)
+    {
+        var image = Images.Images.FirstOrDefault(i => i.Path == video.FilePath);
+        if (image != null)
+        {
+            await DeleteSingleImage(image);
+        }
+    }
+
+    private async Task HandleVideoChanged(GeneratedVideo video)
+    {
+        // Sync changes back to the Image entity
+        var image = Images.Images.FirstOrDefault(i => i.Id == video.Id);
+        if (image != null)
+        {
+            image.Favorite = video.Favorite;
+            image.Score = video.Score;
+        }
+        // Don't call StateHasChanged here - it would cause the viewer to re-render with a new list
+    }
+
+    private async Task ShowDeleteImagesDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "OkButtonText", "Yes" },
+            { "CancelButtonText", "No" },
+            { "OkButtonColor", Color.Error },
+            { "Content", new MarkupString("<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>") }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items",
+parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
+            foreach (var img in selectedImages)
+            {
+                await DB.DeleteImage(img);
+                Images.Images.RemoveAll(i => i.Id == img.Id);
+            }
+            Snackbar.Add("All selected items deleted successfully.", Severity.Success);
+            Gallery.ClearSelectedImages();
+            await OnImagesChanged.InvokeAsync();
+        }
+    }
+
+    private async Task ShowSwitchProjectDialog()
+    {
+        var param = new DialogParameters();
+        var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
+        param.Add("Images", selectedImages);
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var updatedImages = (List<Image>)result.Data;
+            await DB.UpdateImages(updatedImages);
+            Snackbar.Add("Items projects were changed.", Severity.Success);
+            Gallery.ClearSelectedImages();
+            await OnImagesChanged.InvokeAsync();
+        }
+    }
+
+    private void SelectAll()
+    {
+        if (Images?.Images == null) return;
+        foreach (var id in Images.Images.Select(i => i.Id))
+            Gallery.AddSelectedImage(id);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_infiniteScrollModule != null)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("dispose");
+                await _infiniteScrollModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+            catch (Exception) { }
+            _infiniteScrollModule = null;
+        }
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

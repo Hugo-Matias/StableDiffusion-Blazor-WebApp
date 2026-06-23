@@ -1,0 +1,106 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("LtxFrameInterpolationForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="4">
+        <MudSelect T="string"
+                   Label="RIFE Model"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localRifeModel"
+                   @bind-Value:after="OnRifeModelChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _rifeModels)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="int"
+                   @bind-Value="_localFrameMultiplier"
+                   @bind-Value:after="OnFrameMultiplierChanged"
+                   Min="1" Max="4" Step="1" ValueLabel>
+            <small>Multiplier:</small> @_localFrameMultiplier
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="float"
+                   Label="Scale Factor"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localScaleFactor"
+                   @bind-Value:after="OnScaleFactorChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _scaleFactors)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localRifeModel = "rife49.pth";
+    private int _localFrameMultiplier = 2;
+    private float _localScaleFactor = 1.0f;
+
+    private string[] _rifeModels = [];
+    private float[] _scaleFactors = [];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _rifeModels = GetOptions("rife_model");
+        _scaleFactors = GetOptions("scale_factor")
+            .Select(s => float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f) ? f : 1.0f)
+            .Distinct()
+            .ToArray();
+
+        var defaultRifeModel = GetDefaultString("rife_model", "rife49.pth");
+        var defaultFrameMultiplier = GetDefaultInt("frame_multiplier", 2);
+        var defaultScaleFactor = GetDefaultFloat("scale_factor", 1.0f);
+
+        _localRifeModel = ParameterService.GetFragmentProperty(Fragment, "rife_model", defaultRifeModel) ?? defaultRifeModel;
+        _localFrameMultiplier = ParameterService.GetFragmentProperty(Fragment, "frame_multiplier", defaultFrameMultiplier);
+        _localScaleFactor = ParameterService.GetFragmentProperty(Fragment, "scale_factor", defaultScaleFactor);
+    }
+
+    private async Task OnRifeModelChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "rife_model", _localRifeModel, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnFrameMultiplierChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "frame_multiplier", _localFrameMultiplier, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnScaleFactorChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "scale_factor", _localScaleFactor, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private string[] GetOptions(string parameterName)
+        => Fragment?.Schema?.GetConstraints(parameterName).Options?.ToArray() ?? [];
+
+    private string GetDefaultString(string parameterName, string fallback)
+        => Fragment?.Schema?.GetConstraints(parameterName).GetDefault<string>() ?? fallback;
+
+    private int GetDefaultInt(string parameterName, int fallback)
+        => Fragment?.Schema?.GetConstraints(parameterName).GetDefault<int>() ?? fallback;
+
+    private float GetDefaultFloat(string parameterName, float fallback)
+        => Fragment?.Schema?.GetConstraints(parameterName).GetDefault<float>() ?? fallback;
+}

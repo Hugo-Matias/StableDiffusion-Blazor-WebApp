@@ -1,0 +1,53 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Services
+@inject IDatabaseService DB
+
+<MudStack Spacing="2">
+    <MudSelect T="string" MultiSelection="true" SelectAll="true" SelectAllText="Select all"
+               SelectedValues="@_selected" SelectedValuesChanged="OnSelectionChanged"
+               Label="Prompt styles" Variant="Variant.Text" Dense="true"
+               AnchorOrigin="Origin.BottomCenter"
+               HelperText="Styles are managed on the Prompts page. Multiple styles stack in declaration order.">
+        @foreach (var title in _availableStyles)
+        {
+            <MudSelectItem T="string" Value="@title">@title</MudSelectItem>
+        }
+    </MudSelect>
+
+    @if (_availableStyles.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense>
+            No prompt styles found. Create some on the Prompts page first.
+        </MudAlert>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public AddPromptStyleDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private List<string> _availableStyles = new();
+    private IEnumerable<string> _selected = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var prompts = await DB.GetPrompts();
+        _availableStyles = prompts
+            .Select(p => p.Title)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _selected = Directive.StyleNames?.ToList() ?? new();
+    }
+
+    private void OnSelectionChanged(IEnumerable<string> values)
+    {
+        // Preserve order of selection rather than alphabetical, so stacking semantics are predictable.
+        _selected = values;
+        Directive.StyleNames = values.ToList();
+    }
+}
+

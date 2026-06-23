@@ -1,0 +1,197 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Components.Prompts.LLM.Views
+@using BlazorWebApp.Events
+@inject IInfoService InfoService
+@inject IStateService State
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IWorkshopService WorkshopService
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="_isNavCollapsed" SidebarTitle="LLM">
+    <Sidebar>
+        <LLMNavMenu ActiveViewId="@_activeViewId" OnViewSelected="HandleViewSelected" />
+    </Sidebar>
+    <CollapsedSidebar>
+        <LLMNavMenu ActiveViewId="@_activeViewId" IsCollapsed="true" OnViewSelected="HandleViewSelected" />
+    </CollapsedSidebar>
+    <Content>
+        <div class="llm-main-panel" style="height: calc(100vh - 200px); overflow-y: auto;">
+            @switch (_activeViewId)
+            {
+                case "process":
+                    <ProcessView SelectedModel="@State.State.Generation.LLM.Model" Templates="@_templates" TemplatesVersion="@_templatesVersion"
+                                 PendingRestore="@_pendingRestore" RestoreVersion="@_restoreVersion" OnHistoryAdded="HandleHistoryAdded"
+                                 OnHistoryMutated="HandleHistoryMutated" />
+                    break;
+                case "system-prompts":
+                    <SystemPromptsView OnTemplatesChanged="HandleSystemPromptTemplatesChanged" />
+                    break;
+                case "tag-builder":
+                    <TagBuilderView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
+                                    OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
+                case "wildcard-forge":
+                    <WildcardForgeView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
+                                       OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
+                case "mixer":
+                    <MixerView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
+                    break;
+                case "inspiration":
+                    <InspirationView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
+                    break;
+                case "scene-builder":
+                    <SceneBuilderView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
+                    break;
+                case "image-to-prompt":
+                    <ImageToPromptView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
+                                       OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
+                case "workshop":
+                    <WorkshopView />
+                    break;
+                case "odditarium":
+                    <OdditariumView SelectedModel="@State.State.Generation.LLM.Model" />
+                    break;
+            }
+        </div>
+    </Content>
+</TwoColumnLayout>
+
+@code {
+    private string _activeViewId = "process";
+    private bool _isNavCollapsed = false;
+
+    private List<SystemPromptTemplate>? _templates;
+    private int _templatesVersion;
+
+    private PromptHistoryEntry? _pendingRestore;
+    private int _restoreVersion;
+    private int _historyVersion;
+
+    private readonly InfoContent _infoContent = new(
+        Title: "LLM Tools - Quick Guide",
+        Overview: "Use AI language models to transform your image generation prompts with customizable templates. Configure model settings on the left, switch views via the sidebar nav, then process prompts individually or in batches.",
+        Shortcuts: new List<ShortcutInfo>
+        {
+            new("Ctrl+Enter", "Process prompt with selected template"),
+            new("Ctrl+Z", "Undo last operation"),
+            new("Ctrl+Y", "Redo undone operation"),
+        },
+        Tips: new List<string>
+        {
+            "Templates define the behavior (enhance, simplify, translate, etc.)",
+            "Select templates directly from the Process view toolbar",
+            "Templates are shared across Single and Batch modes",
+            "Switch between Single and Batch mode with the mode toggle buttons",
+            "Single mode: Process one prompt at a time with real-time feedback",
+            "Batch mode: Select multiple prompts from your library to process at once",
+            "Process button color adapts to the selected template type",
+            "Adjust Temperature for more creative (higher) or focused (lower) results",
+            "Default templates provide few-shot learning examples for best results",
+            "History persists across sessions - restore any previous result with one click",
+            "Batch results are expandable - click to see original vs processed comparison",
+            "Save batch results to library individually with one click",
+            "Create custom templates in the System Prompts view for specialized processing",
+            "Collapse the sidebar nav to reclaim horizontal space"
+        }
+    );
+
+    protected override async Task OnInitializedAsync()
+    {
+        InfoService.SetInfo(_infoContent);
+
+        var llm = State.State.Prompts.LLM;
+        _activeViewId = string.IsNullOrWhiteSpace(llm.ActiveViewId) ? "process" : llm.ActiveViewId;
+        // History was merged into Process; redirect any stale persisted state.
+        if (_activeViewId == "history") _activeViewId = "process";
+        _isNavCollapsed = llm.IsNavCollapsed;
+
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+            _templatesVersion++;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading templates: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleViewSelected(string viewId)
+    {
+        var previous = _activeViewId;
+        _activeViewId = viewId;
+        State.State.Prompts.LLM.ActiveViewId = viewId;
+
+        Events.Publish(new LLMViewChangedEventArgs
+        {
+            PreviousViewId = previous,
+            ViewId = viewId
+        });
+
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.State.Prompts.LLM.IsNavCollapsed != _isNavCollapsed)
+        {
+            State.State.Prompts.LLM.IsNavCollapsed = _isNavCollapsed;
+            await State.SaveState();
+        }
+    }
+
+    private async Task HandleSystemPromptTemplatesChanged()
+    {
+        await LoadTemplates();
+        StateHasChanged();
+    }
+
+    private void HandleHistoryAdded(PromptHistoryEntry entry)
+    {
+        _historyVersion++;
+    }
+
+    private void HandleHistoryMutated()
+    {
+        _historyVersion++;
+    }
+
+    private async Task HandleHistoryRestore(PromptHistoryEntry entry)
+    {
+        _pendingRestore = entry;
+        _restoreVersion++;
+        await HandleViewSelected("process");
+    }
+
+    private async Task HandleSendToProcess(string prompt)
+    {
+        State.State.Generation.LLM.Prompt = prompt;
+        await State.SaveState();
+        await HandleViewSelected("process");
+    }
+
+    private async Task HandleSendToWorkshop(string prompt)
+    {
+        var session = await WorkshopService.CreateSessionAsync(
+            $"Session ({DateTime.Now:yy-MM-dd HH:mm})", prompt);
+        State.State.Prompts.LLM.Workshop.ActiveSessionId = session.Id;
+        await State.SaveState();
+        await HandleViewSelected("workshop");
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        InfoService.ClearInfo();
+        return ValueTask.CompletedTask;
+    }
+}

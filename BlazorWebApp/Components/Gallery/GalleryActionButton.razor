@@ -1,0 +1,18 @@
+<button type="button" class="@GetButtonClasses()" title="@Label" aria-label="@Label" @onclick="HandleClick">
+    <span class="gallery-action-glow" aria-hidden="true"></span>
+    <span class="gallery-action-icon" aria-hidden="true">
+        <i class="@Icon"></i>
+    </span>
+    <span class="gallery-action-label">@Label</span>
+</button>
+
+@code {
+    [Parameter] public string Icon { get; set; } = string.Empty;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Tone { get; set; } = "primary";
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string GetButtonClasses() => $"gallery-action-button tone-{Tone}";
+
+    private Task HandleClick() => OnClick.InvokeAsync();
+}

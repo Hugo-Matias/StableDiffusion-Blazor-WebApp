@@ -1,0 +1,24 @@
+.character-add-shot-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--app-gutter-inner);
+  min-height: var(--character-add-card-min-height, 18rem);
+  border: 1px dashed var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: var(--app-surface-padding);
+  background: var(--mud-palette-surface);
+}
+
+.character-add-shot-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--character-add-header-gap, 0.5rem);
+  color: var(--mud-palette-text-secondary);
+  text-align: center;
+}
+
+.character-add-shot-actions {
+  width: 100%;
+}

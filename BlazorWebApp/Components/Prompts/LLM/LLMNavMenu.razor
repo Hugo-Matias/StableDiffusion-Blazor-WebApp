@@ -1,0 +1,56 @@
+@* Sidebar navigation for LLM Tools views. Supports expanded (icon + label) and collapsed (icon-only) modes. *@
+
+<div class="llm-nav-menu"
+     style="@($"width: {(IsCollapsed ? "56px" : "100%")}; transition: width 0.2s; overflow: hidden; flex-shrink: 0;")">
+    <MudNavMenu Rounded>
+        @foreach (var item in Items)
+        {
+            @if (IsCollapsed)
+            {
+                <MudTooltip Text="@item.Label" Placement="Placement.Right">
+                    <MudNavLink Icon="@item.Icon" Match="NavLinkMatch.All" OnClick="@(() => HandleSelect(item.Id))"
+                                Class="@(item.Id == ActiveViewId ? "mud-nav-link-active mud-nav-link-active-filled" : string.Empty)"
+                                Style="justify-content: center;">
+                        @* Icon-only: no label content *@
+                    </MudNavLink>
+                </MudTooltip>
+            }
+            else
+            {
+                <MudNavLink Icon="@item.Icon" Match="NavLinkMatch.All" OnClick="@(() => HandleSelect(item.Id))"
+                            Class="@(item.Id == ActiveViewId ? "mud-nav-link-active mud-nav-link-active-filled" : string.Empty)">
+                    @item.Label
+                </MudNavLink>
+            }
+        }
+    </MudNavMenu>
+</div>
+
+@code {
+    [Parameter] public string ActiveViewId { get; set; } = "process";
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<string> OnViewSelected { get; set; }
+
+    public record NavItem(string Id, string Label, string Icon);
+
+    private static readonly List<NavItem> Items = new()
+    {
+        new("odditarium", "Odditarium", Icons.Material.Filled.AutoFixHigh),
+        new("workshop", "Workshop", Icons.Material.Filled.Forum),
+        new("process", "Process", Icons.Material.Filled.AutoAwesome),
+        new("tag-builder", "Tag Builder", Icons.Material.Filled.LocalOffer),
+        new("image-to-prompt", "Image to Prompt", Icons.Material.Filled.ImageSearch),
+        new("wildcard-forge", "Wildcard Forge", Icons.Material.Filled.AutoAwesomeMosaic),
+        new("inspiration", "Inspiration", Icons.Material.Filled.Casino),
+        new("scene-builder", "Scene Builder", Icons.Material.Filled.Landscape),
+        new("mixer", "Mixer", Icons.Material.Filled.Shuffle),
+        new("system-prompts", "System Prompts", Icons.Material.Filled.Psychology),
+    };
+
+    private async Task HandleSelect(string id)
+    {
+        if (id == ActiveViewId) return;
+        if (OnViewSelected.HasDelegate)
+            await OnViewSelected.InvokeAsync(id);
+    }
+}

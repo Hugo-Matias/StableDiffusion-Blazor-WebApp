@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "subject",
+      "title": "Subject",
+      "guidance": "Pick the central subject of the image. One clear focal entity (a person, a creature, an object, an architectural piece) that the rest of the prompt will revolve around.",
+      "examples": [
+        "A solitary lighthouse keeper in oilskin",
+        "A mechanical fox made of brass gears",
+        "A ruined cathedral overtaken by ivy"
+      ]
+    },
+    {
+      "id": "scenery",
+      "title": "Scenery",
+      "guidance": "Where is the subject? Describe the surrounding environment, setting, or backdrop. Concrete and visual; avoid abstract concepts here.",
+      "examples": [
+        "Standing at the edge of a storm-lashed cliff",
+        "In a misty pine forest at dawn",
+        "Inside a derelict orbital greenhouse"
+      ]
+    },
+    {
+      "id": "lighting",
+      "title": "Lighting",
+      "guidance": "Define the light source, time of day, and mood of illumination. This is one of the strongest levers for visual impact.",
+      "examples": [
+        "Golden hour with long warm shadows",
+        "Cold blue moonlight through broken glass",
+        "Volumetric god rays piercing dust-filled air"
+      ]
+    },
+    {
+      "id": "mood",
+      "title": "Mood",
+      "guidance": "Emotional tone and atmosphere. How should the viewer feel? Use evocative but visual descriptors (melancholic, serene, ominous, triumphant).",
+      "examples": [
+        "Quietly melancholic, contemplative",
+        "Tense and ominous, on the edge of violence",
+        "Whimsical and dreamlike"
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Style",
+      "guidance": "Artistic style or medium reference. This anchors the visual language - photographic, painterly, illustrative, or genre-specific.",
+      "examples": [
+        "Cinematic photography, 35mm film grain",
+        "Studio Ghibli inspired watercolor",
+        "Dark fantasy oil painting in the style of 19th century romanticism"
+      ]
+    }
+  ]
+}

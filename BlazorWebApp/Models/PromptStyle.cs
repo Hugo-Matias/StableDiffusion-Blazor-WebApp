@@ -9,6 +9,7 @@ namespace BlazorWebApp.Models
         public string Prompt { get; set; }
         [JsonPropertyName("negative_prompt")]
         public string NegativePrompt { get; set; }
+        public List<Lora> Loras { get; set; }
 
         public PromptStyle() { }
         public PromptStyle(Prompt prompt)
@@ -16,6 +17,7 @@ namespace BlazorWebApp.Models
             Name = prompt.Title;
             Prompt = prompt.Positive;
             NegativePrompt = prompt.Negative;
+            Loras = prompt.Loras;
         }
     }
 }

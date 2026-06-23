@@ -1,0 +1,24 @@
+# Visual effects and post-processing
+bokeh
+motion blur
+radial blur
+depth of field
+chromatic aberration
+lens flare
+vignette
+film grain
+noise
+glitch effect
+bloom
+HDR
+high contrast
+low contrast
+saturated
+desaturated
+monochrome
+sepia tone
+color grading
+tilt-shift effect
+long exposure
+light trails
+double exposure

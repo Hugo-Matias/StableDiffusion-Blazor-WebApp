@@ -1,0 +1,171 @@
+/* Odditarium Session Card — used in the Continue section of the intro screen */
+
+.odd-session-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: 10px 14px;
+  border-radius: var(--app-surface-radius, 8px);
+  background: var(--mud-palette-background-grey);
+  border: 1px solid
+    color-mix(in srgb, var(--card-accent, #888) 25%, transparent);
+  transition: border-color 0.15s ease;
+}
+
+.odd-session-card:hover {
+  border-color: color-mix(in srgb, var(--card-accent, #888) 50%, transparent);
+}
+
+/* Persona thumbnail */
+.odd-session-thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card-accent, #888) 15%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid
+    color-mix(in srgb, var(--card-accent, #888) 40%, transparent);
+}
+
+.odd-session-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.odd-session-thumb-icon {
+  color: color-mix(
+    in srgb,
+    var(--card-accent, #888) 70%,
+    var(--mud-palette-text-primary)
+  );
+}
+
+/* Info section */
+.odd-session-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.odd-session-persona {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.odd-session-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.odd-session-layers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: color-mix(
+    in srgb,
+    var(--card-accent, #888) 70%,
+    var(--mud-palette-text-secondary)
+  );
+}
+
+.odd-session-layers .mud-icon-root {
+  font-size: 0.8rem !important;
+}
+
+.odd-session-time {
+  font-size: 0.72rem;
+  color: var(--mud-palette-text-disabled);
+}
+
+/* Actions */
+.odd-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.odd-session-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--app-surface-radius, 8px);
+  border: 1.5px solid
+    color-mix(in srgb, var(--card-accent, #888) 50%, transparent);
+  background: color-mix(in srgb, var(--card-accent, #888) 10%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--card-accent, #888) 80%,
+    var(--mud-palette-text-primary)
+  );
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.odd-session-resume-btn:hover {
+  background: color-mix(in srgb, var(--card-accent, #888) 20%, transparent);
+  border-color: var(--card-accent, #888);
+}
+
+.odd-session-discard-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mud-palette-text-disabled);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.odd-session-discard-btn:hover {
+  color: var(--mud-palette-error);
+  border-color: var(--mud-palette-error);
+  background: color-mix(in srgb, var(--mud-palette-error) 8%, transparent);
+}
+
+.odd-session-discard-confirm-btn {
+  padding: 4px 10px;
+  border-radius: var(--app-surface-radius, 8px);
+  border: 1px solid var(--mud-palette-error);
+  background: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
+  color: var(--mud-palette-error);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.odd-session-discard-confirm-btn:hover {
+  background: color-mix(in srgb, var(--mud-palette-error) 20%, transparent);
+}
+
+.odd-session-cancel-btn {
+  padding: 4px 8px;
+  border-radius: var(--app-surface-radius, 8px);
+  border: 1px solid var(--mud-palette-lines-default);
+  background: transparent;
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}

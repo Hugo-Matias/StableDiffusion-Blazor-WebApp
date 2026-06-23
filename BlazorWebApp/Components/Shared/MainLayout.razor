@@ -1,54 +1,313 @@
-﻿@inherits LayoutComponentBase
-@inject ManagerService M
-@inject SDAPIService API
+@inherits LayoutComponentBase
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject IModelService Models
+@inject IEventService Events
+@inject ThemeService ThemeService
+@inject NavigationManager NavManager
+@inject IInfoService InfoService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>BlazorDiffusion</PageTitle>
 
-<MudThemeProvider @bind-IsDarkMode=M.State.IsDarkMode />
+<MudThemeProvider @bind-IsDarkMode=State.State.IsDarkMode Theme="_currentTheme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <div>
     <MudLayout Style="overflow:hidden;">
-        <MudAppBar>
+        <MudAppBar Style="z-index: 1400;">
             <ProgressContainer />
-            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto" />
+            <MudIconButton Href="/" Variant="Variant.Text" Icon="fa-solid fa-image me-1" Class="brand w-auto"
+                           Style="font-size: 1.75rem;" />
             <NavBar />
             <MudSpacer />
-            <MudIconButton Class=@(M.State.Generation.SDModel == "Loading..." ? "spinner" : "") Icon="@Icons.Material.Filled.Settings" Color=@(M.State.Generation.SDModel == "Loading..." ? Color.Info : Color.Inherit) Edge="Edge.Start" OnClick="() => DrawerToggler()" />
+
+            @* Page-contextual shortcut actions (e.g. Schedule Prompt on /generate).
+               Sits between the main NavBar and the right-hand toolbar so each page
+               can surface its own top-level actions without cluttering the content. *@
+            <ContextualNavActions />
+
+            @* Right-aligned toolbar items *@
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                @* Base Selector (ComfyUI only) *@
+                @if (Backend.IsBackendAvailable && _workflowBases != null && _workflowBases.Count > 0)
+                {
+                    <MudSelect Value="State.State.Generation.WorkflowBase" T="ModelBase"
+                               ValueChanged="HandleWorkflowBaseSelected" Label="Base" Variant="Variant.Text" Class="base-selector"
+                               AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="500"
+                               Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Refresh"
+                               AdornmentColor="Color.Inherit" OnAdornmentClick="RefreshWorkflows">
+                        @foreach (var workflowBase in _workflowBases)
+                        {
+                            <MudSelectItem Value="@workflowBase">
+                                <div class="base-select-item">
+                                    <img class="base-icon" src="images/model-bases/@GetBaseIconPath(workflowBase)"
+                                         alt="@workflowBase" />
+                                    <span class="base-label">@GetBaseDisplayName(workflowBase)</span>
+                                </div>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                <ProjectSelectorDropdown />
+
+                @* Dark/Light Mode Toggle *@
+                <MudIconButton
+                Icon="@(State.State.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                Color="Color.Inherit"
+                Title="@(State.State.IsDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")"
+                OnClick="ToggleDarkMode" />
+
+                @* Info/Help Button *@
+                @if (InfoService.CurrentInfo != null)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Inherit" Title="Help & Shortcuts"
+                                   OnClick="OpenInfoDrawer" />
+                }
+
+                <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Title="Settings"
+                               OnClick="() => DrawerToggler()" />
+            </MudStack>
         </MudAppBar>
-        <MudExpansionPanels Style="position: fixed; width:100%; z-index:100;">
-            <MudExpansionPanel HideIcon=true IsExpanded="_isToolbarOpen">
-                <TopToolbar />
+
+        @* Backdrop for TopToolbar *@
+        @if (_isToolbarOpen)
+        {
+            <div class="toolbar-backdrop" @onclick="CloseToolbar"></div>
+        }
+
+        <MudExpansionPanels Style="position: fixed; width:100%; z-index:1301; top: 0px;">
+            <MudExpansionPanel HideIcon=true @bind-IsExpanded="_isToolbarOpen">
+                <CascadingValue Value="@((Action)HandleThemeChanged)">
+                    <TopToolbar CurrentPage="@_currentPagePath" />
+                </CascadingValue>
             </MudExpansionPanel>
         </MudExpansionPanels>
         <MudMainContent>
-            <MudContainer Class="mt-5" MaxWidth="MaxWidth.ExtraLarge">
+            @* Context-dependent workflow selector: full-width, flush below the app bar,
+               only rendered on /generate routes. Sits outside the padded container so
+               it spans the full viewport width. *@
+            @if (_currentPagePath.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
+            {
+                <WorkflowStrip />
+            }
+            <div class="app-body-shell mt-5">
                 @Body
-            </MudContainer>
+            </div>
         </MudMainContent>
+
+        @* Info Drawer (global, contextual) - inside MudLayout for proper overlay *@
+        <InfoDrawer @ref="_infoDrawer" />
     </MudLayout>
 </div>
 
 @code {
     private bool _isToolbarOpen = false;
+    private bool _isAppReady = false;
+    private bool _loaderDismissed = false;
+    private MudTheme _currentTheme = new MudTheme();
+    private List<ModelBase> _workflowBases = new();
+    private InfoDrawer? _infoDrawer;
+    private string _currentPagePath = "/";
 
     protected override void OnInitialized()
     {
-        M.OnProgressChanged += Refresh;
-        M.OnSDModelsChange += Refresh;
+        _currentPagePath = new Uri(NavManager.Uri).AbsolutePath;
+        Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
+        Events.Subscribe<ModelsChangedEventArgs>(OnSDModelsChange);
+        Events.Subscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        InfoService.OnInfoChanged += HandleInfoChanged;
+        NavManager.LocationChanged += HandleLocationChanged;
+        LoadTheme();
     }
 
-    protected async override Task OnInitializedAsync() => M.IsWebuiUp = await API.CheckWebuiState();
+    protected async override Task OnInitializedAsync()
+    {
+        // Load persisted state from database via Orchestrator
+        // This ensures workflows are refreshed from disk templates (not just from database)
+        await M.LoadState();
 
-    private void DrawerToggler() => _isToolbarOpen = !_isToolbarOpen;
+        // Check backend availability using BackendService
+        var isBackendAvailable = await Backend.CheckBackendAvailability();
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+        // Load backend-dependent resources if backend is available
+        if (isBackendAvailable)
+        {
+            await M.LoadBackendDependentResources();
+        }
+
+        LoadWorkflowBases();
+        _isAppReady = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Dismiss the bootstrap loader (rendered in _Layout.cshtml) once the app
+        // has initialized and painted with the correct theme. This hides the
+        // theme-flash / empty-navbar phase from the user.
+        if (firstRender && _isAppReady && !_loaderDismissed)
+        {
+            _loaderDismissed = true;
+            try
+            {
+                await JS.InvokeVoidAsync("appLoader.hide");
+            }
+            catch (JSException) { /* loader already gone */ }
+            catch (InvalidOperationException) { /* prerender phase; ignore */ }
+        }
+    }
+
+    private async void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args)
+    {
+        LoadWorkflowBases();
+
+        // Load backend-dependent resources when backend comes online
+        if (Backend.IsBackendAvailable)
+        {
+            await M.LoadBackendDependentResources();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadWorkflowBases()
+    {
+        if (Backend.IsBackendAvailable && State.State?.Generation?.Workflows != null)
+        {
+            _workflowBases = State.State.Generation.Workflows
+                .Select(w => w.Base.ToString())
+                .Where(b => !string.IsNullOrWhiteSpace(b))
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .Select(b => Enum.Parse<ModelBase>(b, ignoreCase: true))
+                .OrderBy(b => GetBaseDisplayName(b))
+                .ToList();
+        }
+    }
+
+    private void LoadTheme()
+    {
+        _currentTheme = ThemeService.GetTheme(State.State.CurrentTheme ?? "Default");
+    }
+
+    private void HandleThemeChanged()
+    {
+        LoadTheme();
+        StateHasChanged();
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        State.State.IsDarkMode = !State.State.IsDarkMode;
+        await State.SaveState();
+        StateHasChanged();
+    }
+
+    private async Task HandleWorkflowBaseSelected(ModelBase selected)
+    {
+        M.SetWorkflowBase(selected);
+        await Models.GetWorkflowModels();
+
+        // No manual navigation: if we're on /generate, StateService.SetWorkflowBase
+        // publishes a StateChangedEventArgs that Generate.razor handles by calling
+        // InitializeFromWorkflowAsync on the new base's default workflow and updating
+        // the URL in place. Pages that don't listen simply stay put.
+    }
+
+    private void RefreshWorkflows()
+    {
+        M.RefreshWorkflowsFromDisk();
+        LoadWorkflowBases();
+        StateHasChanged();
+    }
+
+    private void DrawerToggler()
+    {
+        _isToolbarOpen = !_isToolbarOpen;
+        StateHasChanged();
+    }
+
+    private void CloseToolbar()
+    {
+        _isToolbarOpen = false;
+        StateHasChanged();
+    }
+
+    private void OpenInfoDrawer()
+    {
+        if (_infoDrawer != null)
+        {
+            if (_infoDrawer.IsOpen)
+                _infoDrawer.Close();
+            else
+                _infoDrawer.Open();
+        }
+    }
+
+    private void HandleInfoChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _currentPagePath = new Uri(NavManager.Uri).AbsolutePath;
+        // Close drawer when navigating away from page
+        _infoDrawer?.Close();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
+    private void OnSDModelsChange(ModelsChangedEventArgs args) => Refresh();
+    private void OnWorkflowBaseChanged(StateChangedEventArgs args) => Refresh();
+
+    private async void Refresh()
+    {
+        LoadWorkflowBases();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetBaseIconPath(ModelBase modelBase) => modelBase switch
+    {
+        ModelBase.StableDiffusion => "stable-diffusion.svg",
+        ModelBase.Flux => "flux.svg",
+        ModelBase.Chroma => "chroma.svg",
+        ModelBase.Qwen => "qwen.svg",
+        ModelBase.ZImage => "zimage.svg",
+        ModelBase.Wan => "wan.svg",
+        ModelBase.Anima => "anima.svg",
+        ModelBase.Ernie => "ernie.svg",
+        ModelBase.LTX => "ltx.svg",
+        _ => "stable-diffusion.svg"
+    };
+
+    private static string GetBaseDisplayName(ModelBase modelBase) => modelBase switch
+    {
+        ModelBase.StableDiffusion => "Stable Diffusion",
+        ModelBase.Flux => "Flux",
+        ModelBase.Chroma => "Chroma",
+        ModelBase.Qwen => "Qwen",
+        ModelBase.ZImage => "Z-Image",
+        ModelBase.Wan => "Wan",
+        ModelBase.Anima => "Anima",
+        ModelBase.Ernie => "Ernie",
+        ModelBase.LTX => "LTX",
+        _ => modelBase.ToString()
+    };
 
     public void Dispose()
     {
-        M.OnProgressChanged -= Refresh;
-        M.OnSDModelsChange += Refresh;
+        Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
+        Events.Unsubscribe<ModelsChangedEventArgs>(OnSDModelsChange);
+        Events.Unsubscribe<StateChangedEventArgs>(OnWorkflowBaseChanged);
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        InfoService.OnInfoChanged -= HandleInfoChanged;
+        NavManager.LocationChanged -= HandleLocationChanged;
     }
 }

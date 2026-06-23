@@ -9,8 +9,11 @@ namespace BlazorWebApp.Data.Entities
         public int Version { get; set; }
         public DateTime CreationDate { get; set; }
         public AppState? AppState { get; set; }
-        public Txt2ImgParameters? Txt2ImgParameters { get; set; }
-        public Img2ImgParameters? Img2ImgParameters { get; set; }
-        public UpscaleParameters? UpscaleParameters { get; set; }
+        
+        /// <summary>
+        /// Unified generation parameters.
+        /// Replaces the legacy mode-specific parameter properties.
+        /// </summary>
+        public GenerationParameters? GenerationParameters { get; set; }
     }
 }

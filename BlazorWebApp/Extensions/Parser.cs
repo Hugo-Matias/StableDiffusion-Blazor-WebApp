@@ -1,72 +1,41 @@
-﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
 using BlazorWebApp.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace BlazorWebApp.Extensions
 {
     public static class Parser
     {
-        public static string CreateScriptParameters(this string payloadKey, ref SharedParameters parameters, BaseScriptParameters scriptParam, bool ignoreBaseParam = false)
-        {
-            if (scriptParam != null && scriptParam.IsEnabled)
-            {
-                var argsArray = scriptParam.GetType().GetProperties().Select(p => p.GetValue(scriptParam, null)).ToArray();
-                // Since the shared ScriptParameteresBase properties are loaded last and order is important, we need to reorder them
-                var tempList = argsArray.ToList();
-                if (scriptParam.IsAlwaysOn)
-                {
-                    // Last element at this point is BaseScriptParameters.IsAlwaysOn, since we don't need the value in the payload it's just discarded
-                    tempList.RemoveAt(tempList.Count - 1);
-                    // Last element at this point is BaseScriptParameters.IsEnabled, the value we need move to top or remove
-                    if (ignoreBaseParam) tempList.RemoveAt(tempList.Count - 1);
-                    else
-                    {
-                        var isEnabledValue = tempList[tempList.Count - 1];
-                        tempList.RemoveAt(tempList.Count - 1);
-                        tempList.Insert(0, isEnabledValue);
-                    }
-
-                    //Expand MultiDiffusion box region controls
-                    if (payloadKey == "Tiled Diffusion")
-                    {
-                        var controls = tempList[tempList.Count - 1];
-                        tempList.RemoveAt(tempList.Count - 1);
-                        foreach (var control in (List<ScriptParametersMultiDiffusionBBoxControl>)controls)
-                        {
-                            tempList.AddRange(control.GetType().GetProperties().Select(p => p.GetValue(control, null)).ToArray());
-                        }
-                    }
-
-                    argsArray = tempList.ToArray();
-                    var payloadValue = new Dictionary<string, object[]>() { { "args", argsArray } };
-                    if (parameters.AlwaysOnScripts == null) parameters.AlwaysOnScripts = new() { { payloadKey, payloadValue } };
-                    else parameters.AlwaysOnScripts.Add(payloadKey, payloadValue);
-                }
-                else
-                {
-                    // Remove the 2 shared values from the payload since they are not needed on triggered scripts like Ultimate Upscale
-                    tempList.RemoveAt(tempList.Count - 1);
-                    tempList.RemoveAt(tempList.Count - 1);
-                    argsArray = tempList.ToArray();
-                    parameters.ScriptName = payloadKey;
-                    parameters.ScriptArgs = argsArray;
-                    return payloadKey;
-                }
-            }
-            return string.Empty;
-        }
+        // Regex pattern to match __wildcard__ syntax (same as WildcardService)
+        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
 
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
-        public static string NormalizePath(this string path)
+        public static string NormalizePath(this string? path)
         {
-            return Path.GetFullPath(new Uri(path).LocalPath)
-                       .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                       .ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+            var trimmedPath = path.Trim();
+            if (Uri.TryCreate(trimmedPath, UriKind.Absolute, out var uri) && uri.IsFile)
+            {
+                trimmedPath = uri.LocalPath;
+            }
+            else if (Regex.IsMatch(trimmedPath, @"^[a-z][a-z0-9+.-]*://", RegexOptions.IgnoreCase))
+            {
+                return trimmedPath
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, '/', '\\')
+                    .ToLowerInvariant();
+            }
+
+            return Path.GetFullPath(trimmedPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .ToLowerInvariant();
         }
 
         public static string RemoveBase64Header(this string data)
@@ -82,22 +51,66 @@ namespace BlazorWebApp.Extensions
             return input;
         }
 
-        public static SharedParameters ParseParameters(this SharedParameters param, IEnumerable<PromptStyle> styles)
+        /// <summary>
+        /// Expands all wildcards in the input string using the WildcardService.
+        /// Wildcards are in the format: __category/collection__ or __collection__
+        /// </summary>
+        /// <param name="input">Input string containing wildcards</param>
+        /// <param name="wildcardService">Wildcard service for random entry selection</param>
+        /// <returns>String with wildcards replaced by random entries</returns>
+        public static async Task<string> ExpandWildcardsAsync(string? input, IWildcardService wildcardService)
         {
-            if (styles != null && styles.Count() > 0)
-            {
-                foreach (var style in styles)
-                {
-                    param.Prompt = param.Prompt.ParsePrompt(style.Prompt);
-                    param.NegativePrompt = param.NegativePrompt.ParsePrompt(style.NegativePrompt);
-                }
-            }
-            return param;
+            if (string.IsNullOrWhiteSpace(input))
+                return input ?? string.Empty;
+
+            // Use the WildcardService's ParseWildcards method which handles weighted selection
+            return await wildcardService.ParseWildcards(input);
         }
 
-        public static string ParsePrompt(this string prompt, string style)
+        /// <summary>
+        /// Detects wildcards in the input string without expanding them.
+        /// Useful for UI to show which wildcards will be expanded.
+        /// </summary>
+        /// <param name="input">Input string to check for wildcards</param>
+        /// <returns>List of wildcard names found</returns>
+        public static List<string> DetectWildcards(string? input)
         {
-            if (style == null) return prompt;
+            if (string.IsNullOrWhiteSpace(input))
+                return new List<string>();
+
+            var matches = WildcardPattern.Matches(input);
+            return matches
+                .Select(m => m.Groups[1].Value)
+                .Distinct()
+                .ToList();
+        }
+
+        public static (string prompt, string negative) ParseLoras(this List<Lora> loras)
+        {
+            string prompt = string.Empty;
+            string negative = string.Empty;
+            foreach (var lora in loras.Where(l => l.IsEnabled))
+            {
+                var loraString = $" <lora:{lora.Name}:{lora.Strength:N2}>";
+                if (lora.IsNegative) negative += loraString;
+                else prompt += loraString;
+            }
+            return (prompt, negative);
+        }
+
+        public static string ParseStyles(this string prompt, List<PromptStyle> styles, bool isNegative)
+        {
+            if (styles == null || styles.Count == 0) return prompt;
+            foreach (var style in styles)
+            {
+                prompt = prompt.ParseStyle(isNegative ? style.NegativePrompt : style.Prompt);
+            }
+            return prompt;
+        }
+
+        public static string ParseStyle(this string prompt, string style)
+        {
+            if (string.IsNullOrWhiteSpace(style)) return prompt;
             if (style.Contains("{prompt}"))
             {
                 return Regex.Replace(style, "{prompt}", prompt ?? "");
@@ -106,48 +119,91 @@ namespace BlazorWebApp.Extensions
         }
 
         /// <summary>
-        /// Parses the info text lines returned from the WebUI after inference.
+        /// Parses prompt and negative prompt from ComfyUI workflow JSON.
         /// </summary>
-        /// <param name="info">Info text</param>
-        /// <param name="mode">ModeType to unsure that Upscale generations are properly parsed</param>
-        /// <returns>Dictionary key values ["prompt", "negative", "param"] </returns>
+        /// <param name="info">Workflow JSON info</param>
+        /// <param name="mode">ModeType for context</param>
+        /// <returns>Dictionary with keys ["prompt", "negative", "param"]</returns>
         public static Dictionary<string, string>? ParseInfoStrings(this string info, ModeType mode)
         {
             if (string.IsNullOrWhiteSpace(info)) return null;
 
             var prompt = string.Empty;
             var negative = string.Empty;
-            var param = string.Empty;
+            var param = info;
 
-            if (mode == ModeType.Extras) param = info;
-            else
+            try
             {
-                var lines = info.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var line in lines)
+                using var doc = JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                // Search for prompt nodes (conventionally named like "text_positive", "detailer_text_positive", etc.)
+                foreach (var nodeProperty in root.EnumerateObject())
                 {
-                    if (line.StartsWith("Negative prompt:", StringComparison.InvariantCultureIgnoreCase)) negative = Regex.Replace(line, @"^Negative prompt: ", "");
-                    else if (line.StartsWith("Steps: ", StringComparison.InvariantCultureIgnoreCase)) param = line;
-                    else if (!string.IsNullOrWhiteSpace(line)) prompt = line;
+                    if (nodeProperty.Value.ValueKind == JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        inputs.TryGetProperty("value", out var valueEl) &&
+                        valueEl.ValueKind == JsonValueKind.String)
+                    {
+                        var nodeName = nodeProperty.Name.ToLowerInvariant();
+
+                        if (nodeName.Contains("text_positive") || nodeName.Contains("positive"))
+                        {
+                            if (string.IsNullOrEmpty(prompt))
+                                prompt = valueEl.GetString() ?? string.Empty;
+                        }
+                        else if (nodeName.Contains("text_negative") || nodeName.Contains("negative"))
+                        {
+                            if (string.IsNullOrEmpty(negative))
+                                negative = valueEl.GetString() ?? string.Empty;
+                        }
+                    }
                 }
             }
+            catch
+            {
+                throw new Exception("Failed to parse prompt/negative prompt from image info.");
+            }
+            
             return new Dictionary<string, string>() { { "prompt", prompt }, { "negative", negative }, { "param", param } };
         }
 
-        public static Dictionary<string, string>? ParseInfoParameters(this string param)
+        public static JsonTreeNode ParseComfyUIInfoParameters(this string json)
         {
-            if (string.IsNullOrWhiteSpace(param)) return null;
+            using var doc = JsonDocument.Parse(json);
+            return ConvertElement(doc.RootElement, "root");
 
-            Dictionary<string, string>? parameters = new();
-            // Adding ", " to comply with the pattern
-            var groups = Regex.Matches(param + ", ", @"((.+?): ([^"",\n]*|""([^""]*|"")*""), )");
-            foreach (Match group in groups)
+            static JsonTreeNode ConvertElement(JsonElement element, string name)
             {
-                if (group.Groups.Count != 5) Console.WriteLine($"[ImageService:ParseInfoParameters] Incorrect group match: {group.Value} | {group.Groups.Count}");
-                var key = group.Groups[2].Value;
-                var value = group.Groups[3].Value;
-                parameters.Add(key, value);
+                var node = new JsonTreeNode { Name = name };
+                switch (element.ValueKind)
+                {
+                    case JsonValueKind.Object:
+                        foreach (var prop in element.EnumerateObject())
+                            node.Children.Add(ConvertElement(prop.Value, prop.Name));
+                        break;
+                    case JsonValueKind.Array:
+                        int i = 0;
+                        foreach (var item in element.EnumerateArray())
+                            node.Children.Add(ConvertElement(item, $"[{i++}]"));
+                        break;
+                    default:
+                        node.Value = element.ToString();
+                        break;
+                }
+                return node;
             }
-            return parameters;
+        }
+
+        public static string GetDefaultModelFromWorkflow(this string workflow)
+        {
+            var defaultModel = string.Empty;
+            var match = Regex.Match(workflow, @"\{\{\s*Model\s*\?\?\s*""([^""]+)""");
+            if (match.Success)
+            {
+                defaultModel = match.Groups[1].Value;
+            }
+            return defaultModel;
         }
 
         public static string ParseCivitaiImageResources(this string prompt, List<CivitaiImageMetaResourceDto> resources)
@@ -167,14 +223,7 @@ namespace BlazorWebApp.Extensions
             return prompt.Replace("\n", "");
         }
 
-        public static MarkupString ParseHighresFixResizeInfo(this Txt2ImgParameters param)
-        {
-            var currentRes = $"{param.Width}x{param.Height} px";
-            var resizeRes = ParseHighresResolution((int)param.Width, (int)param.Height, param.HRWidth, param.HRHeight, param.HRScale);
-            return new MarkupString($"From: {currentRes} | To: <strong>{resizeRes.Item1}x{resizeRes.Item2} px</strong>");
-        }
-
-        public static (int, int) ParseHighresResolution(this int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
+        public static (int, int) ParseHighresResolution(int width, int height, int hrWidth = 0, int hrHeight = 0, double scale = 0)
         {
             var ar = (float)width / height;
             if (hrWidth == 0 && hrHeight == 0)
@@ -187,59 +236,48 @@ namespace BlazorWebApp.Extensions
                 return (hrWidth, hrHeight);
         }
 
-        public static ImageInfo ParseImageInfoString(this ImageInfo image)
+        /// <summary>
+        /// Finds Lora tags in the prompt of form: &lt;lora:File:Strength&gt;
+        /// Removes them from the prompt (collapsing extra spaces) and returns parsed Loras.
+        /// </summary>
+        public static List<Lora> ExtractLorasFromPrompt(this string prompt, out string cleanedPrompt, bool isNegative)
         {
-            foreach (var line in image.InfoString)
+            if (string.IsNullOrWhiteSpace(prompt))
             {
-                if (line.StartsWith("Negative prompt:"))
-                    image.NegativePrompt = line.Replace("Negative prompt: ", "");
-
-                else if (line.StartsWith("Steps:"))
-                    image.ParseImageInfoParameters(line);
-
-                else
-                    image.Prompt = line;
+                cleanedPrompt = prompt ?? string.Empty;
+                return new List<Lora>();
             }
 
-            return image;
-        }
+            var pattern = @"<lora:([^:>]+):([0-9]*\.?[0-9]+)>";
+            var matches = Regex.Matches(prompt, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            var loras = new List<Lora>();
+            var result = prompt;
 
-        public static ImageInfo ParseImageInfoParameters(this ImageInfo image, string info)
-        {
-            image.Steps = int.Parse(Regex.Match(info, @"(Steps: )(\d+)").Groups[2].Value);
-            image.Sampler = Regex.Match(info, @"(Sampler: )(.+?),").Groups[2].Value;
-            image.CfgScale = float.Parse(Regex.Match(info, @"(CFG scale: )(.+?),").Groups[2].Value);
-            image.Seed = long.Parse(Regex.Match(info, @"(Seed: )(\d+)").Groups[2].Value);
-            var size = Regex.Match(info, @"(Size: )(\d+)x(\d+)");
-            image.Width = int.Parse(size.Groups[2].Value);
-            image.Height = int.Parse(size.Groups[3].Value);
-
-            return image;
-        }
-
-        public static string ParseResizeModeValue(this int value)
-        {
-            return value switch
+            foreach (Match m in matches)
             {
-                1 => "Crop and Resize",
-                2 => "Resize and Fill",
-                3 => "Just Resize (latent upscale)",
-                _ => "Just Resize",
-            };
+                if (!m.Success) continue;
+                var file = m.Groups[1].Value.Trim();
+                var strengthText = m.Groups[2].Value;
+                if (!float.TryParse(strengthText, NumberStyles.Float, CultureInfo.InvariantCulture, out var strength))
+                    strength = 1.0f;
+
+                loras.Add(new Lora
+                {
+                    Name = file,
+                    Strength = strength,
+                    IsEnabled = true,
+                    IsNegative = isNegative
+                });
+
+                result = result.Replace(m.Value, "");
+            }
+
+            // collapse multiple spaces and trim
+            cleanedPrompt = Regex.Replace(result, @"\s{2,}", "").Trim();
+            return loras;
         }
 
-        public static string ParseInpaintingFillValue(this int value)
-        {
-            return value switch
-            {
-                1 => "Original",
-                2 => "Latent Noise",
-                3 => "Latent Nothing",
-                _ => "Fill",
-            };
-        }
-
-        public static CsvTag ParseCsvTag(this CsvTag tag) => new CsvTag()
+        public static Tag ParseCsvTag(this Tag tag) => new Tag()
         {
             Name = tag.Name.Replace("_", " "),
             Aliases = tag.Aliases.Replace("_", " "),
@@ -325,6 +363,7 @@ namespace BlazorWebApp.Extensions
             }
             return splitUrl + width.ToString();
         }
+
         public static string ParseCivitaiImageGenerationProcess(this string process)
         {
             return process switch
@@ -423,6 +462,8 @@ namespace BlazorWebApp.Extensions
                 Outdir.Img2ImgSamples => ModeType.Img2Img,
                 Outdir.Img2ImgGrid => ModeType.Img2Img,
                 Outdir.Extras => ModeType.Extras,
+                Outdir.Img2VidSamples => ModeType.Img2Vid,
+                _ => ModeType.Txt2Img
             };
         }
 
@@ -430,6 +471,172 @@ namespace BlazorWebApp.Extensions
         {
             const string ellipses = "...";
             return value.Length <= maxChars ? value : value.Substring(0, maxChars - ellipses.Length) + ellipses;
+        }
+
+        public static T? FindJsonValueByKey<T>(JsonElement element, string propertyName)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (property.NameEquals(propertyName))
+                        {
+                            return GetValueAs<T>(property.Value);
+                        }
+
+                        var found = FindJsonValueByKey<T>(property.Value, propertyName);
+                        if (found != null)
+                            return found;
+                    }
+                    break;
+
+                case JsonValueKind.Array:
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        var found = FindJsonValueByKey<T>(item, propertyName);
+                        if (found != null)
+                            return found;
+                    }
+                    break;
+            }
+
+            return default;
+        }
+
+        private static T? GetValueAs<T>(JsonElement element)
+        {
+            try
+            {
+                return element.ValueKind switch
+                {
+                    JsonValueKind.String when typeof(T) == typeof(string) => (T)(object)element.GetString()!,
+                    JsonValueKind.Number when typeof(T) == typeof(int) => (T)(object)element.GetInt32(),
+                    JsonValueKind.Number when typeof(T) == typeof(long) => (T)(object)element.GetInt64(),
+                    JsonValueKind.Number when typeof(T) == typeof(float) => (T)(object)element.GetSingle(),
+                    JsonValueKind.Number when typeof(T) == typeof(double) => (T)(object)element.GetDouble(),
+                    JsonValueKind.True or JsonValueKind.False when typeof(T) == typeof(bool) => (T)(object)element.GetBoolean(),
+                    JsonValueKind.Object when typeof(T) == typeof(JsonElement) => (T)(object)element,
+                    _ => default
+                };
+            }
+            catch
+            {
+                return default;
+            }
+        }
+
+        public static List<string> FindAllJsonValuesByKey(JsonElement element, string propertyName)
+        {
+            var results = new List<string>();
+            TraverseJson(element, propertyName, results);
+            return results;
+        }
+
+        private static void TraverseJson(JsonElement element, string propertyName, List<string> results)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (property.NameEquals(propertyName))
+                        {
+                            if (property.Value.ValueKind == JsonValueKind.String)
+                                results.Add(property.Value.GetString());
+                            else
+                                results.Add(property.Value.ToString());
+                        }
+
+                        TraverseJson(property.Value, propertyName, results);
+                    }
+                    break;
+
+                case JsonValueKind.Array:
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        TraverseJson(item, propertyName, results);
+                    }
+                    break;
+            }
+        }
+
+        public static JsonElement? GetFirstJsonProperty(JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                using var enumerator = element.EnumerateObject().GetEnumerator();
+                if (enumerator.MoveNext())
+                {
+                    return enumerator.Current.Value;
+                }
+            }
+            return null;
+        }
+
+        public static bool TryGetPropertyIgnoreCase(this JsonElement element, string propertyName, out JsonElement value)
+        {
+            foreach (var prop in element.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = prop.Value;
+                    return true;
+                }
+            }
+            value = default;
+            return false;
+        }
+
+        public static string? GetStringProperty(this JsonElement element, string propertyName)
+        {
+            if (element.TryGetPropertyIgnoreCase(propertyName, out var el) && el.ValueKind == JsonValueKind.String)
+                return el.GetString();
+            return null;
+        }
+
+        public static Dictionary<string, object?> ConvertJsonObjectToDictionary(this JsonElement element)
+        {
+            var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            if (element.ValueKind != JsonValueKind.Object) return dict;
+            foreach (var prop in element.EnumerateObject())
+            {
+                dict[prop.Name] = prop.Value.ConvertJsonElementToObject();
+            }
+            return dict;
+        }
+
+        public static object? ConvertJsonElementToObject(this JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.String:
+                    return element.GetString();
+
+                case JsonValueKind.Number:
+                    if (element.TryGetInt32(out var i)) return i;
+                    if (element.TryGetInt64(out var l)) return l;
+                    if (element.TryGetDouble(out var d)) return d;
+                    return element.GetDecimal();
+
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return element.GetBoolean();
+
+                case JsonValueKind.Array:
+                    var list = new List<object?>();
+                    foreach (var it in element.EnumerateArray())
+                        list.Add(it.ConvertJsonElementToObject());
+                    return list;
+
+                case JsonValueKind.Object:
+                    return element.ConvertJsonObjectToDictionary();
+
+                case JsonValueKind.Null:
+                case JsonValueKind.Undefined:
+                default:
+                    return null;
+            }
         }
     }
 }

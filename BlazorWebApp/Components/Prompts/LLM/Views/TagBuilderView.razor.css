@@ -1,0 +1,37 @@
+/* Page-scoped layout rules for TagBuilderView. */
+
+/* Constrain every button rendered inside the page so the layout stays calm
+   on wide viewports. Targets MudBlazor buttons (.mud-button-root) and the
+   raw <button> elements used by the Workshop-style send-to action bar. */
+.tag-builder-page ::deep .mud-button-root,
+.tag-builder-page ::deep .send-to-btn {
+  max-width: 500px !important;
+}
+
+/* Two-tier send-to layout: stack the LLM tools row above the Workflows row,
+   each labelled, with a soft divider between them. */
+.tag-builder-page ::deep .tag-builder-send-to {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tag-builder-page ::deep .send-to-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tag-builder-page ::deep .send-to-group + .send-to-group {
+  padding-top: 10px;
+  border-top: 1px solid
+    var(--mud-palette-lines-default, rgba(255, 255, 255, 0.08));
+}
+
+.tag-builder-page ::deep .send-to-group-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}

@@ -1,224 +1,84 @@
-﻿@inject ManagerService M
-@inject SDAPIService SD
-@inject DatabaseService DB
-@inject IOService IO
-@inject IDialogService DialogService
-@inject IConfiguration Configuration
-@implements IDisposable
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IOrchestratorService Orchestrator
+@inject ThemeService ThemeService
 
 <div class="mt-6">
-    <MudGrid Justify="Justify.FlexEnd">
-        <MudItem xs="6">
-            <MudSelect T=string Value=M.State.Gallery.FolderName ValueChanged="HandleFolderSelected" Label="Folder" AdornmentIcon="fa-solid fa-folder" AdornmentColor="Color.Secondary" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                <MudSelectItem Value=@("")>All</MudSelectItem>
-                @foreach (var folder in M.Folders)
-                {
-                    <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6">
-            <MudSelect T=string Value=M.State.Gallery.ProjectName ValueChanged="HandleProjectSelected" Label="Project" AdornmentIcon="fa-solid fa-layer-group" AdornmentColor="Color.Success" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                @foreach (var project in M.Projects)
-                {
-                    <MudSelectItem Value="@project.Name">@project.Name</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        @if (M.Options != null)
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="2">
+        <MudSelect T="string" Value="@(State.State.CurrentTheme ?? "Default")" ValueChanged="HandleThemeSelected"
+                   Label="Theme" Variant="Variant.Text" Dense="true" AdornmentIcon="@Icons.Material.Filled.Palette"
+                   AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var themeName in ThemeService.ThemeNames)
+            {
+                <MudSelectItem Value="@themeName">@themeName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+
+    @if (CurrentPage == "/civitai")
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarCivitaiSettings />
+    }
+
+    @if (CurrentPage.StartsWith("/generate"))
+    {
+        var workflow = GetGenerateWorkflow();
+        if (workflow != null)
         {
-            <MudItem xs="12">
-                <MudGrid>
-                    <MudItem xs="4">
-                        @if (M.State.Generation.SDModel == "Loading...")
-                        {
-                            <MudStack Style="min-width:15rem;" AlignItems="AlignItems.Center">
-                                <MudText Class="mb-n4 mt-2" Typo="Typo.overline">Loading...</MudText>
-                                <MudProgressLinear Color="Color.Info" Size="Size.Large" Indeterminate=true Rounded=true />
-                            </MudStack>
-                        }
-                        else
-                        {
-                            <MudSelect Value="M.State.Generation.SDModel" T="string" ValueChanged="HandleModelSelected" Label="Model" OnAdornmentClick="async () => await RefreshModels()" AdornmentIcon="fa-solid fa-flask" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="600">
-                                @if (M.SDModels != null)
-                                {
-                                    @foreach (var model in M.SDModels)
-                                    {
-                                        <MudSelectItem Value="model.Title">@model.Model_name</MudSelectItem>
-                                    }
-                                }
-                            </MudSelect>
-                        }
-                    </MudItem>
-                    <MudItem xs="4">
-                        <MudSelect Value="M.State.Generation.Vae" T="string" ValueChanged="HandleVaeSelected" Label="VAE" AdornmentIcon="fa-solid fa-wand-sparkles" AdornmentColor="Color.Info" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter" MaxHeight="600">
-                            <MudSelectItem Value=@("None")>None</MudSelectItem>
-                            <MudSelectItem Value=@("Automatic")>Automatic</MudSelectItem>
-                            @if (M.SDVAEs != null)
-                            {
-                                @foreach (var file in M.SDVAEs)
-                                {
-                                    <MudSelectItem Value="@file">@file</MudSelectItem>
-                                }
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="4">
-                        <MudSlider Value="_clipSkip" T="int" ValueChanged=HandleClipSkipChanged Min="M.Settings.Webui.ClipSkip.Min" Max="M.Settings.Webui.ClipSkip.Max" Step="M.Settings.Webui.ClipSkip.Step" TickMarks=true ValueLabel=true><small>Clip Skip:</small> @M.Options.ClipSkip </MudSlider>
-                    </MudItem>
-                </MudGrid>
-            </MudItem>
+            <MudDivider Class="my-3" />
+            <GenerateStatePresetPanel Workflow="@workflow" />
         }
-        <MudItem xs="10">
-            <MudSelect @bind-Value=_selectedState T="State" Label="State Preset" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-indent" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                @foreach (var state in _states)
-                {
-                    <MudSelectItem Value="state">@state.Title</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="2">
-            <MudButtonGroup Class="w-100" OverrideStyles=false>
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-plus" Color=Color.Primary OnClick=@(() => ShowStateDialog(new())) />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-pen" Color=Color.Info OnClick=@(() => ShowStateDialog(_selectedState)) Disabled=@(_selectedState == null) />
-                <MudIconButton Style="flex:1;" Icon="fa-solid fa-play" Color=Color.Success OnClick=@(() => M.LoadState(_selectedState)) Disabled=@(_selectedState == null) />
-            </MudButtonGroup>
-        </MudItem>
-    </MudGrid>
+
+        <MudDivider Class="my-3" />
+        <ToolbarLLMSettings />
+        <MudDivider Class="my-3" />
+        <ToolbarWorkflowFilters />
+        <MudDivider Class="my-3" />
+        <ToolbarResourceFilters />
+    }
+
+    @if (CurrentPage.StartsWith("/prompts"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarLLMSettings />
+    }
+
+    @if (CurrentPage.StartsWith("/characters"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarLLMSettings />
+    }
+
+    @if (CurrentPage.StartsWith("/cleanup"))
+    {
+        <MudDivider Class="my-3" />
+        <ToolbarCleanupSettings />
+    }
 </div>
 
 @code {
-    private int _clipSkip;
-    private bool _isWebuiInitialized;
-    private State _selectedState;
-    private List<State> _states = new();
+    [CascadingParameter] public Action? OnThemeChanged { get; set; }
+    [Parameter] public string CurrentPage { get; set; } = "/";
 
-    protected async override Task OnInitializedAsync()
+    private async Task HandleThemeSelected(string selected)
     {
-        M.OnWebuiStateChanged += Refresh;
-        M.OnConverging += Refresh;
-        M.OnOptionsChange += Refresh;
-        //M.OnFolderChange += Refresh;
-        //M.OnProjectChange += Refresh;
-        //M.OnProjectsChange += Refresh;
-        //M.OnStateHasChanged += Refresh;
-        //M.OnSDModelsChange += Refresh;
-        await InitializeStates();
-        await M.GetFolders();
-        await M.GetProjects();
-        if (M.Projects != null && M.Projects.Count > 0)
+        State.State.CurrentTheme = selected;
+        await State.SaveState();
+        OnThemeChanged?.Invoke();
+    }
+
+    private Workflow? GetGenerateWorkflow()
+    {
+        var segments = CurrentPage.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length >= 2
+            && segments[0].Equals("generate", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(segments[1], out var workflowId))
         {
-            if (M.State.Gallery.ProjectId == 0)
-            {
-                var latestProject = await DB.GetLatestProject();
-                await M.SetCurrentProject(latestProject.Id);
-            }
-            else
-            {
-                await M.SetCurrentProject(M.State.Gallery.ProjectId);
-            }
+            return Orchestrator.GetWorkflowById(workflowId);
         }
-        else
-        {
-            M.State.Gallery.ProjectName = "Create New Project...";
-        }
-        await InitializeWebui();
+
+        return Orchestrator.GetCurrentWorkflow();
     }
 
-    private async Task InitializeStates()
-    {
-        _states = await DB.GetStates(int.Parse(Configuration["StateVersion"]));
-        _states.RemoveAt(0);
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task InitializeWebui()
-    {
-        if (!M.IsWebuiUp) return;
-
-        await M.GetOptions();
-        await M.GetSDVAEs();
-        await M.GetSDModels();
-        await M.GetSamplers();
-        await M.GetSchedulers();
-        await M.GetStyles();
-        M.GetSDADetailerModels();
-
-        _clipSkip = (int)M.Options.ClipSkip;
-
-        // Cater for bug in SD api where the sd_model_checkpoint value is null on the GET options data, this would always load the first model in the list as fallback
-        // This will ensure that the model saved previously in the state is forcefully loaded
-        if (!string.IsNullOrWhiteSpace(M.Options.SDModelCheckpoint)) M.State.Generation.SDModel = M.Options.SDModelCheckpoint;
-        else if(M.SDModels.Any(m => m.Title == M.State.Generation.SDModel)) await HandleModelSelected(M.State.Generation.SDModel);
-
-        M.State.Generation.Vae = M.Options.SDVae;
-
-        _isWebuiInitialized = true;
-    }
-
-    private async Task ShowStateDialog(State state)
-    {
-        var options = new DialogOptions() { CloseButton = true, CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
-        var param = new DialogParameters();
-        param.Add("State", state);
-        var dialog = await DialogService.ShowAsync<StateDialog>("", param, options);
-        await dialog.Result;
-        await InitializeStates();
-    }
-
-    private async Task HandleModelSelected(string selected) => await M.SetSDModel(selected);
-
-    private async Task RefreshModels()
-    {
-        var currentModel = M.State.Generation.SDModel;
-        M.State.Generation.SDModel = "Loading...";
-        Refresh();
-        _ = await SD.PostRefreshModels();
-        await M.GetSDModels();
-        M.State.Generation.SDModel = currentModel;
-        Refresh();
-    }
-
-    private async Task HandleProjectSelected(string selected)
-    {
-        await M.SetCurrentProject(DB.GetProject(selected).Result.Id);
-        Refresh();
-    }
-
-    private async Task HandleFolderSelected(string selected)
-    {
-        if (string.IsNullOrWhiteSpace(selected)) await M.SetCurrentFolder(0);
-        else await M.SetCurrentFolder(DB.GetFolder(selected).Result.Id);
-        Refresh();
-    }
-
-    private async Task HandleVaeSelected(string selected) => await M.SetVae(selected);
-
-    private async Task HandleClipSkipChanged(int value)
-    {
-        _clipSkip = value;
-        await M.PostOptions(new() { ClipSkip = (float)_clipSkip });
-    }
-
-    public void Dispose()
-    {
-        M.OnWebuiStateChanged -= Refresh;
-        M.OnConverging -= Refresh;
-        M.OnOptionsChange -= Refresh;
-        //M.OnFolderChange -= Refresh;
-        //M.OnProjectChange -= Refresh;
-        //M.OnProjectsChange -= Refresh;
-        //M.OnStateHasChanged -= Refresh;
-        //M.OnSDModelsChange -= Refresh;
-    }
-
-    private async void Refresh()
-    {
-        if (!_isWebuiInitialized) await InitializeWebui();
-        try
-        {
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex) { return; }
-    }
 }

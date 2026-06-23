@@ -1,0 +1,199 @@
+@using BlazorWebApp.Models
+
+@* Tabbed panel for input images/videos defined in workflow Sources *@
+
+@if (Sources != null && Sources.Count > 0)
+{
+    <MudPaper Elevation="0" Class="pa-3 mb-2">
+        <div class="d-flex align-center mb-2">
+            <MudText Typo="Typo.subtitle2">
+                <MudIcon Icon="@Icons.Material.Filled.Input" Size="Size.Small" Class="mr-1" />
+                Sources
+            </MudText>
+            <MudSpacer />
+            @if (_multiSourceDefinition != null)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary"
+                               Title="Add reference image" OnClick="AddMultiSource" />
+            }
+        </div>
+        
+        @if (Sources.Count == 1 && _multiSourceDefinition == null)
+        {
+            @* Single source, no multi-source - no tabs needed *@
+            var source = Sources.First();
+            <SourceItem Source="@source.Value" SourceId="@source.Key" SourceDefinition="@GetSourceDefinition(source.Key)"
+                        OnSourceChanged="HandleSourceChanged" OnEditClicked="HandleEditClicked"
+                        OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+        }
+        else
+        {
+            @* Multiple sources - use tabs *@
+            <MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+                     PanelClass="pa-3">
+                @foreach (var source in Sources)
+                {
+                    var sourceDefinition = GetSourceDefinition(source.Key);
+                    <MudTabPanel BadgeDot="@(source.Value.HasData)" BadgeColor="Color.Success">
+                        <TabContent>
+                            <div class="d-flex align-center gap-1">
+                                <MudIcon Icon="@GetSourceIcon(source.Value.Type)" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@GetSourceLabel(source.Value, sourceDefinition)</MudText>
+                                @if (CanRemoveSource(source.Key))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error"
+                                                   Class="ml-1" Style="padding: 2px;" Title="Remove this reference image"
+                                                   OnClick="() => RemoveMultiSource(source.Key)" />
+                                }
+                            </div>
+                        </TabContent>
+                        <ChildContent>
+                            <SourceItem Source="@source.Value" SourceId="@source.Key" SourceDefinition="@sourceDefinition"
+                                        OnSourceChanged="HandleSourceChanged" OnEditClicked="HandleEditClicked"
+                                        OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+                        </ChildContent>
+                    </MudTabPanel>
+                }
+            </MudTabs>
+        }
+    </MudPaper>
+}
+
+@code {
+    /// <summary>
+    /// The sources dictionary from GenerationParameters.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Dictionary<string, SourceAsset> Sources { get; set; } = new();
+
+    /// <summary>
+    /// Workflow source definitions for multi-source support.
+    /// </summary>
+    [Parameter]
+    public List<WorkflowSource>? SourceDefinitions { get; set; }
+
+    /// <summary>
+    /// Callback when a source changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string sourceId, SourceAsset source)> OnSourceChanged { get; set; }
+
+    /// <summary>
+    /// Callback when a source is added (multi-source).
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string sourceId, SourceAsset source)> OnSourceAdded { get; set; }
+
+    /// <summary>
+    /// Callback when a source is removed (multi-source).
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnSourceRemoved { get; set; }
+
+    /// <summary>
+    /// Callback when edit is clicked on a source.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnEditClicked { get; set; }
+
+    /// <summary>
+    /// Callback when blank canvas is clicked on a source.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlankCanvasClicked { get; set; }
+
+    private WorkflowSource? _multiSourceDefinition;
+    private int _activeTabIndex;
+
+    protected override void OnParametersSet()
+    {
+        _multiSourceDefinition = SourceDefinitions?.FirstOrDefault(s => s.AllowMultiple);
+    }
+
+    private string GetSourceIcon(string type)
+    {
+        return type?.ToLowerInvariant() switch
+        {
+            "video" => Icons.Material.Filled.VideoFile,
+            "image" => Icons.Material.Filled.Image,
+            "audio" => Icons.Material.Filled.AudioFile,
+            _ => Icons.Material.Filled.AttachFile
+        };
+    }
+
+    private static string GetSourceLabel(SourceAsset source, WorkflowSource? sourceDefinition)
+    {
+        return string.IsNullOrWhiteSpace(sourceDefinition?.Label) ? source.Label : sourceDefinition.Label;
+    }
+
+    private bool CanRemoveSource(string sourceId)
+    {
+        if (_multiSourceDefinition == null) return false;
+        if (!sourceId.StartsWith(_multiSourceDefinition.Id)) return false;
+        // Count how many multi-source entries exist
+        var count = Sources.Keys.Count(k => k.StartsWith(_multiSourceDefinition.Id));
+        // Keep at least one if required
+        return !(_multiSourceDefinition.Required && count <= 1);
+    }
+
+    private WorkflowSource? GetSourceDefinition(string sourceId)
+    {
+        if (SourceDefinitions == null) return null;
+        return SourceDefinitions.FirstOrDefault(s => s.Id == sourceId)
+            ?? SourceDefinitions.FirstOrDefault(s => s.AllowMultiple && sourceId.StartsWith($"{s.Id}_", StringComparison.Ordinal));
+    }
+
+    private async Task AddMultiSource()
+    {
+        if (_multiSourceDefinition == null) return;
+
+        var baseId = _multiSourceDefinition.Id;
+        // Find next available index
+        var existingIndices = Sources.Keys
+            .Where(k => k.StartsWith(baseId))
+            .Select(k =>
+            {
+                var suffix = k[baseId.Length..];
+                if (string.IsNullOrEmpty(suffix)) return 0;
+                return suffix.StartsWith("_") && int.TryParse(suffix[1..], out var idx) ? idx : 0;
+            })
+            .ToList();
+
+        var nextIndex = existingIndices.Count > 0 ? existingIndices.Max() + 1 : 1;
+        var newId = $"{baseId}_{nextIndex}";
+        var newSource = new SourceAsset
+        {
+            Label = $"{_multiSourceDefinition.Label} {nextIndex + 1}",
+            Type = _multiSourceDefinition.Type
+        };
+
+        Sources[newId] = newSource;
+        await OnSourceAdded.InvokeAsync((newId, newSource));
+        _activeTabIndex = Sources.Count - 1;
+    }
+
+    private async Task RemoveMultiSource(string sourceId)
+    {
+        if (Sources.Remove(sourceId))
+        {
+            await OnSourceRemoved.InvokeAsync(sourceId);
+            if (_activeTabIndex >= Sources.Count)
+                _activeTabIndex = Sources.Count - 1;
+        }
+    }
+
+    private async Task HandleSourceChanged((string sourceId, SourceAsset source) args)
+    {
+        await OnSourceChanged.InvokeAsync(args);
+    }
+
+    private async Task HandleEditClicked(string sourceId)
+    {
+        await OnEditClicked.InvokeAsync(sourceId);
+    }
+
+    private async Task HandleBlankCanvasClicked(string sourceId)
+    {
+        await OnBlankCanvasClicked.InvokeAsync(sourceId);
+    }
+}

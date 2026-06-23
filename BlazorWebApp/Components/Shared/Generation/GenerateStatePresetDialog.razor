@@ -1,0 +1,53 @@
+@using BlazorWebApp.Data.Entities
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Preset == null ? "Create Workflow State" : "Edit Workflow State")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField T="string" Value="_name" ValueChanged="HandleNameChanged" Label="Name" Required="true"
+                          Variant="Variant.Text" Dense="true" Immediate="true" AutoFocus="true" />
+            @if (Preset != null)
+            {
+                <MudCheckBox T="bool" @bind-Value="_replaceWithCurrent"
+                             Label="Replace saved settings with current settings" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Button" OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@string.IsNullOrWhiteSpace(_name)">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public GenerateStatePreset? Preset { get; set; }
+
+    private string _name = string.Empty;
+    private bool _replaceWithCurrent;
+
+    protected override void OnInitialized()
+    {
+        _name = Preset?.Name ?? string.Empty;
+    }
+
+    private void HandleNameChanged(string value)
+    {
+        _name = value;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new GenerateStatePresetDialogResult(_name.Trim(), _replaceWithCurrent)));
+    }
+
+    public sealed record GenerateStatePresetDialogResult(string Name, bool ReplaceWithCurrentSettings);
+}

@@ -1,106 +1,412 @@
-﻿@inject ManagerService M
-@inject ImageService ImageService
-@inject DatabaseService DB
+@using BlazorWebApp.Events
+@inject IOrchestratorService M
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IImageService ImageService
+@inject IProgressService Progress
+@inject IDatabaseService DB
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @implements IDisposable
 
 <MudTabs Elevation="1" PanelClass="pa-3 d-flex flex-column align-items-center" MinimumTabWidth="100px" Rounded Centered>
     <MudTabPanel Icon="fa-solid fa-play">
-        @if (M.GeneratedImageEntities != null && M.GeneratedImageEntities.Images != null)
+        @if (ImageService.GeneratedImageEntities != null && ImageService.GeneratedImageEntities.Images != null)
         {
-            <ImageCarousel Images="M.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls AutoCycle />
+            <ImageCarousel Images="ImageService.GeneratedImageEntities.Images" MaxWidth="40vw" MaxHeight="50vh" ShowControls
+                           AutoCycle />
             <br />
-            @if (M.ImagesInfo != null)
+            @if (!string.IsNullOrWhiteSpace(ImageService.Images?.Info))
             {
-                <span class="generation-info-text"><small>@M.ImagesInfo.InfoTexts[0]</small></span>
-            }
-            else if (M.GeneratedUpscaleImage.Info != null)
-            {
-                <span class="generation-info-text"><small>@M.GeneratedUpscaleImage.Info</small></span>
+                <span class="generation-info-text"><small>@ImageService.Images.Info</small></span>
             }
         }
         else
         {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain"
+                      Fluid />
         }
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-image">
-        @if (M.GeneratedImageEntities != null)
+        @if (_resultsView != null && _resultsView.Images != null && _resultsView.Images.Count > 0)
         {
-            <ImagesContainer Images="M.GeneratedImageEntities" CanSelect=true />
+            <ImagesContainer Images="_resultsView" CanSelect="true" OnPageSelected="HandleResultsPageChanged"
+                             ShowPageSizeField="true" PageSize="@State.State.Generation.ResultsPageSize"
+                             PageSizeChanged="HandleResultsPageSizeChanged" ShowClearButton="true" OnClear="HandleClearResults" />
         }
         else
         {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain"
+                      Fluid />
         }
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-spinner">
-        @if (M.Progress.State != null && M.IsConverging)
-        {
-            var value = M.Progress.Value * 100;
-            <MudProgressLinear Style="height: 1.3rem !important;" Color="Color.Secondary" Value="@value" Min=0 Max=100 Class="mb-5" Rounded>
-            <MudText Typo="Typo.caption" Class="py-2">
-                <strong>@((int)value)%</strong>
-                    @if (!string.IsNullOrWhiteSpace(M.Progress.State.Job))
-                    {
-                        <small> | @M.Progress.State.Job</small>
-                    }
-                </MudText>
-            </MudProgressLinear>
-            if (M.Progress.CurrentImage != null)
+        <div class="queue-panel">
+            @if (Progress.IsConverging)
             {
-                <MudImage Src=@($"data:image/png;base64,{M.Progress.CurrentImage}") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+                <MudStack AlignItems="AlignItems.Center" Class="pa-4" Style="width: 100%;">
+                    @* Preview Image from KSampler *@
+                    <div class="preview-image-container">
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImage))
+                        {
+                            <MudImage Src="@GetPreviewImageUrl()" Alt="Generation Preview" Class="preview-image"
+                                      ObjectFit="ObjectFit.Contain" />
+                        }
+                        else
+                        {
+                            <div class="preview-placeholder">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+                            </div>
+                        }
+                    </div>
+
+                    @* Progress Information *@
+                    <MudStack AlignItems="AlignItems.Center" Spacing="1" Class="mt-3"
+                              Style="width: 100%; max-width: 400px;">
+                        @if (!string.IsNullOrWhiteSpace(ImageService.Progress?.State?.Job))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ImageService.Progress.State.Job
+                            </MudText>
+                        }
+
+                        @* Progress Bar *@
+                        @if (ImageService.Progress?.Value > 0)
+                        {
+                            <MudProgressLinear Color="Color.Primary" Value="@(ImageService.Progress.Value * 100)" Class="mt-2"
+                                               Style="width: 100%;" Rounded Size="Size.Medium" />
+                            <MudText Typo="Typo.caption">
+                                @($"{ImageService.Progress.Value * 100:F0}%")
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudProgressLinear Color="Color.Primary" Indeterminate Class="mt-2" Style="width: 100%;" />
+                        }
+
+                        <MudText Typo="Typo.body2" Class="mt-2">Generating image...</MudText>
+                    </MudStack>
+                </MudStack>
             }
-        }
-        else
-        {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
-        }
+            else
+            {
+                <div class="no-image-placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body2">Queue is empty</MudText>
+                </div>
+            }
+        </div>
     </MudTabPanel>
     <MudTabPanel Icon="fa-regular fa-square-check">
-        @if (_selectedImages != null && _selectedImages.Images.Count > 0)
-        {
-            <ImagesContainer OnPageSelected=LoadSelectedPage Images="_selectedImages" />
-        }
-        else
-        {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
-        }
+        <div class="selected-gallery-container">
+            @if (_selectedImages != null && _selectedImages.Images.Count > 0)
+            {
+                <div class="gallery-toolbar">
+                    <MudButton OnClick="() => OpenSelectedViewer(0)" StartIcon="fa-solid fa-window-maximize"
+                               Color="Color.Secondary" Size="Size.Small">
+                        Fullscreen
+                    </MudButton>
+                    <MudButton OnClick="ShowDeleteSelectedDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error"
+                               Size="Size.Small">
+                        Delete (@Gallery.SelectedImageIds.Count)
+                    </MudButton>
+                    <MudButton OnClick="Gallery.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning"
+                               Size="Size.Small">Clear</MudButton>
+                    @if (_selectedImages.PageCount > 1)
+                    {
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_selectedImages.PageCount"
+                                       Selected="_selectedImagesPage" SelectedChanged="page => LoadSelectedPage(page)" Size="Size.Small" />
+                    }
+                </div>
+
+                <div class="selected-gallery">
+                    <MudGrid Spacing="2" Justify="Justify.Center">
+                        @foreach (var image in _selectedImages.Images)
+                        {
+                            var index = _selectedImages.Images.IndexOf(image);
+                            @if (IsVideoFile(image.Path))
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@index"
+                                               OnSelectVideo="OpenSelectedViewer" OnDeleteVideo="video => { }"
+                                               OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                </MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <ImageCard Image="@image" Target="fullscreen-modal"
+                                               OnSelectImage="img => OpenSelectedViewer(_selectedImages.Images.IndexOf(img))"
+                                               OnDeleteImage="img => { }" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </div>
+
+                @if (_selectedImages.PageCount > 1)
+                {
+                    <div style="margin-top: 1rem; display: flex; justify-content: center;">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_selectedImages.PageCount"
+                                       Selected="_selectedImagesPage" SelectedChanged="page => LoadSelectedPage(page)" />
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="no-image-placeholder">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" Size="Size.Large" Class="mb-2" />
+                    <MudText Typo="Typo.body2">No items selected</MudText>
+                    <MudText Typo="Typo.caption">Select images or videos using the checkbox</MudText>
+                </div>
+            }
+        </div>
     </MudTabPanel>
     <MudTabPanel Icon="fa-solid fa-shuffle">
         <MudStack>
             <MudText Typo="Typo.caption">Source:</MudText>
-            <MudRadioGroup @bind-SelectedOption=@M.State.Generation.RandomImagesSource>
-                <MudRadio Option=@("generated") Color="Color.Primary">Generated</MudRadio>
-                <MudRadio Option=@("resource") Color="Color.Secondary">Resource</MudRadio>
+            <MudRadioGroup T="string" @bind-Value="State.State.Generation.RandomImagesSource">
+                <MudRadio T="string" Value="@("generated")" Color="Color.Primary">Generated</MudRadio>
+                <MudRadio T="string" Value="@("resource")" Color="Color.Secondary">Resource</MudRadio>
             </MudRadioGroup>
             <MudStack Row=true>
-                <MudSlider @bind-Value=M.State.Generation.RandomImagesAmount Min=M.Settings.Generation.RandomImages.Min Max=M.Settings.Generation.RandomImages.Max Step=M.Settings.Generation.RandomImages.Step ValueLabel=true>
-                    <small>Amount: </small>@M.State.Generation.RandomImagesAmount
+                <MudSlider @bind-Value=State.State.Generation.RandomImagesAmount
+                           Min=Settings.Settings.Generation.RandomImages.Min Max=Settings.Settings.Generation.RandomImages.Max
+                           Step=Settings.Settings.Generation.RandomImages.Step ValueLabel=true>
+                    <small>Amount: </small>@State.State.Generation.RandomImagesAmount
                 </MudSlider>
                 <MudButton OnClick="LoadRandomImages" Color="Color.Success">Random</MudButton>
             </MudStack>
         </MudStack>
         @if (_randomImages != null && _randomImages.Images.Count > 0)
         {
-            <ImagesContainer OnPageSelected=LoadRandomImages Images="_randomImages" />
+            <div class="selected-gallery-container" style="margin-top: 1rem;">
+                @if (_randomImages.PageCount > 1)
+                {
+                    <div class="gallery-toolbar">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_randomImages.PageCount" Selected="_randomPage"
+                                       SelectedChanged="page => LoadRandomPage(page)" Size="Size.Small" />
+                    </div>
+                }
+
+                <div class="selected-gallery">
+                    <MudGrid Spacing="2" Justify="Justify.Center">
+                        @foreach (var image in _randomImages.Images)
+                        {
+                            var index = _randomImages.Images.IndexOf(image);
+                            @if (IsVideoFile(image.Path))
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@index"
+                                               OnSelectVideo="OpenRandomViewer" OnDeleteVideo="video => { }"
+                                               OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                </MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <ImageCard Image="@image" Target="fullscreen-modal"
+                                               OnSelectImage="img => OpenRandomViewer(_randomImages.Images.IndexOf(img))"
+                                               OnDeleteImage="img => { }" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </div>
+
+                @if (_randomImages.PageCount > 1)
+                {
+                    <div style="margin-top: 1rem; display: flex; justify-content: center;">
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="_randomImages.PageCount" Selected="_randomPage"
+                                       SelectedChanged="page => LoadRandomPage(page)" />
+                    </div>
+                }
+            </div>
         }
         else
         {
-            <MudImage Src=@($"./no_image.png") Style="min-width: 100%;" Width=512 Height=512 ObjectFit="ObjectFit.Contain" Fluid />
+            <div class="no-image-placeholder" style="margin-top: 2rem;">
+                <MudIcon Icon="@Icons.Material.Filled.Casino" Size="Size.Large" Class="mb-2" />
+                <MudText Typo="Typo.body2">Click Random to load images</MudText>
+            </div>
         }
     </MudTabPanel>
 </MudTabs>
 
+@* Unified Asset Viewer for Selected tab *@
+<AssetViewer @bind-IsVisible="_showSelectedViewer" Assets="@(_selectedImages?.Images ?? new())"
+             StartIndex="_selectedViewerIndex" CurrentPage="_selectedImagesPage" PageCount="@(_selectedImages?.PageCount ?? 1)"
+             TotalCount="@(Gallery.SelectedImageIds.Count)" OnPageChange="HandleSelectedViewerPageChange"
+             OnAssetChanged="HandleAssetChanged" OnClosed="StateHasChanged" />
+
+@* Unified Asset Viewer for Random tab *@
+<AssetViewer @bind-IsVisible="_showRandomViewer" Assets="@(_randomImages?.Images ?? new())"
+             StartIndex="_randomViewerIndex" CurrentPage="_randomPage" PageCount="@(_randomImages?.PageCount ?? 1)"
+             TotalCount="@(_randomImages?.Images?.Count ?? 0)" OnPageChange="HandleRandomViewerPageChange"
+             OnAssetChanged="HandleAssetChanged" OnClosed="StateHasChanged" />
+
 @code {
     private ImagesDto _selectedImages;
     private ImagesDto _randomImages;
-    private int _selectedImagesPage;
+    private int _selectedImagesPage = 1;
+    private int _randomPage = 1;
+
+    // Results tab (session-wide accumulator) view state
+    private ImagesDto _resultsView;
+    private int _resultsPage = 1;
+
+    // Selected viewer state
+    private bool _showSelectedViewer;
+    private int _selectedViewerIndex;
+
+    // Random viewer state
+    private bool _showRandomViewer;
+    private int _randomViewerIndex;
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
 
     protected async override Task OnInitializedAsync()
     {
         await LoadSelectedPage(1);
-        ImageService.OnChange += Refresh;
-        M.OnSelectedImagesChanged += Refresh;
+        RebuildResultsView();
+        Events.Subscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
+        Events.Subscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
+    }
+
+    /// <summary>
+    /// Builds a paginated slice of <see cref="IImageService.GeneratedImageEntities"/>
+    /// for the Results tab using the user's configured page size.
+    /// </summary>
+    private void RebuildResultsView()
+    {
+        var all = ImageService.GeneratedImageEntities?.Images;
+
+        if (all == null || all.Count == 0)
+        {
+            _resultsView = new ImagesDto
+            {
+                Images = new List<Image>(),
+                PageCount = 1,
+                CurrentPage = 1,
+                HasNext = false,
+                HasPrev = false,
+            };
+            _resultsPage = 1;
+            return;
+        }
+
+        var pageSize = Math.Max(1, State.State.Generation.ResultsPageSize);
+        var pageCount = Math.Max(1, (int)Math.Ceiling(all.Count / (double)pageSize));
+        if (_resultsPage < 1) _resultsPage = 1;
+        if (_resultsPage > pageCount) _resultsPage = pageCount;
+
+        var skip = (_resultsPage - 1) * pageSize;
+        _resultsView = new ImagesDto
+        {
+            Images = all.Skip(skip).Take(pageSize).ToList(),
+            PageCount = pageCount,
+            CurrentPage = _resultsPage,
+            HasNext = _resultsPage < pageCount,
+            HasPrev = _resultsPage > 1,
+        };
+    }
+
+    private void HandleResultsPageChanged(int page)
+    {
+        _resultsPage = page;
+        RebuildResultsView();
+        StateHasChanged();
+    }
+
+    private async Task HandleResultsPageSizeChanged(int size)
+    {
+        State.State.Generation.ResultsPageSize = size;
+        _resultsPage = 1;
+        RebuildResultsView();
+        StateHasChanged();
+        await State.SaveState();
+    }
+
+    private async Task HandleClearResults()
+    {
+        ImageService.ClearGeneratedImages();
+        _resultsPage = 1;
+        // RebuildResultsView will be driven by the ImagesGenerated event, but
+        // call it locally too so the UI flips to the placeholder immediately.
+        RebuildResultsView();
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private string GetPreviewImageUrl()
+    {
+        var currentImage = ImageService.Progress?.CurrentImage;
+        if (string.IsNullOrWhiteSpace(currentImage))
+            return string.Empty;
+
+        var mimeType = string.IsNullOrWhiteSpace(ImageService.Progress?.CurrentImageMimeType)
+            ? "image/png"
+            : ImageService.Progress.CurrentImageMimeType;
+
+        return $"data:{mimeType};base64,{currentImage}";
+    }
+
+    private GeneratedVideo ConvertToGeneratedVideo(Image image)
+    {
+        return new GeneratedVideo
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Width = image.Width,
+            Height = image.Height,
+            Prompt = image.Prompt,
+            NegativePrompt = image.NegativePrompt,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
+    private void HandleVideoChanged(GeneratedVideo video)
+    {
+        // Sync changes back to the Image entity in the list
+        if (_selectedImages?.Images != null)
+        {
+            var image = _selectedImages.Images.FirstOrDefault(i => i.Id == video.Id);
+            if (image != null)
+            {
+                image.Favorite = video.Favorite;
+                image.Score = video.Score;
+            }
+        }
+        if (_randomImages?.Images != null)
+        {
+            var image = _randomImages.Images.FirstOrDefault(i => i.Id == video.Id);
+            if (image != null)
+            {
+                image.Favorite = video.Favorite;
+                image.Score = video.Score;
+            }
+        }
+    }
+
+    private void HandleAssetChanged(Image image)
+    {
+        StateHasChanged();
     }
 
     private async Task LoadSelectedPage(int page)
@@ -109,33 +415,96 @@
         await LoadSelectedImages();
     }
 
-    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_selectedImagesPage, M.SelectedImageIds);
+    private async Task LoadSelectedImages() => _selectedImages = await DB.GetPagedImages(_selectedImagesPage,
+Gallery.SelectedImageIds);
+
+    private void OpenSelectedViewer(int startIndex)
+    {
+        _selectedViewerIndex = startIndex;
+        _showSelectedViewer = true;
+    }
+
+    private async Task HandleSelectedViewerPageChange(int newPage)
+    {
+        await LoadSelectedPage(newPage);
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task LoadRandomImages()
     {
-        switch (M.State.Generation.RandomImagesSource)
+        _randomPage = 1;
+        switch (State.State.Generation.RandomImagesSource)
         {
             case "generated":
-                _randomImages = await DB.GetRandomImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomImages(State.State.Generation.RandomImagesAmount);
                 break;
             case "resource":
-                _randomImages = await DB.GetRandomResourceImages(M.State.Generation.RandomImagesAmount);
+                _randomImages = await DB.GetRandomResourceImages(State.State.Generation.RandomImagesAmount);
                 break;
             default:
                 break;
         }
-        await M.SaveState();
+        await State.SaveState();
+        StateHasChanged();
     }
+
+    private async Task LoadRandomPage(int page)
+    {
+        _randomPage = page;
+        await LoadRandomImages();
+    }
+
+    private void OpenRandomViewer(int startIndex)
+    {
+        _randomViewerIndex = startIndex;
+        _showRandomViewer = true;
+    }
+
+    private async Task HandleRandomViewerPageChange(int newPage)
+    {
+        await LoadRandomPage(newPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowDeleteSelectedDialog()
+    {
+        if (Gallery.SelectedImageIds.Count == 0) return;
+
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> {Gallery.SelectedImageIds.Count} selected items?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items",
+parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
+            foreach (var image in selectedImages)
+            {
+                await DB.DeleteImage(image);
+            }
+            Snackbar.Add("All selected items deleted successfully.", Severity.Success);
+            Gallery.ClearSelectedImages();
+        }
+    }
+
+    private void OnImagesGenerated(ImagesGeneratedEventArgs args) => Refresh();
+    private void OnSelectedImagesChanged(SelectedImagesChangedEventArgs args) => Refresh();
+    private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
 
     private async void Refresh()
     {
         await LoadSelectedImages();
+        RebuildResultsView();
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        ImageService.OnChange -= Refresh;
-        M.OnSelectedImagesChanged -= Refresh;
+        Events.Unsubscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
+        Events.Unsubscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
 }

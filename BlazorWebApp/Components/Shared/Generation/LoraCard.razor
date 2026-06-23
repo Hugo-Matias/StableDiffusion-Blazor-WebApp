@@ -1,0 +1,109 @@
+﻿@inject IResourceCacheService ResourceCache
+@inject IIOService IO
+
+<div class="@(_previewSrc != null ? "lora-card lora-card--banner" : "lora-card")">
+    @if (_previewSrc != null)
+    {
+        <img class="lora-card-bg" src="@_previewSrc" loading="lazy" />
+    }
+    <div class="lora-card-body">
+        <div class="lora-card-name">
+            <MudText Typo="Typo.caption" Class="lora-name-text">@(_displayName ?? Lora.Name)</MudText>
+        </div>
+        <div class="lora-card-controls">
+            <MudNumericField Value="Lora.Strength" ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
+                             Variant="Variant.Text" Min="-5f" Max="5f" Step="0.05f" Format="N2" Margin="Margin.Dense"
+                             Style="width:38px;margin:0 4px;" />
+            @if (IsDualModel)
+            {
+                <button class="lora-hl-btn @(_isHigh ? "lora-hl-btn--high" : "lora-hl-btn--low")" @onclick="TogglePath"
+                        title="@(_isHigh ? "Assigned to High model" : "Assigned to Low model")">
+                    @(_isHigh ? "H" : "L")
+                </button>
+            }
+            <MudToggleIconButton Toggled="Lora.IsNegative"
+                                 ToggledChanged="@(async (bool v) => await OnIsNegativeChanged(v))" Icon="fa-solid fa-circle-plus"
+                                 Color="@Color.Success" ToggledIcon="fa-solid fa-circle-minus" ToggledColor="@Color.Error"
+                                 Size="Size.Small" Title="@(Lora.IsNegative ? "Negative Prompt" : "Prompt")" />
+            <MudCheckBox Checked="Lora.IsEnabled" CheckedChanged="@(async (bool v) => await OnIsEnabledChanged(v))"
+                         Title="Toggle Activation" Dense="true" />
+            <MudIconButton Icon="fa-solid fa-xmark" OnClick="async () => await OnRemoveLora.InvokeAsync(Lora)"
+                           Color="Color.Error" Size="Size.Small" Title="Remove" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Lora Lora { get; set; }
+    [Parameter] public bool IsDualModel { get; set; }
+    [Parameter] public EventCallback<Lora> OnRemoveLora { get; set; }
+    [Parameter] public EventCallback<Lora> OnLoraChanged { get; set; }
+
+    private bool _isHigh;
+    private string? _previewSrc;
+    private string? _displayName;
+    private string? _cachedPath;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isHigh = Lora.HasHighPath || !Lora.HasLowPath;
+
+        if (Lora.Path != _cachedPath)
+        {
+            _cachedPath = Lora.Path;
+            var metadata = await LoadMetadataAsync(Lora.Path);
+            _previewSrc = metadata.PreviewSrc;
+            _displayName = metadata.DisplayName;
+        }
+    }
+
+    private async Task<(string? PreviewSrc, string? DisplayName)> LoadMetadataAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return (null, null);
+        var resource = await ResourceCache.FindByFilenameAsync(path);
+        if (resource == null) return (null, null);
+        var img = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", path);
+        return (string.IsNullOrEmpty(img) ? null : img, string.IsNullOrWhiteSpace(resource.Title) ? null : resource.Title);
+    }
+
+    private async Task TogglePath()
+    {
+        var path = Lora.Path;
+        if (_isHigh)
+        {
+            Lora.LowPath = path;
+            Lora.HighPath = null;
+            _isHigh = false;
+        }
+        else
+        {
+            Lora.HighPath = path;
+            Lora.LowPath = null;
+            _isHigh = true;
+        }
+        await NotifyLoraChanged();
+    }
+
+    private async Task OnStrengthChanged(float value)
+    {
+        Lora.Strength = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task OnIsNegativeChanged(bool value)
+    {
+        Lora.IsNegative = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task OnIsEnabledChanged(bool value)
+    {
+        Lora.IsEnabled = value;
+        await NotifyLoraChanged();
+    }
+
+    private async Task NotifyLoraChanged()
+    {
+        await OnLoraChanged.InvokeAsync(Lora);
+    }
+}

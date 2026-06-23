@@ -1,0 +1,7 @@
+/* CivitaiCreatorsPanel - scrollable creators table. */
+.civitai-scroll-container {
+    max-height: calc(100vh - var(--civitai-scroll-offset, 280px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}

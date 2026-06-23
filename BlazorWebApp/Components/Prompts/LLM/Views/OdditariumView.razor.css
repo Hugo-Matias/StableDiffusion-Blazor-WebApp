@@ -1,0 +1,293 @@
+/* Odditarium - Guided prompt discovery game intro.
+   Full-page centered hero with decorative orbs, feature list, and accent start button.
+
+   All selectors target native HTML elements (div, span, h2, p, hr, ul, li, button)
+   so Blazor scoped CSS applies correctly without ::deep. */
+
+/* ---- Page fills the LLM Tools slot, full width ---- */
+.odditarium-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  padding: var(--app-gutter-outer) 16px;
+  width: 100%;
+}
+
+/* Hero card - centered intro surface */
+.odditarium-hero {
+  position: relative;
+  max-width: 520px;
+  width: 100%;
+  border-radius: calc(var(--app-surface-radius) + 4px);
+  padding: 36px 32px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-default);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Decorative background orbs - subtle floating circles */
+.odditarium-bg {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.06;
+  animation: odditarium-float 8s ease-in-out infinite;
+}
+
+.odditarium-bg--1 {
+  width: 220px;
+  height: 220px;
+  top: -50px;
+  right: -70px;
+  background: var(--mud-palette-primary);
+  animation-delay: 0s;
+}
+
+.odditarium-bg--2 {
+  width: 160px;
+  height: 160px;
+  bottom: -35px;
+  left: -45px;
+  background: var(--mud-palette-secondary);
+  animation-delay: -3s;
+}
+
+.odditarium-bg--3 {
+  width: 90px;
+  height: 90px;
+  top: 45%;
+  left: 62%;
+  background: var(--mud-palette-tertiary);
+  animation-delay: -5s;
+}
+
+@keyframes odditarium-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.05);
+  }
+}
+
+/* Hero content sits above decorative orbs */
+.odditarium-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Title group: icon + title side by side */
+.odditarium-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.odditarium-hero-title {
+  margin: 0 !important;
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  background: linear-gradient(
+    135deg,
+    var(--mud-palette-primary),
+    var(--mud-palette-secondary)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Icon wrapper */
+.odditarium-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mud-palette-secondary) !important;
+}
+
+.odditarium-title-group .odditarium-icon-wrap {
+  animation: odditarium-sparkle 3s ease-in-out infinite;
+}
+
+@keyframes odditarium-sparkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+/* Divider */
+.odditarium-divider {
+  width: 60px !important;
+  margin: 4px 0 !important;
+  border: none;
+  border-top: 1px solid var(--mud-palette-lines-default) !important;
+  opacity: 0.3;
+}
+
+/* Subtitle and body */
+.odditarium-hero-subtitle {
+  margin: 0 !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px;
+  color: var(--mud-palette-primary) !important;
+}
+
+.odditarium-hero-body {
+  margin: 0 !important;
+  line-height: 1.6;
+  max-width: 400px;
+  font-size: 0.875rem !important;
+  color: var(--mud-palette-text-secondary) !important;
+}
+
+/* ---- Feature list - clean, not button-like ---- */
+.odditarium-features {
+  list-style: none;
+  margin: 12px 0 4px !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.odditarium-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--app-surface-radius);
+  background: var(--mud-palette-background-grey);
+  transition: background 0.15s ease;
+}
+
+.odditarium-features li:hover {
+  background: rgba(94, 53, 177, 0.06);
+}
+
+.odditarium-features li span:last-child {
+  font-size: 0.88rem;
+  color: var(--mud-palette-text-secondary);
+}
+
+/* ---- Warning alert ---- */
+.odditarium-warning {
+  margin-top: 4px !important;
+  text-align: left;
+}
+
+/* ---- Actions row ---- */
+.odditarium-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* Start button - accent prototype style, improved with glow + lift */
+.odditarium-start-btn {
+  --start-bg: rgba(94, 53, 177, 0.12);
+  --start-fg: var(--mud-palette-primary);
+  --start-border: rgba(94, 53, 177, 0.4);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  border: 1.5px solid var(--start-border);
+  border-radius: 8px;
+  background: var(--start-bg);
+  color: var(--start-fg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
+  user-select: none;
+}
+
+.odditarium-start-btn:hover:not(:disabled) {
+  --start-bg: rgba(94, 53, 177, 0.2);
+  --start-border: var(--mud-palette-primary);
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 12px rgba(94, 53, 177, 0.2),
+    0 0 0 1px rgba(94, 53, 177, 0.1);
+}
+
+.odditarium-start-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.odditarium-start-btn:focus-visible {
+  outline: 2px solid var(--mud-palette-primary);
+  outline-offset: 2px;
+}
+
+.odditarium-start-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Continue section ---- */
+.odditarium-continue-section {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.odditarium-continue-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.odditarium-continue-icon {
+  color: var(--mud-palette-text-disabled);
+}
+
+.odditarium-continue-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mud-palette-text-disabled);
+}
+
+.odditarium-continue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.odditarium-continue-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}

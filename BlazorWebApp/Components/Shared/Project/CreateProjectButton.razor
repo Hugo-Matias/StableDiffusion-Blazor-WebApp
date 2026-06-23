@@ -1,8 +1,9 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
+﻿@inject IStateService State
+@inject IGalleryService Gallery
+@inject IDatabaseService DB
 @inject IDialogService DialogService
 
-<MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color">
+<MudButton OnClick=@(async () => await ShowModal()) ButtonType="ButtonType.Button" Variant="Variant" Color="Color" Class="@Class">
     @ChildContent
 </MudButton>
 
@@ -11,6 +12,7 @@
     [Parameter] public Color Color { get; set; } = Color.Primary;
     [Parameter] public Variant Variant { get; set; } = Variant.Filled;
     [Parameter] public EventCallback OnProjectCreated { get; set; }
+    [Parameter] public string Class { get; set; }
 
     private Project _newProject = new();
     private DialogOptions _dialogOptions = new() { CloseButton = true, MaxWidth = MaxWidth.Small };
@@ -29,8 +31,8 @@
         if (string.IsNullOrWhiteSpace(_newProject.Name)) return;
         _newProject.CreationTime = DateTime.Now;
         var projectEntity = await DB.CreateProject(new() { Name = _newProject.Name, Folder = _newProject.Folder, CreationTime = _newProject.CreationTime });
-        await M.GetProjects();
-        await M.SetCurrentProject(projectEntity.Id);
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
+        await Gallery.SetCurrentProject(projectEntity.Id);
         await OnProjectCreated.InvokeAsync();
     }
 }

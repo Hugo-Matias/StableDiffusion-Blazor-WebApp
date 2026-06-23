@@ -1,0 +1,115 @@
+.character-catalog-panel,
+.character-detail-panel,
+.character-library-actions,
+.character-catalog-report,
+.character-catalog-warning-list,
+.character-catalog-warning {
+  min-width: 0;
+}
+
+.character-library-actions,
+.character-catalog-report {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+}
+
+.character-list,
+.character-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+  min-width: 0;
+}
+
+.character-list-item,
+.character-sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--app-gutter-inner) / 4);
+  width: 100%;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  background: transparent;
+  color: inherit;
+  padding: calc(var(--app-surface-padding) / 2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.character-list-item:hover,
+.character-list-item--active,
+.character-sheet-item:hover,
+.character-sheet-item--active {
+  border-color: var(--mud-palette-primary);
+  background: var(--mud-palette-action-default-hover);
+}
+
+.character-list-item-title,
+.character-list-item-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-list-item-title {
+  font-weight: 600;
+}
+
+.character-list-item-meta {
+  color: var(--mud-palette-text-secondary);
+  font-size: 0.75rem;
+}
+
+.character-empty-state {
+  display: flex;
+  min-height: 50vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--app-gutter-inner);
+  text-align: center;
+}
+
+.character-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+}
+
+.character-detail-actions {
+  justify-content: flex-end;
+}
+
+.character-catalog-warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+}
+
+.character-catalog-warning {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 4);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: calc(var(--app-surface-padding) / 2);
+}
+
+.character-catalog-warning span,
+.character-catalog-warning strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .character-detail-header {
+    flex-direction: column;
+  }
+
+  .character-detail-actions {
+    width: 100%;
+  }
+}

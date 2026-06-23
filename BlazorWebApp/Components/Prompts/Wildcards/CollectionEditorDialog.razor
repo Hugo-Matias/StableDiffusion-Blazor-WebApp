@@ -1,0 +1,107 @@
+@using BlazorWebApp.Data.Entities
+@inject IDatabaseService Database
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" 
+                          Label="Collection Name" 
+                          Required 
+                          HelperText="e.g., tops, bottoms, fantasy-locations"
+                          Variant="Variant.Text" />
+            
+            <MudTextField @bind-Value="_category" 
+                          Label="Category" 
+                          Required
+                          HelperText="e.g., Clothing, Locations, Styles (required)"
+                          Variant="Variant.Text" />
+            
+            <MudTextField @bind-Value="_description" 
+                          Label="Description" 
+                          Lines="3"
+                          HelperText="Brief description of this collection"
+                          Variant="Variant.Text" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Save" 
+                   Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   Disabled="string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_category)">
+            @(_isEdit ? "Update" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public WildcardCollection? Collection { get; set; }
+
+    [Parameter]
+    public bool IsEdit { get; set; }
+
+    private string _name = string.Empty;
+    private string _category = string.Empty;
+    private string _description = string.Empty;
+    private bool _isEdit = false;
+
+    protected override void OnInitialized()
+    {
+        _isEdit = IsEdit;
+        
+        if (Collection != null)
+        {
+            _name = Collection.Name;
+            _category = Collection.Category;
+            _description = Collection.Description ?? string.Empty;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_category))
+            {
+                Snackbar.Add("Category is required", Severity.Warning);
+                return;
+            }
+
+            if (_isEdit && Collection != null)
+            {
+                Collection.Name = _name.Trim();
+                Collection.Category = _category.Trim();
+                Collection.Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim();
+                await Database.UpdateWildcardCollection(Collection);
+            }
+            else
+            {
+                var collection = new WildcardCollection
+                {
+                    Name = _name.Trim(),
+                    Category = _category.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    UsageCount = 0,
+                    Entries = new List<WildcardEntry>()
+                };
+
+                await Database.CreateWildcardCollection(collection);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving collection: {ex.Message}", Severity.Error);
+        }
+    }
+}

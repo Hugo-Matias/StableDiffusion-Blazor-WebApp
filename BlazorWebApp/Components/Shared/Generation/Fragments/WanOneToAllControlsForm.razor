@@ -1,0 +1,77 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanOneToAllControlsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Resolution Ceiling</MudText>
+    </MudItem>
+    <ResolutionPanel Width="@_width"
+                     WidthChanged="HandleWidthChanged"
+                     Height="@_height"
+                     HeightChanged="HandleHeightChanged" />
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Loop And Memory</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_window" @bind-Value:after="OnWindowChanged" Label="Window" Min="1" Max="4096" Step="1" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_overlap" @bind-Value:after="OnOverlapChanged" Label="Overlap" Min="0" Max="256" Step="1" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_fps" @bind-Value:after="OnFpsChanged" Label="FPS" Min="1" Max="120" Step="1" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_blocksToSwap" @bind-Value:after="OnBlocksToSwapChanged" Label="Blocks To Swap" Min="0" Max="40" Step="1" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _width = 480;
+    private int _height = 832;
+    private int _window = 81;
+    private int _overlap = 5;
+    private int _fps = 24;
+    private int _blocksToSwap = 25;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _width = ParameterService.GetFragmentProperty(Fragment, "width", 480);
+        _height = ParameterService.GetFragmentProperty(Fragment, "height", 832);
+        _window = ParameterService.GetFragmentProperty(Fragment, "window", 81);
+        _overlap = ParameterService.GetFragmentProperty(Fragment, "overlap", 5);
+        _fps = ParameterService.GetFragmentProperty(Fragment, "fps", 24);
+        _blocksToSwap = ParameterService.GetFragmentProperty(Fragment, "blocks_to_swap", 25);
+    }
+
+    private async Task SetValue(string key, int value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleWidthChanged(int value)
+    {
+        _width = value;
+        await SetValue("width", value);
+    }
+
+    private async Task HandleHeightChanged(int value)
+    {
+        _height = value;
+        await SetValue("height", value);
+    }
+
+    private Task OnWindowChanged() => SetValue("window", _window);
+    private Task OnOverlapChanged() => SetValue("overlap", _overlap);
+    private Task OnFpsChanged() => SetValue("fps", _fps);
+    private Task OnBlocksToSwapChanged() => SetValue("blocks_to_swap", _blocksToSwap);
+}

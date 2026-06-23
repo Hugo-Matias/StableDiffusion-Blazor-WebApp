@@ -1,0 +1,328 @@
+@using System.Diagnostics
+@using static BlazorWebApp.Data.Enums
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavManager
+@inject IMediaSendToService SendTo
+@implements IDisposable
+
+<div class="@GetTileClasses()" @onclick="HandleTileClick" @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave">
+    <img src="@IO.GetImageStaticFile(Image.Path)" alt="Generated image" class="gallery-tile-image" loading="lazy" />
+
+    @if (SelectionFocusedOverlay && Image.Favorite)
+    {
+        <span class="gallery-tile-favorite-cue" title="Favorite">
+            <i class="fa-solid fa-heart"></i>
+        </span>
+    }
+
+    @if (_isSelected)
+    {
+        <span class="gallery-tile-selection-cue" title="Selected">
+            <i class="fa-solid fa-check"></i>
+        </span>
+    }
+
+    @if (SelectionFocusedOverlay)
+    {
+        <div class="gallery-tile-selection-overlay @(_isHovered || _isSelected ? "visible" : string.Empty)"
+             @onclick:stopPropagation="true">
+            <button type="button" class="tile-selection-view-action" title="View image" @onclick="OpenImage">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="gallery-tile-chrome @(_isHovered || _isMenuOpen ? "visible" : string.Empty)">
+            <div class="gallery-tile-topbar">
+                <div class="gallery-tile-indicators">
+                    @if (Image.Favorite)
+                    {
+                        <span class="gallery-tile-indicator favorite" title="Favorite">
+                            <i class="fa-solid fa-heart"></i>
+                        </span>
+                    }
+                    @if (Image.Score > 0)
+                    {
+                        <span class="gallery-tile-indicator score" title="Score @Image.Score">
+                            <i class="fa-solid fa-star"></i>
+                            <span>@Image.Score</span>
+                        </span>
+                    }
+                </div>
+
+                <div class="gallery-tile-actions" @onclick:stopPropagation="true">
+                    <button type="button" class="tile-action primary" title="View Fullscreen" @onclick="OpenImage">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button type="button" class="tile-action @(Image.Favorite ? "active" : string.Empty)"
+                            title="@(Image.Favorite ? "Remove from Favorites" : "Add to Favorites")" @onclick="ToggleFavorite">
+                        <i class="@(Image.Favorite ? "fa-solid fa-heart" : "fa-regular fa-heart")"></i>
+                    </button>
+                    <button type="button" class="tile-action" title="View Info" @onclick="ToggleInfoDrawer">
+                        <i class="fa-solid fa-info"></i>
+                    </button>
+                    @if (ShowSelectionCheckbox)
+                    {
+                        <button type="button" class="tile-action @(_isSelected ? "selected" : string.Empty)"
+                                title="@(_isSelected ? "Deselect" : "Select")" @onclick="ToggleSelected">
+                            <i class="@(_isSelected ? "fa-solid fa-square-check" : "fa-regular fa-square")"></i>
+                        </button>
+                    }
+                    <div class="tile-menu-host" @onclick:stopPropagation="true">
+                        <div class="media-action-rail-host">
+                            @if (_isMenuOpen)
+                            {
+                                <div class="media-action-rail">
+                                    <button type="button" class="media-action-rail-btn danger" title="Delete" @onclick="@(() => RunActionAsync(DeleteImage))">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn primary" title="Open in Explorer" @onclick="@(() => RunAction(OpenFileInExplorer))">
+                                        <i class="fa-solid fa-folder-open"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn secondary" title="Project Cover" @onclick="@(() => RunActionAsync(SetProjectCover))">
+                                        <i class="fa-solid fa-image-portrait"></i>
+                                    </button>
+                                    <button type="button" class="media-action-rail-btn tertiary" title="Set Project" @onclick="@(() => RunActionAsync(ShowSwitchProjectDialog))">
+                                        <i class="fa-solid fa-layer-group"></i>
+                                    </button>
+                                    @if (SendTo.IsLocal(Image.Path))
+                                    {
+                                        <button type="button" class="media-action-rail-btn tertiary" title="Generate Prompt" @onclick="@(() => RunActionAsync(SendToImageToPrompt))">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </button>
+                                    }
+                                    <MediaSendToDropdown Asset="Image" MediaType="SendToMediaType.Image" RenderAsActionButton="true"
+                                                         ActionButtonClass="media-action-rail-btn primary" OnTargetSelected="CloseActionMenu" />
+                                </div>
+                            }
+                            <button type="button" class="media-action-rail-trigger tile-action" title="More actions" @onclick="ToggleActionMenu">
+                                <MudIcon Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<AssetInfoDrawer @bind-IsVisible="_showInfoDrawer" Image="Image" IsVideo="false" />
+
+@code {
+    [Parameter, EditorRequired] public Image Image { get; set; } = default!;
+    [Parameter] public EventCallback<Image> OnSelectImage { get; set; }
+    [Parameter] public EventCallback<Image> OnDeleteImage { get; set; }
+    [Parameter] public EventCallback OnCoverChanged { get; set; }
+    [Parameter] public bool ShowSelectionCheckbox { get; set; }
+    [Parameter] public bool SelectionFocusedOverlay { get; set; }
+
+    private bool _isSelected;
+    private bool _isHovered;
+    private bool _isMenuOpen;
+    private bool _showInfoDrawer;
+
+    protected override void OnInitialized()
+    {
+        UpdateSelectionState();
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateSelectionState();
+    }
+
+    private string GetTileClasses()
+    {
+        var classes = "gallery-image-tile";
+        if (SelectionFocusedOverlay) classes += " selection-focused";
+        if (_isSelected) classes += " selected";
+        if (_isHovered || _isMenuOpen) classes += " hovered";
+        return classes;
+    }
+
+    private void HandleMouseEnter() => _isHovered = true;
+
+    private void HandleMouseLeave()
+    {
+        CloseActionMenu();
+    }
+
+    private void UpdateSelectionState()
+    {
+        _isSelected = Image != null && Gallery.IsImageSelected(Image.Id);
+    }
+
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
+    {
+        if (Image == null || args.ChangedImageIds?.Contains(Image.Id) == false)
+        {
+            return;
+        }
+
+        var wasSelected = _isSelected;
+        _isSelected = args.ChangedSelectionState ?? Gallery.IsImageSelected(Image.Id);
+        if (_isSelected != wasSelected)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private Task OpenImage() => OnSelectImage.InvokeAsync(Image);
+
+    private Task HandleTileClick()
+    {
+        if (SelectionFocusedOverlay && ShowSelectionCheckbox)
+        {
+            ToggleSelected();
+            return Task.CompletedTask;
+        }
+
+        return OpenImage();
+    }
+
+    private async Task ToggleFavorite()
+    {
+        Image.Favorite = !Image.Favorite;
+        if (Image.Favorite && Image.Score == 0)
+        {
+            Image.Score = 3;
+        }
+
+        await DB.UpdateImage(Image);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleInfoDrawer() => _showInfoDrawer = !_showInfoDrawer;
+
+    private void ToggleSelected()
+    {
+        if (_isSelected)
+        {
+            Gallery.RemoveSelectedImage(Image.Id);
+            _isSelected = false;
+        }
+        else
+        {
+            Gallery.AddSelectedImage(Image.Id);
+            _isSelected = true;
+        }
+    }
+
+    private void OpenFileInExplorer() => Process.Start("explorer.exe", $"/select, {Image.Path}");
+
+    private async Task SetProjectCover()
+    {
+        await DB.SetProjectCover(State.State.Gallery.ProjectId, Image.Path);
+        await OnCoverChanged.InvokeAsync();
+        Snackbar.Add($"Cover image selected for project {State.State.Gallery.ProjectName}.", Severity.Success);
+    }
+
+    private async Task ShowSwitchProjectDialog()
+    {
+        var parameters = new DialogParameters { ["Images"] = new List<Image> { Image } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var updatedImages = (List<Image>)result.Data;
+            foreach (var image in updatedImages)
+            {
+                await DB.UpdateImage(image);
+            }
+
+            Snackbar.Add("Image project was changed.", Severity.Success);
+        }
+    }
+
+    private Task DeleteImage() => OnDeleteImage.InvokeAsync(Image);
+
+    private void ToggleActionMenu()
+    {
+        _isMenuOpen = !_isMenuOpen;
+        _isHovered = _isMenuOpen;
+    }
+
+    private void CloseActionMenu()
+    {
+        _isMenuOpen = false;
+        _isHovered = false;
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        CloseActionMenu();
+        await action();
+    }
+
+    private void RunAction(Action action)
+    {
+        CloseActionMenu();
+        action();
+    }
+
+    private async Task SendToImageToPrompt()
+    {
+        var resolved = IO.ResolveFilePath(Image.Path);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+
+            var promptState = State.State.Prompts.LLM.ImageToPrompt;
+            promptState.LastImageDataUri = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            promptState.LastSourceLabel = "Gallery";
+            promptState.LastResultText = null;
+
+            State.State.Prompts.LLM.ActiveViewId = "image-to-prompt";
+            await State.SaveState();
+
+            Events.Publish(new ImageToPromptRequestedEventArgs
+            {
+                ImagePath = resolved,
+                SourceLabel = "Gallery"
+            });
+
+            NavManager.NavigateTo("/prompts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to send image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+    }
+}

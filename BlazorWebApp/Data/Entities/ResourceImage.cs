@@ -5,10 +5,10 @@ namespace BlazorWebApp.Data.Entities
     public class ResourceImage
     {
         public int Id { get; set; }
-        public string Path { get; set; }
+        public string? Path { get; set; }
         public int CivitaiModelId { get; set; }
         public int CivitaiModelVersionID { get; set; }
-        public string Hash { get; set; }
+        public string? Hash { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
         public string? Url { get; set; }
@@ -42,6 +42,8 @@ namespace BlazorWebApp.Data.Entities
             if (image.Meta != null)
             {
                 NegativePrompt = image.Meta.NegativePrompt;
+                if (Width.GetValueOrDefault() <= 0 && image.Meta.Width > 0) Width = image.Meta.Width;
+                if (Height.GetValueOrDefault() <= 0 && image.Meta.Height > 0) Height = image.Meta.Height;
                 Model = image.Meta.Model;
                 ModelHash = image.Meta.ModelHash;
                 Seed = image.Meta.Seed;

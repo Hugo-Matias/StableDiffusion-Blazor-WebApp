@@ -1,0 +1,56 @@
+@inject IMediaSendToService SendTo
+
+<MudDialog>
+    <DialogContent>
+        <div class="media-send-to-dialog-list">
+            @foreach (var group in SendTo.GetSourceTargets(MediaType).GroupBy(target => target.Workflow.Id))
+            {
+                var workflow = group.First().Workflow;
+                <section class="media-send-to-dialog-group">
+                    <div class="media-send-to-dialog-workflow">
+                        <i class="@SendTo.GetWorkflowIcon(workflow.Mode) menu-icon @GetModeIconColor(workflow.Mode)"></i>
+                        <span>@workflow.Title</span>
+                    </div>
+                    <div class="media-send-to-dialog-targets">
+                        @foreach (var target in group)
+                        {
+                            var targetCapture = target;
+                            <button type="button" class="media-send-to-dialog-target"
+                                    @onclick="@(() => SelectTarget(targetCapture))">
+                                <span>@targetCapture.SourceLabel</span>
+                                @if (targetCapture.IsNewSlot)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                }
+                            </button>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Text">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public SendToMediaType MediaType { get; set; } = SendToMediaType.Image;
+
+    private void SelectTarget(MediaSendToTarget target)
+    {
+        MudDialog.Close(DialogResult.Ok(target));
+    }
+
+    private static string GetModeIconColor(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "primary",
+        ModeType.Img2Img => "secondary",
+        ModeType.Img2Vid => "info",
+        ModeType.Txt2Vid => "info",
+        ModeType.Vid2Vid => "info",
+        ModeType.Extras => "warning",
+        _ => "primary"
+    };
+}

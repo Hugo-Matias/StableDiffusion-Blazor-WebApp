@@ -1,6 +1,12 @@
 ﻿using BlazorWebApp.Data.Dtos;
+using BlazorWebApp.Data.Converters;
+using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Extensions;
 using MudBlazor;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using static BlazorWebApp.Data.Enums;
 
 namespace BlazorWebApp.Models
 {
@@ -8,12 +14,14 @@ namespace BlazorWebApp.Models
     {
 
         public bool IsDarkMode { get; set; }
+        public string CurrentTheme { get; set; } = "Default";
         public AppStateGeneration Generation { get; set; } = new();
         public AppStateGallery Gallery { get; set; } = new();
         public AppStatePrompts Prompts { get; set; } = new();
         public AppStateResources Resources { get; set; } = new();
         public AppStateCivitai Civitai { get; set; } = new();
         public AppStateDanbooru Danbooru { get; set; } = new();
+        public AppStateCharacter Character { get; set; } = new();
         public AppStateScripts Scripts { get; set; } = new();
 
         public AppState() { }
@@ -34,6 +42,24 @@ namespace BlazorWebApp.Models
                     MaxInputWidth = settings.Generation.Img2Img.InputResolution.Width,
                     MaxInputHeight = settings.Generation.Img2Img.InputResolution.Height,
                 },
+                Autocomplete = new()
+                {
+                    IsEnabled = true,
+                    EnableFuzzySearch = true
+                },
+                LLM = new()
+                {
+                    Options = new()
+                    {
+                        Seed = settings.Generation.Shared.LLMEnhancer.Seed.Value,
+                        Temperature = settings.Generation.Shared.LLMEnhancer.Temperature.Value,
+                        TopK = settings.Generation.Shared.LLMEnhancer.TopK.Value,
+                        TopP = settings.Generation.Shared.LLMEnhancer.TopP.Value,
+                        MinP = settings.Generation.Shared.LLMEnhancer.MinP.Value,
+                        NumCtx = settings.Generation.Shared.LLMEnhancer.NumCtx.Value,
+                        NumPredict = settings.Generation.Shared.LLMEnhancer.NumPredict.Value
+                    }
+                }
             };
             Resources = new()
             {
@@ -58,11 +84,40 @@ namespace BlazorWebApp.Models
         public int RandomImagesAmount { get; set; }
         public string RandomImagesSource { get; set; }
         public AppStateGenerationImg2Img Img2Img { get; set; }
-        public IEnumerable<PromptStyle> Styles { get; set; }
-        public string SDModel { get; set; } = "Loading...";
-        public string Vae { get; set; }
         public long Seed { get; set; }
         public bool IsInterrupted { get; set; } = false;
+        public List<Workflow> Workflows { get; set; }
+        public ModelBase WorkflowBase { get; set; }
+        public Guid? CurrentWorkflowId { get; set; }
+        public List<Guid> DisabledWorkflowIds { get; set; } = new();
+        /// <summary>
+        /// Last-selected workflow id per base. Used by the global Generate nav button
+        /// to restore the user's previous selection when returning to the generation page,
+        /// and when switching bases to prefer the previously-used workflow under that base.
+        /// </summary>
+        public Dictionary<ModelBase, Guid> LastWorkflowByBase { get; set; } = new();
+        public List<Lora> Loras { get; set; }
+        public AppStateLLMEnhancer LLM { get; set; } = new();
+        public AppStateGenerationAutocomplete Autocomplete { get; set; } = new();
+
+        /// <summary>
+        /// Legacy chat edit settings - kept for state migration.
+        /// Use AppStateLLMEnhancer (LLM property) instead for shared LLM settings.
+        /// </summary>
+        [Obsolete("Use State.Generation.LLM for shared LLM settings across all features")]
+        public AppStateGenerateChatEdit? ChatEdit { get; set; }
+
+        /// <summary>
+        /// Page size for the session-wide Results gallery on the Generate page.
+        /// Persisted with the rest of the app state.
+        /// </summary>
+        public int ResultsPageSize { get; set; } = 12;
+
+        // Legacy properties - kept for state migration, will be removed in future versions
+        [Obsolete("Use ParametersTxt2Img.Model or ParametersImg2Img.Model instead")]
+        public string? SDModel { get; set; }
+        [Obsolete("Use ParametersTxt2Img.Vae or ParametersImg2Img.Vae instead")]
+        public string? Vae { get; set; }
     }
 
     public class AppStateGenerationImg2Img
@@ -96,6 +151,95 @@ namespace BlazorWebApp.Models
         public int MaxInputHeight { get; set; }
     }
 
+    /// <summary>
+    /// Shared LLM settings used by both LLM Enhancer and inline Chat Edit on Generate page.
+    /// </summary>
+    public class AppStateLLMEnhancer
+    {
+        public string Prompt { get; set; } = string.Empty;
+        public string NegativePrompt { get; set; } = string.Empty;
+        public string Instructions { get; set; } = string.Empty;
+        public string NegativeInstructions { get; set; } = string.Empty;
+        public string EnhancedPrompt { get; set; } = string.Empty;
+        public string EnhancedNegativePrompt { get; set; } = string.Empty;
+        public string LastPromptId { get; set; } = string.Empty;
+        public string LastNegativePromptId { get; set; } = string.Empty;
+
+        /// <summary>Selected LLM model for all LLM operations on Generate page.</summary>
+        public string Model { get; set; } = string.Empty;
+
+        /// <summary>Verbosity setting for chat edit responses (inline instruction editing).</summary>
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+
+        /// <summary>Advanced Ollama options shared across LLM features.</summary>
+        public AppStateOllamaOptions Options { get; set; } = new();
+    }
+
+    public class AppStateOllamaOptions
+    {
+        public int Seed { get; set; } = -1;
+        public float Temperature { get; set; } = 1.0f;
+        public int TopK { get; set; } = 50;
+        public float TopP { get; set; } = 0.9f;
+        public float MinP { get; set; } = 0.05f;
+        public int NumCtx { get; set; } = 8192;
+        public int NumPredict { get; set; } = 500;
+
+        /// <summary>
+        /// When true, the model is allowed to think (i.e. Think=true is sent to Ollama instead of Think=false).
+        /// Thinking blocks are always stripped from the response before JSON parsing.
+        /// Default false — disables thinking for structured JSON calls.
+        /// </summary>
+        public bool EnableThinking { get; set; } = false;
+
+        /// <summary>Opening tag of a think block (default &lt;think&gt;). Used to strip reasoning from responses.</summary>
+        public string ThinkOpenTag { get; set; } = "<think>";
+
+        /// <summary>Closing tag of a think block (default &lt;/think&gt;).</summary>
+        public string ThinkCloseTag { get; set; } = "</think>";
+
+        public OllamaOptions ToOllamaOptions()
+        {
+            return new OllamaOptions
+            {
+                Seed = Seed >= 0 ? Seed : null,
+                Temperature = Temperature,
+                TopK = TopK,
+                TopP = TopP,
+                NumPredict = NumPredict,
+                MinP = MinP > 0 ? MinP : null,
+                NumCtx = NumCtx > 0 ? NumCtx : null
+            };
+        }
+    }
+
+    public class AppStateGenerationAutocomplete
+    {
+        public bool IsEnabled { get; set; } = true;
+        public bool EnableFuzzySearch { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Legacy page-aware LLM chat edit settings.
+    /// Replaced by AppStateLLMEnhancer which consolidates all LLM settings.
+    /// Kept for backwards compatibility with existing state files.
+    /// </summary>
+    [Obsolete("Use AppStateLLMEnhancer instead for shared LLM settings")]
+    public class AppStateGenerateChatEdit
+    {
+        /// <summary>Selected LLM model for chat edit operations.</summary>
+        public string Model { get; set; } = string.Empty;
+
+        /// <summary>Verbosity setting for chat edit responses.</summary>
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+
+        /// <summary>Temperature for chat edit operations.</summary>
+        public float Temperature { get; set; } = 0.7f;
+
+        /// <summary>Whether the LLM settings toolbar is collapsed (advanced settings).</summary>
+        public bool SettingsCollapsed { get; set; } = true;
+    }
+
     public class AppStateGallery
     {
         public int ProjectId { get; set; }
@@ -113,27 +257,49 @@ namespace BlazorWebApp.Models
         public bool IsModeTxt2Img { get; set; } = true;
         public bool IsModeImg2Img { get; set; } = true;
         public bool IsModeUpscale { get; set; } = true;
+        public bool IsModeImg2Vid { get; set; } = true;
+        public HashSet<string> ActiveWorkflowIds { get; set; } = new();
         public DateRange DateRange { get; set; } = new(DateTime.Now.Date, DateTime.Now.Date);
         public bool FilterByDateRange { get; set; } = false;
         public bool IsSelectedOnly { get; set; } = false;
         public int Score { get; set; } = 0;
         public bool IsScore { get; set; } = false;
+        public bool UseInfiniteScroll { get; set; } = true;
+        public GalleryPresentationMode PresentationMode { get; set; } = GalleryPresentationMode.Rich;
+        public ProjectPanelMode ProjectPanelMode { get; set; } = ProjectPanelMode.Expanded;
+        public ResourceCardSize TileSize { get; set; } = ResourceCardSize.Medium;
+
+        /// <summary>
+        /// Seed for consistent random ordering across page navigations.
+        /// Reset when filters are applied or OrderBy changes.
+        /// </summary>
+        public int? RandomSeed { get; set; }
     }
 
-    public enum GalleryOrderBy { Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising, Random }
+    public enum GalleryOrderBy { Random, Date, Sampler, Seed, Steps, CfgScale, Width, Height, Favorite, Mode, Denoising }
+
+    public enum GalleryPresentationMode { Rich, Pure }
+
+    public enum ProjectPanelMode { Expanded, Compact }
+
+    public enum ResourceCardSize { Small, Medium, Large }
 
     public class AppStateResources
     {
         public int ActiveTabIndex { get; set; } = 0;
+        public bool SidebarCollapsed { get; set; } = false;
+        public ResourceCardSize CardSize { get; set; } = ResourceCardSize.Medium;
         public int Page { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
         public int Limit { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Subtype { get; set; } = string.Empty;
+        public string BaseModel { get; set; } = string.Empty;
         public string Tag { get; set; } = string.Empty;
         public bool IsInclusive { get; set; } = true;
         public bool LoadTriggerWords { get; set; }
         public float Weight { get; set; }
+        [PreserveNull]
         public bool? ResourceIsEnabledFilter { get; set; }
         public string OrderBy { get; set; }
         public bool OrderByDescending { get; set; }
@@ -141,7 +307,11 @@ namespace BlazorWebApp.Models
 
     public class AppStateCivitai
     {
+        public int ActiveTabIndex { get; set; } = 0;
+        public bool SidebarCollapsed { get; set; } = false;
+        public ResourceCardSize CardSize { get; set; } = ResourceCardSize.Medium;
         public string ResourceSubtype { get; set; }
+        public string ResourceTypeOverride { get; set; } = "Checkpoint";
         public AppStateCivitaiCreators Creators { get; set; } = new();
         public AppStateCivitaiImages Images { get; set; } = new();
         public AppStateCivitaiModels Models { get; set; } = new();
@@ -167,7 +337,8 @@ namespace BlazorWebApp.Models
         public CivitaiModelType? Type { get; set; } = null;
         public CivitaiSort Sort { get; set; } = CivitaiSort.Highest_Rated;
         public CivitaiPeriod Period { get; set; } = CivitaiPeriod.AllTime;
-        public string BaseModels { get; set; } = "All";
+        [JsonConverter(typeof(StringOrListConverter))]
+        public List<string> BaseModels { get; set; } = new List<string>();
         public int Rating { get; set; } = -1;
         public bool Favorites { get; set; } = false;
         public bool Hidden { get; set; } = false;
@@ -190,6 +361,7 @@ namespace BlazorWebApp.Models
 
     public class AppStateDanbooru
     {
+        public int ActiveTabIndex { get; set; } = 0;
         public string SearchString { get; set; } = "order:rank";
     }
 
@@ -197,6 +369,136 @@ namespace BlazorWebApp.Models
     {
         public int ActiveTabIndex { get; set; } = 0;
         public AppStatePromptsWildcards Wildcards { get; set; } = new();
+        public AppStatePromptsLLM LLM { get; set; } = new();
+        public List<string> FavoriteArtists { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLM
+    {
+        public string SelectedModel { get; set; } = string.Empty;
+        public string ActiveViewId { get; set; } = "process";
+        public bool IsNavCollapsed { get; set; } = false;
+        public AppStatePromptsLLMTagBuilder TagBuilder { get; set; } = new();
+        public AppStatePromptsLLMMixer Mixer { get; set; } = new();
+        public AppStatePromptsLLMInspiration Inspiration { get; set; } = new();
+        public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
+        public AppStatePromptsLLMWorkshop Workshop { get; set; } = new();
+        public AppStatePromptsLLMWildcardForge WildcardForge { get; set; } = new();
+        public AppStatePromptsLLMImageToPrompt ImageToPrompt { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Phase 12 - Image-to-Prompt (vision-language) persisted view state.
+    /// No EF entity; serialized into the existing State JSON column.
+    /// </summary>
+    public class AppStatePromptsLLMImageToPrompt
+    {
+        public string? LastModel { get; set; }
+        public InterrogationStyle LastStyle { get; set; } = InterrogationStyle.Detailed;
+        public bool NormalizeToTags { get; set; } = false;
+        public bool UseStreaming { get; set; } = true;
+
+        /// <summary>
+        /// Last image loaded into the view, persisted as a "data:{mime};base64,..." URI so the
+        /// drop-zone preview and the run request both rehydrate after a page reload. We store the
+        /// data URI rather than a file path because images can be drag-dropped from the browser
+        /// (no path available) and gallery-sourced images are easy to re-encode anyway.
+        /// </summary>
+        public string? LastImageDataUri { get; set; }
+
+        /// <summary>Origin label rendered as a chip when the image came from another page (Gallery, Asset Info, etc.).</summary>
+        public string? LastSourceLabel { get; set; }
+
+        /// <summary>Last result text shown in the textarea (raw or normalized, whichever was active).</summary>
+        public string? LastResultText { get; set; }
+
+        /// <summary>
+        /// User instruction text persisted for the VideoInstruct style (the concept / motion
+        /// guidance that is injected into the <c>{concept}</c> placeholder at run time).
+        /// </summary>
+        public string? LastVideoInstruction { get; set; }
+    }
+
+    public class AppStatePromptsLLMWorkshop
+    {
+        public int? ActiveSessionId { get; set; }
+        public int AncestorDepth { get; set; } = 3;
+        public int SpawnCount { get; set; } = 5;
+        public bool AutoRender { get; set; } = true;
+        public bool RightPanelCollapsed { get; set; } = false;
+
+        // Phase 8.6 Step 5 - session sidebar can collapse to a 56px icon rail.
+        // Defaults to collapsed so the chat thread gets max horizontal space.
+        public bool SessionRailCollapsed { get; set; } = true;
+
+        // Preview-generation persistence (Phase 8.5)
+        public Guid? LastWorkflowId { get; set; }
+        public long LastSeed { get; set; } = 42;
+        public BlazorWebApp.Services.PreviewOrientation Orientation { get; set; } = BlazorWebApp.Services.PreviewOrientation.Portrait;
+
+        // Phase 8.6 Step 6 - preview behaviour controls.
+        // UseEnhancements: when false (default), preview snapshots deactivate enhancement fragments
+        //   (Detailer, Upscale, Refiner, SeedVR2, SeedVarianceEnhancer) for faster, leaner previews.
+        // AutoQueuePreviews: when true (default), creating a chat child or spawning variations
+        //   fires off preview generation immediately; ComfyUI serializes the queue server-side.
+        public bool UseEnhancements { get; set; } = false;
+        public bool AutoQueuePreviews { get; set; } = true;
+
+        // Evolve controls persistence (Phase 8.6 Step 4). CustomDirection + Preserve are NOT persisted.
+        public EvolveIntensity Intensity { get; set; } = EvolveIntensity.Moderate;
+        public List<string> Targets { get; set; } = new();
+        public EvolveLength Length { get; set; } = EvolveLength.Match;
+        public float Temperature { get; set; } = 0.9f;
+
+        // Chat-edit verbosity (Phase 8.6 Step 4 follow-up). Controls how much the
+        // LLM elaborates when applying a chat instruction to the prompt.
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+        public float ChatTemperature { get; set; } = 0.7f;
+
+        // Phase 13 - Workshop Wizard panel collapse state. False = panel visible.
+        public bool WizardCollapsed { get; set; } = false;
+    }
+
+    public class AppStatePromptsLLMSceneBuilder
+    {
+        public string Subject { get; set; } = string.Empty;
+        public string Environment { get; set; } = string.Empty;
+        public string Lighting { get; set; } = string.Empty;
+        public string Mood { get; set; } = string.Empty;
+        public string Style { get; set; } = string.Empty;
+        public string? LastAssembled { get; set; }
+    }
+
+    public class AppStatePromptsLLMInspiration
+    {
+        public string Mode { get; set; } = "inspire"; // "inspire" | "roulette"
+        public string Genre { get; set; } = string.Empty;
+        public string Mood { get; set; } = string.Empty;
+        public string Complexity { get; set; } = "Standard"; // "Simple" | "Standard" | "Rich"
+        public bool WeightedRoulette { get; set; } = true;
+    }
+
+    public class AppStatePromptsLLMMixer
+    {
+        public string PromptA { get; set; } = string.Empty;
+        public string PromptB { get; set; } = string.Empty;
+        public int Ratio { get; set; } = 50; // 0 = all A, 100 = all B
+    }
+
+    public class AppStatePromptsLLMTagBuilder
+    {
+        public TagVerbosity Verbosity { get; set; } = TagVerbosity.Standard;
+        public TagModelPreset Preset { get; set; } = TagModelPreset.Pony;
+        public TagBuilderMode Mode { get; set; } = TagBuilderMode.TwoPass;
+        public bool KeepUnverifiedAugmentations { get; set; } = false;
+        public Dictionary<TagCategory, bool> CategoryToggles { get; set; } = new()
+        {
+            [TagCategory.General] = true,
+            [TagCategory.Artist] = false,
+            [TagCategory.Copyright] = true,
+            [TagCategory.Character] = true,
+            [TagCategory.Meta] = true
+        };
     }
 
     public class AppStatePromptsWildcards
@@ -206,6 +508,46 @@ namespace BlazorWebApp.Models
         public string Template { get; set; } = string.Empty;
         public int ActivePromptTabIndex { get; set; } = 0;
         public int ActiveActionTabIndex { get; set; } = 0;
+    }
+
+    /// <summary>
+    /// Phase 10 - Wildcard Forge state. Holds last-used inputs for the AI authoring view
+    /// and the unsaved draft. No EF entity; serialized into the existing State JSON column.
+    /// </summary>
+    public class AppStatePromptsLLMWildcardForge
+    {
+        public string Mode { get; set; } = "simple"; // "simple" | "advanced"
+        public string Operation { get; set; } = "Generate"; // Generate | Expand | Refine | Convert | Describe
+        public string LastTheme { get; set; } = string.Empty;
+        public int Count { get; set; } = 20;
+        public string Verbosity { get; set; } = "balanced"; // minimal | balanced | detailed | verbose
+        public string? CategoryId { get; set; }
+        public string? Subcategory { get; set; }
+        public string Scope { get; set; } = "focused"; // focused | moderate | broad
+        public bool DiversityMode { get; set; } = false;
+        public List<string> SeedExamples { get; set; } = new();
+        public int? TargetCollectionId { get; set; }
+        public ForgeDraftDto? CurrentDraft { get; set; }
+    }
+
+    public class ForgeDraftDto
+    {
+        public string Operation { get; set; } = "Generate";
+        public int? TargetCollectionId { get; set; }
+        public string? TargetCollectionName { get; set; }
+        public string? SuggestedName { get; set; }
+        public string? SuggestedCategory { get; set; }
+        public string? SuggestedDescription { get; set; }
+        public List<ForgeDraftEntryDto> Entries { get; set; } = new();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ForgeDraftEntryDto
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Status { get; set; } = "New"; // New | Kept | Modified | Rejected
+        public string? OriginalValue { get; set; }
+        public bool Accepted { get; set; } = true;
     }
 
     public class AppStateScripts

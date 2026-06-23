@@ -1,0 +1,139 @@
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IBackendService Backend
+@inject IEventService Events
+@inject IOrchestratorService Orchestrator
+@inject NavigationManager NavManager
+@implements IDisposable
+
+@* Context-dependent workflow selector shown on /generate routes.
+   Entire bar is tinted to match the active workflow's mode (VS-status-bar style),
+   giving a strong visual cue for the current generation mode. *@
+
+@if (_shouldRender)
+{
+    <div class="workflow-strip mode-@GetActiveMode().ToString().ToLowerInvariant() @(_pulse ? "pulse" : "")">
+        <div class="workflow-strip-inner">
+            @foreach (var w in _orderedWorkflows)
+            {
+                var isActive = _activeWorkflowId == w.Id;
+                <a class="workflow-strip-btn @(isActive ? "active" : "") mode-@w.Mode.ToString().ToLowerInvariant()"
+                       href="@($"/generate/{w.Id}")">
+                    <MudIcon Icon="@GetIconForMode(w.Mode)" Size="Size.Small" Class="workflow-strip-icon" />
+                    <span class="workflow-strip-label">@w.Title</span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _shouldRender;
+    private bool _pulse;
+    private List<Workflow> _orderedWorkflows = new();
+    private Guid? _activeWorkflowId;
+    private int _lastWorkflowSetHash;
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendChanged);
+        NavManager.LocationChanged += OnLocationChanged;
+        RebuildWorkflowList();
+    }
+
+    private void RebuildWorkflowList()
+    {
+        var gen = State.State?.Generation;
+        if (!Backend.IsBackendAvailable || gen?.Workflows == null || gen.Workflows.Count == 0)
+        {
+            _shouldRender = false;
+            _orderedWorkflows = new();
+            _activeWorkflowId = null;
+            return;
+        }
+
+        var currentBase = gen.WorkflowBase;
+        _orderedWorkflows = Orchestrator.GetEnabledWorkflowsForBase(currentBase);
+
+        _shouldRender = _orderedWorkflows.Count > 0;
+
+        // Resolve active workflow from the URL first (source of truth while navigating),
+        // falling back to state. This ensures the active indicator tracks route changes
+        // even if state hasn't caught up yet.
+        _activeWorkflowId = ResolveActiveFromUrl() ?? gen.CurrentWorkflowId;
+
+        // Pulse when the set of workflows changes (e.g. base switch).
+        var hash = string.Join("|", _orderedWorkflows.Select(w => w.Id)).GetHashCode();
+        if (hash != _lastWorkflowSetHash && _lastWorkflowSetHash != 0)
+        {
+            _ = TriggerPulseAsync();
+        }
+        _lastWorkflowSetHash = hash;
+    }
+
+    private Guid? ResolveActiveFromUrl()
+    {
+        var uri = new Uri(NavManager.Uri);
+        var segments = uri.AbsolutePath.Trim('/').Split('/');
+        if (segments.Length >= 2 && segments[0].Equals("generate", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(segments[1], out var id))
+        {
+            return id;
+        }
+        return null;
+    }
+
+    private ModeType GetActiveMode()
+    {
+        if (_activeWorkflowId.HasValue)
+        {
+            var active = _orderedWorkflows.FirstOrDefault(w => w.Id == _activeWorkflowId.Value);
+            if (active != null) return active.Mode;
+        }
+        // Fallback: first workflow's mode so the bar isn't untinted during transitions.
+        return _orderedWorkflows.Count > 0 ? _orderedWorkflows[0].Mode : ModeType.Txt2Img;
+    }
+
+    private async Task TriggerPulseAsync()
+    {
+        _pulse = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(900);
+        _pulse = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetIconForMode(ModeType mode) => mode switch
+    {
+        ModeType.Txt2Img => "fa-regular fa-file-lines",
+        ModeType.Img2Img => "fa-regular fa-file-image",
+        ModeType.Img2Vid => "fa-solid fa-video",
+        _ => "fa-solid fa-wand-magic-sparkles"
+    };
+
+    private void OnStateChanged(StateChangedEventArgs args) => Refresh();
+    private void OnWorkflowChanged(WorkflowChangedEventArgs args) => Refresh();
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args) => Refresh();
+    private void OnBackendChanged(BackendAvailabilityChangedEventArgs args) => Refresh();
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+Refresh();
+
+    private async void Refresh()
+    {
+        RebuildWorkflowList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendChanged);
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
+}

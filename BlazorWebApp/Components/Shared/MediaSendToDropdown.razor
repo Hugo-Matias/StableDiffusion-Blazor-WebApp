@@ -1,0 +1,86 @@
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IMediaSendToService SendTo
+@inject IDialogService DialogService
+
+@if (Asset != null)
+{
+    var targets = SendTo.GetSourceTargets(MediaType);
+    if (targets.Count > 0)
+    {
+        if (RenderAsMenuSection)
+        {
+            <div class="menu-section">
+                <div class="menu-section-title">Send @MediaLabel to</div>
+                <button type="button" class="mud-menu-item menu-item" @onclick="OpenSendToDialog">
+                    <div class="menu-item-content">
+                        <i class="@SendTo.GetMediaIcon(MediaType) menu-icon primary"></i>
+                        <span>Choose target</span>
+                    </div>
+                </button>
+            </div>
+
+            if (IncludeDivider)
+            {
+                <div class="menu-divider"></div>
+            }
+        }
+        else if (RenderAsActionButton)
+        {
+            <button type="button" class="@ActionButtonClass" title="Send @MediaLabel to workflow source"
+                    @onclick="OpenSendToDialog">
+                <i class="@SendTo.GetMediaIcon(MediaType)"></i>
+            </button>
+        }
+        else
+        {
+            <div class="send-to-section">
+                <span class="send-to-label">Send @MediaLabel to:</span>
+                <div class="send-to-buttons">
+                    <button type="button" class="send-to-btn" title="Choose workflow source target" @onclick="OpenSendToDialog">
+                        <MudIcon Icon="@SendTo.GetMediaIcon(MediaType)" Size="Size.Small" />
+                        <span>Choose target</span>
+                    </button>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public ImageEntity? Asset { get; set; }
+    [Parameter] public SendToMediaType MediaType { get; set; } = SendToMediaType.Image;
+    [Parameter] public bool RenderAsMenuSection { get; set; }
+    [Parameter] public bool RenderAsActionButton { get; set; }
+    [Parameter] public string ActionButtonClass { get; set; } = "media-send-to-action-btn";
+    [Parameter] public bool IncludeDivider { get; set; } = true;
+    [Parameter] public EventCallback OnTargetSelected { get; set; }
+
+    private string MediaLabel => MediaType == SendToMediaType.Video ? "video" : "image";
+
+    private async Task OpenSendToDialog()
+    {
+        if (Asset == null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            [nameof(MediaSendToDialog.MediaType)] = MediaType
+        };
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<MediaSendToDialog>($"Send {MediaLabel} to", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is MediaSendToTarget target)
+        {
+            await SendTo.SendSourceToTargetAsync(Asset, target);
+            await OnTargetSelected.InvokeAsync();
+        }
+    }
+}

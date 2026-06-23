@@ -1,0 +1,185 @@
+@using System.Text.Json
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Components.Scheduler.Forms
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Edit Directive</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Value="_kind" ValueChanged="OnKindChanged"
+                               Label="Type" Variant="Variant.Text" Dense="true"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var (key, label) in _kinds)
+                        {
+                            <MudSelectItem T="string" Value="@key">@label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_label" Label="Label" Variant="Variant.Text"
+                                  HelperText="Optional display name for this directive." />
+                </MudItem>
+                <MudItem xs="12" md="2" Class="d-flex align-center">
+                    <MudSwitch T="bool" @bind-Value="_enabled" Color="Color.Primary" Label="Enabled" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider />
+
+            @switch (_directive)
+            {
+                case SetValueDirective d:
+                    <SetValueDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case AppendPromptDirective d:
+                    <AppendPromptDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case ReplacePromptDirective d:
+                    <ReplacePromptDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case AddLoraDirective d:
+                    <AddLoraDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case RemoveLoraDirective d:
+                    <RemoveLoraDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case ToggleLoraDirective d:
+                    <ToggleLoraDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case AddPromptStyleDirective d:
+                    <AddPromptStyleDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case SwapAssetDirective d:
+                    <SwapAssetDirectiveForm Directive="d" Job="Job" />
+                    break;
+                case SetOutputDirective d:
+                    <SetOutputDirectiveForm Directive="d" Job="Job" />
+                    break;
+                default:
+                    <MudAlert Severity="Severity.Warning" Dense>
+                        No form yet for this directive type. Use the "Edit JSON" option instead.
+                    </MudAlert>
+                    break;
+            }
+
+            <MudExpansionPanels Dense="true">
+                <MudExpansionPanel Text="View JSON (read-only)">
+                    <pre style="font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+                                font-size: 0.78rem; margin: 0; white-space: pre-wrap; word-break: break-word;">
+@SerializedJson()
+                    </pre>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Ok">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public Directive Initial { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private Directive _directive = default!;
+    private string _kind = string.Empty;
+    private string? _label;
+    private bool _enabled = true;
+
+    /// <summary>Directive kinds the dialog can switch between. Keys match <see cref="SchedulerEditorTab"/>.DirectiveTypes.</summary>
+    private static readonly List<(string Key, string Label)> _kinds = new()
+    {
+        ("SetValue", "Set Value"),
+        ("AppendPrompt", "Append Prompt"),
+        ("ReplacePrompt", "Replace Prompt"),
+        ("AddLora", "Add LoRA"),
+        ("RemoveLora", "Remove LoRA"),
+        ("ToggleLora", "Toggle LoRA"),
+        ("AddPromptStyle", "Add Prompt Style"),
+        ("SwapAsset", "Swap Asset"),
+        ("SetOutput", "Set Output"),
+    };
+
+    protected override void OnInitialized()
+    {
+        _directive = DeepClone(Initial);
+        _kind = KindOf(_directive);
+        _label = _directive.Label;
+        _enabled = _directive.Enabled;
+    }
+
+    private void OnKindChanged(string kind)
+    {
+        if (kind == _kind) return;
+        _kind = kind;
+        // Preserve Label/Enabled when swapping subtype; everything else resets.
+        _directive = NewOfKind(kind);
+        _directive.Label = _label;
+        _directive.Enabled = _enabled;
+    }
+
+    private static string KindOf(Directive d) => d switch
+    {
+        SetValueDirective => "SetValue",
+        AppendPromptDirective => "AppendPrompt",
+        ReplacePromptDirective => "ReplacePrompt",
+        AddLoraDirective => "AddLora",
+        RemoveLoraDirective => "RemoveLora",
+        ToggleLoraDirective => "ToggleLora",
+        AddPromptStyleDirective => "AddPromptStyle",
+        SwapAssetDirective => "SwapAsset",
+        SetOutputDirective => "SetOutput",
+        _ => "SetValue",
+    };
+
+    private static Directive NewOfKind(string kind) => kind switch
+    {
+        "SetValue" => new SetValueDirective(),
+        "AppendPrompt" => new AppendPromptDirective { Text = "" },
+        "ReplacePrompt" => new ReplacePromptDirective { Search = "", Replace = "" },
+        "AddLora" => new AddLoraDirective(),
+        "RemoveLora" => new RemoveLoraDirective(),
+        "ToggleLora" => new ToggleLoraDirective(),
+        "AddPromptStyle" => new AddPromptStyleDirective { StyleNames = new() },
+        "SwapAsset" => new SwapAssetDirective(),
+        "SetOutput" => new SetOutputDirective(),
+        _ => new SetValueDirective(),
+    };
+
+    private static Directive DeepClone(Directive d)
+    {
+        // Serialize against the polymorphic base so $type is emitted; serializing against the
+        // concrete runtime type omits the discriminator and round-trip fails.
+        var json = JsonSerializer.Serialize(d, typeof(Directive), SchedulerJsonOptions.Compact);
+        return JsonSerializer.Deserialize<Directive>(json, SchedulerJsonOptions.Compact)!;
+    }
+
+    private string SerializedJson()
+    {
+        // Sync label/enabled mutations that happen via @bind-Value on the dialog shell before serializing.
+        _directive.Label = _label;
+        _directive.Enabled = _enabled;
+        var opts = new JsonSerializerOptions(SchedulerJsonOptions.Compact) { WriteIndented = true };
+        // Serialize against the base so $type renders; keeps the read-only view matching what is actually persisted.
+        return JsonSerializer.Serialize(_directive, typeof(Directive), opts);
+    }
+
+    private void Ok()
+    {
+        _directive.Label = _label;
+        _directive.Enabled = _enabled;
+        MudDialog.Close(DialogResult.Ok(_directive));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
+

@@ -1,105 +1,601 @@
-﻿@page "/danbooru"
+@page "/danbooru"
+@using BlazorWebApp.Models
+@using BlazorWebApp.Data.Repositories
+@using BlazorWebApp.Events
 @using System.Text.RegularExpressions
 @inject DanbooruService Api
-@inject ManagerService M
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IOrchestratorService M
+@inject IJSRuntime JS
 @inject IDialogService DialogService
+@inject IDanbooruLibraryService LibraryService
+@inject ISnackbar Snackbar
+@inject IEventService EventService
+@implements IAsyncDisposable
 
-<MudGrid Class="mb-3 px-4" Justify="Justify.Center">
-    <MudItem xs="10">
-        <MudTextField Label="Search" @bind-Value="M.State.Danbooru.SearchString" OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End" AdornmentIcon="fa-solid fa-magnifying-glass" Clearable />
-     </MudItem>
-     <MudItem xs="2">
-         <MudButton Class="w-100 h-100" OnClick=Search ButtonType="ButtonType.Button" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-     </MudItem>
-     <MudItem xs="12">
-         <MudTextField Label="Black List Tags" ValueChanged=HandleBlacklistTagsChanged Value=M.Settings.Resources.Danbooru.BlacklistTags T="string" Lines="2" />
-     </MudItem>
+<TabbedPageShell @bind-ActivePanelIndex="_activeTabIndex">
+    <MudTabPanel Text="Search" Icon="@Icons.Material.Filled.Search">
+        <TopbarLayout>
+            <Topbar>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudTextField Label="Search" @bind-Value="State.State.Danbooru.SearchString"
+                                      OnAdornmentClick=@(() => SearchDrawer.Visible = true) T="string" Adornment="Adornment.End"
+                                      AdornmentIcon="fa-solid fa-magnifying-glass" Clearable Style="flex-grow: 1;" />
+                        <MudButton OnClick="Search" ButtonType="ButtonType.Button" Color="Color.Success"
+                                   Variant="Variant.Text">Search</MudButton>
+                    </MudStack>
+                    <MudTextField Label="Black List Tags" ValueChanged="HandleBlacklistTagsChanged"
+                                  Value="Settings.Settings.Resources.Danbooru.BlacklistTags" T="string" Lines="2" />
+                </MudStack>
+            </Topbar>
+            <Content>
+                @if (_initialLoading)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate />
+                        <MudText Typo="Typo.caption">Loading images...</MudText>
+                    </MudStack>
+                }
+                else if (Posts != null && Posts.Count > 0)
+                {
+                    <div class="danbooru-masonry-wrapper">
+                        <div class="danbooru-masonry">
+                            @foreach (var post in Posts)
+                            {
+                                <div class="danbooru-item">
+                                    <DanbooruImageCard Post="post" OnSendTags=@(() => WriteDanbooruTags(post)) OnShowImage=@(()
+                                                                                                                                                                                   => ShowImageViewerDialog(post)) OnSave=@(() => SaveToLibrary(post)) />
+                                </div>
+                            }
+                        </div>
 
-     @if (Posts != null)
-    {
-        foreach (var post in Posts)
-        {
-            <DanbooruImageCard Post=post OnSendTags=@(isImg2Img => WriteDanbooruTags(post, isImg2Img)) OnShowImage=@(() => ShowImageViewerDialog(post)) />
-        }
-    }
-    <MudItem xs="12" Class="d-flex justify-content-center">
-        <MudButton Class="w-50" OnClick=LoadMore ButtonType="ButtonType.Button" Color="Color.Primary" Variant="Variant.Outlined">Load More</MudButton>
-    </MudItem>
-</MudGrid>
+                        @if (_isLoadingMore)
+                        {
+                            <div class="load-more-spinner">
+                                <MudProgressCircular Color="Color.Primary" Indeterminate />
+                            </div>
+                        }
+                        else if (!_hasMore)
+                        {
+                            <div class="end-of-results">
+                                <MudText Typo="Typo.caption">End of results</MudText>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!_initialLoading && (Posts == null || Posts.Count == 0))
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                        <MudText Typo="Typo.body1" Style="opacity: 0.6;">No results found</MudText>
+                    </MudStack>
+                }
+            </Content>
+        </TopbarLayout>
+    </MudTabPanel>
+    <MudTabPanel Text="Library" Icon="@Icons.Material.Filled.CollectionsBookmark">
+        <TopbarLayout>
+            <Topbar>
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudTextField Label="Search Tags" @bind-Value="_libraryTagSearch" T="string" Clearable
+                                      Style="flex-grow: 1;" />
+                        <MudSelect T="string" Label="Rating" @bind-Value="_libraryRatingFilter" ResetValue=null
+                                   Clearable Style="min-width: 140px;">
+                            <MudSelectItem Value="@("g")">General</MudSelectItem>
+                            <MudSelectItem Value="@("s")">Sensitive</MudSelectItem>
+                            <MudSelectItem Value="@("q")">Questionable</MudSelectItem>
+                            <MudSelectItem Value="@("e")">Explicit</MudSelectItem>
+                        </MudSelect>
+                        <MudTextField Label="Min Score" @bind-Value="_libraryMinScore" T="int"
+                                      Style="min-width: 100px;" />
+                        <MudCheckBox Label="Videos Only" @bind-Value="_libraryVideoOnly" />
+                        <MudButton OnClick="LoadLibrary" ButtonType="ButtonType.Button" Color="Color.Success"
+                                   Variant="Variant.Text">Filter</MudButton>
+                    </MudStack>
+                </MudStack>
+            </Topbar>
+            <Content>
+                @if (_libraryLoading)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate />
+                        <MudText Typo="Typo.caption">Loading library...</MudText>
+                    </MudStack>
+                }
+                else if (_libraryItems.Count > 0)
+                {
+                    <div class="danbooru-masonry-wrapper">
+                        <div class="danbooru-masonry">
+                            @foreach (var item in _libraryItems)
+                            {
+                                <div class="danbooru-item">
+                                    <SavedDanbooruMediaCard Media="item" OnCopyTags=@(() => WriteLibraryTags(item))
+                                                            OnShowImage=@(() => ShowLibraryViewer(item)) OnOpenSource=@(() => OpenSource(item))
+                                                            OnDelete=@(() => DeleteFromLibrary(item)) />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Class="py-12">
+                        <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" Size="Size.Large"
+                                 Color="Color.Default" />
+                        <MudText Typo="Typo.h6" Color="Color.Default">Library is empty</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+                            Save images from the Search tab to build your library.
+                        </MudText>
+                    </MudStack>
+                }
+            </Content>
+        </TopbarLayout>
+    </MudTabPanel>
+</TabbedPageShell>
 
-<DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch=WriteSavedSearch OnAddCurrent=AddCurrentSearchToSaved/>
+<DanbooruSearchesDrawer @ref="SearchDrawer" OnWriteSearch="WriteSavedSearch" OnAddCurrent="AddCurrentSearchToSaved" />
+
+<ImageViewer @bind-IsVisible="_showViewer" Images="_viewerImages" StartIndex="_viewerStartIndex" IsExternal="true"
+             OnRequestBookmark="HandleBookmarkFromViewer" ShowAiMetadata="false" />
 
 @code {
-    [Parameter] public EventCallback<(string, bool)> OnSendTags { get; set; }
     [Parameter] public DanbooruSearchesDrawer? SearchDrawer { get; set; }
 
-    public List<DanbooruPost> Posts { get; set; }
+    public List<DanbooruPost> Posts { get; set; } = new();
     public int CurrentPage { get; set; }
 
-    private string _searchedString;
+    private string _searchedString = string.Empty;
     private string _loraRegex = @"<([^>]+)>";
+    private bool _initialLoading = true;
+    private bool _isLoadingMore;
+    private bool _hasMore = true;
+
+    private bool _showViewer;
+    private List<Image> _viewerImages = new();
+    private int _viewerStartIndex;
+
+    // Active tab tracking (wraps State.State.Danbooru.ActiveTabIndex to trigger lazy library load)
+    private int _activeTabIndex
+    {
+        get => State.State.Danbooru.ActiveTabIndex;
+        set
+        {
+            if (State.State.Danbooru.ActiveTabIndex == value) return;
+            State.State.Danbooru.ActiveTabIndex = value;
+            // Lazy-load library when the Library tab (index 1) is activated.
+            if (value == 1 && !_libraryLoaded)
+            {
+                _libraryLoaded = true;
+                _ = InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        await LoadLibrary();
+                    }
+                    catch (Exception ex)
+                    {
+                        _libraryLoaded = false; // allow retry on failure
+                        Snackbar.Add($"Failed to load library: {ex.Message}", Severity.Error);
+                    }
+                    finally
+                    {
+                        StateHasChanged();
+                    }
+                });
+            }
+        }
+    }
+
+    // Library state
+    private bool _libraryLoaded = false;
+    private bool _libraryLoading = false;
+    private List<SavedDanbooruMedia> _libraryItems = new();
+    private string _libraryTagSearch = string.Empty;
+    private string _libraryRatingFilter = string.Empty;
+    private int _libraryMinScore;
+    private bool _libraryVideoOnly;
+
+    // Event handler references for unsubscribe on disposal
+    private Action<DanbooruMediaSavedEventArgs>? _onMediaSavedHandler;
+    private Action<DanbooruMediaDeletedEventArgs>? _onMediaDeletedHandler;
+
+    private IJSObjectReference? _infiniteScrollModule;
+    private DotNetObjectReference<Danbooru>? _dotNetRef;
+    private bool _isDisposed;
+    private bool _jsInitialized;
 
     protected override async Task OnInitializedAsync()
     {
-        // https:hijiribe.donmai.us/wiki_pages/help%3Acheatsheet
-        await Search();
+        _initialLoading = true;
+        await LoadInitialData();
+        _initialLoading = false;
+
+        // Subscribe to library events via EventService (workspace pub/sub convention)
+        _onMediaSavedHandler = OnMediaSaved;
+        _onMediaDeletedHandler = OnMediaDeleted;
+        EventService.Subscribe<DanbooruMediaSavedEventArgs>(_onMediaSavedHandler);
+        EventService.Subscribe<DanbooruMediaDeletedEventArgs>(_onMediaDeletedHandler);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isDisposed) return;
+
+        // Attach infinite-scroll handler for the Search tab once we have posts.
+        // The masonry layout itself is pure CSS (column-count), so no per-tab
+        // re-attachment gymnastics are needed any more — we only need the
+        // scroll watcher for paginating the Search results.
+        if (!_jsInitialized && Posts != null && Posts.Count > 0)
+        {
+            _jsInitialized = true;
+            await InitializeInfiniteScroll();
+        }
+    }
+
+    private void OnMediaSaved(DanbooruMediaSavedEventArgs e)
+    {
+        if (!_libraryLoaded) return; // list not yet populated; nothing to update
+
+        _ = InvokeAsync(() =>
+        {
+            if (MatchesActiveFilter(e.Media))
+            {
+                _libraryItems.Insert(0, e.Media);
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void OnMediaDeleted(DanbooruMediaDeletedEventArgs e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            var removed = _libraryItems.RemoveAll(m => m.Id == e.Id);
+            if (removed > 0)
+            {
+                StateHasChanged();
+            }
+        });
+    }
+
+    private bool MatchesActiveFilter(SavedDanbooruMedia m)
+    {
+        if (!string.IsNullOrWhiteSpace(_libraryRatingFilter)
+            && !string.Equals(m.Rating, _libraryRatingFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (_libraryMinScore > 0 && m.Score < _libraryMinScore) return false;
+        if (_libraryVideoOnly && !m.IsVideo) return false;
+        if (!string.IsNullOrWhiteSpace(_libraryTagSearch))
+        {
+            var needle = _libraryTagSearch.Trim();
+            if (!m.TagsBundle.General.Concat(m.TagsBundle.Artist)
+                .Concat(m.TagsBundle.Character).Concat(m.TagsBundle.Copyright)
+                .Concat(m.TagsBundle.Meta)
+                .Any(t => t.Contains(needle, StringComparison.OrdinalIgnoreCase)))
+                return false;
+        }
+        return true;
+    }
+
+    private async Task LoadInitialData()
+    {
+        _searchedString = State.State.Danbooru.SearchString;
+        CurrentPage = 1;
+        Posts = await Api.GetPosts(State.State.Danbooru.SearchString, CurrentPage) ?? new();
+        _hasMore = Posts.Count >= 20;
+        await M.SaveState();
+    }
+
+    private async Task InitializeInfiniteScroll()
+    {
+        if (_isDisposed) return;
+        
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _infiniteScrollModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/DanbooruMasonry.js");
+            await _infiniteScrollModule.InvokeVoidAsync("attachWindowScroll", _dotNetRef, new { threshold = 1500 });
+            await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+        }
+        catch (Exception)
+        {
+            // Silently handle initialization errors (e.g., during navigation)
+        }
     }
 
     private async Task Search()
     {
-        _searchedString = M.State.Danbooru.SearchString;
+        if (_isDisposed) return;
+        
+        _initialLoading = true;
+        _hasMore = true;
+        StateHasChanged();
+        
+        _searchedString = State.State.Danbooru.SearchString;
         CurrentPage = 1;
-        Posts = await Api.GetPosts(M.State.Danbooru.SearchString, CurrentPage);
+        Posts = await Api.GetPosts(State.State.Danbooru.SearchString, CurrentPage) ?? new();
+        _hasMore = Posts.Count >= 20;
         await M.SaveState();
+        
+        _initialLoading = false;
+        StateHasChanged();
+        
+        // Reset JS masonry after new search
+        if (_infiniteScrollModule != null && !_isDisposed)
+        {
+            try
+            {
+                await Task.Delay(100); // Wait for DOM update
+                await _infiniteScrollModule.InvokeVoidAsync("resetLayout");
+                await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+            }
+            catch (Exception)
+            {
+                // Silently handle errors
+            }
+        }
     }
 
-    private async Task LoadMore()
+    [JSInvokable]
+    public async Task LoadNextPage()
     {
-        CurrentPage++;
-        var data = await Api.GetPosts(_searchedString, CurrentPage);
-        if (data != null) Posts.AddRange(data);
+        if (_isLoadingMore || !_hasMore || _isDisposed) return;
+
+        _isLoadingMore = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            CurrentPage++;
+            var data = await Api.GetPosts(_searchedString, CurrentPage);
+            if (data != null && data.Count > 0)
+            {
+                Posts.AddRange(data);
+                _hasMore = data.Count >= 20;
+            }
+            else
+            {
+                _hasMore = false;
+            }
+        }
+        catch (Exception)
+        {
+            _hasMore = false;
+        }
+
+        _isLoadingMore = false;
+        
+        // Notify JS about hasMore state
+        if (_infiniteScrollModule != null && !_isDisposed)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("setHasMore", _hasMore);
+            }
+            catch (Exception)
+            {
+                // Silently handle errors
+            }
+        }
+        
+        await InvokeAsync(StateHasChanged);
     }
 
-    private void WriteSavedSearch(string value) => M.State.Danbooru.SearchString = value;
+    private void WriteSavedSearch(string value) => State.State.Danbooru.SearchString = value;
 
     private void AddCurrentSearchToSaved()
     {
-        M.Settings.Resources.Danbooru.SavedSearches.Add(M.State.Danbooru.SearchString);
-        M.SaveSettings();
+        Settings.Settings.Resources.Danbooru.SavedSearches.Add(State.State.Danbooru.SearchString);
+        Settings.SaveSettings();
     }
 
-    private void WriteDanbooruTags(DanbooruPost post, bool isImg2Img)
+    private void WriteDanbooruTags(DanbooruPost post)
     {
-        var blacklistTags = M.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
+        var blacklistTags = Settings.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
         var tags = post.TagsArtist;
         tags.AddRange(post.TagsCharacter);
         tags.AddRange(post.TagsGeneral);
         var tagsString = string.Join(", ", tags.Where(v => !blacklistTags.Contains(v)));
-        var extractedLoras = string.Empty;
-        if (isImg2Img)
-        {
-            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersImg2Img.Prompt!, _loraRegex));
-            M.ParametersImg2Img.Prompt = extractedLoras + " " + tagsString;
-        }
-        else
-        {
-            extractedLoras = string.Join(" ", Regex.Matches(M.ParametersTxt2Img.Prompt!, _loraRegex));
-            M.ParametersTxt2Img.Prompt = extractedLoras + " " + tagsString;
-        }
+        
+        // Update GenerationParameters (primary)
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts,
+FragmentKeys.Fragments.Prompts);
+        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
+        var extractedLoras = string.Join(" ", Regex.Matches(currentPositive, _loraRegex));
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, extractedLoras + " " + tagsString);
     }
 
-    private void ShowImageViewerDialog(DanbooruPost post)
+    private async Task ShowImageViewerDialog(DanbooruPost post)
     {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("Images", new List<Image>() { new Image(post) });
-        param.Add("IsVideo", post.IsVideo);
-        DialogService.Show<ImageViewerDialog>("", param, options);
+        var images = new List<Image>();
+        foreach (var p in Posts)
+        {
+            var image = new Image(p);
+            var saved = await LibraryService.GetByPostIdAsync(p.Id);
+            if (saved != null && !string.IsNullOrEmpty(saved.FilePath))
+            {
+                image.Path = $"/files/danbooru/{saved.FilePath}";
+            }
+            images.Add(image);
+        }
+        _viewerImages = images;
+        _viewerStartIndex = Posts.IndexOf(post);
+        _showViewer = true;
+    }
+
+    private async Task HandleBookmarkFromViewer(Image image)
+    {
+        var post = Posts.FirstOrDefault(p => p.Url == image.Path);
+        if (post != null)
+        {
+            await SaveToLibrary(post);
+            // Refresh viewer images so the path is updated to local path
+            var images = new List<Image>();
+            foreach (var p in Posts)
+            {
+                var img = new Image(p);
+                var saved = await LibraryService.GetByPostIdAsync(p.Id);
+                if (saved != null && !string.IsNullOrEmpty(saved.FilePath))
+                {
+                    img.Path = $"/files/danbooru/{saved.FilePath}";
+                }
+                images.Add(img);
+            }
+            _viewerImages = images;
+        }
     }
 
     private void HandleBlacklistTagsChanged(string value)
     {
-        M.Settings.Resources.Danbooru.BlacklistTags = value;
-        M.SaveSettings();
+        Settings.Settings.Resources.Danbooru.BlacklistTags = value;
+        Settings.SaveSettings();
+    }
+
+    private async Task SaveToLibrary(DanbooruPost post)
+    {
+        var result = await LibraryService.SaveAsync(post);
+        switch (result)
+        {
+            case DanbooruSaveResult.Saved:
+                Snackbar.Add("Saved to library", Severity.Success);
+                // EventService will update the library list via OnMediaSaved
+                break;
+            case DanbooruSaveResult.AlreadySaved:
+                Snackbar.Add("Already saved to library", Severity.Info);
+                break;
+            case DanbooruSaveResult.Error:
+            default:
+                Snackbar.Add("Failed to save to library", Severity.Error);
+                break;
+        }
+    }
+
+    private async Task LoadLibrary()
+    {
+        _libraryLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        var filter = new SavedDanbooruMediaFilter
+        {
+            TagSearch = string.IsNullOrWhiteSpace(_libraryTagSearch) ? null : _libraryTagSearch,
+            Rating = string.IsNullOrWhiteSpace(_libraryRatingFilter) ? null : _libraryRatingFilter,
+            MinScore = _libraryMinScore > 0 ? _libraryMinScore : (int?)null,
+            VideoOnly = _libraryVideoOnly ? true : (bool?)null,
+            Skip = 0,
+            Take = 100,
+        };
+        _libraryItems = await LibraryService.GetPagedAsync(filter);
+
+        _libraryLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void WriteLibraryTags(SavedDanbooruMedia media)
+    {
+        var blacklistTags = Settings.Settings.Resources.Danbooru.BlacklistTags.Split(",", StringSplitOptions.TrimEntries);
+        var tags = media.TagsBundle.Artist;
+        tags.AddRange(media.TagsBundle.Character);
+        tags.AddRange(media.TagsBundle.General);
+        var tagsString = string.Join(", ", tags.Where(v => !blacklistTags.Contains(v)));
+
+        // Update GenerationParameters (primary)
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts,
+FragmentKeys.Fragments.Prompts);
+        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
+        var extractedLoras = string.Join(" ", Regex.Matches(currentPositive, _loraRegex));
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, extractedLoras + " " + tagsString);
+
+        // Persist settings
+        Settings.SaveSettings();
+    }
+
+    private void ShowLibraryViewer(SavedDanbooruMedia media)
+    {
+        _viewerImages = _libraryItems.Select(m =>
+        {
+            var allTags = new List<string>();
+            allTags.AddRange(m.TagsBundle.Artist);
+            allTags.AddRange(m.TagsBundle.Character);
+            allTags.AddRange(m.TagsBundle.Copyright);
+            allTags.AddRange(m.TagsBundle.General);
+            allTags.AddRange(m.TagsBundle.Meta);
+            return new Image
+            {
+                Path = $"/files/danbooru/{m.FilePath}",
+                Width = m.Width,
+                Height = m.Height,
+                Prompt = allTags.Count > 0 ? string.Join(", ", allTags) : null
+            };
+        }).ToList();
+        _viewerStartIndex = _libraryItems.IndexOf(media);
+        _showViewer = true;
+    }
+
+    private void OpenSource(SavedDanbooruMedia media)
+    {
+        JS.InvokeVoidAsync("open", $"https://danbooru.donmai.us/posts/{media.DanbooruPostId}", "_blank");
+    }
+
+    private async Task DeleteFromLibrary(SavedDanbooruMedia media)
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(ConfirmationDialog.Content), new MarkupString($@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this item from your library?<br /></span><small>This action is irreversible!</small>") },
+            { nameof(ConfirmationDialog.CancelButtonText), "No" },
+            { nameof(ConfirmationDialog.OkButtonText), "Yes" },
+            { nameof(ConfirmationDialog.OkButtonColor), Color.Error },
+            { nameof(ConfirmationDialog.CheckboxEnabled), true },
+            { nameof(ConfirmationDialog.CheckboxContent), "Delete file from disk?" },
+            { nameof(ConfirmationDialog.CheckboxColor), Color.Error },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small };
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete from Library", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            // result.Data contains the checkbox checked state when CheckboxEnabled is true
+            var deleteFile = result.Data is bool deleteFileValue ? deleteFileValue : false;
+            await LibraryService.DeleteAsync(media.Id, deleteFile);
+            Snackbar.Add("Deleted from library", Severity.Info);
+            // EventService will update the library list via OnMediaDeleted
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _isDisposed = true;
+
+        // Unsubscribe from events
+        if (_onMediaSavedHandler != null)
+        {
+            EventService.Unsubscribe<DanbooruMediaSavedEventArgs>(_onMediaSavedHandler);
+        }
+        if (_onMediaDeletedHandler != null)
+        {
+            EventService.Unsubscribe<DanbooruMediaDeletedEventArgs>(_onMediaDeletedHandler);
+        }
+
+        if (_infiniteScrollModule != null)
+        {
+            try
+            {
+                await _infiniteScrollModule.InvokeVoidAsync("dispose");
+            }
+            catch (JSDisconnectedException) { }
+            catch (Exception) { }
+                
+            try
+            {
+                await _infiniteScrollModule.DisposeAsync();
+            }
+            catch (Exception) { }
+                
+            _infiniteScrollModule = null;
+        }
+            
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 }

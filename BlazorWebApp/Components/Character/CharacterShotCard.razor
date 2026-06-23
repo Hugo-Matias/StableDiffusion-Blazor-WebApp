@@ -1,0 +1,233 @@
+@namespace BlazorWebApp.Components.Character
+@inject CharacterPromptSuggestionService PromptSuggestions
+@inject IIOService IO
+@inject ISnackbar Snackbar
+
+<article class="character-shot-card @(Slot.IsEnabled ? "character-shot-card--selected" : null)">
+    <header class="character-shot-card-header">
+        <MudCheckBox T="bool" Value="@Slot.IsEnabled" ValueChanged="HandleEnabledChanged" Color="Color.Primary"
+                     Dense="true" />
+        <div class="character-shot-title-group">
+            <div class="character-shot-title-row">
+                @if (Slot.IsBuiltIn)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="character-shot-title">@Slot.Label</MudText>
+                }
+                else
+                {
+                    <MudTextField T="string" Value="@Slot.Label" ValueChanged="HandleLabelChanged" Dense="true"
+                                  Variant="Variant.Text" Class="character-shot-label-field" />
+                }
+            </div>
+        </div>
+        <div class="character-shot-header-actions">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StatusColor">@Slot.Status</MudChip>
+            @if (!Slot.IsBuiltIn)
+            {
+                <MudTooltip Text="Remove slot">
+                    <MudIconButton Icon="fa-solid fa-trash" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                   Disabled="@IsRunning" OnClick="Remove" />
+                </MudTooltip>
+            }
+        </div>
+    </header>
+
+    <div class="character-shot-preview-shell" style="@PreviewAspectStyle">
+        <button type="button" class="character-shot-preview" @onclick="View" disabled="@(!CanView)">
+            @if (CanView)
+            {
+                <img src="@ImageSource" alt="@Slot.Label output" loading="lazy" />
+            }
+            else
+            {
+                <span class="character-shot-empty">
+                    <MudIcon Icon="fa-solid fa-image" Size="Size.Large" />
+                    <span>@(Slot.Status == CharacterReferenceSlotStatus.Failed ? "Failed" : "Waiting")</span>
+                </span>
+            }
+        </button>
+
+        <div class="character-shot-preview-overlay" @onclick:stopPropagation="true">
+            <div class="character-shot-quick-actions">
+                <button type="button" class="character-shot-action primary" title="Run this slot"
+                        aria-label="Run this slot" disabled="@IsRunning" @onclick="Run">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                <button type="button" class="character-shot-action" title="View output" aria-label="View output"
+                        disabled="@(!CanView)" @onclick="View">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+                <button type="button" class="character-shot-action @(Slot.PromptExpanded ? "active" : null)"
+                        title="Parameters" aria-label="Parameters" @onclick="TogglePromptPanel">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (Slot.PromptExpanded)
+    {
+        <section class="character-shot-editor" aria-label="Prompt and parameters">
+            <MudStack Spacing="2">
+                @if (CanSuggestPrompt)
+                {
+                    <div class="send-to-buttons">
+                        <button type="button" class="send-to-btn" disabled="@(_isSuggesting || IsRunning)" @onclick="SuggestPrompt">
+                            <MudIcon Icon="fa-solid fa-wand-magic-sparkles" Size="Size.Small" />
+                            <span>@(_isSuggesting ? "Suggesting" : "Suggest")</span>
+                        </button>
+                    </div>
+                }
+                <MudTextField T="string" Value="@PromptExtension" ValueChanged="HandlePromptChanged" Label="Prompt Extension"
+                              Lines="4" Dense="true" Variant="Variant.Text" />
+                <MudTextField T="string" Value="@Slot.NegativePromptOverride" ValueChanged="HandleNegativeChanged"
+                              Label="Negative Override" Lines="2" Dense="true" Variant="Variant.Text" />
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudNumericField T="int" Value="@Slot.Width" ValueChanged="HandleWidthChanged" Label="Width"
+                                         Dense="true" Variant="Variant.Text" Min="64" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField T="int" Value="@Slot.Height" ValueChanged="HandleHeightChanged" Label="Height"
+                                         Dense="true" Variant="Variant.Text" Min="64" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField T="int" Value="@Slot.Steps" ValueChanged="HandleStepsChanged" Label="Steps"
+                                         Dense="true" Variant="Variant.Text" Min="1" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField T="double" Value="@Slot.Cfg" ValueChanged="HandleCfgChanged" Label="CFG"
+                                         Dense="true" Variant="Variant.Text" Min="0" />
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        </section>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public CharacterReferenceSlotState Slot { get; set; } = default!;
+    [Parameter] public bool IsRunning { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnRun { get; set; }
+    [Parameter] public EventCallback<string> OnView { get; set; }
+    [Parameter] public EventCallback<string> OnRemove { get; set; }
+
+    private bool _isSuggesting;
+
+    private bool CanView => !string.IsNullOrWhiteSpace(ImageSource);
+    private bool CanSuggestPrompt => Slot.PresetKey != CharacterReferenceSlotPresetKey.Blank;
+    private string PromptExtension => CharacterReferenceSlotCatalog.ResolvePromptExtension(Slot);
+    private string ImageSource => string.IsNullOrWhiteSpace(Slot.LastOutputPath) ? string.Empty :
+IO.GetImageStaticFile(Slot.LastOutputPath);
+    private string PreviewAspectStyle => $"--character-shot-aspect-ratio: {Math.Max(1, Slot.Width)} / {Math.Max(1, Slot.Height)};";
+
+    private Color StatusColor => Slot.Status switch
+    {
+        CharacterReferenceSlotStatus.Succeeded => Color.Success,
+        CharacterReferenceSlotStatus.Failed => Color.Error,
+        CharacterReferenceSlotStatus.Running => Color.Info,
+        CharacterReferenceSlotStatus.Queued => Color.Warning,
+        _ => Color.Default
+    };
+
+    private async Task Changed()
+    {
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleEnabledChanged(bool value)
+    {
+        Slot.IsEnabled = value;
+        await Changed();
+    }
+
+    private async Task HandleLabelChanged(string value)
+    {
+        Slot.Label = value ?? string.Empty;
+        await Changed();
+    }
+
+    private async Task HandlePromptChanged(string value)
+    {
+        Slot.PromptExtension = value ?? string.Empty;
+        Slot.PromptOverride = string.Empty;
+        await Changed();
+    }
+
+    private async Task HandleNegativeChanged(string value)
+    {
+        Slot.NegativePromptOverride = value ?? string.Empty;
+        await Changed();
+    }
+
+    private async Task TogglePromptPanel()
+    {
+        Slot.PromptExpanded = !Slot.PromptExpanded;
+        await Changed();
+    }
+
+    private async Task HandleWidthChanged(int value)
+    {
+        Slot.Width = value;
+        await Changed();
+    }
+
+    private async Task HandleHeightChanged(int value)
+    {
+        Slot.Height = value;
+        await Changed();
+    }
+
+    private async Task HandleStepsChanged(int value)
+    {
+        Slot.Steps = value;
+        await Changed();
+    }
+
+    private async Task HandleCfgChanged(double value)
+    {
+        Slot.Cfg = value;
+        await Changed();
+    }
+
+    private async Task SuggestPrompt()
+    {
+        if (!CanSuggestPrompt || _isSuggesting)
+        {
+            return;
+        }
+
+        _isSuggesting = true;
+        try
+        {
+            var suggestion = await PromptSuggestions.SuggestAsync(Slot);
+            if (suggestion == null)
+            {
+                Snackbar.Add("No suggestion was returned.", Severity.Info);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(suggestion.Label))
+            {
+                Slot.Label = CharacterReferenceSlotCatalog.NormalizeLabel(suggestion.Label);
+            }
+
+            if (!string.IsNullOrWhiteSpace(suggestion.PromptExtension))
+            {
+                Slot.PromptExtension = suggestion.PromptExtension;
+                Slot.PromptOverride = string.Empty;
+            }
+
+            await Changed();
+        }
+        finally
+        {
+            _isSuggesting = false;
+        }
+    }
+
+    private Task Run() => OnRun.InvokeAsync(Slot.Id);
+    private Task View() => CanView ? OnView.InvokeAsync(Slot.Id) : Task.CompletedTask;
+    private Task Remove() => OnRemove.InvokeAsync(Slot.Id);
+}

@@ -1,12 +1,328 @@
-﻿::deep .project-card {
-	--size: 13rem;
-	max-width: var(--size);
-	min-width: var(--size);
-}
-::deep .project-card.selected {
-	border: 2px solid var(--mud-palette-primary);
+﻿/* ===========================================
+   Project Card - Base Styles
+   =========================================== */
+
+.project-card {
+  position: relative;
+  width: 13rem;
+  min-width: 13rem;
+  max-width: 13rem;
+  height: 16rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--mud-palette-surface);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
-::deep .icon span {
-	font-size:1rem !important;
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.project-card.selected {
+  box-shadow:
+    0 0 0 3px var(--mud-palette-primary),
+    0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.project-card.compact {
+  flex: 0 0 var(--gallery-project-compact-width, 112px);
+  width: var(--gallery-project-compact-width, 112px);
+  min-width: var(--gallery-project-compact-width, 112px);
+  max-width: var(--gallery-project-compact-width, 112px);
+  height: var(--gallery-project-compact-height, 72px);
+  border-radius: 4px;
+}
+
+.project-card.compact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+}
+
+.project-card.compact.selected {
+  box-shadow:
+    0 0 0 2px var(--mud-palette-primary),
+    0 6px 16px rgba(0, 0, 0, 0.42);
+}
+
+/* ===========================================
+   Media Wrapper & Media (Image/Video)
+   =========================================== */
+
+.media-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.card-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.project-card:hover .card-media {
+  transform: scale(1.08);
+}
+
+.project-card.compact:hover .card-media {
+  transform: scale(1.04);
+}
+
+/* ===========================================
+   Always Visible Title Bar
+   =========================================== */
+
+.title-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 12px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.7) 50%,
+    transparent 100%
+  );
+  z-index: 15;
+  transition:
+    background 0.25s ease,
+    padding 0.25s ease;
+}
+
+.title-bar.hovered {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.8) 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  padding-bottom: 12px;
+}
+
+.project-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.project-card.compact .title-bar {
+  padding: 6px 8px;
+}
+
+.project-card.compact .title-bar.hovered {
+  padding-bottom: 6px;
+}
+
+.project-card.compact .project-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ===========================================
+   Video Indicator
+   =========================================== */
+
+.video-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.7rem;
+  pointer-events: none;
+  z-index: 5;
+  backdrop-filter: blur(4px);
+}
+
+/* ===========================================
+   Hover Overlay
+   =========================================== */
+
+.hover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.25s ease;
+}
+
+.hover-overlay.visible {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ===========================================
+   Center Section - Quick Actions
+   =========================================== */
+
+.overlay-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.overlay-center.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 25px;
+  padding: 8px 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.project-card.compact .quick-actions {
+  gap: 4px;
+  border-radius: 16px;
+  padding: 4px 6px;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.project-card.compact .action-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 0.68rem;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.15);
+}
+
+.action-btn.primary {
+  background: var(--mud-palette-success);
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background: var(--mud-palette-success-darken);
+  box-shadow: 0 0 15px var(--mud-palette-success);
+}
+
+.action-btn.danger:hover {
+  background: rgba(244, 67, 54, 0.4);
+  color: var(--mud-palette-error);
+}
+
+/* ===========================================
+   Selected Indicator
+   =========================================== */
+
+.selected-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  background: var(--mud-palette-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.project-card.compact .selected-indicator {
+  top: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  font-size: 0.58rem;
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 768px) {
+  .project-card {
+    width: 11rem;
+    min-width: 11rem;
+    max-width: 11rem;
+  }
+
+  .quick-actions {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .project-title {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .project-card {
+    width: 9rem;
+    min-width: 9rem;
+    max-width: 9rem;
+  }
+
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
 }

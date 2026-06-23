@@ -1,0 +1,165 @@
+@* Expanded evolve dialog (Phase 8.6 Step 4).
+   Combines structured controls (Intensity, Targets, Length) with freeform
+   escape hatches (Preserve, Custom direction). Renders a live preview of the
+   resolved system prompt sent to the LLM. *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 480px;">
+            <MudText Typo="Typo.caption" Class="text-disabled">
+                Spawn prompt variations from this node. Structured controls steer the LLM;
+                freeform fields below act as per-call escape hatches.
+            </MudText>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudNumericField @bind-Value="_controls.Count" Label="Variations" Min="1" Max="10"
+                                 Variant="Variant.Text" Style="max-width: 140px;" />
+                @if (_models.Count > 0)
+                {
+                    <MudSelect @bind-Value="_controls.Model" Label="Model" Variant="Variant.Text" Class="flex-grow-1">
+                        @foreach (var m in _models)
+                        {
+                            <MudSelectItem Value="@m.Name">@m.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </MudStack>
+
+            @* Intensity *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">Intensity</MudText>
+                <MudToggleGroup T="EvolveIntensity" Value="_controls.Intensity" ValueChanged="OnIntensityChanged"
+                                SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary" Size="Size.Small">
+                    <MudToggleItem Value="EvolveIntensity.Subtle">Subtle</MudToggleItem>
+                    <MudToggleItem Value="EvolveIntensity.Moderate">Moderate</MudToggleItem>
+                    <MudToggleItem Value="EvolveIntensity.Strong">Strong</MudToggleItem>
+                    <MudToggleItem Value="EvolveIntensity.Wild">Wild</MudToggleItem>
+                </MudToggleGroup>
+            </div>
+
+            @* Targets *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">
+                    Targets <span class="text-disabled">(empty = freeform)</span>
+                </MudText>
+                <MudChipSet SelectedChipsChanged="OnTargetChipsChanged" Filter MultiSelection>
+                    @foreach (var t in _allTargets)
+                    {
+                        <MudChip Text="@t" Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                 Default="@(_controls.Targets.Contains(t))" />
+                    }
+                </MudChipSet>
+            </div>
+
+            @* Length *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">Length</MudText>
+                <MudToggleGroup T="EvolveLength" Value="_controls.Length" ValueChanged="OnLengthChanged"
+                                SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary" Size="Size.Small">
+                    <MudToggleItem Value="EvolveLength.Match">Match</MudToggleItem>
+                    <MudToggleItem Value="EvolveLength.Concise">Concise</MudToggleItem>
+                    <MudToggleItem Value="EvolveLength.Verbose">Verbose</MudToggleItem>
+                </MudToggleGroup>
+            </div>
+
+            @* Temperature *@
+            <div class="d-flex align-center gap-2">
+                <MudText Typo="Typo.caption" Class="text-disabled flex-shrink-0">Temperature:</MudText>
+                <MudSlider T="float" Value="_controls.Temperature" ValueChanged="OnTemperatureChanged" Min="0.1f"
+                           Max="1.5f" Step="0.05f" Style="flex: 1;" />
+                <MudText Typo="Typo.caption" Class="text-disabled" Style="min-width: 40px;">
+                    @_controls.Temperature.ToString("0.00")
+                </MudText>
+            </div>
+
+            <MudDivider />
+
+            @* Per-call escape hatches *@
+            <MudTextField @bind-Value="_controls.Preserve" Label="Preserve (comma-separated, optional)"
+                          Variant="Variant.Text" Immediate="true"
+                          HelperText="Tokens the LLM should keep verbatim across all variations." />
+
+            <MudTextField @bind-Value="_controls.CustomDirection" Label="Custom direction (optional)" Lines="2"
+                          AutoGrow="true" MaxLines="6" Variant="Variant.Text" Immediate="true"
+                          HelperText="Free-form steering note appended to the system prompt." />
+
+            @* Live preview of the resolved system prompt *@
+            <details class="workshop-evolve-preview">
+                <summary>Show resolved system prompt</summary>
+                <pre class="workshop-evolve-preview-text">@(_controls.BuildSystemPrompt(_controls.Count))</pre>
+            </details>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Confirm" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_controls.Model))">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Evolve
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>Initial control values (typically loaded from AppState).</summary>
+    [Parameter] public EvolveControls? Initial { get; set; }
+    [Parameter] public List<OllamaModel> Models { get; set; } = new();
+
+    private static readonly string[] _allTargets = new[]
+    {
+        "Subject", "Clothing", "Pose", "Setting", "Camera", "Lighting", "Style", "Mood"
+    };
+
+    private EvolveControls _controls = new();
+    private List<OllamaModel> _models = new();
+    private bool _isSubmitting;
+
+    protected override void OnParametersSet()
+    {
+        _models = Models;
+
+        if (Initial != null)
+        {
+            _controls = new EvolveControls
+            {
+                Count = Initial.Count,
+                Model = Initial.Model,
+                Intensity = Initial.Intensity,
+                Targets = Initial.Targets.ToList(),
+                Length = Initial.Length,
+                Preserve = Initial.Preserve,
+                CustomDirection = Initial.CustomDirection,
+                Temperature = Initial.Temperature,
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(_controls.Model) && _models.Count > 0)
+            _controls.Model = _models[0].Name;
+    }
+
+    private void OnIntensityChanged(EvolveIntensity v) => _controls.Intensity = v;
+    private void OnLengthChanged(EvolveLength v) => _controls.Length = v;
+    private void OnTemperatureChanged(float v) => _controls.Temperature = v;
+
+    private void OnTargetChipsChanged(MudChip[] chips)
+    {
+        _controls.Targets = chips?.Select(c => c.Text).ToList() ?? new List<string>();
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Confirm()
+    {
+        _isSubmitting = true;
+        StateHasChanged();
+        await Task.Yield();
+        Dialog.Close(DialogResult.Ok(_controls));
+    }
+}

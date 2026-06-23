@@ -1,67 +1,252 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
+﻿@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IIOService IO
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<div style="@Style">
-    <MudContainer MaxWidth="MaxWidth.Large">
-        <MudStack AlignItems="AlignItems.Center">
-            @if (Images.Images is not null && Images.Images.Count > 0)
-            {
-                @if (Images.PageCount > 1)
-                {
-                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
-                }
-                <MudStack Row=true>
-                    <MudButton OnClick="ShowAllImagesViewerDialog" StartIcon="fa-solid fa-window-maximize" Color="Color.Secondary">Fullscreen</MudButton>
-                    @if (CanSelect && M.SelectedImageIds.Count > 0)
+<div style="@Style" class="images-container-wrapper">
+    <div class="images-container-toolbar">
+        @if (Images.Images is not null && Images.Images.Count > 0)
+        {
+            <div class="gallery-toolbar-stack">
+                <div class="gallery-toolbar-row gallery-primary-actions">
+                    <GalleryActionButton Icon="fa-solid fa-window-maximize" Label="Fullscreen" Tone="secondary"
+                                         OnClick="@(() => OpenViewer(0))" />
+                    <GalleryActionButton Icon="fa-solid fa-check" Label="Selections" Tone="secondary"
+                                         OnClick="ShowSelectionsDrawer" />
+                    @if (ShowClearButton)
                     {
-                        <MudButtonGroup OverrideStyles=false>
-                            <MudButton OnClick="ShowSwitchProjectDialog" StartIcon="fa-solid fa-layer-group" Color="Color.Tertiary">Set Project</MudButton>
-                            <MudButton OnClick="ShowDeleteImagesDialog" StartIcon="fa-solid fa-trash-can" Color="Color.Error">Delete</MudButton>
-                        </MudButtonGroup>
-                        <MudButtonGroup OverrideStyles=false>
-                            <MudButton OnClick="M.ClearSelectedImages" StartIcon="fa-regular fa-square" Color="Color.Warning">Clear</MudButton>
-                            <MudButton OnClick="SelectAll" StartIcon="fa-solid fa-check-double" Color="Color.Info">Select All</MudButton>
-                        </MudButtonGroup>
+                        <GalleryActionButton Icon="fa-solid fa-border-none" Label="Clear" Tone="error"
+                                             OnClick="HandleClearClicked" />
                     }
-                </MudStack>
-                <MudGrid Class="mt-n7" Spacing="1" Justify="Justify.Center">
-                    @if (Images.Images.Count > 0)
+                    @if (Images.PageCount > 1)
                     {
-                        @foreach (var image in Images.Images)
+                        <MudPagination BoundaryCount="2" MiddleCount="3" Count="Images.PageCount" Selected="_currentPage"
+                                       SelectedChanged="page => HandlePageChanged(page)" Size="Size.Small" />
+                    }
+                    @if (ShowPageSizeField)
+                    {
+                        <MudNumericField T="int" Value="PageSize" ValueChanged="HandlePageSizeChanged" Label="Page size" Min="1"
+                                         Max="200" Step="1" Variant="Variant.Text" Margin="Margin.Dense" Class="page-size-field" />
+                    }
+                </div>
+                @if (CanSelect && Gallery.SelectedImageIds.Count > 0)
+                {
+                    <div class="gallery-toolbar-row gallery-selection-actions">
+                        <GalleryActionButton Icon="fa-solid fa-layer-group" Label="Set Project" Tone="tertiary"
+                                             OnClick="ShowSwitchProjectDialog" />
+                        <GalleryActionButton Icon="fa-solid fa-trash-can" Label="Delete" Tone="error"
+                                             OnClick="ShowDeleteImagesDialog" />
+                        <GalleryActionButton Icon="fa-regular fa-square"
+                                             Label="@($"Deselect ({Gallery.SelectedImageIds.Count})")" Tone="warning"
+                                             OnClick="Gallery.ClearSelectedImages" />
+                        <GalleryActionButton Icon="fa-solid fa-check-double" Label="Select All" Tone="info"
+                                             OnClick="SelectAll" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="images-grid-container">
+        @if (Images.Images is not null && Images.Images.Count > 0)
+        {
+            <MudGrid Spacing="@(IsPureGallery ? 1 : 2)" Justify="Justify.Center" Class="@GetGridClasses()">
+                @foreach (var image in Images.Images)
+                {
+                    <MudItem xs="@GetGridXs()" sm="@GetGridSm()" md="@GetGridMd()" lg="@GetGridLg()" xl="@GetGridXl()"
+                             Class="@GetGridItemClasses()">
+                        @if (IsVideoFile(image.Path))
                         {
-                            <ImageCard Image="@image" Target="fullscreen-modal" OnSelectImage="ShowImageViewerDialog" OnDeleteImage="ShowDeleteImageDialog" OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" ShowSelectionCheckbox=CanSelect />
+                            <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@Images.Images.IndexOf(image)"
+                                       OnSelectVideo="idx => OpenViewer(idx)"
+                                       OnDeleteVideo="video => ShowDeleteImageDialogFromVideo(video)" OnVideoChanged="HandleVideoChanged"
+                                       ShowSelectionCheckbox="CanSelect" UseFixedSize="@(!IsPureGallery)" />
                         }
-                    }
-                </MudGrid>
-                if (Images.PageCount > 1)
-                {
-                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected=_currentPage SelectedChanged="page => HandlePageChanged(page)" />
+                        else if (IsPureGallery)
+                        {
+                            <GalleryImageTile Image="@image" OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))"
+                                              OnDeleteImage="ShowDeleteImageDialog"
+                                              OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" ShowSelectionCheckbox="CanSelect" />
+                        }
+                        else
+                        {
+                            <ImageCard Image="@image" Target="fullscreen-modal"
+                                       OnSelectImage="img => OpenViewer(Images.Images.IndexOf(img))" OnDeleteImage="ShowDeleteImageDialog"
+                                       OnCoverChanged="async () => await OnCoverChanged.InvokeAsync()" ShowSelectionCheckbox="CanSelect"
+                                       UseFixedSize="true" />
+                        }
+                    </MudItem>
                 }
-            }
-            else
+            </MudGrid>
+            
+            @if (Images.PageCount > 1)
             {
-                <MudProgressCircular Class="mt-10" Color="Color.Primary" Indeterminate />
+                <div class="pagination-bottom">
+                    <MudPagination BoundaryCount="2" MiddleCount="5" Count="Images.PageCount" Selected="_currentPage"
+                                   SelectedChanged="page => HandlePageChanged(page)" />
+                </div>
             }
-        </MudStack>
-    </MudContainer>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="mt-10">
+                <MudProgressCircular Color="Color.Primary" Indeterminate />
+            </MudStack>
+        }
+    </div>
 </div>
 
+<SelectionsDrawer @bind-IsVisible="_showSelectionsDrawer" />
+
+<!-- Unified Asset Viewer (handles both images and videos with pagination) -->
+<AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
+             CurrentPage="_currentPage" PageCount="Images.PageCount"
+             TotalCount="@(Images.PageCount * (Images.Images?.Count ?? 0))" OnPageChange="HandleViewerPageChange"
+             OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
+
 @code {
-    [Parameter] public ImagesDto Images { get; set; }
+    [Parameter] public ImagesDto Images { get; set; } = new();
     [Parameter] public EventCallback<int> OnPageSelected { get; set; }
     [Parameter] public EventCallback OnDeleteImage { get; set; }
     [Parameter] public EventCallback OnCoverChanged { get; set; }
-    [Parameter] public string Style { get; set; }
+    [Parameter] public string Style { get; set; } = string.Empty;
     [Parameter] public bool CanSelect { get; set; }
+    [Parameter] public GalleryPresentationMode PresentationMode { get; set; } = GalleryPresentationMode.Rich;
+    [Parameter] public ResourceCardSize TileSize { get; set; } = ResourceCardSize.Medium;
+
+    /// <summary>
+    /// When true, renders an inline numeric "Page size" field in the toolbar.
+    /// The value is bound via <see cref="PageSize"/> / <see cref="PageSizeChanged"/>.
+    /// </summary>
+    [Parameter] public bool ShowPageSizeField { get; set; }
+
+    /// <summary>
+    /// Current page size for the consumer's pagination. Two-way bindable.
+    /// </summary>
+    [Parameter] public int PageSize { get; set; } = 12;
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>
+    /// When true, renders an inline text-variant "Clear" button in the toolbar.
+    /// Fires <see cref="OnClear"/> when clicked.
+    /// </summary>
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
 
     private int _currentPage = 1;
+    private bool _showSelectionsDrawer;
+    private bool _showViewer;
+    private int _viewerStartIndex;
+
+    private bool IsPureGallery => PresentationMode == GalleryPresentationMode.Pure;
+
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private string GetGridClasses() => IsPureGallery ? $"fixed-height-grid pure-gallery-grid pure-gallery-grid-{TileSize.ToString().ToLowerInvariant()}" : "fixed-height-grid";
+
+    private string GetGridItemClasses() => IsPureGallery ? $"grid-item-fixed pure-grid-item pure-grid-item-{TileSize.ToString().ToLowerInvariant()}" : "grid-item-fixed";
+
+    private int GetGridXs() => IsPureGallery && TileSize == ResourceCardSize.Large ? 12 : IsPureGallery ? 6 : 12;
+
+    private int GetGridSm() => !IsPureGallery ? 6 : TileSize == ResourceCardSize.Large ? 6 : 4;
+
+    private int GetGridMd() => !IsPureGallery ? 4 : TileSize switch
+    {
+        ResourceCardSize.Small => 3,
+        ResourceCardSize.Large => 4,
+        _ => 3
+    };
+
+    private int GetGridLg() => !IsPureGallery ? 3 : TileSize switch
+    {
+        ResourceCardSize.Small => 2,
+        ResourceCardSize.Large => 3,
+        _ => 2
+    };
+
+    private int GetGridXl() => !IsPureGallery ? 2 : TileSize switch
+    {
+        ResourceCardSize.Small => 1,
+        ResourceCardSize.Large => 3,
+        _ => 2
+    };
 
     protected override void OnInitialized()
     {
-        M.OnSelectedImagesChanged += Refresh;
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
+    }
+
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsVideoFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(extension)) return false;
+        return VideoExtensions.Contains(extension);
+    }
+
+    private GeneratedVideo ConvertToGeneratedVideo(Image image)
+    {
+        return new GeneratedVideo
+        {
+            Id = image.Id,
+            FilePath = image.Path,
+            Filename = Path.GetFileName(image.Path),
+            Width = image.Width,
+            Height = image.Height,
+            Prompt = image.Prompt,
+            NegativePrompt = image.NegativePrompt,
+            Seed = image.Seed,
+            Steps = image.Steps,
+            CfgScale = image.CfgScale,
+            DateCreated = image.DateCreated,
+            Favorite = image.Favorite,
+            Score = image.Score
+        };
+    }
+
+    private void OpenViewer(int startIndex)
+    {
+        _viewerStartIndex = startIndex;
+        _showViewer = true;
+    }
+
+    private async Task HandleViewerPageChange(int newPage)
+    {
+        _currentPage = newPage;
+        await OnPageSelected.InvokeAsync(newPage);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleViewerClosed()
+    {
+        StateHasChanged();
+    }
+
+    private void HandleAssetChanged(Image image)
+    {
+        // Asset was updated in the viewer (favorite, score, etc.)
+        StateHasChanged();
+    }
+
+    private void HandleVideoChanged(GeneratedVideo video)
+    {
+        // Sync changes back to the Image entity in the list
+        var image = Images.Images.FirstOrDefault(i => i.Id == video.Id);
+        if (image != null)
+        {
+            image.Favorite = video.Favorite;
+            image.Score = video.Score;
+        }
     }
 
     public void HandlePageChanged(int page)
@@ -70,20 +255,18 @@
         OnPageSelected.InvokeAsync(page);
     }
 
-    private void ShowImageViewerDialog(Image image)
+    private Task HandlePageSizeChanged(int value)
     {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.Large, CloseButton = true };
-        param.Add("Images", new List<Image>() { image });
-        DialogService.Show<ImageViewerDialog>("", param, options);
+        // Don't mutate the [Parameter] directly; let the parent flow the new
+        // value back via PageSizeChanged on the next render.
+        return PageSizeChanged.InvokeAsync(value);
     }
 
-    private void ShowAllImagesViewerDialog()
+    private Task HandleClearClicked() => OnClear.InvokeAsync();
+
+    private void ShowSelectionsDrawer()
     {
-        var param = new DialogParameters();
-        var options = new DialogOptions() { MaxWidth = MaxWidth.ExtraLarge, CloseButton = true };
-        param.Add("Images", Images.Images);
-        DialogService.Show<ImageViewerDialog>("", param, options);
+        _showSelectionsDrawer = true;
     }
 
     private async Task ShowDeleteImageDialog(Image image)
@@ -92,11 +275,24 @@
         parameters.Add("OkButtonText", "Yes");
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this image?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Image", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this item?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Item", parameters, new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        });
         var result = await dialog.Result;
         if (!result.Canceled) await DeleteImage(image, true);
-        Refresh();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowDeleteImageDialogFromVideo(GeneratedVideo video)
+    {
+        var image = Images.Images.FirstOrDefault(i => i.Path == video.FilePath);
+        if (image != null)
+        {
+            await ShowDeleteImageDialog(image);
+        }
     }
 
     private async Task ShowDeleteImagesDialog()
@@ -105,19 +301,20 @@
         parameters.Add("OkButtonText", "Yes");
         parameters.Add("CancelButtonText", "No");
         parameters.Add("OkButtonColor", Color.Error);
-        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected images?<br /></span><small>This action is irreversible!</small>"));
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {M.SelectedImageIds.Count} Images", parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> the selected items?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>($"Delete {Gallery.SelectedImageIds.Count} Items",
+parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small });
         var result = await dialog.Result;
         if (!result.Canceled)
         {
-            var selectedImages = await DB.GetImages(M.SelectedImageIds);
+            var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
             foreach (var image in selectedImages)
             {
                 await DeleteImage(image, false);
             }
-            Snackbar.Add("All selected images deleted successfully.", Severity.Success);
-            M.ClearSelectedImages();
-            Refresh();
+            Snackbar.Add("All selected items deleted successfully.", Severity.Success);
+            Gallery.ClearSelectedImages();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -126,7 +323,7 @@
         var ids = Images.Images.Select(i => i.Id).ToList();
         foreach (var id in ids)
         {
-            M.AddSelectedImage(id);
+            Gallery.AddSelectedImage(id);
         }
     }
 
@@ -134,13 +331,13 @@
     {
         var response = await DB.DeleteImage(image);
         await OnDeleteImage.InvokeAsync();
-        if (showSnack) Snackbar.Add("Image deleted successfuly.", Severity.Success);
+        if (showSnack) Snackbar.Add("Item deleted successfuly.", Severity.Success);
     }
 
     private async Task ShowSwitchProjectDialog()
     {
         var param = new DialogParameters();
-        var selectedImages = await DB.GetImages(M.SelectedImageIds);
+        var selectedImages = await DB.GetImages(Gallery.SelectedImageIds);
         param.Add("Images", selectedImages);
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ImageProjectDialog>("Switch Project", param, options);
@@ -149,16 +346,14 @@
         {
             var updatedImages = (List<Image>)result.Data;
             await DB.UpdateImages(updatedImages);
-            Snackbar.Add("Images projects were changed.", Severity.Success);
-            M.ClearSelectedImages();
-            Refresh();
+            Snackbar.Add("Items projects were changed.", Severity.Success);
+            Gallery.ClearSelectedImages();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
-
     public void Dispose()
     {
-        M.OnSelectedImagesChanged -= Refresh;
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
     }
 }

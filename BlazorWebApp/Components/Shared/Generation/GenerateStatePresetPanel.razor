@@ -1,0 +1,168 @@
+@using BlazorWebApp.Data.Entities
+@inject IGenerateStatePresetService PresetService
+@inject IGenerationParameterService ParameterService
+@inject IStateService State
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.subtitle2" Class="mb-1">
+    <MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Class="mr-1" />
+    Workflow State
+</MudText>
+<MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+    <MudSelect T="GenerateStatePreset" Value="_selectedPreset" ValueChanged="HandlePresetSelected" Label="Preset"
+               Variant="Variant.Text" Dense="true" Clearable="true" Class="flex-grow-1" AnchorOrigin="Origin.BottomLeft"
+               TransformOrigin="Origin.TopLeft">
+        @foreach (var preset in _presets)
+        {
+            <MudSelectItem Value="preset">@(preset.Name)</MudSelectItem>
+        }
+    </MudSelect>
+    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small"
+                   Title="Create workflow state" OnClick="CreatePreset" Disabled="@(Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" Title="Edit workflow state"
+                   OnClick="EditPreset" Disabled="@(_selectedPreset == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
+                   Title="Apply workflow state" OnClick="ApplyPreset" Disabled="@(_selectedPreset == null || Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Warning" Size="Size.Small"
+                   Title="Reset workflow state to template defaults" OnClick="ResetWorkflowState" Disabled="@(Workflow == null)" />
+    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                   Title="Delete workflow state" OnClick="DeletePreset" Disabled="@(_selectedPreset == null)" />
+</MudStack>
+
+@code {
+    [Parameter] public Workflow? Workflow { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        CloseOnEscapeKey = true,
+        MaxWidth =
+MaxWidth.Small,
+        FullWidth = true
+    };
+    private List<GenerateStatePreset> _presets = new();
+    private GenerateStatePreset? _selectedPreset;
+    private Guid? _loadedWorkflowId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Workflow?.Id == _loadedWorkflowId) return;
+
+        _loadedWorkflowId = Workflow?.Id;
+        await LoadPresetsAsync();
+    }
+
+    private async Task LoadPresetsAsync()
+    {
+        _selectedPreset = null;
+        _presets = Workflow == null
+            ? new List<GenerateStatePreset>()
+            : await PresetService.GetPresetsAsync(Workflow.Id);
+    }
+
+    private void HandlePresetSelected(GenerateStatePreset? preset)
+    {
+        _selectedPreset = preset;
+    }
+
+    private async Task CreatePreset()
+    {
+        if (Workflow == null) return;
+
+        var dialog = await DialogService.ShowAsync<GenerateStatePresetDialog>("", options: _dialogOptions);
+        var result = await dialog.Result;
+        if (result.Canceled || result.Data is not GenerateStatePresetDialog.GenerateStatePresetDialogResult data) return;
+
+        try
+        {
+            var created = await PresetService.CreatePresetAsync(data.Name, State.GenerationParameters);
+            await LoadPresetsAsync();
+            _selectedPreset = _presets.FirstOrDefault(p => p.Id == created.Id);
+            Snackbar.Add("Workflow state created.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task EditPreset()
+    {
+        if (_selectedPreset == null) return;
+
+        var parameters = new DialogParameters { [nameof(GenerateStatePresetDialog.Preset)] = _selectedPreset };
+        var dialog = await DialogService.ShowAsync<GenerateStatePresetDialog>("", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result.Canceled || result.Data is not GenerateStatePresetDialog.GenerateStatePresetDialogResult data) return;
+
+        try
+        {
+            var updated = data.ReplaceWithCurrentSettings
+                ? await PresetService.UpdatePresetAsync(_selectedPreset.Id, data.Name, State.GenerationParameters)
+                : await PresetService.RenamePresetAsync(_selectedPreset.Id, data.Name);
+
+            await LoadPresetsAsync();
+            _selectedPreset = updated == null ? null : _presets.FirstOrDefault(p => p.Id == updated.Id);
+            Snackbar.Add("Workflow state updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ApplyPreset()
+    {
+        if (_selectedPreset == null || Workflow == null) return;
+
+        await ParameterService.ApplyPresetAsync(Workflow, _selectedPreset.Body.Parameters);
+        await ParameterService.SaveCurrentWorkflowStateAsync();
+        await State.SaveState();
+        Snackbar.Add("Workflow state applied.", Severity.Success);
+    }
+
+    private async Task ResetWorkflowState()
+    {
+        if (Workflow == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["OkButtonText"] = "Reset",
+            ["CancelButtonText"] = "Cancel",
+            ["OkButtonColor"] = Color.Warning,
+            ["Content"] = new MarkupString("Reset the current workflow state to the template defaults? Named presets will not be deleted.")
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Reset Workflow State", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        await ParameterService.ResetToWorkflowDefaultsAsync(Workflow);
+        await ParameterService.SaveCurrentWorkflowStateAsync();
+        await State.SaveState();
+        _selectedPreset = null;
+        Snackbar.Add("Workflow state reset to template defaults.", Severity.Success);
+    }
+
+    private async Task DeletePreset()
+    {
+        if (_selectedPreset == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["OkButtonText"] = "Delete",
+            ["CancelButtonText"] = "Cancel",
+            ["OkButtonColor"] = Color.Error,
+            ["Content"] = new MarkupString($"Delete <strong>{_selectedPreset.Name}</strong>? This action cannot be undone.")
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Workflow State", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        await PresetService.DeletePresetAsync(_selectedPreset.Id);
+        await LoadPresetsAsync();
+        Snackbar.Add("Workflow state deleted.", Severity.Success);
+    }
+}

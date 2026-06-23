@@ -1,16 +1,46 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Scripts\**" />
+    <Content Remove="Scripts\**" />
+    <EmbeddedResource Remove="Scripts\**" />
+    <None Remove="Scripts\**" />
+  </ItemGroup>
+
+  <!-- Keep .sbn files in output for reference only - they are NOT loaded -->
+  <ItemGroup>
+    <None Update="Workflows\**\*.sbn">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Odditarium persona JSON files -->
+  <ItemGroup>
+    <None Update="Data\Odditarium\Personas\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Character Creator editable catalog JSON files -->
+  <ItemGroup>
+    <None Update="Data\CharacterCreator\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.8.2" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.9.1" />
+    <PackageReference Include="MetadataExtractor" Version="2.9.0-rc3" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.11">
       <PrivateAssets>all</PrivateAssets>
@@ -21,9 +51,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="MudBlazor" Version="6.1.8" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.22.1" />
+    <PackageReference Include="MudBlazor" Version="6.20.0" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0.3" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
+    <PackageReference Include="TiktokenSharp" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,6 +67,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Components\Shared\Generation\ADetailerModelFormComfyUI.razor">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
     <Content Update="Pages\Index.razor">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
@@ -40,6 +77,12 @@
 
   <ItemGroup>
     <Content Update="BlazorDiffusion.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\Txt2Img\" />
+    <Folder Include="Data\Dictionaries\" />
+    <Folder Include="Workflows\Fragments\utils\" />
   </ItemGroup>
 
 </Project>

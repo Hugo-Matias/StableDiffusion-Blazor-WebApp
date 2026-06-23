@@ -1,0 +1,734 @@
+@*
+    DetailerForm - Multi-pass Detailer enhancement form.
+
+    Features:
+    - Tabbed pass navigation (add / remove chained detailer passes).
+    - Prompt injection (positive/negative) per pass, with fallback to main prompts.
+    - Detailer-scoped LoRAs per pass (independent of main and independent across passes).
+    - Detection model / sampler / scheduler / sampling parameters.
+    - Per-pass parameters are stored on the single "detailer" fragment using prefixed keys:
+        Pass 0 -> "detailer_..."       (legacy names, back-compat)
+        Pass N -> "pass_{N}_detailer_..."
+      Pass count is stored as "pass_count" on the fragment.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Events
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Data.Enums
+@attribute [FragmentComponent("DetailerForm")]
+@inject IGenerationParameterService ParameterService
+@inject IEventService EventService
+@inject IOrchestratorService Orchestrator
+@inject ILogger<DetailerForm> Logger
+@implements IDisposable
+
+<MudGrid Spacing="2">
+    @* ================= Pass navigation (dynamic tabs) =================
+       Each tab title shows "Pass N" plus an inline duplicate icon that
+       copies the pass prompts + LoRAs into a new tab (inference params
+       deliberately not duplicated - see DuplicateCurrentPass). *@
+    <MudItem xs="12">
+        <MudDynamicTabs ActivePanelIndex="_currentPass"
+                        ActivePanelIndexChanged="OnPassTabChanged"
+                        AddTab="AddPass" CloseTab="OnCloseTab"
+                        AddIconToolTip="Add a chained detailer pass"
+                        CloseIconToolTip="Remove this pass"
+                        Elevation="0" Rounded="false" Border="false"
+                        Class="detailer-pass-tabs"
+                        PanelClass="pa-0">
+            @for (int i = 0; i < _passCount; i++)
+            {
+                int pass = i;
+                <MudTabPanel Tag="@pass" ShowCloseIcon="@(_passCount > 1)">
+                    <TabContent>
+                        <span class="pass-tab-header"
+                              @onclick:stopPropagation="false">
+                            <span>Pass @(pass + 1)</span>
+                            <span @onclick:stopPropagation="true" @onclick:preventDefault="true">
+                                <MudIconButton Icon="fa-solid fa-copy" Size="Size.Small"
+                                               Title="Duplicate this pass"
+                                               OnClick="@(() => DuplicatePass(pass))"
+                                               Class="pass-duplicate-btn" />
+                            </span>
+                        </span>
+                    </TabContent>
+                </MudTabPanel>
+            }
+        </MudDynamicTabs>
+    </MudItem>
+
+    @* ================= Pass Enable/Disable Toggle ================= *@
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudSwitch T="bool"
+                       @bind-Value="@CurrentPassEnabled"
+                       Color="Color.Primary"
+                       Label="@($"Enable Pass {_currentPass + 1}")"
+                       Size="Size.Small" />
+            @if (!CurrentPassEnabled)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                    This pass will be skipped during generation
+                </MudText>
+            }
+        </MudStack>
+    </MudItem>
+
+    @* ================= Compact copy/clear action bar =================
+       Merges the previous per-section copy/clear rows into a single
+       control surface. Placeholder text on the prompt field replaces
+       the old helper text to keep the section visually uncluttered. *@
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="3" Class="detailer-actions" Wrap="Wrap.Wrap">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.caption">Copy from main:</MudText>
+                <MudButtonGroup Size="Size.Small" Variant="Variant.Text" Color="Color.Info">
+                    <MudButton OnClick="CopyPromptsFromMain"
+                               Title="Snapshot the main positive/negative prompts into this pass.">Prompts</MudButton>
+                    <MudButton OnClick="CopyLorasFromMain"
+                               Title="Snapshot the main LoRAs list into this pass.">LoRAs</MudButton>
+                </MudButtonGroup>
+            </MudStack>
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.caption">Clear:</MudText>
+                <MudButtonGroup Size="Size.Small" Variant="Variant.Text" Color="Color.Error">
+                    <MudButton OnClick="ClearPrompts"
+                               Title="Clear prompt overrides for this pass (will fall back to main).">Prompts</MudButton>
+                    <MudButton OnClick="ClearLoras"
+                               Title="Remove all LoRAs from this pass.">LoRAs</MudButton>
+                </MudButtonGroup>
+            </MudStack>
+        </MudStack>
+    </MudItem>
+
+    @* ================= Prompt Injection ================= *@
+    <MudItem xs="12">
+        <MudTabs @bind-ActivePanelIndex="_activePromptTab"
+                 Elevation="0" Rounded="false" Border="false" ApplyEffectsToContainer="true"
+                 SliderColor="@(_activePromptTab == 1 ? Color.Error : Color.Success)"
+                 Class="@($"prompt-tabs prompt-tabs-{GetActiveTabAccent()}")"
+                 PanelClass="pa-0">
+            <MudTabPanel Text="@GetPositiveTabLabel()">
+                <MudTextField T="string" Value="@_positivePrompt" ValueChanged="OnPositivePromptChanged"
+                              Label="" Lines="2" AutoGrow="true" MaxLines="12"
+                              Variant="Variant.Text"
+                              Immediate="false" DebounceInterval="300"
+                              Placeholder="Leave blank to use main positive prompt" />
+            </MudTabPanel>
+            <MudTabPanel Text="@GetNegativeTabLabel()">
+                <MudTextField T="string" Value="@_negativePrompt" ValueChanged="OnNegativePromptChanged"
+                              Label="" Lines="2" AutoGrow="true" MaxLines="12"
+                              Variant="Variant.Text"
+                              Immediate="false" DebounceInterval="300"
+                              Placeholder="Leave blank to use main negative prompt" />
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+
+    @* ================= Detailer LoRAs ================= *@
+    <MudItem xs="12">
+        <LoraForm Loras="@ParameterService.Current.GetDetailerLoras(_currentPass)"
+                  Backend="Backend.ComfyUI"
+                  IsDualModel="@_isDualModel"
+                  OnLorasUpdated="HandleDetailerLorasUpdated" />
+    </MudItem>
+
+    @* ================= Detection Model ================= *@
+    <MudItem xs="12">
+        @if (_detectionModels.Count > 0)
+        {
+            <MudSelect T="string" Label="Detection Model" Value="@_detectionModel" ValueChanged="OnDetectionModelChanged"
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var model in _detectionModels)
+                {
+                    <MudSelectItem Value=@($"{model}")>@model</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                No detection models found. Ensure ComfyUI is running and has the UltralyticsDetectorProvider node.
+            </MudAlert>
+        }
+    </MudItem>
+
+    @* Sampler and Scheduler *@
+    <MudItem xs="6">
+        @if (_samplers.Count > 0)
+        {
+            <MudSelect T="string" Label="Sampler" Value="@_sampler" ValueChanged="OnSamplerChanged"
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var sampler in _samplers)
+                {
+                    <MudSelectItem Value="@sampler">@sampler</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudItem>
+    <MudItem xs="6">
+        @if (_schedulers.Count > 0)
+        {
+            <MudSelect T="string" Label="Scheduler" Value="@_scheduler" ValueChanged="OnSchedulerChanged"
+                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Dense>
+                @foreach (var scheduler in _schedulers)
+                {
+                    <MudSelectItem Value="@scheduler">@scheduler</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudItem>
+
+    @* Seed *@
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" Value="@_seed" ValueChanged="OnSeedChanged"
+                             Label="Seed" Min="-1" Max="long.MaxValue" Class="flex-grow-1" Dense />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+        </MudStack>
+    </MudItem>
+
+    @* Steps and CFG *@
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_steps" ValueChanged="OnStepsChanged"
+                   Min="1" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Steps:</small> @_steps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" Value="@_cfg" ValueChanged="OnCfgChanged"
+                   Min="1" Max="30" Step="0.5f" Variant="Variant.Filled" ValueLabel>
+            <small>CFG:</small> @_cfg
+        </MudSlider>
+    </MudItem>
+
+    @* Denoise and Feather *@
+    <MudItem xs="6">
+        <MudSlider T="float" Value="@_denoise" ValueChanged="OnDenoiseChanged"
+                   Min="0" Max="1" Step="0.01f" Variant="Variant.Filled" ValueLabel>
+            <small>Denoise:</small> @_denoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_feather" ValueChanged="OnFeatherChanged"
+                   Min="0" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Feather:</small> @_feather
+        </MudSlider>
+    </MudItem>
+
+    @* BBox Detection Parameters *@
+    <MudItem xs="4">
+        <MudSlider T="float" Value="@_bboxThreshold" ValueChanged="OnBboxThresholdChanged"
+                   Min="0" Max="1" Step="0.01f" Variant="Variant.Filled" ValueLabel>
+            <small>Threshold:</small> @_bboxThreshold.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_bboxDilation" ValueChanged="OnBboxDilationChanged"
+                   Min="0" Max="100" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Dilation:</small> @_bboxDilation
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="float" Value="@_bboxCropFactor" ValueChanged="OnBboxCropFactorChanged"
+                   Min="1" Max="10" Step="0.1f" Variant="Variant.Filled" ValueLabel>
+            <small>Crop:</small> @_bboxCropFactor.ToString("F1")
+        </MudSlider>
+    </MudItem>
+
+    @* Guide Size, Max Size, Drop Size *@
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_guideSize" ValueChanged="OnGuideSizeChanged"
+                   Min="64" Max="2048" Step="64" Variant="Variant.Filled" ValueLabel>
+            <small>Guide:</small> @_guideSize
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_maxSize" ValueChanged="OnMaxSizeChanged"
+                   Min="256" Max="4096" Step="64" Variant="Variant.Filled" ValueLabel>
+            <small>Max:</small> @_maxSize
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSlider T="int" Value="@_dropSize" ValueChanged="OnDropSizeChanged"
+                   Min="1" Max="200" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Drop:</small> @_dropSize
+        </MudSlider>
+    </MudItem>
+
+    @* Cycle *@
+    <MudItem xs="6">
+        <MudSlider T="int" Value="@_cycle" ValueChanged="OnCycleChanged"
+                   Min="1" Max="10" Step="1" Variant="Variant.Filled" ValueLabel>
+            <small>Cycle:</small> @_cycle
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // Pass state
+    private int _passCount = 1;
+    private int _currentPass = 0;
+
+    // Local parameter state - reflects the ACTIVE pass only.
+    private string? _detectionModel;
+    private string? _sampler;
+    private string? _scheduler;
+    private long _seed = -1;
+    private int _steps = 20;
+    private float _cfg = 8.0f;
+    private float _denoise = 0.65f;
+    private int _feather = 5;
+    private float _bboxThreshold = 0.7f;
+    private int _bboxDilation = 10;
+    private float _bboxCropFactor = 3.0f;
+    private int _dropSize = 70;
+    private int _guideSize = 512;
+    private int _maxSize = 1024;
+    private int _cycle = 1;
+
+    // Prompt injection state
+    private string _positivePrompt = string.Empty;
+    private string _negativePrompt = string.Empty;
+    private int _activePromptTab = 0;
+
+    // Dropdown options
+    private List<string> _detectionModels = new();
+    private List<string> _samplers = new();
+    private List<string> _schedulers = new();
+
+    // Workflow awareness
+    private bool _isDualModel;
+
+    protected override void OnInitialized()
+    {
+        EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadPassCount();
+        LoadFromFragment();
+        LoadResolvedOptions();
+    }
+
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        if (args.ChangeType == GenerationParameterChangeType.DynamicSourcesResolved ||
+            args.ChangeType == GenerationParameterChangeType.WorkflowChanged ||
+            args.ChangeType == GenerationParameterChangeType.ParametersLoaded)
+        {
+            LoadPassCount();
+            LoadFromFragment();
+            LoadResolvedOptions();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ===================== Pass helpers =====================
+
+    /// <summary>
+    /// Key prefix for the active pass. Pass 0 uses legacy names ("detailer_xxx") to preserve
+    /// backward compatibility. Passes >= 1 are prefixed with "pass_{i}_".
+    /// </summary>
+    private string Key(string baseKey)
+        => _currentPass == 0 ? baseKey : $"pass_{_currentPass}_{baseKey}";
+
+    private void LoadPassCount()
+    {
+        if (Fragment == null) { _passCount = 1; return; }
+        _passCount = Math.Max(1, ParameterService.GetFragmentProperty(Fragment, "pass_count", 1));
+        if (_currentPass >= _passCount) _currentPass = _passCount - 1;
+        if (_currentPass < 0) _currentPass = 0;
+    }
+
+    /// <summary>
+    /// Manual two-way binding for MudDynamicTabs' ActivePanelIndex. We own the
+    /// write-back so we can refresh per-pass state and notify the parent.
+    /// </summary>
+    private async Task OnPassTabChanged(int index)
+    {
+        if (index < 0 || index >= _passCount) return;
+        if (index == _currentPass) return;
+        _currentPass = index;
+        LoadFromFragment();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Close-tab handler from MudDynamicTabs. The panel's Tag carries the pass
+    /// index so we can remove the specific pass the user clicked (which may not
+    /// be the currently active one).
+    /// </summary>
+    private async Task OnCloseTab(MudTabPanel panel)
+    {
+        if (_passCount <= 1) return;
+        if (panel.Tag is not int idx) return;
+        _currentPass = idx;
+        await RemoveCurrentPass();
+    }
+
+    /// <summary>
+    /// Duplicates the given pass into a brand new pass appended at the end.
+    /// Only inference parameters (detection model, sampler, scheduler, seed,
+    /// steps, cfg, denoise, feather, bbox_*, drop/guide/max size, cycle) are
+    /// copied. Prompts and LoRAs are intentionally left empty so the new pass
+    /// starts as a blank slate for the user to specialise; inference tuning
+    /// is the part that usually carries over between passes.
+    /// </summary>
+    private async Task DuplicatePass(int sourcePass)
+    {
+        if (Fragment == null) return;
+        if (sourcePass < 0 || sourcePass >= _passCount) return;
+
+        // Keys copied verbatim from source to destination. These mirror the
+        // base keys used by LoadFromFragment / SetValue below.
+        var inferenceKeys = new[]
+        {
+            "detailer_detection_model",
+            "detailer_sampler",
+            "detailer_scheduler",
+            "detailer_seed",
+            "detailer_steps",
+            "detailer_cfg",
+            "detailer_denoise",
+            "detailer_feather",
+            "detailer_bbox_threshold",
+            "detailer_bbox_dilation",
+            "detailer_bbox_crop_factor",
+            "detailer_drop_size",
+            "detailer_guide_size",
+            "detailer_max_size",
+            "detailer_cycle",
+            "detailer_enabled",
+        };
+
+        var srcPrefix = sourcePass == 0 ? string.Empty : $"pass_{sourcePass}_";
+        var srcValues = Fragment.Parameters.Values;
+
+        int newPass = _passCount;
+        _passCount++;
+        SetValueRaw("pass_count", _passCount);
+
+        // newPass is always >= 1 here (we always append at the end).
+        var destPrefix = $"pass_{newPass}_";
+        foreach (var baseKey in inferenceKeys)
+        {
+            var srcKey = $"{srcPrefix}{baseKey}";
+            if (srcValues.TryGetValue(srcKey, out var value))
+            {
+                ParameterService.SetFragmentProperty(Fragment, $"{destPrefix}{baseKey}", value, notify: true);
+            }
+        }
+
+        // Prompts and LoRAs start empty for the new pass - do NOT copy them.
+        // The LoRA bucket is auto-created on first access by GetDetailerLoras.
+        _ = ParameterService.Current.GetDetailerLoras(newPass);
+
+        _currentPass = newPass;
+        LoadFromFragment();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task AddPass()
+    {
+        _passCount++;
+        SetValueRaw("pass_count", _passCount);
+        _currentPass = _passCount - 1;
+        // Ensure a LoRA bucket exists for the new pass.
+        _ = ParameterService.Current.GetDetailerLoras(_currentPass);
+        // New passes are enabled by default.
+        var key = _currentPass == 0 ? "detailer_enabled" : $"pass_{_currentPass}_detailer_enabled";
+        ParameterService.SetFragmentProperty(Fragment, key, true, notify: false);
+        LoadFromFragment();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task RemoveCurrentPass()
+    {
+        if (_passCount <= 1 || Fragment == null) return;
+
+        var removed = _currentPass;
+
+        // Shift all keys with prefix pass_{i}_ (i > removed) down by one, and remove the highest pass keys.
+        var values = Fragment.Parameters.Values;
+        var allKeys = values.Keys.ToList();
+
+        // First, drop the removed pass's keys.
+        var removedPrefix = removed == 0 ? string.Empty : $"pass_{removed}_";
+        foreach (var key in allKeys.ToList())
+        {
+            if (removed == 0)
+            {
+                // Legacy (unprefixed) keys representing pass 0. Do NOT touch non-detailer values
+                // like pass_count itself; only clear detailer_* keys.
+                if (key.StartsWith("detailer_", StringComparison.Ordinal))
+                {
+                    values.Remove(key);
+                }
+            }
+            else if (key.StartsWith(removedPrefix, StringComparison.Ordinal))
+            {
+                values.Remove(key);
+            }
+        }
+
+        // Shift higher passes down by one. e.g. pass_{i}_xxx -> pass_{i-1}_xxx.
+        for (int i = removed + 1; i < _passCount; i++)
+        {
+            var fromPrefix = $"pass_{i}_";
+            var toPrefix = i - 1 == 0 ? string.Empty : $"pass_{i - 1}_";
+            foreach (var key in values.Keys.Where(k => k.StartsWith(fromPrefix, StringComparison.Ordinal)).ToList())
+            {
+                var baseKey = key.Substring(fromPrefix.Length);
+                values[$"{toPrefix}{baseKey}"] = values[key];
+                values.Remove(key);
+            }
+        }
+
+        // Shift LoRA dictionary similarly
+        var loraMap = ParameterService.Current.DetailerLorasByPass;
+        loraMap.Remove(removed);
+        for (int i = removed + 1; i < _passCount; i++)
+        {
+            if (loraMap.TryGetValue(i, out var list))
+            {
+                loraMap[i - 1] = list;
+                loraMap.Remove(i);
+            }
+        }
+
+        _passCount--;
+        SetValueRaw("pass_count", _passCount);
+        if (_currentPass >= _passCount) _currentPass = _passCount - 1;
+
+        LoadFromFragment();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    // ===================== Load / save =====================
+
+    private void LoadFromFragment()
+    {
+        if (Fragment == null) return;
+
+        _detectionModel = ParameterService.GetFragmentProperty(Fragment, Key("detailer_detection_model"), (string?)null);
+        _sampler = ParameterService.GetFragmentProperty(Fragment, Key("detailer_sampler"), (string?)null);
+        _scheduler = ParameterService.GetFragmentProperty(Fragment, Key("detailer_scheduler"), (string?)null);
+        _seed = ParameterService.GetFragmentProperty(Fragment, Key("detailer_seed"), -1L);
+        _steps = ParameterService.GetFragmentProperty(Fragment, Key("detailer_steps"), 20);
+        _cfg = ParameterService.GetFragmentProperty(Fragment, Key("detailer_cfg"), 8.0f);
+        _denoise = ParameterService.GetFragmentProperty(Fragment, Key("detailer_denoise"), 0.65f);
+        _feather = ParameterService.GetFragmentProperty(Fragment, Key("detailer_feather"), 5);
+        _bboxThreshold = ParameterService.GetFragmentProperty(Fragment, Key("detailer_bbox_threshold"), 0.7f);
+        _bboxDilation = ParameterService.GetFragmentProperty(Fragment, Key("detailer_bbox_dilation"), 10);
+        _bboxCropFactor = ParameterService.GetFragmentProperty(Fragment, Key("detailer_bbox_crop_factor"), 3.0f);
+        _dropSize = ParameterService.GetFragmentProperty(Fragment, Key("detailer_drop_size"), 70);
+        _guideSize = ParameterService.GetFragmentProperty(Fragment, Key("detailer_guide_size"), 512);
+        _maxSize = ParameterService.GetFragmentProperty(Fragment, Key("detailer_max_size"), 1024);
+        _cycle = ParameterService.GetFragmentProperty(Fragment, Key("detailer_cycle"), 1);
+
+        _positivePrompt = ParameterService.GetFragmentProperty(Fragment, Key("detailer_prompt"), string.Empty) ?? string.Empty;
+        _negativePrompt = ParameterService.GetFragmentProperty(Fragment, Key("detailer_negative_prompt"), string.Empty) ?? string.Empty;
+
+        _currentPassEnabled = GetPassEnabled(_currentPass);
+
+        var workflow = Orchestrator.GetCurrentWorkflow();
+        _isDualModel = workflow?.UsesDualModelLoras == true;
+    }
+
+    private void LoadResolvedOptions()
+    {
+        if (Fragment == null) return;
+
+        // Dynamic source options live on the schema and do not vary per pass.
+        _detectionModels = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_detection_model");
+        _samplers = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_sampler");
+        _schedulers = ParameterService.GetResolvedOptions(Fragment.Id, "detailer_scheduler");
+
+        if (string.IsNullOrEmpty(_detectionModel) && _detectionModels.Count > 0)
+        {
+            _detectionModel = _detectionModels[0];
+            SetValue("detailer_detection_model", _detectionModel);
+        }
+        if (string.IsNullOrEmpty(_sampler) && _samplers.Count > 0)
+        {
+            _sampler = _samplers[0];
+            SetValue("detailer_sampler", _sampler);
+        }
+        if (string.IsNullOrEmpty(_scheduler) && _schedulers.Count > 0)
+        {
+            _scheduler = _schedulers[0];
+            SetValue("detailer_scheduler", _scheduler);
+        }
+    }
+
+    /// <summary>Writes a pass-scoped value.</summary>
+    private void SetValue(string baseKey, object? value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, Key(baseKey), value, notify: true);
+    }
+
+    /// <summary>Writes a raw (non-pass-scoped) value (e.g. pass_count).</summary>
+    private void SetValueRaw(string key, object? value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+    }
+
+    // ===================== Parameter change handlers =====================
+
+    private async Task OnDetectionModelChanged(string value) { _detectionModel = value; SetValue("detailer_detection_model", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSamplerChanged(string value) { _sampler = value; SetValue("detailer_sampler", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSchedulerChanged(string value) { _scheduler = value; SetValue("detailer_scheduler", value); await OnChanged.InvokeAsync(); }
+    private async Task OnSeedChanged(long value) { _seed = value; SetValue("detailer_seed", value); await OnChanged.InvokeAsync(); }
+    private async Task OnStepsChanged(int value) { _steps = value; SetValue("detailer_steps", value); await OnChanged.InvokeAsync(); }
+    private async Task OnCfgChanged(float value) { _cfg = value; SetValue("detailer_cfg", value); await OnChanged.InvokeAsync(); }
+    private async Task OnDenoiseChanged(float value) { _denoise = value; SetValue("detailer_denoise", value); await OnChanged.InvokeAsync(); }
+    private async Task OnFeatherChanged(int value) { _feather = value; SetValue("detailer_feather", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxThresholdChanged(float value) { _bboxThreshold = value; SetValue("detailer_bbox_threshold", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxDilationChanged(int value) { _bboxDilation = value; SetValue("detailer_bbox_dilation", value); await OnChanged.InvokeAsync(); }
+    private async Task OnBboxCropFactorChanged(float value) { _bboxCropFactor = value; SetValue("detailer_bbox_crop_factor", value); await OnChanged.InvokeAsync(); }
+    private async Task OnDropSizeChanged(int value) { _dropSize = value; SetValue("detailer_drop_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnGuideSizeChanged(int value) { _guideSize = value; SetValue("detailer_guide_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnMaxSizeChanged(int value) { _maxSize = value; SetValue("detailer_max_size", value); await OnChanged.InvokeAsync(); }
+    private async Task OnCycleChanged(int value) { _cycle = value; SetValue("detailer_cycle", value); await OnChanged.InvokeAsync(); }
+
+    private async Task SetRandomSeed()
+    {
+        _seed = -1;
+        SetValue("detailer_seed", -1L);
+        await OnChanged.InvokeAsync();
+    }
+
+    // ===================== Prompt injection =====================
+
+    private string GetActiveTabAccent() => _activePromptTab == 1 ? "negative" : "positive";
+
+    private string GetPositiveTabLabel()
+        => string.IsNullOrWhiteSpace(_positivePrompt) ? "Positive" : "Positive \u2022";
+
+    private string GetNegativeTabLabel()
+        => string.IsNullOrWhiteSpace(_negativePrompt) ? "Negative" : "Negative \u2022";
+
+    private async Task OnPositivePromptChanged(string value)
+    {
+        _positivePrompt = value ?? string.Empty;
+        SetValue("detailer_prompt", _positivePrompt);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnNegativePromptChanged(string value)
+    {
+        _negativePrompt = value ?? string.Empty;
+        SetValue("detailer_negative_prompt", _negativePrompt);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task CopyPromptsFromMain()
+    {
+        var mainPrompts = ParameterService.Current.GetFragment("prompts");
+        _positivePrompt = mainPrompts?.GetString("positive", string.Empty) ?? string.Empty;
+        _negativePrompt = mainPrompts?.GetString("negative", string.Empty) ?? string.Empty;
+        SetValue("detailer_prompt", _positivePrompt);
+        SetValue("detailer_negative_prompt", _negativePrompt);
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task ClearPrompts()
+    {
+        _positivePrompt = string.Empty;
+        _negativePrompt = string.Empty;
+        SetValue("detailer_prompt", string.Empty);
+        SetValue("detailer_negative_prompt", string.Empty);
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    // ===================== Detailer LoRAs =====================
+
+    private async Task HandleDetailerLorasUpdated()
+    {
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task CopyLorasFromMain()
+    {
+        var mainLoras = ParameterService.Current.Loras;
+        var detailerLoras = ParameterService.Current.GetDetailerLoras(_currentPass);
+
+        var comp = StringComparison.OrdinalIgnoreCase;
+        foreach (var lora in mainLoras)
+        {
+            if (!detailerLoras.Any(l => string.Equals(l.Name, lora.Name, comp)))
+            {
+                detailerLoras.Add(new Lora(lora));
+            }
+        }
+
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task ClearLoras()
+    {
+        ParameterService.Current.GetDetailerLoras(_currentPass).Clear();
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    // ===================== Pass enable/disable =====================
+
+    private bool _currentPassEnabled = true;
+
+    private bool CurrentPassEnabled
+    {
+        get => _currentPassEnabled;
+        set
+        {
+            if (_currentPassEnabled != value)
+            {
+                _currentPassEnabled = value;
+                _ = SetPassEnabledAsync(value);
+            }
+        }
+    }
+
+    private bool GetPassEnabled(int pass)
+    {
+        if (Fragment == null) return true;
+        var key = pass == 0 ? "detailer_enabled" : $"pass_{pass}_detailer_enabled";
+        return ParameterService.GetFragmentProperty(Fragment, key, true);
+    }
+
+    private async Task SetPassEnabledAsync(bool enabled)
+    {
+        if (Fragment == null) return;
+        var key = _currentPass == 0 ? "detailer_enabled" : $"pass_{_currentPass}_detailer_enabled";
+        ParameterService.SetFragmentProperty(Fragment, key, enabled, notify: true);
+        await OnChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        EventService.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+}

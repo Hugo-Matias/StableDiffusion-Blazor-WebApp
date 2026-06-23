@@ -1,0 +1,143 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Services
+@inject IDatabaseService DB
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" md="6">
+        <MudStack Spacing="1">
+            <MudSelect T="string" Value="FolderName" ValueChanged="OnFolderChangedAsync"
+                       Label="@FolderLabel" Variant="Variant.Text" Dense="Dense" Clearable
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem T="string" Value="@((string?)null!)">@EmptyFolderLabel</MudSelectItem>
+                @foreach (var f in _folders)
+                {
+                    <MudSelectItem T="string" Value="@f.Name">@f.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_folderMissing)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined"
+                         Icon="@Icons.Material.Filled.Warning">
+                    Missing: @FolderName
+                </MudChip>
+            }
+        </MudStack>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudStack Spacing="1">
+            <MudSelect T="string" Value="ProjectName" ValueChanged="OnProjectChangedAsync"
+                       Label="@ProjectLabel" Variant="Variant.Text" Dense="Dense" Clearable
+                       AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem T="string" Value="@((string?)null!)">@EmptyProjectLabel</MudSelectItem>
+                @foreach (var p in _projects)
+                {
+                    <MudSelectItem T="string" Value="@p.Name">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_projectMissing)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined"
+                         Icon="@Icons.Material.Filled.Warning">
+                    Missing: @ProjectName
+                </MudChip>
+            }
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public string? FolderName { get; set; }
+    [Parameter] public EventCallback<string?> FolderNameChanged { get; set; }
+
+    [Parameter] public string? ProjectName { get; set; }
+    [Parameter] public EventCallback<string?> ProjectNameChanged { get; set; }
+
+    [Parameter] public string FolderLabel { get; set; } = "Folder";
+    [Parameter] public string ProjectLabel { get; set; } = "Project";
+    [Parameter] public string EmptyFolderLabel { get; set; } = "(any)";
+    [Parameter] public string EmptyProjectLabel { get; set; } = "(default)";
+    [Parameter] public bool Dense { get; set; } = false;
+
+    /// <summary>True when the currently bound values are not present in the data source.</summary>
+    public bool HasMissingValues => _folderMissing || _projectMissing;
+
+    private List<Folder> _folders = new();
+    private List<Project> _projects = new();
+    private bool _folderMissing;
+    private bool _projectMissing;
+    private string? _lastFolder;
+    private string? _lastProject;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _folders = await DB.GetFolders() ?? new();
+        await RefreshProjectsAsync(FolderName);
+        UpdateMissingFlags();
+        _lastFolder = FolderName;
+        _lastProject = ProjectName;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_folders.Count == 0) return; // init hasn't run yet
+
+        // External change to FolderName -> refetch projects.
+        if (!string.Equals(_lastFolder, FolderName, StringComparison.Ordinal))
+        {
+            await RefreshProjectsAsync(FolderName);
+            _lastFolder = FolderName;
+        }
+
+        if (!string.Equals(_lastProject, ProjectName, StringComparison.Ordinal))
+            _lastProject = ProjectName;
+
+        UpdateMissingFlags();
+    }
+
+    private async Task OnFolderChangedAsync(string? value)
+    {
+        FolderName = value;
+        _lastFolder = value;
+        await RefreshProjectsAsync(value);
+
+        // If the current project is not valid under the new folder, clear it.
+        if (!string.IsNullOrEmpty(ProjectName) &&
+            !_projects.Any(p => string.Equals(p.Name, ProjectName, StringComparison.Ordinal)))
+        {
+            ProjectName = null;
+            _lastProject = null;
+            await ProjectNameChanged.InvokeAsync(null);
+        }
+
+        UpdateMissingFlags();
+        await FolderNameChanged.InvokeAsync(value);
+    }
+
+    private async Task OnProjectChangedAsync(string? value)
+    {
+        ProjectName = value;
+        _lastProject = value;
+        UpdateMissingFlags();
+        await ProjectNameChanged.InvokeAsync(value);
+    }
+
+    private async Task RefreshProjectsAsync(string? folderName)
+    {
+        var folderId = 0;
+        if (!string.IsNullOrEmpty(folderName))
+        {
+            var match = _folders.FirstOrDefault(f => string.Equals(f.Name, folderName, StringComparison.Ordinal));
+            folderId = match?.Id ?? 0;
+        }
+        _projects = await DB.GetProjects(folderId) ?? new();
+    }
+
+    private void UpdateMissingFlags()
+    {
+        _folderMissing = !string.IsNullOrEmpty(FolderName)
+            && !_folders.Any(f => string.Equals(f.Name, FolderName, StringComparison.Ordinal));
+        _projectMissing = !string.IsNullOrEmpty(ProjectName)
+            && !_projects.Any(p => string.Equals(p.Name, ProjectName, StringComparison.Ordinal));
+    }
+}
+

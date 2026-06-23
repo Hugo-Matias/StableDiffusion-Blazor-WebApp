@@ -1,0 +1,31 @@
+# Art styles and mediums
+anime
+manga
+realistic
+photorealistic
+hyperrealistic
+digital art
+digital painting
+concept art
+illustration
+oil painting
+watercolor
+acrylic painting
+pencil drawing
+sketch
+ink drawing
+charcoal
+pastel
+3d render
+pixel art
+low poly
+cel shaded
+comic book style
+pop art
+impressionism
+surrealism
+abstract
+minimalist
+cyberpunk
+steampunk
+fantasy art

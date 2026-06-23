@@ -1,0 +1,575 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Extensions
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Prompts
+@inject IDatabaseService DB
+@inject IDialogService DialogService
+@inject IStateService State
+
+<MudStack Spacing="3">
+    @* Quick Access Bar - Pinned Items *@
+    @if (_pinnedPrompts != null && _pinnedPrompts.Any())
+    {
+        <MudPaper Elevation="2" Class="pa-3">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.subtitle2">
+                    <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Primary" />
+                    Quick Access (Ctrl+1-9)
+                </MudText>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    @{ var pinnedIndex = 1; }
+                    @foreach (var prompt in _pinnedPrompts.Take(9))
+                    {
+                        var index = pinnedIndex;
+                        <MudChip Color="Color.Primary" 
+                                 OnClick="() => HandleQuickApply(prompt)"
+                                 OnClose="() => HandleUnpin(prompt)"
+                                 Size="Size.Small">
+                            <MudText Typo="Typo.caption"><strong>@index</strong> @prompt.Title</MudText>
+                        </MudChip>
+                        pinnedIndex++;
+                    }
+                </div>
+            </MudStack>
+        </MudPaper>
+    }
+    
+    @* Search and Actions Bar *@
+    <MudPaper Elevation="1" Class="pa-3">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 250px; max-width: 400px;">
+                <MudTextField @bind-Value="_searchQuery"
+                              Placeholder="Search prompts..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="HandleSearch"
+                              Clearable
+                              Variant="Variant.Text"
+                              Margin="Margin.Dense"
+                              Style="flex: 1;" />
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <MudSelect T="string" 
+                           Label="Sort by" 
+                           Value="_sortBy" 
+                           ValueChanged="HandleSortChanged"
+                           Dense
+                           Margin="Margin.Dense"
+                           Variant="Variant.Text"
+                           Style="min-width: 120px;">
+                    <MudSelectItem Value="@("title")">Title</MudSelectItem>
+                    <MudSelectItem Value="@("category")">Category</MudSelectItem>
+                    <MudSelectItem Value="@("usage")">Most Used</MudSelectItem>
+                    <MudSelectItem Value="@("recent")">Recently Used</MudSelectItem>
+                </MudSelect>
+                
+                <MudIconButton Icon="@(_sortDescending ? Icons.Material.Filled.ArrowDownward : Icons.Material.Filled.ArrowUpward)"
+                               OnClick="ToggleSortOrder"
+                               Size="Size.Small"
+                               Color="Color.Default" />
+                
+                <MudDivider Vertical FlexItem Class="mx-1" />
+                
+                @* View Toggle *@
+                <MudToggleIconButton @bind-Toggled="_isGridView"
+                                     Icon="@Icons.Material.Filled.ViewList"
+                                     ToggledIcon="@Icons.Material.Filled.GridView"
+                                     Size="Size.Small"
+                                     ToggledColor="Color.Primary"
+                                     Title="@(_isGridView ? "Switch to List View" : "Switch to Grid View")" />
+                
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           OnClick="HandleAddNew">
+                    New
+                </MudButton>
+            </div>
+        </div>
+        
+        @* Active Filters Display *@
+        @if (_selectedCategory != null || _selectedTags.Any())
+        {
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; align-items: center;">
+                <MudText Typo="Typo.caption" Color="Color.Default">Filters:</MudText>
+                @if (_selectedCategory != null)
+                {
+                    <MudChip Size="Size.Small" 
+                             Color="Color.Info" 
+                             OnClose="() => OnCategoryFilterChanged.InvokeAsync(null)">
+                        @GetCategoryDisplayName(_selectedCategory)
+                    </MudChip>
+                }
+                @foreach (var tag in _selectedTags)
+                {
+                    <MudChip Size="Size.Small" 
+                             Color="Color.Secondary" 
+                             OnClose="() => RemoveTagFilter(tag)">
+                        @tag
+                    </MudChip>
+                }
+            </div>
+        }
+    </MudPaper>
+    
+    @* Results Info with Pagination Controls *@
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2" Color="Color.Default">
+            Showing @((_currentPage - 1) * _pageSize + 1)-@Math.Min(_currentPage * _pageSize, _filteredPrompts.Count) of @_filteredPrompts.Count prompts
+        </MudText>
+        
+        @if (_filteredPrompts.Count > _pageSize)
+        {
+            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                <MudSelect T="int" 
+                           Value="_pageSize" 
+                           ValueChanged="OnPageSizeChanged"
+                           Label="Per Page"
+                           Variant="Variant.Text"
+                           Margin="Margin.Dense"
+                           Style="min-width: 80px;">
+                    <MudSelectItem Value="12">12</MudSelectItem>
+                    <MudSelectItem Value="24">24</MudSelectItem>
+                    <MudSelectItem Value="48">48</MudSelectItem>
+                    <MudSelectItem Value="96">96</MudSelectItem>
+                </MudSelect>
+            </MudStack>
+        }
+    </MudStack>
+    
+    @* Prompts Display *@
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate Color="Color.Primary" />
+        @if (_isGridView)
+        {
+            <div class="prompt-grid">
+                @for (int i = 0; i < 12; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" />
+                }
+            </div>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @for (int i = 0; i < 6; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px" />
+                }
+            </MudStack>
+        }
+    }
+    else if (_filteredPrompts.Any())
+    {
+        var pagedPrompts = GetPagedPrompts();
+        
+        @if (_isGridView)
+        {
+            @* Grid View - Compact Cards *@
+            <div class="prompt-grid">
+                @foreach (var prompt in pagedPrompts)
+                {
+                    <PromptStyleCompactCard Prompt="prompt"
+                                            OnEdit="HandleEdit"
+                                            OnDelete="HandleDelete"
+                                            OnToggleFavorite="HandleToggleFavorite"
+                                            OnTogglePin="HandleTogglePin"
+                                            OnApply="HandleApply" />
+                }
+            </div>
+        }
+        else
+        {
+            @* List View - Full Cards *@
+            <MudStack Spacing="2">
+                @foreach (var prompt in pagedPrompts)
+                {
+                    <PromptStyleCard Prompt="prompt"
+                                     OnEdit="HandleEdit"
+                                     OnDelete="HandleDelete"
+                                     OnToggleFavorite="HandleToggleFavorite"
+                                     OnTogglePin="HandleTogglePin"
+                                     OnApply="HandleApply" />
+                }
+            </MudStack>
+        }
+        
+        @* Pagination *@
+        @if (GetTotalPages() > 1)
+        {
+            <MudStack Row Justify="Justify.Center" Class="mt-3">
+                <MudPagination Count="@GetTotalPages()" 
+                               Selected="_currentPage" 
+                               SelectedChanged="OnPageChanged"
+                               ShowFirstButton
+                               ShowLastButton
+                               Size="Size.Small"
+                               BoundaryCount="1"
+                               MiddleCount="3" />
+            </MudStack>
+        }
+    }
+    else
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="0">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6" Color="Color.Default">No prompts found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default">
+                    @if (_isSearchActive)
+                    {
+                        <text>Try adjusting your search terms or filters</text>
+                    }
+                    else
+                    {
+                        <text>Create your first prompt to get started</text>
+                    }
+                </MudText>
+                @if (!_isSearchActive)
+                {
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="HandleAddNew">
+                        Create Prompt
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudStack>
+
+<style>
+    .prompt-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+    
+    @@media (max-width: 600px) {
+        .prompt-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private const string FAVORITES_FILTER = "__favorites__";
+    private const string PINNED_FILTER = "__pinned__";
+    private const string UNCATEGORIZED_FILTER = "__uncategorized__";
+    
+    [Parameter]
+    public string? SelectedCategory { get; set; }
+    
+    [Parameter]
+    public EventCallback<string?> OnCategoryFilterChanged { get; set; }
+    
+    [Parameter]
+    public EventCallback OnPromptChanged { get; set; }
+    
+    private bool _isLoading = true;
+    private List<Prompt> _allPrompts = new();
+    private List<Prompt> _filteredPrompts = new();
+    private List<Prompt> _pinnedPrompts = new();
+    private int _totalCount = 0;
+    
+    private string? _searchQuery;
+    private bool _isSearchActive = false;
+    private string? _selectedCategory;
+    private List<string> _selectedTags = new();
+    
+    private string _sortBy = "title";
+    private bool _sortDescending = false;
+    
+    // View and pagination
+    private bool _isGridView = true;
+    private int _currentPage = 1;
+    private int _pageSize = 24;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPrompts();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_selectedCategory != SelectedCategory)
+        {
+            _selectedCategory = SelectedCategory;
+            _currentPage = 1; // Reset to first page on filter change
+            await ApplyFilters();
+        }
+    }
+    
+    private List<Prompt> GetPagedPrompts()
+    {
+        return _filteredPrompts
+            .Skip((_currentPage - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+    
+    private int GetTotalPages()
+    {
+        return (int)Math.Ceiling(_filteredPrompts.Count / (double)_pageSize);
+    }
+    
+    private void OnPageChanged(int newPage)
+    {
+        _currentPage = newPage;
+        StateHasChanged();
+    }
+    
+    private void OnPageSizeChanged(int newPageSize)
+    {
+        _pageSize = newPageSize;
+        _currentPage = 1;
+        StateHasChanged();
+    }
+    
+    private async Task LoadPrompts()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            _allPrompts = await DB.GetPrompts();
+            _totalCount = _allPrompts.Count;
+            _pinnedPrompts = await DB.GetPinnedPrompts();
+            await ApplyFilters();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task ApplyFilters()
+    {
+        var filtered = _allPrompts.AsEnumerable();
+        
+        // Apply category filter
+        if (!string.IsNullOrWhiteSpace(_selectedCategory))
+        {
+            if (_selectedCategory == FAVORITES_FILTER)
+                filtered = filtered.Where(p => p.IsFavorite);
+            else if (_selectedCategory == PINNED_FILTER)
+                filtered = filtered.Where(p => p.IsPinned);
+            else if (_selectedCategory == UNCATEGORIZED_FILTER)
+                filtered = filtered.Where(p => string.IsNullOrWhiteSpace(p.Category));
+            else
+                filtered = filtered.Where(p => p.Category == _selectedCategory);
+        }
+        
+        // Apply tag filters
+        if (_selectedTags.Any())
+        {
+            foreach (var tag in _selectedTags)
+            {
+                filtered = filtered.Where(p => p.Tags != null && p.Tags.Contains(tag));
+            }
+        }
+        
+        // Apply search
+        if (_isSearchActive && !string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var results = await DB.SearchPromptsWithKeywords(_searchQuery);
+            var resultIds = results.Select(p => p.Id).ToHashSet();
+            filtered = filtered.Where(p => resultIds.Contains(p.Id));
+        }
+        
+        // Apply sorting
+        filtered = _sortBy switch
+        {
+            "category" => _sortDescending 
+                ? filtered.OrderByDescending(p => p.Category ?? string.Empty)
+                : filtered.OrderBy(p => p.Category ?? string.Empty),
+            "usage" => _sortDescending 
+                ? filtered.OrderBy(p => p.UsageCount)
+                : filtered.OrderByDescending(p => p.UsageCount),
+            "recent" => _sortDescending 
+                ? filtered.OrderBy(p => p.LastUsedAt ?? DateTime.MinValue)
+                : filtered.OrderByDescending(p => p.LastUsedAt ?? DateTime.MinValue),
+            _ => _sortDescending 
+                ? filtered.OrderByDescending(p => p.Title)
+                : filtered.OrderBy(p => p.Title)
+        };
+        
+        _filteredPrompts = filtered.ToList();
+        
+        // Ensure current page is valid
+        var totalPages = GetTotalPages();
+        if (_currentPage > totalPages && totalPages > 0)
+        {
+            _currentPage = totalPages;
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task HandleSearch()
+    {
+        _isSearchActive = !string.IsNullOrWhiteSpace(_searchQuery);
+        _currentPage = 1;
+        await ApplyFilters();
+    }
+    
+    private async Task ClearSearch()
+    {
+        _searchQuery = null;
+        _isSearchActive = false;
+        _currentPage = 1;
+        await ApplyFilters();
+    }
+    
+    private async Task HandleSortChanged(string sortBy)
+    {
+        _sortBy = sortBy;
+        await ApplyFilters();
+    }
+    
+    private async Task ToggleSortOrder()
+    {
+        _sortDescending = !_sortDescending;
+        await ApplyFilters();
+    }
+    
+    private void RemoveTagFilter(string tag)
+    {
+        _selectedTags.Remove(tag);
+        _ = ApplyFilters();
+    }
+    
+    private string GetCategoryDisplayName(string? category)
+    {
+        return category switch
+        {
+            FAVORITES_FILTER => "Favorites",
+            PINNED_FILTER => "Pinned",
+            UNCATEGORIZED_FILTER => "Uncategorized",
+            _ => category ?? "All"
+        };
+    }
+    
+    private async Task HandleAddNew()
+    {
+        var newPrompt = new PromptResource();
+        await ShowPromptDialog(newPrompt);
+    }
+    
+    private async Task HandleEdit(Prompt prompt)
+    {
+        var promptResource = new PromptResource(prompt);
+        await ShowPromptDialog(promptResource);
+    }
+    
+    private async Task ShowPromptDialog(PromptResource prompt)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var param = new DialogParameters();
+        param.Add("Prompt", prompt);
+        var dialog = await DialogService.ShowAsync<PromptDialog>("", param, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            switch (result.Data)
+            {
+                case "Create":
+                    await DB.CreatePrompt(new(prompt));
+                    break;
+                case "Delete":
+                    await DB.DeletePrompt(prompt.Id);
+                    break;
+                case "Txt2Img":
+                case "Img2Img":
+                    UpdateGenerationParametersPrompts(prompt.Positive, prompt.Negative);
+                    await DB.UpdatePromptUsage(prompt.Id);
+                    break;
+            }
+        }
+        
+        await LoadPrompts();
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    private async Task HandleDelete(Prompt prompt)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete Prompt",
+            $"Are you sure you want to delete '{prompt.Title}'?",
+            yesText: "Delete", cancelText: "Cancel");
+        
+        if (result == true)
+        {
+            await DB.DeletePrompt(prompt.Id);
+            await LoadPrompts();
+            await OnPromptChanged.InvokeAsync();
+        }
+    }
+    
+    private async Task HandleToggleFavorite(Prompt prompt)
+    {
+        var resource = new PromptResource(prompt);
+        await DB.UpdatePrompt(resource);
+        await ApplyFilters();
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    private async Task HandleTogglePin(Prompt prompt)
+    {
+        var resource = new PromptResource(prompt);
+        await DB.UpdatePrompt(resource);
+        _pinnedPrompts = await DB.GetPinnedPrompts();
+        await ApplyFilters();
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    private async Task HandleApply((Prompt prompt, bool isImg2Img) args)
+    {
+        // Update GenerationParameters (primary)
+        UpdateGenerationParametersPrompts(args.prompt.Positive, args.prompt.Negative);
+        
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    private async Task HandleQuickApply(Prompt prompt)
+    {
+        // Update GenerationParameters (primary)
+        UpdateGenerationParametersPrompts(prompt.Positive, prompt.Negative);
+        
+        await DB.UpdatePromptUsage(prompt.Id);
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    private void UpdateGenerationParametersPrompts(string? positive, string? negative)
+    {
+        var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
+        var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
+        var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
+        promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, positive));
+        promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, negative));
+    }
+    
+    private async Task HandleUnpin(Prompt prompt)
+    {
+        prompt.IsPinned = false;
+        var resource = new PromptResource(prompt);
+        await DB.UpdatePrompt(resource);
+        _pinnedPrompts = await DB.GetPinnedPrompts();
+        StateHasChanged();
+        await OnPromptChanged.InvokeAsync();
+    }
+    
+    public async Task RefreshPrompts()
+    {
+        await LoadPrompts();
+    }
+}

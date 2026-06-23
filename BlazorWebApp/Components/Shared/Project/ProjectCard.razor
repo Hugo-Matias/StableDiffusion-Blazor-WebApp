@@ -1,50 +1,165 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
-@inject IOService IO
+@inject IStateService State
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div>
-    <MudCard Elevation="4" Class="@("project-card" + (M.State.Gallery.ProjectId == ProjectId ? " selected" : ""))">
-        <MudCardMedia Image="@_image" />
-        <MudCardContent>
-            <MudText Typo="Typo.h6" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@Name</MudText>
-        </MudCardContent>
-        <MudCardActions Style="display: flex; justify-content: space-around">
-            <MudIconButton OnClick="() => OnSelected.InvokeAsync(ProjectId)" Icon="fa-solid fa-check" Class="icon" ButtonType=ButtonType.Button Color=Color.Success />
-            <MudIconButton OnClick="() => OnEdited.InvokeAsync(ProjectId)" Icon="fa-solid fa-pen" Class="icon" ButtonType=ButtonType.Button Color="Color.Info" />
-            <MudIconButton OnClick="() => OnDeleted.InvokeAsync(ProjectId)" Icon="fa-solid fa-trash-can" Class="icon" ButtonType=ButtonType.Button Color="Color.Error" />
-        </MudCardActions>
-    </MudCard>
+<div class="@GetCardClasses()" @onclick="SelectProject" @onmouseenter="HandleMouseEnter"
+     @onmouseleave="HandleMouseLeave">
+    <div class="media-wrapper">
+        @if (_isVideo)
+        {
+            <video id="@_videoId" src="@_mediaUrl" class="card-media" muted loop playsinline preload="metadata" />
+        }
+        else
+        {
+            <img src="@_mediaUrl" alt="@Name" class="card-media" loading="lazy" />
+        }
+        
+        @* Always Visible Title Section *@
+        <div class="title-bar @(_isHovered ? "hovered" : "")">
+            <span class="project-title">@Name</span>
+        </div>
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn primary" @onclick="SelectProject" @onclick:stopPropagation="true"
+                            title="Select Project">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="action-btn" @onclick="EditProject" @onclick:stopPropagation="true"
+                            title="Edit Project">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="action-btn danger" @onclick="DeleteProject" @onclick:stopPropagation="true"
+                            title="Delete Project">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        @* Selected Indicator *@
+        @if (State.State.Gallery.ProjectId == ProjectId)
+        {
+            <div class="selected-indicator">
+                <i class="fa-solid fa-check"></i>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter]
-    public int ProjectId { get; set; }
-    [Parameter]
-    public string Name { get; set; }
-    [Parameter]
-    public EventCallback<int> OnDeleted { get; set; }
-    [Parameter]
-    public EventCallback<int> OnSelected { get; set; }
-    [Parameter]
-    public EventCallback<int> OnEdited { get; set; }
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public EventCallback<int> OnDeleted { get; set; }
+    [Parameter] public EventCallback<int> OnSelected { get; set; }
+    [Parameter] public EventCallback<int> OnEdited { get; set; }
+    [Parameter] public bool Compact { get; set; }
 
-    public string _image;
+    private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov", ".avi", ".mkv" };
+
+    private IJSObjectReference? _jsModule;
+    private string _videoId = $"project-video-{Guid.NewGuid():N}";
+    private string _mediaUrl = "./no_image.png";
+    private bool _isVideo;
+    private bool _isHovered;
 
     protected override async Task OnParametersSetAsync()
     {
-        _image = await SetProjectSampleImage(ProjectId);
+        await SetProjectSampleMedia(ProjectId);
     }
 
-    private async Task<string> SetProjectSampleImage(int projectId)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var image = await DB.GetSampleImage(projectId);
-        if (string.IsNullOrWhiteSpace(image))
+        if (firstRender && _isVideo)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
+        }
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "project-card";
+        if (Compact) classes += " compact";
+        if (State.State.Gallery.ProjectId == ProjectId) classes += " selected";
+        if (_isHovered) classes += " hovered";
+        return classes;
+    }
+
+    private Task SelectProject() => OnSelected.InvokeAsync(ProjectId);
+
+    private Task EditProject() => OnEdited.InvokeAsync(ProjectId);
+
+    private Task DeleteProject() => OnDeleted.InvokeAsync(ProjectId);
+
+    private bool IsVideoFile(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path)?.ToLowerInvariant();
+        return VideoExtensions.Contains(extension);
+    }
+
+    private async Task SetProjectSampleMedia(int projectId)
+    {
+        var imagePath = await DB.GetSampleImage(projectId);
+        if (string.IsNullOrWhiteSpace(imagePath))
         {
             var imageEntity = await DB.GetRandomFavorite(projectId);
             if (imageEntity != null)
-                image ??= imageEntity.Path;
+                imagePath ??= imageEntity.Path;
         }
-        if (!string.IsNullOrWhiteSpace(image)) return IO.GetImageStaticFile(image);
-        else return "./no_image.png";
+        
+        if (!string.IsNullOrWhiteSpace(imagePath))
+        {
+            _mediaUrl = IO.GetImageStaticFile(imagePath);
+            _isVideo = IsVideoFile(imagePath);
+        }
+        else
+        {
+            _mediaUrl = "./no_image.png";
+            _isVideo = false;
+        }
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (_isVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("playVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        _isHovered = false;
+        if (_isVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("pauseVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch { }
+        }
     }
 }

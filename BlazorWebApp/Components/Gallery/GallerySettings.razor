@@ -1,135 +1,576 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IOrchestratorService M
 @inject IDialogService DialogService
+@inject NavigationManager NavManager
 @implements IDisposable
 
-<div>
-    <MudPaper Class="p-3 mb-3">
-        <MudStack Class="projects-container" Row>
-            <MudStack Class="justify-content-center">
-                <CreateProjectButton Variant="Variant.Text">
-                    <MudStack Class="d-flex flex-column align-items-center">
-                        <MudText Typo="Typo.caption">Add Project</MudText>
-                        <MudIcon Icon="fa-solid fa-plus" />
-                    </MudStack>
-                </CreateProjectButton>
-                <MudButton OnClick=RemoveProjectCover Color=Color.Error>
-                    <MudStack Class="d-flex flex-column align-items-center">
-                        <MudText Typo="Typo.caption">Remove Project Cover</MudText>
-                        <MudIcon Icon="fa-solid fa-image-portrait" />
-                    </MudStack>
-                </MudButton>
-                @if (M.State.Gallery.FolderId > 0)
-                {
-                    <MudButton OnClick="ShowDeleteFolderModal" Variant="Variant.Text" Color="Color.Error">
-                        <MudStack Class="d-flex flex-column align-items-center">
-                            <MudText Typo="Typo.caption">Delete Folder</MudText>
-                            <MudIcon Icon="fa-solid fa-trash-can" />
-                        </MudStack>
-                    </MudButton>
-                }
-            </MudStack>
-            @if (M.Projects != null && M.Projects.Count > 0)
-            {
-                @foreach (var project in M.Projects)
-                {
-                    <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected" OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal"></ProjectCard>
-                }
-            }
-        </MudStack>
-    </MudPaper>
-    <MudContainer MaxWidth="MaxWidth.Large">
-        <MudGrid>
-            <MudItem xs="3">
-                <MudStack>
-                    <MudTextField T="string" @bind-Value="M.State.Gallery.Prompt" Label="Prompt" HelperText="Search text contained in image's prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
-                    <MudTextField Class="mt-n4" T="string" @bind-Value="M.State.Gallery.NegativePrompt" Label="Negative Prompt" HelperText="Search text contained in image's negative prompt." HelperTextOnFocus=true Variant="Variant.Text" Clearable=true />
-                </MudStack>
-            </MudItem>
-            <MudItem xs="3">
-                <MudNumericField T="int" ValueChanged="HandlePageChanged" Label="Page" />
-                <MudStack Class="mt-4" Row=true>
-                    <MudSelect Label="Order by" @bind-Value="M.State.Gallery.OrderBy">
-                        @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
+<div class="gallery-settings">
+    @if (IsCompactProjectPanel)
+    {
+        <div class="compact-project-panel">
+            <div class="compact-project-toolbar">
+                <div class="compact-folder-select-frame">
+                    <MudSelect T="int" Value="State.State.Gallery.FolderId" ValueChanged="HandleCompactFolderSelected"
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Class="compact-folder-select"
+                               Label="Folder">
+                        <MudSelectItem T="int" Value="0">All</MudSelectItem>
+                        @foreach (var folder in Gallery.Folders ?? Enumerable.Empty<Folder>())
                         {
-                            <MudSelectItem Value="order">@order</MudSelectItem>
+                            <MudSelectItem T="int" Value="@folder.Id">@folder.Name</MudSelectItem>
                         }
                     </MudSelect>
-                    <MudCheckBox Class="mt-2" Label="@(M.State.Gallery.OrderDescending ? "Desc" : "Asc")" CheckedIcon="@Icons.Material.Filled.ArrowDownward" UncheckedIcon="@Icons.Material.Filled.ArrowUpward" @bind-Checked="M.State.Gallery.OrderDescending" />
-                </MudStack>
-            </MudItem>
-            <MudItem xs="3" Class="d-flex flex-column align-items-center">
-                <MudText Typo="Typo.overline">Modes:</MudText>
-                <MudChipSet SelectedChipsChanged="HandleModeSelection" Class="" Filter MultiSelection>
-                    <MudChip Text="T2I" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeTxt2Img" />
-                    <MudChip Text="I2I" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeImg2Img" />
-                    <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Primary" Default="M.State.Gallery.IsModeUpscale" />
-                </MudChipSet>
-                <MudDateRangePicker Label="Date Range" @bind-DateRange=M.State.Gallery.DateRange AutoClose=true />
-            </MudItem>
-            <MudItem xs=2 Class="d-flex flex-column align-items-center">
-                <MudStack Row=true>
-                    <MudTooltip Text="Use Date Range to filter images" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" CheckedIcon="fa-solid fa-calendar" Color="Color.Success" UncheckedIcon="fa-regular fa-calendar" UnCheckedColor="Color.Default" @bind-Checked=M.State.Gallery.FilterByDateRange />
+                </div>
+
+                <span class="compact-project-context" title="@State.State.Gallery.ProjectName">
+                    @GetCompactProjectLabel()
+                </span>
+
+                <div class="compact-toolbar-actions">
+                    <MudTooltip Text="Add New Project">
+                        <CreateProjectButton Variant="Variant.Text" Color="Color.Primary" Class="action-button-uniform">
+                            <MudIcon Icon="fa-solid fa-plus" />
+                        </CreateProjectButton>
                     </MudTooltip>
-                    <MudTooltip Text="Show selected images only" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsSelectedOnly" Color="Color.Success" CheckedIcon="fa-solid fa-square-check" UncheckedIcon="fa-regular fa-square-check" UnCheckedColor="Color.Default" />
+
+                    <MudTooltip Text="Expanded Projects">
+                        <MudButton OnClick="ToggleProjectPanelMode" Variant="Variant.Text"
+                                   Color="@GetProjectPanelButtonColor()" Class="action-button-uniform">
+                            <MudIcon Icon="@GetProjectPanelModeIcon()" />
+                        </MudButton>
                     </MudTooltip>
-                    <MudTooltip Text="Show favorites only" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsFavoritesOnly" Color="Color.Error" CheckedIcon="@Icons.Material.Filled.Favorite" UncheckedIcon="@Icons.Material.Filled.FavoriteBorder" UnCheckedColor="Color.Default" />
+
+                    <MudTooltip Text="@(IsPurePresentation ? "Rich Gallery" : "Pure Gallery")">
+                        <MudButton OnClick="TogglePresentationMode" Variant="Variant.Text"
+                                   Color="@GetPresentationButtonColor()" Class="action-button-uniform">
+                            <MudIcon Icon="@GetPresentationModeIcon()" />
+                        </MudButton>
                     </MudTooltip>
-                    <MudTooltip Text="Use Score to filter images" Placement=Placement.Start Delay="1600" Duration="600">
-                        <MudCheckBox Class="mt-4" @bind-Checked="M.State.Gallery.IsScore" Color="Color.Warning" CheckedIcon="fa-solid fa-star" UncheckedIcon="fa-regular fa-star" UnCheckedColor="Color.Default" />
+
+                    <MudTooltip Text="@($"Tile size: {State.State.Gallery.TileSize}")">
+                        <MudButton OnClick="CycleTileSize" Variant="Variant.Text" Color="Color.Primary"
+                                   Class="action-button-uniform">
+                            <MudIcon Icon="@GetTileSizeIcon()" />
+                        </MudButton>
                     </MudTooltip>
-                </MudStack>
-                <MudStack Row="true" Justify="Justify.Center">
-                    <MudRating @bind-SelectedValue="M.State.Gallery.Score" Disabled="!M.State.Gallery.IsScore" MaxValue="3" Size="Size.Large" />
-                </MudStack>
-            </MudItem>
-            <MudItem xs=1 Class="d-flex flex-column align-items-end justify-content-center">
-                <MudButtonGroup Class="mt-5" Variant="Variant.Filled" Color="Color.Primary" OverrideStyles=false VerticalAlign=true>
-                    <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Warning">Filter</MudButton>
-                    <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Text" Size="Size.Large" Color="Color.Error">Reset</MudButton>
-                </MudButtonGroup>
-            </MudItem>
-        </MudGrid>
-    </MudContainer>
+
+                    <MudTooltip Text="@(_showFilters ? "Hide Filters" : "Show Filters")">
+                        <MudButton OnClick="ToggleFilters" Variant="Variant.Outlined"
+                                   Color="@(_showFilters ? Color.Warning : Color.Primary)" Class="action-button-uniform">
+                            <MudIcon
+                            Icon="@(_showFilters ? Icons.Material.Filled.FilterAltOff : Icons.Material.Filled.FilterAlt)" />
+                        </MudButton>
+                    </MudTooltip>
+
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <MudMenuItem OnClick="OpenCleanupReview" Icon="fa-solid fa-broom">Cleanup Review</MudMenuItem>
+                        <MudMenuItem OnClick="RemoveProjectCover" Icon="fa-solid fa-image-portrait">Remove Project Cover
+                        </MudMenuItem>
+                        @if (State.State.Gallery.FolderId > 0)
+                        {
+                            <MudMenuItem OnClick="ShowDeleteFolderModal" Icon="fa-solid fa-trash-can">Delete Folder
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </div>
+            </div>
+
+            <div class="compact-project-strip">
+                @if (Gallery.Projects != null && Gallery.Projects.Count > 0)
+                {
+                    @foreach (var project in Gallery.Projects)
+                    {
+                        <ProjectCard ProjectId="project.Id" Name="@project.Name" Compact="true" OnSelected="HandleProjectSelected"
+                                     OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal" />
+                    }
+                }
+                else
+                {
+                    <div class="empty-projects-message compact-empty-projects-message">
+                        <MudText Typo="Typo.caption">No projects in this folder</MudText>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Tabs with Action Buttons in Header -->
+        <div class="tabs-header-container">
+            <MudTabs Elevation="3" ActivePanelIndex="@_activeFolderTabIndex" ActivePanelIndexChanged="HandleFolderSelected"
+                     Class="flex-grow-1">
+                <MudTabPanel Text="All" ID=-1 />
+                @foreach (var folder in Gallery.Folders ?? Enumerable.Empty<Folder>())
+                {
+                    var folderIndex = Gallery.Folders?.IndexOf(folder) ?? -1;
+                    var lastFolderIndex = (Gallery.Folders?.Count ?? 0) - 1;
+                    <MudTabPanel ID=folder.Id>
+                        <TabContent>
+                            <div class="folder-tab-content">
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small"
+                                               Class="folder-nav-arrow arrow-left" Style="@GetArrowStyle(folderIndex == 0)"
+                                               Disabled="@(folderIndex == 0)" OnClick="@(async () => await MoveFolderUp(folder))"
+                                               title="Move left" />
+                                
+                                <span class="folder-tab-title">@folder.Name</span>
+                                
+                                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
+                                               Class="folder-nav-arrow arrow-right" Style="@GetArrowStyle(folderIndex == lastFolderIndex)"
+                                               Disabled="@(folderIndex == lastFolderIndex)"
+                                               OnClick="@(async () => await MoveFolderDown(folder))" title="Move right" />
+                            </div>
+                        </TabContent>
+                    </MudTabPanel>
+                }
+            </MudTabs>
+            
+            <!-- Action Buttons - Right Aligned -->
+            <div class="tabs-actions">
+                <MudTooltip Text="Add New Project">
+                    <CreateProjectButton Variant="Variant.Text" Color="Color.Primary" Class="action-button-uniform">
+                        <MudIcon Icon="fa-solid fa-plus" />
+                    </CreateProjectButton>
+                </MudTooltip>
+                
+                @if (State.State.Gallery.FolderId > 0)
+                {
+                    <MudTooltip Text="Delete Folder">
+                        <MudButton OnClick="ShowDeleteFolderModal" Variant="Variant.Text" Color="Color.Error"
+                                   Class="action-button-uniform">
+                            <MudIcon Icon="fa-solid fa-trash-can" />
+                        </MudButton>
+                    </MudTooltip>
+                }
+                
+                <MudTooltip Text="Remove Project Cover">
+                    <MudButton OnClick="RemoveProjectCover" Variant="Variant.Text" Color="Color.Info"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="fa-solid fa-image-portrait" />
+                    </MudButton>
+                </MudTooltip>
+                
+                <MudTooltip Text="Reorder Folders">
+                    <MudButton OnClick="ToggleReorderArrows" Variant="Variant.Text"
+                               Color="@(_showReorderArrows ? Color.Success : Color.Default)" Class="action-button-uniform">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" />
+                    </MudButton>
+                </MudTooltip>
+
+                <MudTooltip Text="Compact Projects">
+                    <MudButton OnClick="ToggleProjectPanelMode" Variant="Variant.Text" Color="@GetProjectPanelButtonColor()"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="@GetProjectPanelModeIcon()" />
+                    </MudButton>
+                </MudTooltip>
+
+                <MudTooltip Text="@(IsPurePresentation ? "Rich Gallery" : "Pure Gallery")">
+                    <MudButton OnClick="TogglePresentationMode" Variant="Variant.Text" Color="@GetPresentationButtonColor()"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="@GetPresentationModeIcon()" />
+                    </MudButton>
+                </MudTooltip>
+
+                <MudTooltip Text="@($"Tile size: {State.State.Gallery.TileSize}")">
+                    <MudButton OnClick="CycleTileSize" Variant="Variant.Text" Color="Color.Primary"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="@GetTileSizeIcon()" />
+                    </MudButton>
+                </MudTooltip>
+
+                <MudTooltip Text="Cleanup Review">
+                    <MudButton OnClick="OpenCleanupReview" Variant="Variant.Text" Color="Color.Success"
+                               Class="action-button-uniform">
+                        <MudIcon Icon="fa-solid fa-broom" />
+                    </MudButton>
+                </MudTooltip>
+                
+                <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
+                
+                <MudTooltip Text="@(_showFilters ? "Hide Filters" : "Show Filters")">
+                    <MudButton OnClick="ToggleFilters" Variant="Variant.Outlined"
+                               Color="@(_showFilters ? Color.Warning : Color.Primary)" Class="action-button-uniform">
+                        <MudIcon
+                        Icon="@(_showFilters ? Icons.Material.Filled.FilterAltOff : Icons.Material.Filled.FilterAlt)" />
+                    </MudButton>
+                </MudTooltip>
+            </div>
+        </div>
+
+        <!-- Projects Container -->
+        <MudPaper Class="p-3" Elevation="2">
+            <MudStack Class="projects-container" Row>
+                @if (Gallery.Projects != null && Gallery.Projects.Count > 0)
+                {
+                    @foreach (var project in Gallery.Projects)
+                    {
+                        <ProjectCard ProjectId="project.Id" Name="@project.Name" OnSelected="HandleProjectSelected"
+                                     OnDeleted="ShowDeleteProjectModal" OnEdited="ShowEditProjectModal" />
+                    }
+                }
+                else
+                {
+                    <div class="empty-projects-message">
+                        <MudText Typo="Typo.body1" Style="opacity: 0.5;">No projects yet. Click the + button to create one!
+                        </MudText>
+                    </div>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+    
+    <!-- Collapsible Filter Section -->
+    <div class="filter-wrapper">
+        <MudCollapse Expanded="_showFilters">
+            <MudPaper Class="@($"filter-section {(_showFilters ? "expanded" : "")}")" Elevation="1">
+                <!-- First Row -->
+                <MudGrid Spacing="2" Class="filter-grid">
+                    <!-- Left: Prompt -->
+                    <MudItem xs="12" md="5">
+                        <MudTextField T="string" @bind-Value="State.State.Gallery.Prompt" Label="Prompt"
+                                      Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" Clearable=true Immediate=true />
+                    </MudItem>
+
+                    <!-- Center: Order By -->
+                    <MudItem xs="12" md="3">
+                        <MudStack Row=true Spacing="2" AlignItems="AlignItems.Center">
+                            <MudToggleIconButton @bind-Toggled="State.State.Gallery.OrderDescending"
+                                                 Icon="@Icons.Material.Filled.ArrowUpward"
+                                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward"
+                                                 Title="@(State.State.Gallery.OrderDescending ? "Descending" : "Ascending")"
+                                                 ToggledTitle="@(State.State.Gallery.OrderDescending ? "Descending" : "Ascending")"
+                                                 Color="Color.Primary" ToggledColor="Color.Primary" />
+                            <MudSelect T="GalleryOrderBy" Label="Order by" @bind-Value="State.State.Gallery.OrderBy"
+                                       Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
+                                       AdornmentIcon="@Icons.Material.Filled.Sort" Adornment="Adornment.Start"
+                                       Class="filter-field-fill">
+                                @foreach (GalleryOrderBy order in Enum.GetValues(typeof(GalleryOrderBy)))
+                                {
+                                    <MudSelectItem Value="order">@order</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudStack>
+                    </MudItem>
+
+                    <!-- Right: Date Range & Filter Toggles -->
+                    <MudItem xs="12" md="4">
+                        <MudStack Row=true Spacing="2" AlignItems="AlignItems.Start">
+                            <MudDateRangePicker Label="Date Range" @bind-DateRange="State.State.Gallery.DateRange"
+                                                Variant="Variant.Text" Margin="Margin.Dense"
+                                                Disabled="!State.State.Gallery.FilterByDateRange"
+                                                AdornmentIcon="@Icons.Material.Filled.CalendarMonth" Adornment="Adornment.Start"
+                                                AutoClose=true Class="filter-field-fill" />
+
+                            <div class="filter-toggles-compact">
+                                <MudTooltip Text="Filter by Date Range">
+                                    <MudToggleIconButton @bind-Toggled="State.State.Gallery.FilterByDateRange"
+                                                         Icon="fa-regular fa-calendar" ToggledIcon="fa-solid fa-calendar"
+                                                         Color="Color.Default" ToggledColor="Color.Success" Size="Size.Small" />
+                                </MudTooltip>
+                                <MudTooltip Text="Show Selected Only">
+                                    <MudToggleIconButton @bind-Toggled="State.State.Gallery.IsSelectedOnly"
+                                                         Icon="fa-regular fa-square-check" ToggledIcon="fa-solid fa-square-check"
+                                                         Color="Color.Default" ToggledColor="Color.Success" Size="Size.Small" />
+                                </MudTooltip>
+                                <MudTooltip Text="Show Favorites Only">
+                                    <MudToggleIconButton @bind-Toggled="State.State.Gallery.IsFavoritesOnly"
+                                                         Icon="@Icons.Material.Outlined.FavoriteBorder"
+                                                         ToggledIcon="@Icons.Material.Filled.Favorite" Color="Color.Default"
+                                                         ToggledColor="Color.Error" Size="Size.Small" />
+                                </MudTooltip>
+                                <MudTooltip Text="Filter by Score">
+                                    <MudToggleIconButton @bind-Toggled="State.State.Gallery.IsScore"
+                                                         Icon="fa-regular fa-star" ToggledIcon="fa-solid fa-star" Color="Color.Default"
+                                                         ToggledColor="Color.Warning" Size="Size.Small" />
+                                </MudTooltip>
+                            </div>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Second Row -->
+                <MudGrid Spacing="2" Class="filter-grid filter-grid-secondary">
+                    <!-- Left: Negative Prompt -->
+                    <MudItem xs="12" md="5">
+                        <MudTextField T="string" @bind-Value="State.State.Gallery.NegativePrompt"
+                                      Label="Negative Prompt" Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SearchOff" Clearable=true
+                                      Immediate=true />
+                    </MudItem>
+
+                    <!-- Center: Pagination -->
+                    <MudItem xs="12" md="3">
+                        <MudStack Row=true Spacing="2" AlignItems="AlignItems.Center">
+                            <MudToggleIconButton Toggled="State.State.Gallery.UseInfiniteScroll"
+                                                 Icon="@Icons.Material.Filled.ViewModule"
+                                                 ToggledIcon="@Icons.Material.Filled.AllInclusive" Title="Pagination"
+                                                 ToggledTitle="Infinite Scroll" Color="Color.Info" ToggledColor="Color.Info"
+                                                 ToggledChanged="@(async (bool val) => await HandleNavigationModeChanged(val))" />
+                            
+                            @if (!State.State.Gallery.UseInfiniteScroll)
+                            {
+                                <MudNumericField T="int" Value="State.State.Gallery.PageSize"
+                                                 ValueChanged="HandlePageSizeChanged" Label="Images Per Page" Min="1" Max="100"
+                                                 Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Class="filter-field-fill" />
+                            }
+                        </MudStack>
+                    </MudItem>
+
+                    <!-- Right: Rating -->
+                    <MudItem xs="12" md="4">
+                        <div class="rating-row">
+                            <MudRating @bind-SelectedValue="State.State.Gallery.Score"
+                                       Disabled="!State.State.Gallery.IsScore" MaxValue="3" Size="Size.Medium"
+                                       Color="Color.Warning" />
+                        </div>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Action Buttons Row with Modes -->
+                <MudDivider Class="filter-divider" />
+                <div class="filter-actions-row">
+                    <!-- Mode Chips - Left Aligned -->
+                    <div class="modes-action-section">
+                        <MudText Typo="Typo.caption" Class="filter-group-label">Modes</MudText>
+                        <MudChipSet SelectedChipsChanged="HandleModeSelection" Filter MultiSelection
+                                    Class="mode-chips-action">
+                            <MudChip Text="T2I" Variant="Variant.Text" Color="Color.Primary"
+                                     Default="State.State.Gallery.IsModeTxt2Img" />
+                            <MudChip Text="I2I" Variant="Variant.Text" Color="Color.Primary"
+                                     Default="State.State.Gallery.IsModeImg2Img" />
+                            <MudChip Text="I2V" Variant="Variant.Text" Color="Color.Secondary"
+                                     Default="State.State.Gallery.IsModeImg2Vid" />
+                            <MudChip Text="Upscale" Variant="Variant.Text" Color="Color.Tertiary"
+                                     Default="State.State.Gallery.IsModeUpscale" />
+                        </MudChipSet>
+                    </div>
+
+                    @if (_availableWorkflows.Count > 0)
+                    {
+                        <div class="modes-action-section">
+                            <MudText Typo="Typo.caption" Class="filter-group-label">Workflows</MudText>
+                            <MudChipSet SelectedChipsChanged="HandleWorkflowSelection" Filter MultiSelection
+                                        Class="mode-chips-action">
+                                @foreach (var wf in _availableWorkflows)
+                                {
+                                    <MudChip Text="@wf.Title" Variant="Variant.Text" Color="Color.Info"
+                                             Default="@(!State.State.Gallery.ActiveWorkflowIds.Any() || State.State.Gallery.ActiveWorkflowIds.Contains(wf.Id))" />
+                                }
+                            </MudChipSet>
+                        </div>
+                    }
+
+                    <!-- Filter/Reset Buttons - Centered -->
+                    <MudStack Row=true Spacing="2" Class="action-buttons-center">
+                        @if (State.State.Gallery.OrderBy == GalleryOrderBy.Random)
+                        {
+                            <MudButton OnClick="async () => await OnReshuffleImages.InvokeAsync()" Variant="Variant.Filled"
+                                       Color="Color.Info" StartIcon="@Icons.Material.Filled.Shuffle" Size="Size.Small">
+                                Reshuffle
+                            </MudButton>
+                        }
+                        <MudButton OnClick="async () => await OnFilterImages.InvokeAsync()" Variant="Variant.Filled"
+                                   Color="Color.Warning" StartIcon="@Icons.Material.Filled.FilterAlt" Size="Size.Small">
+                            Filter
+                        </MudButton>
+                        <MudButton OnClick="async () => await OnResetFilters.InvokeAsync()" Variant="Variant.Filled"
+                                   Color="Color.Error" StartIcon="@Icons.Material.Filled.RestartAlt" Size="Size.Small">
+                            Reset
+                        </MudButton>
+                    </MudStack>
+                </div>
+            </MudPaper>
+        </MudCollapse>
+    </div>
 </div>
 
 @code {
-    //  TODO: Refactor ProjectCard container into index or another component
     [Parameter] public EventCallback OnFilterImages { get; set; }
+    [Parameter] public EventCallback OnReshuffleImages { get; set; }
     [Parameter] public EventCallback OnResetFilters { get; set; }
     [Parameter] public EventCallback OnProjectDeleted { get; set; }
     [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback OnNavigationModeChanged { get; set; }
+    [Parameter] public EventCallback OnPageSizeChanged { get; set; }
+    [Parameter] public EventCallback OnDisplayModeChanged { get; set; }
 
+    private bool _showFilters = false;
+    private bool _showReorderArrows = false;
+    private int _activeFolderTabIndex = 0;
+    private List<(string Id, string Title)> _availableWorkflows = new();
     DialogOptions _dialogOptions = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
 
-    protected override void OnInitialized()
+    private bool IsCompactProjectPanel => State.State.Gallery.ProjectPanelMode == ProjectPanelMode.Compact;
+    private bool IsPurePresentation => State.State.Gallery.PresentationMode == GalleryPresentationMode.Pure;
+
+    protected override async Task OnInitializedAsync()
     {
-        M.OnFolderChange += Refresh;
+        Events.Subscribe<FolderChangedEventArgs>(OnFolderChanged);
+        _activeFolderTabIndex = ComputeActiveFolderTabIndex();
+        await LoadAvailableWorkflowsAsync();
+    }
+
+    private int ComputeActiveFolderTabIndex()
+    {
+        var folderId = State.State.Gallery.FolderId;
+        if (folderId <= 0 || Gallery.Folders == null) return 0;
+        var idx = Gallery.Folders.FindIndex(f => f.Id == folderId);
+        return idx >= 0 ? idx + 1 : 0;
+    }
+
+    private async void OnFolderChanged(FolderChangedEventArgs args)
+    {
+        await Gallery.GetProjects(args.FolderId);
+        State.State.Gallery.ActiveWorkflowIds = new();
+        await LoadAvailableWorkflowsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleFilters()
+    {
+        _showFilters = !_showFilters;
+        StateHasChanged();
+    }
+
+    private void ToggleReorderArrows()
+    {
+        _showReorderArrows = !_showReorderArrows;
+        StateHasChanged();
+    }
+
+    private async Task ToggleProjectPanelMode()
+    {
+        var compact = !IsCompactProjectPanel;
+        State.State.Gallery.ProjectPanelMode = compact ? ProjectPanelMode.Compact : ProjectPanelMode.Expanded;
+        await State.SaveState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TogglePresentationMode()
+    {
+        var pure = !IsPurePresentation;
+        State.State.Gallery.PresentationMode = pure ? GalleryPresentationMode.Pure : GalleryPresentationMode.Rich;
+        await State.SaveState();
+        await OnDisplayModeChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CycleTileSize()
+    {
+        State.State.Gallery.TileSize = State.State.Gallery.TileSize switch
+        {
+            ResourceCardSize.Small => ResourceCardSize.Medium,
+            ResourceCardSize.Medium => ResourceCardSize.Large,
+            _ => ResourceCardSize.Small
+        };
+        await State.SaveState();
+        await OnDisplayModeChanged.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetTileSizeIcon() => State.State.Gallery.TileSize switch
+    {
+        ResourceCardSize.Small => "fa-solid fa-grip",
+        ResourceCardSize.Large => "fa-solid fa-square",
+        _ => "fa-solid fa-table-cells-large"
+    };
+
+    private string GetProjectPanelModeIcon() => IsCompactProjectPanel
+        ? Icons.Material.Filled.ViewCompact
+        : Icons.Material.Filled.ViewCarousel;
+
+    private string GetPresentationModeIcon() => IsPurePresentation
+        ? "fa-solid fa-images"
+        : "fa-solid fa-table-cells-large";
+
+    private Color GetProjectPanelButtonColor() => IsCompactProjectPanel ? Color.Primary : Color.Default;
+
+    private Color GetPresentationButtonColor() => IsPurePresentation ? Color.Info : Color.Default;
+
+    private void OpenCleanupReview() => NavManager.NavigateTo("/cleanup");
+
+    private string GetCompactProjectLabel()
+    {
+        if (State.State.Gallery.ProjectId <= 0 || string.IsNullOrWhiteSpace(State.State.Gallery.ProjectName))
+            return "No project selected";
+
+        return State.State.Gallery.ProjectName;
     }
 
     private async Task HandleProjectSelected(int projectId)
     {
-        await M.SetCurrentProject(projectId);
+        await Gallery.SetCurrentProject(projectId);
+        State.State.Gallery.ActiveWorkflowIds = new();
+        await LoadAvailableWorkflowsAsync();
         await InvokeAsync(StateHasChanged);
     }
 
     private void HandleModeSelection(MudChip[] chips)
     {
-        M.State.Gallery.IsModeTxt2Img = chips.Any(c => c.Text == "T2I");
-        M.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "I2I");
-        M.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
+        State.State.Gallery.IsModeTxt2Img = chips.Any(c => c.Text == "T2I");
+        State.State.Gallery.IsModeImg2Img = chips.Any(c => c.Text == "I2I");
+        State.State.Gallery.IsModeUpscale = chips.Any(c => c.Text == "Upscale");
+        State.State.Gallery.IsModeImg2Vid = chips.Any(c => c.Text == "I2V");
     }
 
-    private void HandlePageChanged(int page) => OnPageChanged.InvokeAsync(page);
+    private void HandleWorkflowSelection(MudChip[] chips)
+    {
+        var selectedTitles = chips.Select(c => c.Text).ToHashSet();
+        State.State.Gallery.ActiveWorkflowIds = _availableWorkflows
+            .Where(w => selectedTitles.Contains(w.Title))
+            .Select(w => w.Id)
+            .ToHashSet();
+    }
+
+    private async Task LoadAvailableWorkflowsAsync()
+    {
+        var projectId = State.State.Gallery.ProjectId;
+        if (projectId <= 0)
+        {
+            _availableWorkflows = new();
+            return;
+        }
+
+        var ids = await DB.GetProjectWorkflowIds(projectId);
+        _availableWorkflows = ids
+            .Select(id => Guid.TryParse(id, out var guid) ? (id, M.GetWorkflowById(guid)?.Title) : (id, null))
+            .Where(w => w.Item2 != null)
+            .Select(w => (w.id, w.Item2!))
+            .ToList();
+    }
+
+    private async Task HandleNavigationModeChanged(bool value)
+    {
+        State.State.Gallery.UseInfiniteScroll = value;
+        await State.SaveState();
+        await OnNavigationModeChanged.InvokeAsync();
+    }
+
+    private async Task HandlePageChanged(int page)
+    {
+        await OnPageChanged.InvokeAsync(page);
+    }
+
+    private async Task HandlePageSizeChanged(int pageSize)
+    {
+        State.State.Gallery.PageSize = pageSize;
+        DB.PageSize = pageSize;
+        await State.SaveState();
+        await OnPageSizeChanged.InvokeAsync();
+    }
 
     private async Task RemoveProjectCover()
     {
-        var project = await DB.GetProject(M.State.Gallery.ProjectId);
-        project.SampleImagePath = null;
-        await DB.UpdateProject(project);
+        var project = await DB.GetProject(State.State.Gallery.ProjectId);
+        if (project != null)
+        {
+            project.SampleImagePath = null;
+            await DB.UpdateProject(project);
+        }
     }
 
     private async Task ShowDeleteProjectModal(int projectId)
@@ -158,45 +599,144 @@
 
     private async Task DeleteFolder()
     {
-        await DB.DeleteFolder(M.State.Gallery.FolderId);
-        await M.GetFolders();
-        await M.SetCurrentFolder(0);
+        await DB.DeleteFolder(State.State.Gallery.FolderId);
+        await Gallery.GetFolders();
+        await Gallery.SetCurrentFolder(0);
     }
 
     private async Task DeleteProject(int id)
     {
         var project = await DB.DeleteProject(id);
-        await M.GetProjects();
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
         if (project != null)
-            await M.SetCurrentProject(project.Id);
+            await Gallery.SetCurrentProject(project.Id);
         else
-            await M.SetCurrentProject(0);
+            await Gallery.SetCurrentProject(0);
         await OnProjectDeleted.InvokeAsync();
     }
 
     private async Task ShowEditProjectModal(int projectId)
     {
-        var project = M.Projects.FirstOrDefault(p => p.Id == projectId);
+        var project = Gallery.Projects?.FirstOrDefault(p => p.Id == projectId);
+        if (project == null) return;
+
         var param = new DialogParameters();
         param.Add("Project", project);
         var dialog = await DialogService.ShowAsync<ProjectModal>($"Edit {project.Name}", param, _dialogOptions);
         var result = await dialog.Result;
-        if (!result.Cancelled) await EditProject((Project)result.Data);
+        if (!result.Canceled) await EditProject((Project)result.Data);
     }
 
     private async Task EditProject(Project project)
     {
         var updates = new Project() { Name = project.Name, Folder = project.Folder };
         await DB.UpdateProject(project.Id, updates);
-        // Re-sets current project to refresh the relevant ui components
-        await M.SetCurrentProject(M.State.Gallery.ProjectId);
+        await Gallery.SetCurrentProject(State.State.Gallery.ProjectId);
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void Refresh() => await InvokeAsync(StateHasChanged);
+    private async Task HandleFolderSelected(int selected)
+    {
+        _activeFolderTabIndex = selected;
+        if (selected == 0)
+            await Gallery.SetCurrentFolder(selected);
+        else if (Gallery.Folders != null && selected - 1 >= 0 && selected - 1 < Gallery.Folders.Count)
+            await Gallery.SetCurrentFolder(Gallery.Folders[selected - 1].Id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleCompactFolderSelected(int folderId)
+    {
+        _activeFolderTabIndex = folderId <= 0 ? 0 : ComputeActiveFolderTabIndex(folderId);
+        await Gallery.SetCurrentFolder(folderId);
+        await InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {
-        M.OnFolderChange -= Refresh;
+        Events.Unsubscribe<FolderChangedEventArgs>(OnFolderChanged);
+    }
+
+    private async Task MoveFolderUp(Folder folder)
+    {
+        if (Gallery.Folders == null) return;
+        var index = Gallery.Folders.IndexOf(folder);
+        if (index <= 0) return;
+        
+        Gallery.Folders.RemoveAt(index);
+        Gallery.Folders.Insert(index - 1, folder);
+        await UpdateAllSortOrders();
+    }
+
+    private async Task MoveFolderDown(Folder folder)
+    {
+        if (Gallery.Folders == null) return;
+        var index = Gallery.Folders.IndexOf(folder);
+        if (index < 0 || index >= Gallery.Folders.Count - 1) return;
+
+        Gallery.Folders.RemoveAt(index);
+        Gallery.Folders.Insert(index + 1, folder);
+        await UpdateAllSortOrders();
+    }
+
+    private bool CanMoveCurrentFolderUp() => GetCurrentFolderIndex() > 0;
+
+    private bool CanMoveCurrentFolderDown()
+    {
+        var index = GetCurrentFolderIndex();
+        return Gallery.Folders != null && index >= 0 && index < Gallery.Folders.Count - 1;
+    }
+
+    private async Task MoveCurrentFolderUp()
+    {
+        var folder = GetCurrentFolder();
+        if (folder != null)
+            await MoveFolderUp(folder);
+    }
+
+    private async Task MoveCurrentFolderDown()
+    {
+        var folder = GetCurrentFolder();
+        if (folder != null)
+            await MoveFolderDown(folder);
+    }
+
+    private Folder? GetCurrentFolder()
+    {
+        if (State.State.Gallery.FolderId <= 0 || Gallery.Folders == null) return null;
+        return Gallery.Folders.FirstOrDefault(f => f.Id == State.State.Gallery.FolderId);
+    }
+
+    private int GetCurrentFolderIndex()
+    {
+        var folder = GetCurrentFolder();
+        return folder == null || Gallery.Folders == null ? -1 : Gallery.Folders.IndexOf(folder);
+    }
+
+    private int ComputeActiveFolderTabIndex(int folderId)
+    {
+        if (folderId <= 0 || Gallery.Folders == null) return 0;
+        var idx = Gallery.Folders.FindIndex(f => f.Id == folderId);
+        return idx >= 0 ? idx + 1 : 0;
+    }
+
+    private async Task UpdateAllSortOrders()
+    {
+        if (Gallery.Folders == null) return;
+
+        for (int i = 0; i < Gallery.Folders.Count; i++)
+        {
+            Gallery.Folders[i].SortOrder = i;
+            await DB.UpdateFolderSortOrder(Gallery.Folders[i].Id, i);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetArrowStyle(bool isDisabled)
+    {
+        if (!_showReorderArrows || isDisabled)
+            return "display: none !important;";
+        
+        return "display: inline-flex !important; opacity: 0.4; width: 24px; height: 24px; min-width: 24px; padding: 0;";
     }
 }

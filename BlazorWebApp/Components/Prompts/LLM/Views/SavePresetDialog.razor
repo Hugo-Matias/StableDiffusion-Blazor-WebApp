@@ -1,0 +1,169 @@
+@* Phase 12 - Save the current Image-to-Prompt result as a Prompt preset.
+   Returns the saved Prompt id (int) in DialogResult.Data on success, or Cancel.
+   Suggest button uses the GLOBALLY selected text-LLM model (passed in via ModelName).
+*@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@inject IDatabaseService DB
+@inject OllamaService Ollama
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 480px;">
+            <MudStack Row Spacing="2" AlignItems="AlignItems.End">
+                <MudTextField T="string" @bind-Value="_title" Label="Title" Variant="Variant.Text" Required="true"
+                              Class="flex-grow-1" />
+                <MudTooltip
+                    Text="@(string.IsNullOrWhiteSpace(ModelName) ? "Select a text LLM model in the LLM Tools sidebar first." : "Ask the LLM to suggest a 3-6 word title summarizing the prompt.")">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               Disabled="@(_isSuggesting || string.IsNullOrWhiteSpace(ModelName) || string.IsNullOrWhiteSpace(Prompt))"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome" OnClick="SuggestAsync">
+                        @if (_isSuggesting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                        }
+                        Suggest
+                    </MudButton>
+                </MudTooltip>
+            </MudStack>
+
+            <MudTextField T="string" @bind-Value="_category" Label="Category" Variant="Variant.Text"
+                          HelperText="Optional. Free-form group label." />
+
+            <MudField Label="Tags" Variant="Variant.Text">
+                <MudStack Row Spacing="1" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                    @foreach (var tag in _tags)
+                    {
+                        <MudChip Size="Size.Small" Color="Color.Default" OnClose="@(() => RemoveTag(tag))" Text="@tag" />
+                    }
+                    <MudTextField T="string" @bind-Value="_tagDraft" Placeholder="Add tag..." Margin="Margin.Dense"
+                                  Variant="Variant.Text" Style="min-width: 140px;" OnKeyDown="HandleTagKeyDown" />
+                </MudStack>
+            </MudField>
+
+            <MudTextField T="string" Value="@Prompt" Lines="4" ReadOnly="true" Variant="Variant.Outlined"
+                          Label="Positive prompt (preview)" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(Prompt))" OnClick="SaveAsync">
+            Save preset</MudButton>
+        </DialogActions>
+    </MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Positive prompt text to persist.</summary>
+    [Parameter] public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>Globally selected text-LLM model (used by Suggest). Empty disables Suggest.</summary>
+    [Parameter] public string ModelName { get; set; } = string.Empty;
+
+    /// <summary>Optional pre-filled title (e.g. "Image: {filename}").</summary>
+    [Parameter] public string? InitialTitle { get; set; }
+
+    private string _title = string.Empty;
+    private string _category = string.Empty;
+    private readonly List<string> _tags = new();
+    private string _tagDraft = string.Empty;
+    private bool _isSuggesting;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(InitialTitle))
+            _title = InitialTitle!;
+    }
+
+    private void HandleTagKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or ",")
+        {
+            CommitTag();
+        }
+    }
+
+    private void CommitTag()
+    {
+        var t = _tagDraft?.Trim().Trim(',').Trim();
+        if (!string.IsNullOrWhiteSpace(t) && !_tags.Contains(t, StringComparer.OrdinalIgnoreCase))
+        {
+            _tags.Add(t);
+        }
+        _tagDraft = string.Empty;
+    }
+
+    private void RemoveTag(string tag)
+    {
+        _tags.Remove(tag);
+    }
+
+    private async Task SuggestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ModelName) || string.IsNullOrWhiteSpace(Prompt))
+            return;
+
+        _isSuggesting = true;
+        StateHasChanged();
+        try
+        {
+            var messages = new List<OllamaChatMessage>
+            {
+                new() { Role = "system", Content =
+                    "You are a concise title generator for image-generation prompt presets. Given a prompt, " +
+                    "return ONE title between 3 and 6 words. Capitalize as a title. No quotes, no commentary, no trailing punctuation." },
+                new() { Role = "user", Content = $"Prompt: {Prompt}\n\nReturn only the title." }
+            };
+            var options = new OllamaOptions { Temperature = 0.6f };
+            var response = await Ollama.SendChatMessage(ModelName, messages, options, keepAlive: "5m", stream: false);
+            var suggestion = response?.Message?.Content?.Trim();
+            if (!string.IsNullOrWhiteSpace(suggestion))
+            {
+                // Strip wrapping quotes if the model added them despite instructions.
+                suggestion = suggestion!.Trim('"', '\'', ' ', '.');
+                _title = suggestion;
+            }
+            else
+            {
+                Snackbar.Add("Suggest returned empty content.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Suggest failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSuggesting = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        // Pick up any tag still in the draft input.
+        if (!string.IsNullOrWhiteSpace(_tagDraft)) CommitTag();
+
+        try
+        {
+            var preset = new Prompt
+            {
+                Title = _title.Trim(),
+                Positive = Prompt,
+                Category = string.IsNullOrWhiteSpace(_category) ? null : _category.Trim(),
+                Tags = _tags.Count > 0 ? new List<string>(_tags) : null
+            };
+            await DB.CreatePrompt(preset);
+            Snackbar.Add("Preset saved.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(preset.Id));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

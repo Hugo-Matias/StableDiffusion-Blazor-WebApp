@@ -1,0 +1,321 @@
+@using System.IO
+@using static BlazorWebApp.Data.Enums
+@inject IRouterService Router
+@inject IOrchestratorService M
+@inject IResourceFilterService ResourceFilter
+@inject IResourceFilterStateService FilterState
+@inject IResourceCacheService ResourceCache
+@inject IIOService IO
+
+@* Transparent backdrop - clicking outside closes the panel *@
+@if (_isOpen)
+{
+    <div class="lsp-backdrop" @onclick="Close" />
+}
+
+<div class="@(_isOpen ? "lsp-root lsp-root--open" : "lsp-root")">
+    <MudButton FullWidth="true" Variant="Variant.Outlined" Size="Size.Small"
+               EndIcon="@(_isOpen ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down")" OnClick="TogglePanel"
+               Class="lsp-trigger">
+        Add LoRA
+    </MudButton>
+
+    @if (_isOpen)
+    {
+        <div class="lsp-panel">
+            <div class="lsp-search-row">
+                <MudTextField @bind-Value="_search" Placeholder="Search..." Variant="Variant.Text" Adornment="Adornment.End"
+                              AdornmentIcon="fa-solid fa-magnifying-glass" Clearable="true" Immediate="true" DebounceInterval="200"
+                              Margin="Margin.Dense" Class="lsp-search-field" />
+            </div>
+
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (!_grouped.Any() && !_untracked.Any())
+            {
+                <div class="app-empty-state">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                    <span>No LoRAs available for the current workflow</span>
+                </div>
+            }
+            else
+            {
+                <MudTabs Class="lsp-tabs" PanelClass="lsp-panel-content" Rounded="false" Border="false" Centered="false"
+                         MinimumTabWidth="60px">
+                    @foreach (var (baseModel, subTypeGroups) in _grouped.OrderBy(x => x.Key))
+                    {
+                        <MudTabPanel Text="@baseModel">
+                            @{
+                                var filteredSubTypes = FilteredSubTypes(subTypeGroups);
+                            }
+                            @if (!filteredSubTypes.Any())
+                            {
+                                <div class="app-empty-state"><span>No results</span></div>
+                            }
+                            else
+                            {
+                                @foreach (var group in filteredSubTypes)
+                                {
+                                    var subTypeName = group.SubTypeName;
+                                    var subFilenames = group.Filenames;
+                                    if (subFilenames.Count == 0) continue;
+
+                                    var groupKey = baseModel + "|" + (subTypeName ?? "(Unknown)");
+                                    var isCollapsed = _collapsedGroups.Contains(groupKey);
+
+                                    <div class="lsp-subtype-group">
+                                        <div class="lsp-subtype-toggle" @onclick="() => ToggleGroup(groupKey)">
+                                            <MudDivider />
+                                            <span class="lsp-subtype-label">
+                                                <i
+                                                class="@(_collapsedGroups.Contains(groupKey) ? "fa-solid fa-chevron-right lsp-chevron" : "fa-solid fa-chevron-down lsp-chevron")"></i>
+                                                @subTypeName
+                                                <sup class="lsp-count">(@subFilenames.Count)</sup>
+                                            </span>
+                                            <MudDivider />
+                                        </div>
+
+                                        @if (!isCollapsed)
+                                        {
+                                            <div class="lsp-card-grid">
+                                                @foreach (var fn in subFilenames)
+                                                {
+                                                    var name = GetDisplayTitle(fn);
+                                                    var added = IsAdded(fn);
+                                                    <div class="@(added ? "lsp-card lsp-card--added" : "lsp-card")" @onclick="() => TryAdd(fn)"
+                                                         title="@name">
+                                                        @if (_previews.TryGetValue(fn, out var src) && !string.IsNullOrEmpty(src))
+                                                        {
+                                                            <img class="lsp-card-img" src="@src" loading="lazy" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="lsp-card-no-img">
+                                                                <i class="fa-solid fa-image"></i>
+                                                            </div>
+                                                        }
+                                                        <div class="lsp-card-footer">
+                                                            <span>@name</span>
+                                                        </div>
+                                                        @if (added)
+                                                        {
+                                                            <div class="lsp-card-badge">
+                                                                <i class="fa-solid fa-check"></i>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </MudTabPanel>
+                    }
+
+                    @if (_untracked.Any())
+                    {
+                        <MudTabPanel Text="Untracked">
+                            @{
+                                var untrackedFiltered = Filtered(_untracked).ToList();
+                            }
+                            @if (untrackedFiltered.Count == 0)
+                            {
+                                <div class="app-empty-state"><span>No results</span></div>
+                            }
+                            else
+                            {
+                                <div class="lsp-list">
+                                    @foreach (var fn in untrackedFiltered)
+                                    {
+                                        var displayPath = fn.LastIndexOf('.') > 0 ? fn[..fn.LastIndexOf('.')] : fn;
+                                        var added = IsAdded(fn);
+                                        <div class="@(added ? "lsp-list-item lsp-list-item--added" : "lsp-list-item")"
+                                             @onclick="() => TryAdd(fn)">
+                                            <i class="fa-solid fa-file lsp-list-icon"></i>
+                                            <span class="lsp-list-name">@displayPath</span>
+                                            @if (added)
+                                            {
+                                                <i class="fa-solid fa-check lsp-list-check"></i>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </MudTabPanel>
+                    }
+                </MudTabs>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Backend Backend { get; set; }
+    [Parameter] public List<Lora> Loras { get; set; } = new();
+    [Parameter] public bool IsDualModel { get; set; }
+    [Parameter] public EventCallback OnLorasUpdated { get; set; }
+
+    private bool _isOpen;
+    private bool _isLoading;
+    private string _search = string.Empty;
+
+    private Dictionary<string, DictionaryCore> _grouped = new();
+    private List<string> _untracked = new();
+    private Dictionary<string, string> _previews = new();
+    private Dictionary<string, string> _titles = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _collapsedGroups = new();
+
+    // Helper type to avoid Razor parsing issues with nested generics containing <string>
+    private sealed class DictionaryCore : Dictionary<string?, List<string>> { }
+
+    private void ToggleGroup(string groupKey)
+    {
+        if (_collapsedGroups.Contains(groupKey))
+            _collapsedGroups.Remove(groupKey);
+        else
+            _collapsedGroups.Add(groupKey);
+        StateHasChanged();
+    }
+
+    private async Task TogglePanel()
+    {
+        if (_isOpen) { Close(); return; }
+        _isOpen = true;
+        StateHasChanged();
+        await LoadAsync();
+    }
+
+    private void Close()
+    {
+        _isOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var filenames = await GetFilteredFilenamesAsync();
+            var allResources = await ResourceCache.GetCachedResourcesAsync();
+
+            // Build a filename-keyed index from the full resource cache (single pass)
+            var resourceIndex = allResources
+                .Where(r => !string.IsNullOrEmpty(r.Filename))
+                .GroupBy(r => Path.GetFileName(r.Filename).ToLowerInvariant())
+                .ToDictionary(g => g.Key, g => g.First());
+
+            _grouped = new();
+            _untracked = new();
+            _previews = new();
+            _titles = new(StringComparer.OrdinalIgnoreCase);
+            _collapsedGroups = new();
+
+            foreach (var fn in filenames)
+            {
+                var key = Path.GetFileName(fn).ToLowerInvariant();
+                resourceIndex.TryGetValue(key, out var resource);
+
+                if (resource != null && !string.IsNullOrEmpty(resource.BaseModel))
+                {
+                    var subTypeName = resource.SubType?.Name;
+                    if (!_grouped.ContainsKey(resource.BaseModel))
+                        _grouped[resource.BaseModel] = new();
+                    var baseModelGroup = _grouped[resource.BaseModel];
+                    if (!baseModelGroup.ContainsKey(subTypeName))
+                        baseModelGroup[subTypeName] = new();
+                    baseModelGroup[subTypeName].Add(fn);
+                    _titles[fn] = string.IsNullOrWhiteSpace(resource.Title) ? Path.GetFileNameWithoutExtension(fn) : resource.Title;
+
+                    var imgSrc = IO.GetResourceImagePath(resource.Type?.Name ?? "LORA", fn);
+                    if (!string.IsNullOrEmpty(imgSrc))
+                        _previews[fn] = imgSrc;
+                }
+                else
+                {
+                    _untracked.Add(fn);
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<List<string>> GetFilteredFilenamesAsync()
+    {
+        var all = (await Router.SearchLoras(Backend, string.Empty)).ToList();
+        var workflow = M.GetCurrentWorkflow();
+        if (workflow == null) return all;
+
+        await FilterState.EnsureInitializedForWorkflowAsync(workflow);
+        var effectiveBaseModels = FilterState.GetEffectiveBaseModels();
+
+        return effectiveBaseModels == null
+            ? await ResourceFilter.FilterLorasByWorkflowAsync(all, workflow, FilterState.IncludeUntracked)
+            : await ResourceFilter.FilterByBaseModelsAsync(all, effectiveBaseModels, FilterState.IncludeUntracked);
+    }
+
+    /// <summary>Apply search filter to sub-type groups, returning only groups with matching filenames.</summary>
+    private List<SubTypeGroup> FilteredSubTypes(DictionaryCore subTypeGroups)
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+            return subTypeGroups.Select(g => new SubTypeGroup { SubTypeName = g.Key, Filenames = g.Value }).ToList();
+
+        var result = new List<SubTypeGroup>();
+        foreach (var g in subTypeGroups)
+        {
+            var filtered = Filtered(g.Value).ToList();
+            if (filtered.Count > 0)
+                result.Add(new SubTypeGroup { SubTypeName = g.Key, Filenames = filtered });
+        }
+        return result;
+    }
+
+    private IEnumerable<string> Filtered(IEnumerable<string> filenames)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return filenames;
+        return filenames.Where(fn =>
+            Path.GetFileNameWithoutExtension(fn).Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || GetDisplayTitle(fn).Contains(_search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetDisplayTitle(string fn)
+        => _titles.TryGetValue(fn, out var title) && !string.IsNullOrWhiteSpace(title)
+            ? title
+            : Path.GetFileNameWithoutExtension(fn);
+
+    private bool IsAdded(string fn) =>
+        Loras.Any(l => string.Equals(l.Path, fn, StringComparison.OrdinalIgnoreCase));
+
+    private async Task TryAdd(string fn)
+    {
+        if (IsAdded(fn)) return;
+
+        Loras.Add(new()
+        {
+            Name = Path.GetFileNameWithoutExtension(fn),
+            Path = fn,
+            IsNegative = false,
+            Strength = 1f,
+            IsEnabled = true,
+            HighPath = IsDualModel ? fn : null
+        });
+
+        await OnLorasUpdated.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private sealed class SubTypeGroup
+    {
+        public string? SubTypeName { get; set; }
+        public List<string> Filenames { get; set; } = new();
+    }
+}

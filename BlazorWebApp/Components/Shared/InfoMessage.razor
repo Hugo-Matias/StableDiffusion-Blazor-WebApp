@@ -1,0 +1,30 @@
+@* Reusable info message component for consistent hint/help messaging *@
+<MudAlert Severity="Severity.Info" Dense="@Dense" NoIcon="@NoIcon">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <MudText Typo="Typo.subtitle2" Class="mb-1">@Title</MudText>
+    }
+    <MudText Typo="Typo.body2">@ChildContent</MudText>
+</MudAlert>
+
+@code {
+    /// <summary>
+    /// Optional title shown above the message body.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>
+    /// Message body content.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// When true, reduces vertical padding for compact layouts. Default is true.
+    /// </summary>
+    [Parameter] public bool Dense { get; set; } = true;
+
+    /// <summary>
+    /// When true, hides the info icon. Default is false.
+    /// </summary>
+    [Parameter] public bool NoIcon { get; set; }
+}

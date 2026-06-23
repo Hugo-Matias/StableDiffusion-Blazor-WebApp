@@ -1,0 +1,540 @@
+﻿{
+  "families": [
+    {
+      "key": "1",
+      "name": "Black Forest Labs",
+      "description": "Black Forest Labs' family of state-of-the-art image generation models"
+    },
+    {
+      "key": "2",
+      "name": "Stability AI",
+      "description": "Stability AI's foundational open-source diffusion models"
+    },
+    {
+      "key": "3",
+      "name": "SDXL Community",
+      "description": "Community-trained models built on the SDXL architecture"
+    },
+    {
+      "key": "4",
+      "name": "Tencent",
+      "description": "Tencent's family of image and video generation models"
+    },
+    {
+      "key": "5",
+      "name": "Alibaba",
+      "description": "Alibaba's video generation model series with various sizes and modes"
+    },
+    {
+      "key": "6",
+      "name": "PixArt",
+      "description": "Efficient transformer-based text-to-image models"
+    },
+    {
+      "key": "7",
+      "name": "Google",
+      "description": "Google's image and video generation models"
+    },
+    {
+      "key": "8",
+      "name": "OpenAI",
+      "description": "OpenAI's creative image and video generation models"
+    },
+    {
+      "key": "9",
+      "name": "Pony Diffusion",
+      "description": "Community models with extensive tag-based prompt support"
+    },
+    {
+      "key": "10",
+      "name": "Alibaba",
+      "description": "Alibaba's multimodal model family with image generation capabilities"
+    },
+    {
+      "key": "11",
+      "name": "Alibaba - Tongyi Lab",
+      "description": "Z Image generation models"
+    },
+    {
+      "key": "12",
+      "name": "ByteDance",
+      "description": "ByteDance's image and video generation models"
+    },
+    {
+      "key": "13",
+      "name": "xAI",
+      "description": "xAI's image and video generation models"
+    },
+    {
+      "key": "14",
+      "name": "Kuaishou",
+      "description": "Kuaishou's video generation models"
+    },
+    {
+      "key": "15",
+      "name": "ShengShu Technology",
+      "description": "ShengShu Technology's video generation models"
+    },
+    {
+      "key": "16",
+      "name": "Lightricks",
+      "description": "Lightricks' video generation models"
+    },
+    {
+      "key": "17",
+      "name": "Baidu",
+      "description": "Baidu's image generation models"
+    }
+  ],
+  "groups": [],
+  "models": [
+    {
+      "name": "Anima",
+      "type": "image"
+    },
+    {
+      "name": "AuraFlow",
+      "type": "image"
+    },
+    {
+      "name": "Chroma",
+      "type": "image"
+    },
+    {
+      "name": "CogVideoX",
+      "type": "image"
+    },
+    {
+      "name": "Ernie",
+      "type": "image",
+      "family": "17",
+      "familyDisplayName": "Baidu"
+    },
+    {
+      "name": "Flux.1 S",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.1 D",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.1 Krea",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.1 Kontext",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.2 D",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.2 Klein 9B",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.2 Klein 9B-base",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.2 Klein 4B",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Flux.2 Klein 4B-base",
+      "type": "image",
+      "family": "1",
+      "familyDisplayName": "Black Forest Labs"
+    },
+    {
+      "name": "Grok",
+      "type": "image",
+      "family": "13",
+      "familyDisplayName": "xAI"
+    },
+    {
+      "name": "HiDream",
+      "type": "image"
+    },
+    {
+      "name": "Hunyuan 1",
+      "type": "image",
+      "family": "4",
+      "familyDisplayName": "Tencent"
+    },
+    {
+      "name": "Hunyuan Video",
+      "type": "video",
+      "family": "4",
+      "familyDisplayName": "Tencent"
+    },
+    {
+      "name": "Illustrious",
+      "type": "image",
+      "family": "3",
+      "familyDisplayName": "SDXL Community"
+    },
+    {
+      "name": "Imagen4",
+      "type": "image",
+      "family": "7",
+      "familyDisplayName": "Google",
+      "hidden": true
+    },
+    {
+      "name": "Kolors",
+      "type": "image"
+    },
+    {
+      "name": "LTXV",
+      "type": "video",
+      "family": "16",
+      "familyDisplayName": "Lightricks"
+    },
+    {
+      "name": "LTXV2",
+      "type": "video",
+      "family": "16",
+      "familyDisplayName": "Lightricks"
+    },
+    {
+      "name": "LTXV 2.3",
+      "type": "video",
+      "family": "16",
+      "familyDisplayName": "Lightricks"
+    },
+    {
+      "name": "Lumina",
+      "type": "image"
+    },
+    {
+      "name": "Mochi",
+      "type": "video"
+    },
+    {
+      "name": "Nano Banana",
+      "type": "image",
+      "family": "7",
+      "familyDisplayName": "Google",
+      "hidden": true
+    },
+    {
+      "name": "NoobAI",
+      "type": "image",
+      "family": "3",
+      "familyDisplayName": "SDXL Community"
+    },
+    {
+      "name": "ODOR",
+      "type": "image",
+      "hidden": true
+    },
+    {
+      "name": "OpenAI",
+      "type": "image",
+      "family": "8",
+      "familyDisplayName": "OpenAI",
+      "hidden": true
+    },
+    {
+      "name": "Upscaler",
+      "type": "image"
+    },
+    {
+      "name": "Other",
+      "type": "image"
+    },
+    {
+      "name": "PixArt a",
+      "type": "image",
+      "family": "6",
+      "familyDisplayName": "PixArt"
+    },
+    {
+      "name": "PixArt E",
+      "type": "image",
+      "family": "6",
+      "familyDisplayName": "PixArt"
+    },
+    {
+      "name": "Playground v2",
+      "type": "image",
+      "hidden": true
+    },
+    {
+      "name": "Pony",
+      "type": "image",
+      "family": "9",
+      "familyDisplayName": "Pony Diffusion"
+    },
+    {
+      "name": "Pony V7",
+      "type": "image",
+      "family": "9",
+      "familyDisplayName": "Pony Diffusion"
+    },
+    {
+      "name": "Qwen",
+      "type": "image",
+      "family": "10",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Qwen 2",
+      "type": "image",
+      "family": "10",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Stable Cascade",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SD 1.4",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 1.5",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 1.5 LCM",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 1.5 Hyper",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 2.0",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 2.0 768",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SD 2.1",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SD 2.1 768",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SD 2.1 Unclip",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SDXL 0.9",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SDXL 1.0",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SDXL 1.0 LCM",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "SDXL Lightning",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SDXL Hyper",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI"
+    },
+    {
+      "name": "SDXL Distilled",
+      "type": "image",
+      "family": "2",
+      "familyDisplayName": "Stability AI",
+      "hidden": true
+    },
+    {
+      "name": "Seedream",
+      "type": "image",
+      "family": "12",
+      "familyDisplayName": "ByteDance",
+      "hidden": true
+    },
+    {
+      "name": "Sora 2",
+      "type": "video",
+      "family": "8",
+      "familyDisplayName": "OpenAI",
+      "hidden": true
+    },
+    {
+      "name": "Veo 3",
+      "type": "video",
+      "family": "7",
+      "familyDisplayName": "Google",
+      "hidden": true
+    },
+    {
+      "name": "Wan Video",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba",
+      "hidden": true
+    },
+    {
+      "name": "Wan Video 1.3B t2v",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 14B t2v",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 14B i2v 480p",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 14B i2v 720p",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.2 TI2V-5B",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.2 I2V-A14B",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.2 T2V-A14B",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.5 T2V",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.5 I2V",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Image 2.7",
+      "type": "image",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "Wan Video 2.7",
+      "type": "video",
+      "family": "5",
+      "familyDisplayName": "Alibaba"
+    },
+    {
+      "name": "ZImageTurbo",
+      "type": "image",
+      "family": "11",
+      "familyDisplayName": "Alibaba - Tongyi Lab"
+    },
+    {
+      "name": "ZImageBase",
+      "type": "image",
+      "family": "11",
+      "familyDisplayName": "Alibaba - Tongyi Lab"
+    },
+    {
+      "name": "Vidu Q1",
+      "type": "video",
+      "family": "15",
+      "familyDisplayName": "ShengShu Technology",
+      "hidden": true
+    },
+    {
+      "name": "Hailuo by MiniMax",
+      "type": "video",
+      "hidden": true
+    },
+    {
+      "name": "Kling",
+      "type": "video",
+      "family": "14",
+      "familyDisplayName": "Kuaishou",
+      "hidden": true
+    },
+    {
+      "name": "Seedance",
+      "type": "video",
+      "hidden": true
+    }
+  ]
+}

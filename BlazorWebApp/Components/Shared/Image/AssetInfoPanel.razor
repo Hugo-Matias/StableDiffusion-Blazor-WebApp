@@ -1,0 +1,508 @@
+@using BlazorWebApp.Extensions
+@using BlazorWebApp.Events
+@using System.Text.Json
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@using static BlazorWebApp.Data.Enums
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject IOrchestratorService M
+@inject IStateService State
+@inject IBackendService Backend
+@inject ISessionService Session
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@inject IMediaSendToService SendTo
+@inject IEventService Events
+@implements IDisposable
+
+<div class="info-panel-header">
+    <MudIcon Icon="@(IsVideo ? "fa-solid fa-video" : "fa-solid fa-image")" Size="Size.Small" />
+    <span>@(IsVideo ? "Video" : "Image") Details</span>
+    <div class="header-spacer"></div>
+    @if (ShowAiMetadata && !string.IsNullOrWhiteSpace(_modeName))
+    {
+        <MudChip T="string" Size="Size.Small" Color="@GetModeColor()" Class="mode-chip">@_modeName</MudChip>
+    }
+    @if (!string.IsNullOrWhiteSpace(_workflowTitle))
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="mode-chip" title=@($"Workflow:        {_workflowTitle}")>@_workflowTitle</MudChip>
+    }
+    @HeaderTrailing
+    <button class="viewer-btn small" @onclick="OnClose" title="Close">
+        <MudIcon Icon="fa-solid fa-xmark" Size="Size.Small" />
+    </button>
+</div>
+
+<div class="info-panel-body">
+    <div class="info-content">
+        @if (Asset != null)
+        {
+            @if (SendTo.IsLocal(Asset.Path))
+            {
+                <MediaSendToDropdown Asset="Asset" MediaType="@(IsVideo? SendToMediaType.Video: SendToMediaType.Image)" />
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-2">
+                    <div class="d-flex align-center gap-2">
+                        <span>@ExternalImageHintText</span>
+                    </div>
+                    @if (OnRequestSaveLocal != null)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
+                                   StartIcon="@ExternalImageActionIcon" Disabled="_isSavingLocalImage" @onclick="RequestLocalImage">
+                            @(_isSavingLocalImage ? "Saving..." : ExternalImageActionText)
+                        </MudButton>
+                    }
+                    else if (OnRequestBookmark.HasDelegate)
+                    {
+                        var assetCapture = Asset;
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Class="ms-2"
+                                   StartIcon="fa-solid fa-bookmark" @onclick="() => OnRequestBookmark.InvokeAsync(assetCapture!)">
+                            Bookmark
+                        </MudButton>
+                    }
+                </MudAlert>
+            }
+
+            @if (!IsVideo)
+            {
+                @* Send parameters to workflows *@
+                @if (SendTo.GetParameterWorkflows().Any())
+                {
+                    <div class="send-to-section">
+                        <span class="send-to-label">Send parameters to:</span>
+                        <div class="send-to-buttons">
+                            @foreach (var workflow in SendTo.GetParameterWorkflows())
+                            {
+                                <button class="send-to-btn @SendTo.GetWorkflowModeClass(workflow.Mode)"
+                                        @onclick="() => SendParametersToWorkflow(workflow)" title="Send to @workflow.Title">
+                                    <MudIcon Icon="@SendTo.GetWorkflowIcon(workflow.Mode)" Size="Size.Small" />
+                                    <span>@workflow.Title</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @* Phase 12 - Image-to-Prompt action. Local images only. *@
+                @if (SendTo.IsLocal(Asset!.Path))
+                {
+                    <div class="send-to-section">
+                        <span class="send-to-label">LLM Tools:</span>
+                        <div class="send-to-buttons">
+                            <button class="send-to-btn" @onclick="SendToImageToPrompt"
+                                    title="Generate a prompt from this image with a vision LLM">
+                                <MudIcon Icon="@Icons.Material.Filled.ImageSearch" Size="Size.Small" />
+                                <span>Generate Prompt</span>
+                            </button>
+                        </div>
+                    </div>
+                }
+                <MudDivider />
+            }
+
+            <!-- Meta Items -->
+            <div class="meta-grid">
+                @if (ShowAiMetadata)
+                {
+                    @if (Asset.Width > 0 && Asset.Height > 0)
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("Width") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("Width"))" title="Resolution">
+                            <MudIcon Icon="fa-solid fa-ruler-combined" Size="Size.Small" />
+                            <span>@Asset.Width &times; @Asset.Height</span>
+                        </div>
+                    }
+                    @if (Asset.Seed > 0)
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("Seed") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("Seed"))" title="Seed">
+                            <MudIcon Icon="fa-solid fa-seedling" Size="Size.Small" />
+                            <span>@Asset.Seed</span>
+                        </div>
+                    }
+                    @if (Asset.Steps > 0)
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("Steps") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("Steps"))" title="Steps">
+                            <MudIcon Icon="fa-solid fa-stairs" Size="Size.Small" />
+                            <span>@Asset.Steps steps</span>
+                        </div>
+                    }
+                    @if (Asset.CfgScale > 0)
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("CfgScale") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("CfgScale"))" title="CFG">
+                            <MudIcon Icon="fa-solid fa-scale-unbalanced" Size="Size.Small" />
+                            <span>CFG @Asset.CfgScale</span>
+                        </div>
+                    }
+                    @if (Asset.DenoisingStrength != null)
+                    {
+                        <div class="meta-item clickable full-width @(_selectedParams.Contains("DenoisingStrength") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("DenoisingStrength"))" title="Denoising">
+                            <MudIcon Icon="fa-solid fa-braille" Size="Size.Small" />
+                            <span>Denoise @Asset.DenoisingStrength</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_currentSampler))
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("SamplerIndex") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("SamplerIndex"))" title="Sampler">
+                            <MudIcon Icon="fa-solid fa-shuffle" Size="Size.Small" />
+                            <span>@_currentSampler</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Asset.Scheduler))
+                    {
+                        <div class="meta-item clickable @(_selectedParams.Contains("Scheduler") ? "selected" : "")"
+                             @onclick="@(() => ToggleParam("Scheduler"))" title="Scheduler">
+                            <MudIcon Icon="fa-solid fa-clock" Size="Size.Small" />
+                            <span>@Asset.Scheduler</span>
+                        </div>
+                    }
+                    
+                    <!-- Model (full width, read-only) -->
+                    @if (Asset.Model != null && !string.IsNullOrWhiteSpace(Asset.Model.Title))
+                    {
+                        <div class="meta-item full-width model-item" title="@Asset.Model.Title">
+                            <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
+                            <span class="text-truncate">@GetModelDisplayName()</span>
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_modelName))
+                    {
+                        <div class="meta-item full-width model-item model-warning" title="Model not found in database">
+                            <MudIcon Icon="fa-solid fa-cube" Size="Size.Small" />
+                            <span class="text-truncate">@_modelName</span>
+                            <MudIcon Icon="fa-solid fa-triangle-exclamation" Size="Size.Small" Class="warning-icon" />
+                        </div>
+                    }
+                }
+                
+                <!-- Date (full width, always shown) -->
+                <div class="meta-item full-width">
+                    <MudIcon Icon="fa-solid fa-calendar" Size="Size.Small" />
+                    <span>@Asset.DateCreated.ToString("MMM dd, yyyy HH:mm")</span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Asset.Prompt))
+            {
+                <div class="prompt-block">
+                    <div class="prompt-header positive clickable @(_selectedParams.Contains("Prompt") ? "selected" : "")"
+                         @onclick="@(() => ToggleParam("Prompt"))" title="Prompt">
+                        <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                        <span>Prompt</span>
+                        @if (_selectedParams.Contains("Prompt"))
+                        {
+                            <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
+                        }
+                    </div>
+                    <div class="prompt-text">@Asset.Prompt</div>
+                </div>
+            }
+            
+            @if (!string.IsNullOrWhiteSpace(Asset.NegativePrompt))
+            {
+                <div class="prompt-block">
+                    <div class="prompt-header negative clickable @(_selectedParams.Contains("NegativePrompt") ? "selected" : "")"
+                         @onclick="@(() => ToggleParam("NegativePrompt"))" title="Negative Prompt">
+                        <MudIcon Icon="fa-solid fa-minus" Size="Size.Small" />
+                        <span>Negative</span>
+                        @if (_selectedParams.Contains("NegativePrompt"))
+                        {
+                            <MudIcon Icon="fa-solid fa-check" Size="Size.Small" Class="ms-auto" />
+                        }
+                    </div>
+                    <div class="prompt-text negative">@Asset.NegativePrompt</div>
+                </div>
+            }
+            
+            <!-- Workflow Data Expansion Panel -->
+            @if (_workflowData != null && _workflowData.Children?.Count > 0)
+            {
+                <MudExpansionPanels Class="workflow-expansion" Elevation="0">
+                    <MudExpansionPanel Text="Workflow Data" MaxHeight="400">
+                        <div class="workflow-tree-container">
+                            <MudTreeView T="JsonTreeNode" Dense="true" Hover="true">
+                                @foreach (var node in _workflowData.Children)
+                                {
+                                    <JsonTreeView Node="node" />
+                                }
+                            </MudTreeView>
+                        </div>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+        }
+    </div>
+
+    <!-- Keyboard Shortcuts (optional) -->
+    @if (ShowKeyboardShortcuts)
+    {
+        <div class="shortcuts-box">
+            <div class="shortcuts-title">Keyboard Shortcuts</div>
+            <div class="shortcut-row"><span>Navigate</span><span class="shortcut-key">&larr; &rarr;</span></div>
+            <div class="shortcut-row"><span>Favorite</span><span class="shortcut-key">F</span></div>
+            @if (!IsVideo)
+            {
+                <div class="shortcut-row"><span>Pan & Zoom</span><span class="shortcut-key">Z</span></div>
+                <div class="shortcut-row"><span>Reset View</span><span class="shortcut-key">R</span></div>
+                <div class="shortcut-row"><span>Zoom In/Out</span><span class="shortcut-key">+ / -</span></div>
+            }
+            <div class="shortcut-row"><span>Slideshow</span><span class="shortcut-key">Space</span></div>
+            <div class="shortcut-row"><span>Details</span><span class="shortcut-key">I</span></div>
+            <div class="shortcut-row"><span>Close</span><span class="shortcut-key">Esc</span></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public ImageEntity? Asset { get; set; }
+    [Parameter] public bool IsVideo { get; set; }
+    [Parameter] public bool ShowAiMetadata { get; set; } = true;
+    [Parameter] public bool ShowKeyboardShortcuts { get; set; } = true;
+    [Parameter] public RenderFragment? HeaderTrailing { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public HashSet<string>? SelectedParams { get; set; }
+    [Parameter] public EventCallback<HashSet<string>> SelectedParamsChanged { get; set; }
+    [Parameter] public EventCallback<ImageEntity> OnRequestBookmark { get; set; }
+    [Parameter] public Func<ImageEntity, Task<ImageEntity?>>? OnRequestSaveLocal { get; set; }
+    [Parameter] public string ExternalImageHintText { get; set; } = "Bookmark this image to enable workflow send. Only prompt parameters are available for external images.";
+    [Parameter] public string ExternalImageActionText { get; set; } = "Bookmark";
+    [Parameter] public string ExternalImageActionIcon { get; set; } = "fa-solid fa-bookmark";
+    [Parameter] public string ImageToPromptSourceLabel { get; set; } = "Asset Info";
+
+    private HashSet<string> _selectedParams = new();
+    private string? _currentSampler;
+    private string? _modeName;
+    private string? _workflowTitle;
+    private string? _modelName;
+    private JsonTreeNode? _workflowData;
+    private bool _isSavingLocalImage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+
+        if (SelectedParams != null)
+        {
+            _selectedParams = SelectedParams;
+        }
+        await LoadAssetMetadata();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SelectedParams != null && SelectedParams != _selectedParams)
+        {
+            _selectedParams = SelectedParams;
+        }
+        await LoadAssetMetadata();
+    }
+
+    private async Task LoadAssetMetadata()
+    {
+        if (Asset == null) return;
+
+        // Load sampler name
+        if (Asset.SamplerId > 0)
+            _currentSampler = await DB.GetSampler(Asset.SamplerId);
+        else
+            _currentSampler = null;
+
+        // Load mode name
+        _modeName = Asset.ModeId switch
+        {
+            1 => "Txt2Img",
+            2 => "Img2Img",
+            3 => "Upscale",
+            4 => "Img2Vid",
+            _ => null
+        };
+
+        // Resolve workflow title from stored WorkflowId
+        if (!string.IsNullOrWhiteSpace(Asset.WorkflowId) && Guid.TryParse(Asset.WorkflowId, out var wfGuid))
+            _workflowTitle = M.GetWorkflowById(wfGuid)?.Title;
+        else
+            _workflowTitle = null;
+
+        // Try to load workflow data from file metadata
+        await LoadWorkflowData();
+    }
+
+    private async Task LoadWorkflowData()
+    {
+        if (Asset == null || string.IsNullOrWhiteSpace(Asset.Path)) return;
+
+        if (!SendTo.IsLocal(Asset.Path))
+        {
+            _workflowData = null;
+            return;
+        }
+
+        try
+        {
+            var metadataInfo = await IO.ReadMetadata(Asset.Path);
+            if (string.IsNullOrWhiteSpace(metadataInfo)) return;
+
+            // Parse ComfyUI workflow data
+            if (metadataInfo.StartsWith("prompt", StringComparison.InvariantCultureIgnoreCase))
+            {
+                var infoJson = metadataInfo.Replace("prompt: ", "");
+                _workflowData = Parser.ParseComfyUIInfoParameters(infoJson);
+
+                // Also try to extract model name if not already set
+                if (Asset.Model == null)
+                {
+                    using var doc = JsonDocument.Parse(infoJson);
+                    _modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "ckpt_name");
+                    if (string.IsNullOrWhiteSpace(_modelName))
+                        _modelName = Parser.FindJsonValueByKey<string>(doc.RootElement, "unet_name");
+                }
+            }
+        }
+        catch
+        {
+            // Failed to load workflow data, ignore
+        }
+    }
+
+    private string GetModelDisplayName()
+    {
+        if (Asset?.Model == null) return "Unknown";
+        
+        var title = Asset.Model.Title ?? Asset.Model.Filename ?? "Unknown";
+        return title.Replace(".safetensors", "").Replace(".ckpt", "");
+    }
+
+    private Color GetModeColor()
+    {
+        return Asset?.ModeId switch
+        {
+            1 => Color.Info, // Txt2Img
+            2 => Color.Warning, // Img2Img
+            3 => Color.Secondary, // Upscale
+            4 => Color.Primary, // Img2Vid
+            _ => Color.Default
+        };
+    }
+
+    private async Task SendParametersToWorkflow(Workflow workflow)
+    {
+        if (Asset == null) return;
+        await SendTo.SendParametersToWorkflow(Asset, workflow, _selectedParams);
+        if (_selectedParams.Count > 0)
+        {
+            _selectedParams.Clear();
+            await SelectedParamsChanged.InvokeAsync(_selectedParams);
+        }
+    }
+
+    /// <summary>
+    /// Phase 12: Switch the LLM Tools tab to the Image-to-Prompt view, hand off the asset image
+    /// through persisted state (Publish would race the navigation - the target view does not
+    /// exist yet when the event fires), and navigate to /prompts.
+    /// </summary>
+    private async Task SendToImageToPrompt()
+    {
+        if (Asset == null || string.IsNullOrWhiteSpace(Asset.Path)) return;
+
+        var resolved = IO.ResolveFilePath(Asset.Path);
+        if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+        {
+            Snackbar.Add("Image file is not available on disk.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(resolved);
+            var ext = Path.GetExtension(resolved).TrimStart('.').ToLowerInvariant();
+            var mime = ext switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                "gif" => "image/gif",
+                _ => "image/png"
+            };
+
+            var sourceLabel = string.IsNullOrWhiteSpace(ImageToPromptSourceLabel) ? "Asset Info" : ImageToPromptSourceLabel;
+            var s = State.State.Prompts.LLM.ImageToPrompt;
+            s.LastImageDataUri = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            s.LastSourceLabel = sourceLabel;
+            s.LastResultText = null;
+
+            State.State.Prompts.LLM.ActiveViewId = "image-to-prompt";
+            await State.SaveState();
+
+            // Same-page fallback - if the view happens to be already mounted it'll pick this up.
+            Events.Publish(new ImageToPromptRequestedEventArgs
+            {
+                ImagePath = resolved,
+                SourceLabel = sourceLabel
+            });
+
+            NavManager.NavigateTo("/prompts");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to send image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RequestLocalImage()
+    {
+        if (Asset == null || OnRequestSaveLocal == null) return;
+
+        _isSavingLocalImage = true;
+        try
+        {
+            var localAsset = await OnRequestSaveLocal.Invoke(Asset);
+            if (localAsset != null)
+            {
+                Asset = localAsset;
+                await LoadAssetMetadata();
+            }
+        }
+        finally
+        {
+            _isSavingLocalImage = false;
+        }
+    }
+
+    private void ToggleParam(string param)
+    {
+        if (_selectedParams.Contains(param))
+            _selectedParams.Remove(param);
+        else
+            _selectedParams.Add(param);
+        
+        // Width and Height are linked
+        if (param == "Width" && _selectedParams.Contains("Width"))
+            _selectedParams.Add("Height");
+        else if (param == "Width")
+            _selectedParams.Remove("Height");
+
+        SelectedParamsChanged.InvokeAsync(_selectedParams);
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+    }
+}

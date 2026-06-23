@@ -1,0 +1,35 @@
+# Physical appearance descriptors
+long hair
+short hair
+wavy hair
+curly hair
+straight hair
+blonde hair
+black hair
+brown hair
+red hair
+blue eyes
+green eyes
+brown eyes
+pale skin
+tan skin
+dark skin
+slim
+athletic
+muscular
+beautiful
+handsome
+elegant
+casual clothing
+formal attire
+dress
+suit
+coat
+jacket
+glasses
+sunglasses
+hat
+crown
+jewelry
+necklace
+earrings

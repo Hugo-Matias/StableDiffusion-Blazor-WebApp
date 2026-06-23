@@ -1,0 +1,153 @@
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+
+@if (_history.Any())
+{
+    <MudStack Spacing="2">
+        <div class="d-flex gap-2 align-center">
+            <MudText Typo="Typo.subtitle2">Recent Operations</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       OnClick="ClearHistory"
+                       StartIcon="@Icons.Material.Filled.Clear"
+                       Color="Color.Error">
+                Clear All
+            </MudButton>
+        </div>
+
+        <MudList Clickable Dense>
+            @foreach (var entry in _history)
+            {
+                <MudListItem OnClick="@(() => RestoreEntry(entry))">
+                    <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                        <div style="flex: 1;">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@GetOperationIcon(entry.Operation)"
+                                         Size="Size.Small"
+                                         Color="@GetOperationColor(entry.Operation)" />
+                                <MudText Typo="Typo.body2">
+                                    @entry.Operation
+                                </MudText>
+                                <MudChip Size="Size.Small" Variant="Variant.Text">
+                                    @entry.ModelUsed
+                                </MudChip>
+                                @if (entry.IsSavedToDb)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CloudDone"
+                                             Size="Size.Small"
+                                             Color="Color.Success"
+                                             Title="Saved to library" />
+                                }
+                            </div>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @entry.Timestamp.ToString("HH:mm:ss") - @TruncateText(entry.OriginalPrompt, 80)
+                            </MudText>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.RestorePage"
+                                      Size="Size.Small"
+                                      Color="Color.Info"
+                                      Title="Restore"
+                                      OnClick="@(() => RestoreEntry(entry))" />
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+    </MudStack>
+}
+else
+{
+    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 300px;">
+        <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Color="Color.Default" />
+        <MudText Typo="Typo.h6" Color="Color.Default">No History Yet</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">
+            Generate some prompts to see them here
+        </MudText>
+    </MudStack>
+}
+
+@code {
+    [Parameter] public int RefreshVersion { get; set; }
+    [Parameter] public EventCallback<PromptHistoryEntry> OnRestore { get; set; }
+
+    private List<PromptHistoryEntry> _history = new();
+    private int _lastRefreshVersion = -1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoryFromStorage();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (RefreshVersion != _lastRefreshVersion)
+        {
+            _lastRefreshVersion = RefreshVersion;
+            await LoadHistoryFromStorage();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadHistoryFromStorage()
+    {
+        try
+        {
+            var historyJson = await JSRuntime.InvokeAsync<List<PromptHistoryEntry>>("PromptHistoryStorage.getHistory");
+            _history = historyJson ?? new List<PromptHistoryEntry>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not load history from LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task RestoreEntry(PromptHistoryEntry entry)
+    {
+        if (OnRestore.HasDelegate)
+            await OnRestore.InvokeAsync(entry);
+    }
+
+    private async Task ClearHistory()
+    {
+        _history.Clear();
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("PromptHistoryStorage.clearHistory");
+            Snackbar.Add("History cleared", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not clear history from LocalStorage: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private string GetOperationIcon(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Icons.Material.Filled.TrendingUp,
+            "Simplified" => Icons.Material.Filled.TrendingDown,
+            _ => Icons.Material.Filled.Edit
+        };
+    }
+
+    private Color GetOperationColor(string operation)
+    {
+        return operation switch
+        {
+            "Enhanced" => Color.Primary,
+            "Simplified" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+}

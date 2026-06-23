@@ -1,42 +1,60 @@
 ﻿using BlazorWebApp.Data;
 using BlazorWebApp.Data.Dtos;
 using BlazorWebApp.Data.Entities;
+using BlazorWebApp.Events;
 using BlazorWebApp.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlazorWebApp.Services
 {
-    public class DatabaseService
+    public class DatabaseService : IDatabaseService
     {
         private readonly IDbContextFactory<AppDbContext> _factory;
-        private readonly SDAPIService _api;
+        private readonly IComfyUIService _capi;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<DatabaseService> _logger;
+        private readonly OllamaService _ollamaService;
+        private readonly IIOService _io;
+        private readonly IEventService _events;
 
         public int PageSize { get; set; }
 
-        public DatabaseService(IDbContextFactory<AppDbContext> factory, SDAPIService api, IConfiguration configuration)
+        public DatabaseService(IDbContextFactory<AppDbContext> factory, IComfyUIService capi, IConfiguration configuration, ILogger<DatabaseService> logger, OllamaService ollamaService, IIOService io, IEventService events)
         {
             _factory = factory;
-            _api = api;
+            _capi = capi;
             _configuration = configuration;
+            _logger = logger;
+            _ollamaService = ollamaService;
+            _io = io;
+            _events = events;
             PageSize = 5;
 
-            InitializeDatabase();
+            // Block synchronously so any migration failure surfaces immediately
+            // instead of being swallowed by an unobserved Task.
+            InitializeDatabase().GetAwaiter().GetResult();
             PopulateModes();
             PopulateSamplers();
+            SeedDefaultSystemPromptTemplates();
+            SeedResourceTypes();
         }
 
         public async Task InitializeDatabase()
         {
             using var context = await _factory.CreateDbContextAsync();
-            await context.Database.EnsureCreatedAsync();
+            // MigrateAsync on a fresh DB creates the schema from migrations AND populates
+            // __EFMigrationsHistory. Calling EnsureCreatedAsync first would short-circuit
+            // that on dev machines and silently skip later migrations (see
+            // Documentation/Architecture/03-PERSISTENCE-AND-MIGRATIONS.md, runtime checklist).
             await context.Database.MigrateAsync();
         }
 
         public async Task<List<Folder>> GetFolders()
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.Folders.ToListAsync();
+            return await context.Folders
+                .OrderBy(f => f.SortOrder)
+                .ToListAsync();
         }
 
         public async Task<List<Folder>> GetFolders(string name)
@@ -61,8 +79,8 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>> GetProjects(int folderId = 0)
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (folderId <= 0) return await context.Projects.OrderBy(p => p.CreationTime).ToListAsync();
-            else return await context.Projects.Where(p => p.FolderId == folderId).OrderBy(p => p.CreationTime).ToListAsync();
+            if (folderId <= 0) return await context.Projects.OrderByDescending(p => p.CreationTime).ToListAsync();
+            else return await context.Projects.Where(p => p.FolderId == folderId).OrderByDescending(p => p.CreationTime).ToListAsync();
         }
 
         public async Task<Project> GetProject(int id)
@@ -86,10 +104,10 @@ namespace BlazorWebApp.Services
         public async Task<List<Project>?> GetLastUsedProjects(int amount, int[] ignoreIds)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var usedProjects = await context.Images.Select(i => i.ProjectId).Distinct().ToListAsync();
+            var usedProjects = await context.Images.Where(i => !i.IsHidden).Select(i => i.ProjectId).Distinct().ToListAsync();
             if (usedProjects.Count < amount) return null;
             var ids = new List<int>();
-            foreach (var id in context.Images.OrderByDescending(i => i.Id).Select(i => i.ProjectId))
+            foreach (var id in context.Images.Where(i => !i.IsHidden).OrderByDescending(i => i.Id).Select(i => i.ProjectId))
             {
                 if (!ids.Contains(id) && !ignoreIds.Contains(id)) ids.Add(id);
                 if (ids.Count >= amount) break;
@@ -208,29 +226,98 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task<List<Selection>> GetSelections()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.Include(s => s.Images).ToListAsync();
+        }
+
+        public async Task<List<Selection>> GetSelectionsByName(string name)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.Where(s => s.Name.ToLower() == name.ToLower()).ToListAsync();
+        }
+
+        public async Task<Selection> GetSelection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Selections.Include(s => s.Images).FirstOrDefaultAsync(s => s.Id == id);
+        }
+
+        public async Task CreateSelection(Selection selection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var images = await context.Images.Where(i => selection.Images.Select(i => i.Id).Contains(i.Id)).ToListAsync();
+            selection.Images = images;
+            await context.Selections.AddAsync(selection);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSelection(int selectionId, List<int> imageIds)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = await context.Selections.Include(s => s.Images).FirstOrDefaultAsync(s => s.Id == selectionId);
+            var images = await context.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+            entity.Images.Clear();
+            foreach (var image in images)
+            {
+                entity.Images.Add(image);
+            }
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<Selection?> DeleteSelection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var selection = await context.Selections.FirstOrDefaultAsync(s => s.Id == id);
+            context.Selections.Remove(selection);
+            await context.SaveChangesAsync();
+            return await context.Selections.FirstOrDefaultAsync();
+        }
+
         public async Task<Image> AddImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images != null)
             {
+                if (image.Model != null)
+                {
+                    var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+
+                    if (resource != null)
+                    {
+                        image.ResourceId = resource.Id;
+                        image.Model = resource;
+                    }
+                }
                 var result = await context.Images.AddAsync(image);
                 if (result != null) { await context.SaveChangesAsync(); }
             }
-            return await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path);
+            var saved = await context.Images.FirstOrDefaultAsync(i => i.Path == image.Path) ?? image;
+            PublishImageRecordSaved(saved, isUpdate: false);
+            return saved;
         }
 
         public async Task<List<Image>> GetImages(List<int> imageIds)
         {
             using var context = await _factory.CreateDbContextAsync();
-            return await context.Images.Where(i => imageIds.Contains(i.Id)).ToListAsync();
+            return await context.Images.Include(i => i.Model).Where(i => imageIds.Contains(i.Id)).ToListAsync();
+        }
+
+        public async Task<Image?> GetImageById(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Images.Include(i => i.Model).FirstOrDefaultAsync(i => i.Id == id);
         }
 
         public async Task<ImagesDto> GetPagedImages(int page)
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count() / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => !i.IsHidden) / (float)PageSize);
             var images = await context.Images
+                .Where(i => !i.IsHidden)
+                .Include(i => i.Model)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
                 .ToListAsync();
@@ -248,9 +335,10 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId) / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => i.ProjectId == projectId && !i.IsHidden) / (float)PageSize);
             var images = await context.Images
-                .Where(i => i.ProjectId == projectId)
+                .Include(i => i.Model)
+                .Where(i => i.ProjectId == projectId && !i.IsHidden)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
@@ -269,9 +357,10 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id)) / (float)PageSize);
+            var pageCount = Math.Ceiling(context.Images.Count(i => imageIds.Contains(i.Id) && !i.IsHidden) / (float)PageSize);
             var images = await context.Images
-                .Where(i => imageIds.Contains(i.Id))
+                .Include(i => i.Model)
+                .Where(i => imageIds.Contains(i.Id) && !i.IsHidden)
                 .OrderByDescending(i => i.Id)
                 .Skip((page - 1) * PageSize)
                 .Take(PageSize)
@@ -291,7 +380,7 @@ namespace BlazorWebApp.Services
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
 
-            var query = context.Images.Where(i => i.ProjectId == projectId);
+            var query = context.Images.Where(i => i.ProjectId == projectId && !i.IsHidden);
             if (!string.IsNullOrWhiteSpace(state.Prompt))
                 query = query.Where(i => i.Prompt.ToLower().Contains(state.Prompt.ToLower()));
             if (!string.IsNullOrWhiteSpace(state.NegativePrompt))
@@ -303,7 +392,14 @@ namespace BlazorWebApp.Services
             if (state.IsModeTxt2Img) modes.Add(1);
             if (state.IsModeImg2Img) modes.Add(2);
             if (state.IsModeUpscale) modes.Add(3);
-            query = query.Where(i => modes.Contains(i.ModeId));
+            if (state.IsModeImg2Vid) modes.Add(4);
+
+            // Only filter by mode if at least one mode is selected, otherwise show all
+            if (modes.Count > 0)
+                query = query.Where(i => modes.Contains(i.ModeId));
+
+            if (state.ActiveWorkflowIds != null && state.ActiveWorkflowIds.Count > 0)
+                query = query.Where(i => state.ActiveWorkflowIds.Contains(i.WorkflowId!));
 
             if (state.IsScore)
                 query = query.Where(i => i.Score == state.Score);
@@ -311,53 +407,75 @@ namespace BlazorWebApp.Services
             switch (state.OrderBy)
             {
                 case GalleryOrderBy.Date:
-                    query = query.OrderBy(i => i.DateCreated);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.DateCreated) : query.OrderBy(i => i.DateCreated);
                     break;
                 case GalleryOrderBy.Sampler:
-                    query = query.OrderBy(i => i.SamplerId);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.SamplerId) : query.OrderBy(i => i.SamplerId);
                     break;
                 case GalleryOrderBy.Seed:
-                    query = query.OrderBy(i => i.Seed);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Seed) : query.OrderBy(i => i.Seed);
                     break;
                 case GalleryOrderBy.Steps:
-                    query = query.OrderBy(i => i.Steps);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Steps) : query.OrderBy(i => i.Steps);
                     break;
                 case GalleryOrderBy.CfgScale:
-                    query = query.OrderBy(i => i.CfgScale);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.CfgScale) : query.OrderBy(i => i.CfgScale);
                     break;
                 case GalleryOrderBy.Width:
-                    query = query.OrderBy(i => i.Width);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Width) : query.OrderBy(i => i.Width);
                     break;
                 case GalleryOrderBy.Height:
-                    query = query.OrderBy(i => i.Height);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Height) : query.OrderBy(i => i.Height);
                     break;
                 case GalleryOrderBy.Favorite:
-                    query = query.OrderBy(i => i.Favorite);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.Favorite) : query.OrderBy(i => i.Favorite);
                     break;
                 case GalleryOrderBy.Mode:
-                    query = query.OrderBy(i => i.ModeId);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.ModeId) : query.OrderBy(i => i.ModeId);
                     break;
                 case GalleryOrderBy.Denoising:
-                    query = query.OrderBy(i => i.DenoisingStrength);
+                    query = state.OrderDescending ? query.OrderByDescending(i => i.DenoisingStrength) : query.OrderBy(i => i.DenoisingStrength);
                     break;
                 case GalleryOrderBy.Random:
-                    query = query.OrderBy(i => EF.Functions.Random());
+                    // For consistent random ordering across pagination, use a deterministic approach
+                    // SQLite can handle: ORDER BY (Id * seed) % prime
+                    // This produces consistent ordering for the same seed
+                    var seed = state.RandomSeed ?? 1;
+                    // Use modulo with the seed - simple arithmetic that SQLite can translate
+                    // The multiplication spreads IDs, modulo wraps them, creating pseudo-random order
+                    query = query.OrderBy(i => (i.Id * seed) % 1000003);
                     break;
             }
 
-            var images = await query.ToListAsync();
-            if (state.OrderDescending) images.Reverse();
+            var totalCount = await query.CountAsync();
+            var pageCount = Math.Ceiling(totalCount / (float)PageSize);
 
-            var pageCount = Math.Ceiling(images.Count / (float)PageSize);
+            var images = await query
+                .Skip((page - 1) * PageSize)
+                .Take(PageSize)
+                .Include(i => i.Model)
+                .AsNoTracking()
+                .ToListAsync();
 
             return new ImagesDto
             {
-                Images = images.Skip((page - 1) * PageSize).Take(PageSize).ToList(),
+                Images = images,
                 CurrentPage = page,
                 PageCount = (int)pageCount,
                 HasNext = (int)pageCount > 1 && page < (int)pageCount,
                 HasPrev = page > 1
             };
+        }
+
+        public async Task<List<string>> GetProjectWorkflowIds(int projectId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (context.Images == null) return new();
+            return await context.Images
+                .Where(i => i.ProjectId == projectId && !i.IsHidden && i.WorkflowId != null)
+                .Select(i => i.WorkflowId!)
+                .Distinct()
+                .ToListAsync();
         }
 
         public async Task<string> GetSampleImage(int projectId)
@@ -372,7 +490,7 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            var images = await context.Images.OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
+            var images = await context.Images.Where(i => !i.IsHidden).Include(i => i.Model).OrderBy(i => EF.Functions.Random()).Take(amount).ToListAsync();
             return new ImagesDto
             {
                 Images = images,
@@ -387,33 +505,146 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             if (context.Images == null) return null;
-            return await context.Images.Where(i => i.ProjectId == projectId && i.Favorite).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
+            return await context.Images.Include(i => i.Model).Where(i => i.ProjectId == projectId && i.Favorite && !i.IsHidden).OrderBy(o => EF.Functions.Random()).FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Image>> GetRecentImagesWithPrompts(int limit = 10000)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Images
+                .Where(i => !string.IsNullOrEmpty(i.Prompt))
+                .OrderByDescending(i => i.DateCreated)
+                .Take(limit)
+                .Select(i => new Image
+                {
+                    Id = i.Id,
+                    Prompt = i.Prompt,
+                    NegativePrompt = i.NegativePrompt
+                })
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         public async Task<Image> UpdateImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var response = context.Update(image);
+            var imageEntity = context.Images.Include(i => i.Model).FirstOrDefault(i => i.Id == image.Id);
+
+            if (imageEntity == null)
+            {
+                return image;
+            }
+
+            context.Entry(imageEntity).CurrentValues.SetValues(image);
+
+            if (image.Model != null)
+            {
+                var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+                if (resource != null)
+                {
+                    imageEntity.ResourceId = resource.Id;
+                    imageEntity.Model = resource;
+                }
+            }
+
             await context.SaveChangesAsync();
-            return response.Entity;
+            PublishImageRecordSaved(imageEntity, isUpdate: true);
+            return imageEntity;
         }
 
         public async Task UpdateImages(List<Image> images)
         {
             using var context = await _factory.CreateDbContextAsync();
+            var updatedImages = new List<Image>();
             foreach (var image in images)
             {
-                context.Update(image);
+                var imageEntity = await context.Images.Include(i => i.Model).FirstOrDefaultAsync(i => i.Id == image.Id);
+                if (imageEntity != null)
+                {
+                    context.Entry(imageEntity).CurrentValues.SetValues(image);
+                    if (image.Model != null)
+                    {
+                        var resource = await context.Resources.FirstOrDefaultAsync(r => r.Id == image.Model.Id);
+                        if (resource != null)
+                        {
+                            imageEntity.ResourceId = resource.Id;
+                            imageEntity.Model = resource;
+                        }
+                    }
+                    updatedImages.Add(imageEntity);
+                }
             }
             await context.SaveChangesAsync();
+
+            foreach (var image in updatedImages)
+            {
+                PublishImageRecordSaved(image, isUpdate: true);
+            }
+        }
+
+        private void PublishImageRecordSaved(Image image, bool isUpdate)
+        {
+            _events.Publish(new ImageRecordSavedEventArgs
+            {
+                ImageId = image.Id,
+                ProjectId = image.ProjectId,
+                ImagePath = image.Path,
+                IsUpdate = isUpdate
+            });
         }
 
         public async Task<Image> DeleteImage(Image image)
         {
             using var context = await _factory.CreateDbContextAsync();
+            var affectedCleanupGroupIds = await GetAffectedCleanupGroupIdsAsync(context, image.Id);
             var response = context.Remove(image);
             await context.SaveChangesAsync();
+
+            // Delete the physical file after the entity is removed so a DB failure does
+            // not leave the record orphaned while the file is already gone.
+            var fileDeleted = false;
+            if (!string.IsNullOrWhiteSpace(image.Path))
+            {
+                try
+                {
+                    _io.DeleteFile(image.Path);
+                    fileDeleted = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "DeleteImage: entity {Id} removed from DB but file '{Path}' could not be deleted.",
+                        image.Id, image.Path);
+                }
+            }
+
+            _events.Publish(new ImageRecordDeletedEventArgs
+            {
+                ImageId = image.Id,
+                ProjectId = image.ProjectId,
+                ImagePath = image.Path,
+                FileDeleted = fileDeleted,
+                CleanupGroupIds = affectedCleanupGroupIds
+            });
+
             return response.Entity;
+        }
+
+        private static async Task<List<int>> GetAffectedCleanupGroupIdsAsync(AppDbContext context, int imageId)
+        {
+            var memberGroupIds = await context.CleanupGroupMembers
+                .AsNoTracking()
+                .Where(member => member.ImageId == imageId)
+                .Select(member => member.GroupId)
+                .ToListAsync();
+
+            var representativeGroupIds = await context.CleanupGroups
+                .AsNoTracking()
+                .Where(group => group.RepresentativeImageId == imageId)
+                .Select(group => group.Id)
+                .ToListAsync();
+
+            return memberGroupIds.Concat(representativeGroupIds).Distinct().ToList();
         }
 
         public async Task<string> GetSampler(int id)
@@ -424,25 +655,39 @@ namespace BlazorWebApp.Services
             return sampler != null ? sampler.Name : string.Empty;
         }
 
-        public async Task<int> GetSampler(string samplerName)
+        public async Task<int> GetSamplerIdByName(string samplerName)
         {
             if (string.IsNullOrWhiteSpace(samplerName)) return 0;
             using var context = await _factory.CreateDbContextAsync();
-            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name == samplerName || samplerName.Contains(s.Name));
+            var sampler = await context.Samplers.FirstOrDefaultAsync(s => s.Name.ToLower() == samplerName.ToLower());
             return sampler != null ? sampler.Id : -1;
         }
 
         private async Task PopulateSamplers()
         {
-            var samplers = await _api.GetSamplers();
+            var samplerNames = new List<string>();
+            try
+            {
+                samplerNames = await _capi.GetNodeInputOptionsAsync("KSampler", "sampler_name");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not retrieve samplers from ComfyUI backend.");
+            }
+
+            if (samplerNames.Count == 0)
+            {
+                _logger.LogWarning("No samplers retrieved, backend may not be available.");
+                return;
+            }
+
             using var context = await _factory.CreateDbContextAsync();
-            if (context.Samplers.Count() == 0 || context.Samplers.Count() < samplers.Count)
-                foreach (var sampler in samplers)
-                {
-                    var currentSampler = context.Samplers.SingleOrDefault(s => s.Name == sampler.Name);
-                    if (currentSampler == null)
-                        await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = sampler.Name });
-                }
+            foreach (var name in samplerNames)
+            {
+                var currentSampler = context.Samplers.SingleOrDefault(s => s.Name.ToLower() == name.ToLower());
+                if (currentSampler == null)
+                    await context.Samplers.AddAsync(new Data.Entities.Sampler { Name = name });
+            }
             await context.SaveChangesAsync();
         }
 
@@ -463,12 +708,24 @@ namespace BlazorWebApp.Services
         private async void PopulateModes()
         {
             using var context = await _factory.CreateDbContextAsync();
-            if (context.Modes.Count() == 0)
+            foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
             {
-                foreach (var mode in (ModeType[])Enum.GetValues(typeof(ModeType)))
-                {
+                var record = await context.Modes.FirstOrDefaultAsync(o => o.Type == mode);
+                if (record == null)
                     await context.Modes.AddAsync(new Mode { Type = mode });
-                }
+            }
+            await context.SaveChangesAsync();
+        }
+
+        private async void SeedResourceTypes()
+        {
+            var requiredTypes = new[] { "Checkpoint", "Diffusion", "TextualInversion", "Hypernetwork", "LORA", "LoCon", "VAE" };
+            using var context = await _factory.CreateDbContextAsync();
+            foreach (var typeName in requiredTypes)
+            {
+                var exists = await context.ResourceTypes.AnyAsync(t => t.Name == typeName);
+                if (!exists)
+                    await context.ResourceTypes.AddAsync(new ResourceType { Name = typeName });
             }
             await context.SaveChangesAsync();
         }
@@ -482,6 +739,113 @@ namespace BlazorWebApp.Services
             return query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToList();
         }
 
+        public async Task<List<Prompt>> GetPromptsByCategory(string? category)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var query = context.Prompts.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(p => p.Category == category);
+            return await query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetPromptsByTags(List<string> tags)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (tags == null || !tags.Any())
+                return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+
+            var query = context.Prompts.AsQueryable();
+            foreach (var tag in tags)
+            {
+                var tagLower = tag.ToLower();
+                query = query.Where(p => p.Tags != null && p.Tags.Any(t => t.ToLower().Contains(tagLower)));
+            }
+            return await query.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetPinnedPrompts()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => p.IsPinned)
+                .OrderBy(p => p.SortOrder)
+                .ToListAsync();
+        }
+
+        public async Task<List<Prompt>> GetFavoritePrompts()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => p.IsFavorite)
+                .OrderBy(p => p.Title)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllPromptCategories()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.Prompts
+                .Where(p => !string.IsNullOrWhiteSpace(p.Category))
+                .Select(p => p.Category!)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllPromptTags()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var allPrompts = await context.Prompts
+                .Where(p => p.Tags != null && p.Tags.Any())
+                .Select(p => p.Tags!)
+                .ToListAsync();
+
+            return allPrompts
+                .SelectMany(tags => tags)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToList();
+        }
+
+        public async Task UpdatePromptUsage(int promptId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var prompt = await context.Prompts.FirstOrDefaultAsync(p => p.Id == promptId);
+            if (prompt != null)
+            {
+                prompt.UsageCount++;
+                prompt.LastUsedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Prompt>> SearchPromptsWithKeywords(string query)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            if (string.IsNullOrWhiteSpace(query))
+                return await context.Prompts.OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Title).ToListAsync();
+
+            // Load all prompts into memory first to avoid EF Core translation issues with complex LINQ
+            var allPrompts = await context.Prompts.ToListAsync();
+
+            // Split query into keywords
+            var keywords = query.ToLower().Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Filter in memory where we can use complex LINQ operations
+            var results = allPrompts
+                .Where(p => keywords.Any(k =>
+                    (p.Title != null && p.Title.ToLower().Contains(k)) ||
+                    (p.Positive != null && p.Positive.ToLower().Contains(k)) ||
+                    (p.Negative != null && p.Negative.ToLower().Contains(k)) ||
+                    (p.Category != null && p.Category.ToLower().Contains(k)) ||
+                    (p.Tags != null && p.Tags.Any(t => t.ToLower().Contains(k)))))
+                .OrderByDescending(p => p.IsFavorite)
+                .ThenBy(p => p.Title)
+                .ToList();
+
+            return results;
+        }
+
         public async Task CreatePrompt(Prompt prompt)
         {
             using var context = await _factory.CreateDbContextAsync();
@@ -493,10 +857,17 @@ namespace BlazorWebApp.Services
         {
             using var context = await _factory.CreateDbContextAsync();
             var entity = await context.Prompts.FirstOrDefaultAsync(p => p.Id == prompt.Id);
+            if (entity == null) return;
+
             entity.Title = prompt.Title;
             entity.Positive = prompt.Positive;
             entity.Negative = prompt.Negative;
             entity.IsFavorite = prompt.IsFavorite;
+            entity.Loras = prompt.Loras;
+            entity.Category = prompt.Category;
+            entity.Tags = prompt.Tags;
+            entity.IsPinned = prompt.IsPinned;
+            entity.SortOrder = prompt.SortOrder;
             await context.SaveChangesAsync();
         }
 
@@ -520,10 +891,50 @@ namespace BlazorWebApp.Services
             return await context.Resources.Where(r => r.Type.Id == typeId).Include(r => r.Type).Include(r => r.SubType).ToListAsync();
         }
 
+        public async Task<List<Resource>> GetResources(int? typeId = null, string? baseModel = null)
+        {
+            using var context = _factory.CreateDbContext();
+            var query = context.Resources.Include(r => r.Type).Include(r => r.SubType).AsQueryable();
+
+            if (typeId.HasValue)
+            {
+                query = query.Where(r => r.Type.Id == typeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(baseModel))
+            {
+                query = query.Where(r => r.BaseModel == baseModel);
+            }
+
+            return await query.ToListAsync();
+        }
+
         public async Task<Resource> GetResourceById(int id)
         {
             using var context = _factory.CreateDbContext();
             return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Id == id);
+        }
+
+        public async Task<List<string>> GetDistinctBaseModels()
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources
+                .Where(r => r.BaseModel != null)
+                .Select(r => r.BaseModel)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetDistinctBaseModels(int typeId)
+        {
+            using var context = _factory.CreateDbContext();
+            return await context.Resources
+                .Where(r => r.BaseModel != null && r.Type.Id == typeId)
+                .Select(r => r.BaseModel)
+                .Distinct()
+                .OrderBy(b => b)
+                .ToListAsync();
         }
 
         public async Task<Resource> GetResourceByCivitaiModelId(int civitaiId)
@@ -535,7 +946,8 @@ namespace BlazorWebApp.Services
         public async Task<Resource> GetResourceByFilename(string filename)
         {
             using var context = _factory.CreateDbContext();
-            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Filename == filename);
+            filename = Path.GetFileName(filename);
+            return await context.Resources.Include(r => r.Type).Include(r => r.SubType).FirstOrDefaultAsync(r => r.Filename == filename || r.Filename.Contains(filename));
         }
 
         public async Task<List<ResourceType>> GetResourceTypes(bool ordered)
@@ -653,6 +1065,21 @@ namespace BlazorWebApp.Services
             return context.ResourceImages.Where(i => i.CivitaiModelVersionID == id).ToList();
         }
 
+        public async Task<List<ResourceImage>> GetResourceImagesByHashes(IEnumerable<string> hashes)
+        {
+            var distinctHashes = hashes
+                .Where(hash => !string.IsNullOrWhiteSpace(hash))
+                .Distinct()
+                .ToList();
+
+            if (distinctHashes.Count == 0) return new List<ResourceImage>();
+
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.ResourceImages
+                .Where(image => distinctHashes.Contains(image.Hash))
+                .ToListAsync();
+        }
+
         public async Task<ImagesDto> GetRandomResourceImages(int amount)
         {
             using var context = await _factory.CreateDbContextAsync();
@@ -663,7 +1090,7 @@ namespace BlazorWebApp.Services
             {
                 var image = new Image(resourceImage)
                 {
-                    SamplerId = await GetSampler(resourceImage.Sampler)
+                    SamplerId = await GetSamplerIdByName(resourceImage.Sampler)
                 };
                 images.Add(image);
             }
@@ -711,11 +1138,21 @@ namespace BlazorWebApp.Services
         public async Task<State?> GetState(int id)
         {
             using var context = await _factory.CreateDbContextAsync();
-            var state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync(s => s.Id == id);
+            var stateVersion = int.Parse(_configuration["StateVersion"]);
+
+            var state = await context.States
+                .Where(s => s.Version == stateVersion)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            // Fallback: If ID 1 requested (AutoSave) and not found, get latest AutoSave for current version
             if (state == null && id == 1)
             {
-                state = await context.States.Where(s => s.Version == int.Parse(_configuration["StateVersion"])).FirstOrDefaultAsync();
+                state = await context.States
+                    .Where(s => s.Version == stateVersion && s.Title == "AutoSave")
+                    .OrderByDescending(s => s.CreationDate)
+                    .FirstOrDefaultAsync();
             }
+
             return state;
         }
 
@@ -778,5 +1215,298 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task UpdateFolderSortOrder(int folderId, int newSortOrder)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var folder = await context.Folders.FindAsync(folderId);
+            if (folder != null)
+            {
+                folder.SortOrder = newSortOrder;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        #region Wildcard Operations
+
+        // Wildcard Collection Operations
+        public async Task<List<WildcardCollection>> GetAllWildcardCollections()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries)
+                .OrderBy(c => c.Category)
+                .ThenBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardCollection?> GetWildcardCollectionById(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries.OrderBy(e => e.SortOrder))
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<WildcardCollection?> GetWildcardCollectionByName(string name)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Include(c => c.Entries.OrderBy(e => e.SortOrder))
+                .FirstOrDefaultAsync(c => c.Name.ToLower() == name.ToLower());
+        }
+
+        public async Task<List<WildcardCollection>> GetWildcardCollectionsByCategory(string? category)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var query = context.WildcardCollections.Include(c => c.Entries).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(category))
+                query = query.Where(c => c.Category == category);
+
+            return await query
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetAllWildcardCategories()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardCollections
+                .Where(c => !string.IsNullOrWhiteSpace(c.Category))
+                .Select(c => c.Category!)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardCollection> CreateWildcardCollection(WildcardCollection collection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            collection.CreatedAt = DateTime.Now;
+            collection.UpdatedAt = DateTime.Now;
+            var entity = await context.WildcardCollections.AddAsync(collection);
+            await context.SaveChangesAsync();
+            return entity.Entity;
+        }
+
+        public async Task<WildcardCollection> UpdateWildcardCollection(WildcardCollection collection)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var existing = await context.WildcardCollections.FindAsync(collection.Id);
+            if (existing == null) return null;
+
+            existing.Name = collection.Name;
+            existing.Description = collection.Description;
+            existing.Category = collection.Category;
+            existing.UpdatedAt = DateTime.Now;
+
+            await context.SaveChangesAsync();
+            return existing;
+        }
+
+        public async Task UpdateWildcardCollectionUsage(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var collection = await context.WildcardCollections.FindAsync(id);
+            if (collection != null)
+            {
+                collection.UsageCount++;
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public async Task DeleteWildcardCollection(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var collection = await context.WildcardCollections.FindAsync(id);
+            if (collection != null)
+            {
+                context.WildcardCollections.Remove(collection);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        // Wildcard Entry Operations
+        public async Task<List<WildcardEntry>> GetEntriesByCollectionId(int collectionId)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.WildcardEntries
+                .Where(e => e.CollectionId == collectionId)
+                .OrderBy(e => e.SortOrder)
+                .ToListAsync();
+        }
+
+        public async Task<WildcardEntry> CreateWildcardEntry(WildcardEntry entry)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entity = await context.WildcardEntries.AddAsync(entry);
+            await context.SaveChangesAsync();
+
+            // Update collection timestamp
+            var collection = await context.WildcardCollections.FindAsync(entry.CollectionId);
+            if (collection != null)
+            {
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+
+            return entity.Entity;
+        }
+
+        public async Task<WildcardEntry> UpdateWildcardEntry(WildcardEntry entry)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var existing = await context.WildcardEntries.FindAsync(entry.Id);
+            if (existing == null) return null;
+
+            existing.Value = entry.Value;
+            existing.Weight = entry.Weight;
+            existing.SortOrder = entry.SortOrder;
+
+            await context.SaveChangesAsync();
+
+            // Update collection timestamp
+            var collection = await context.WildcardCollections.FindAsync(existing.CollectionId);
+            if (collection != null)
+            {
+                collection.UpdatedAt = DateTime.Now;
+                await context.SaveChangesAsync();
+            }
+
+            return existing;
+        }
+
+        public async Task DeleteWildcardEntry(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entry = await context.WildcardEntries.FindAsync(id);
+            if (entry != null)
+            {
+                var collectionId = entry.CollectionId;
+                context.WildcardEntries.Remove(entry);
+                await context.SaveChangesAsync();
+
+                // Update collection timestamp
+                var collection = await context.WildcardCollections.FindAsync(collectionId);
+                if (collection != null)
+                {
+                    collection.UpdatedAt = DateTime.Now;
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        #endregion
+
+        #region System Prompt Template Operations
+
+        private async void SeedDefaultSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+
+            // Get default templates from OllamaService
+            var defaultTemplates = _ollamaService.GetDefaultTemplates();
+
+            var existingDefaults = await context.SystemPromptTemplates
+                .Where(t => t.IsDefault)
+                .ToListAsync();
+            var existingByName = existingDefaults.ToDictionary(t => t.Name, t => t);
+
+            int added = 0, refreshed = 0;
+            foreach (var template in defaultTemplates)
+            {
+                if (!existingByName.TryGetValue(template.Name, out var existing))
+                {
+                    // New default template: seed it.
+                    template.CreatedAt = DateTime.UtcNow;
+                    template.UpdatedAt = DateTime.UtcNow;
+                    await context.SystemPromptTemplates.AddAsync(template);
+                    added++;
+                    continue;
+                }
+
+                // Existing default: refresh in place if the in-code definition has changed.
+                // This lets prompt tweaks ship via app updates without requiring a manual DB reset.
+                // User customizations should clone the template (IsDefault=false) instead of editing the default.
+                if (!AreTemplatesEquivalent(existing, template))
+                {
+                    existing.Description = template.Description;
+                    existing.Messages = template.Messages;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    refreshed++;
+                }
+            }
+
+            if (added == 0 && refreshed == 0)
+                return;
+
+            await context.SaveChangesAsync();
+            _logger.LogInformation("System prompt template seeding: {Added} added, {Refreshed} refreshed.", added, refreshed);
+        }
+
+        /// <summary>
+        /// Shallow body comparison between an in-code default template and the matching DB row.
+        /// Compares description plus the role+content of every message. Used by the seeder to
+        /// decide whether to refresh an IsDefault row in place.
+        /// </summary>
+        private static bool AreTemplatesEquivalent(SystemPromptTemplate a, SystemPromptTemplate b)
+        {
+            if (!string.Equals(a.Description ?? string.Empty, b.Description ?? string.Empty, StringComparison.Ordinal))
+                return false;
+            var ma = a.Messages ?? new();
+            var mb = b.Messages ?? new();
+            if (ma.Count != mb.Count) return false;
+            for (int i = 0; i < ma.Count; i++)
+            {
+                if (!string.Equals(ma[i].Role, mb[i].Role, StringComparison.Ordinal)) return false;
+                if (!string.Equals(ma[i].Content ?? string.Empty, mb[i].Content ?? string.Empty, StringComparison.Ordinal)) return false;
+            }
+            return true;
+        }
+
+        public async Task<List<SystemPromptTemplate>> GetSystemPromptTemplates()
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates
+                .OrderBy(t => t.IsDefault ? 0 : 1)
+                .ThenBy(t => t.Name)
+                .ToListAsync();
+        }
+
+        public async Task<SystemPromptTemplate?> GetSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            return await context.SystemPromptTemplates.FindAsync(id);
+        }
+
+        public async Task<bool> CreateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.CreatedAt = DateTime.UtcNow;
+            template.UpdatedAt = DateTime.UtcNow;
+            await context.SystemPromptTemplates.AddAsync(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> UpdateSystemPromptTemplate(SystemPromptTemplate template)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            template.UpdatedAt = DateTime.UtcNow;
+            context.SystemPromptTemplates.Update(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> DeleteSystemPromptTemplate(int id)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var template = await context.SystemPromptTemplates.FindAsync(id);
+            if (template == null || template.IsDefault) return false;
+
+            context.SystemPromptTemplates.Remove(template);
+            return await context.SaveChangesAsync() > 0;
+        }
+
+        #endregion
     }
 }

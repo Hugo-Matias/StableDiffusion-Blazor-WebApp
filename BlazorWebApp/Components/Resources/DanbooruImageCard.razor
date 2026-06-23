@@ -1,49 +1,145 @@
-﻿<div>
-    <MudBadge Class="mb-n7 ms-7" Style="opacity: 0.5;" Content=@(SetBadgeRating()) Color=@(SetBadgeColor()) Overlap />
-     <MudCard Style="min-width: 12rem;" Elevation="4" Class="m-2">
-         <MudCardMedia Image=@(Post.IsVideo ? Post.PreviewUrl : Post.SampleUrl) />
-         <MudCardContent Class="pb-n4" Style="align-items:center; justify-content:center;">
-             <MudStack Row=true>
-                 <MudText Typo="Typo.caption">
-                     <MudIcon Icon="fa-solid fa-star info-icon" />
-                     @Post.Score
-                </MudText>
-                <MudText Typo="Typo.caption">
-                    <MudIcon Icon="fa-solid fa-left-right info-icon" />
-                    @($"{Post.Width}x{Post.Height}")
-                </MudText>
-                <MudText Typo="Typo.caption">
-                    <MudIcon Icon=@("fa-regular " + (Post.IsVideo ? "fa-file-video" : "fa-file-image") + " info-icon") />
-                    @Post.Extension
-                </MudText>
-            </MudStack>
-        </MudCardContent>
-        <MudCardActions Style="align-items: center; justify-content: center;">
-            <MudTooltip Color="Color.Dark" Style="max-width:50vw">
-                <ChildContent>
-                    <MudStack Row=true>
-                        <MudIconButton OnClick=@(() => SendTags(false)) Icon="fa-solid fa-file-lines" Color="Color.Info" />
-                        <MudIconButton OnClick=@(() => SendTags(true)) Icon="fa-solid fa-file-image" Color="Color.Primary" />
-                        <MudIconButton OnClick=ShowImage Icon="fa-solid fa-expand" Color="Color.Warning" />
-                    </MudStack>
-                </ChildContent>
-                <TooltipContent>
-                    <MudText Typo="Typo.caption">
-                        @(string.Join(", ", Post.Tags))
-                    </MudText>
-                </TooltipContent>
-            </MudTooltip>
-        </MudCardActions>
-    </MudCard>
+﻿@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+    <div class="image-wrapper">
+        @if (Post.IsVideo)
+        {
+            <video id="@_videoId" src="@Post.SampleUrl" poster="@Post.PreviewUrl" class="card-media" muted loop playsinline
+                   preload="metadata" />
+        }
+        else
+        {
+            <img src="@Post.SampleUrl" alt="Danbooru post" class="card-image" loading="lazy" />
+        }
+        
+        @* Hover Overlay *@
+        <div class="hover-overlay @(_isHovered ? "visible" : "")">
+            @* Top Section - Rating Badge *@
+            <div class="overlay-top @(_isHovered ? "visible" : "")">
+                <div class="rating-badge @GetRatingClass()">
+                    @SetBadgeRating()
+                </div>
+                @if (Post.IsVideo)
+                {
+                    <div class="video-badge">
+                        <i class="fa-solid fa-video"></i>
+                    </div>
+                }
+            </div>
+            
+            @* Center Section - Quick Actions *@
+            <div class="overlay-center @(_isHovered ? "visible" : "")">
+                <div class="quick-actions">
+                    <button class="action-btn" @onclick="SendTags" @onclick:stopPropagation title="Copy Tags">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </button>
+                    <button class="action-btn primary" @onclick="ShowImage" @onclick:stopPropagation
+                            title="View Fullscreen">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button class="action-btn" @onclick="HandleSave" @onclick:stopPropagation title="Save to Library"
+                            disabled="@_isSaving">
+                        <i class="fa-solid fa-bookmark"></i>
+                    </button>
+                </div>
+            </div>
+            
+            @* Bottom Section - Info *@
+            <div class="overlay-bottom @(_isHovered ? "visible" : "")">
+                <div class="info-row">
+                    <span class="info-item">
+                        <i class="fa-solid fa-star"></i>
+                        @Post.Score
+                    </span>
+                    <span class="info-item">
+                        <i class="fa-solid fa-expand-alt"></i>
+                        @($"{Post.Width}×{Post.Height}")
+                    </span>
+                    <span class="info-item">
+                        @Post.Extension.ToUpper()
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        @* Persistent Rating Indicator *@
+        @if (!_isHovered)
+        {
+            <div class="rating-indicator @GetRatingClass()">
+                @SetBadgeRating()[0]
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter] public DanbooruPost Post { get; set; }
-    [Parameter] public EventCallback<bool> OnSendTags { get; set; }
+    [Parameter] public DanbooruPost Post { get; set; } = default!;
+    [Parameter] public EventCallback OnSendTags { get; set; }
     [Parameter] public EventCallback OnShowImage { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
 
-    private async Task SendTags(bool isImg2Img) => await OnSendTags.InvokeAsync(isImg2Img);
+    private IJSObjectReference? _jsModule;
+    private string _videoId = $"danbooru-video-{Guid.NewGuid():N}";
+    private bool _isHovered;
+    private bool _isSaving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Post.IsVideo)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/VideoCard.js");
+        }
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "danbooru-card";
+        if (_isHovered) classes += " hovered";
+        return classes;
+    }
+
+    private async Task HandleMouseEnter()
+    {
+        _isHovered = true;
+        if (Post.IsVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("playVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task HandleMouseLeave()
+    {
+        _isHovered = false;
+        if (Post.IsVideo && _jsModule != null)
+        {
+            try
+            {
+                await _jsModule.InvokeVoidAsync("pauseVideo", _videoId);
+            }
+            catch { }
+        }
+    }
+
+    private async Task SendTags() => await OnSendTags.InvokeAsync();
     private async Task ShowImage() => await OnShowImage.InvokeAsync();
+    private async Task HandleSave()
+    {
+        _isSaving = true;
+        try
+        {
+            await OnSave.InvokeAsync();
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
 
     private string SetBadgeRating()
     {
@@ -57,14 +153,27 @@
         };
     }
 
-    private Color SetBadgeColor()
+    private string GetRatingClass()
     {
         return Post.Rating switch
         {
-            "s" => Color.Success,
-            "q" => Color.Warning,
-            "e" => Color.Error,
-            _ => Color.Primary
+            "g" => "rating-general",
+            "s" => "rating-sensitive",
+            "q" => "rating-questionable",
+            "e" => "rating-explicit",
+            _ => "rating-none"
         };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule != null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch { }
+        }
     }
 }

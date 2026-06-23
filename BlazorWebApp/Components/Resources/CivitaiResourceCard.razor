@@ -1,0 +1,205 @@
+@inject IIOService IO
+@inject IJSRuntime JS
+
+<div class="@GetCardClasses()" 
+     style="@GetCardStyle()"
+     @onmouseenter="OnMouseEnter" 
+     @onmouseleave="OnMouseLeave"
+     @onclick="@(async () => await OnLoad.InvokeAsync())">
+
+    @* Rainbow gradient border *@
+    <div class="card-border-gradient"></div>
+
+    <div class="card-inner">
+        <div class="image-wrapper">
+            @if (IsVideo())
+            {
+                <video id="@_videoId" class="card-image" loop muted playsinline preload="metadata">
+                    <source src="@ImageSrc" />
+                </video>
+            }
+            else
+            {
+                <img src="@(string.IsNullOrWhiteSpace(ImageSrc) ? "./no_image.png" : ImageSrc)" 
+                     alt="@Title" 
+                     class="card-image" 
+                     loading="lazy" />
+            }
+            
+            @* Top Overlay - Badges *@
+            <div class="top-overlay">
+                <div class="badges-left">
+                    <div class="type-badge" style="@GetTypeBadgeStyle()">
+                        <span class="type-text">@Type</span>
+                        @if (IsNsfw)
+                        {
+                            <span class="nsfw-separator">|</span>
+                            <i class="fa-solid fa-fire nsfw-icon"></i>
+                        }
+                    </div>
+                    @if (IsEarlyAccess)
+                    {
+                        <div class="early-access-badge">
+                            Early Access
+                        </div>
+                    }
+                </div>
+                <div class="badges-right">
+                    <button class="menu-btn" @onclick:stopPropagation @onclick="@(() => { })">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+
+            @* Hover Overlay *@
+            <div class="hover-overlay @(_isHovered ? "visible" : "")">
+                <div class="center-action @(_isHovered ? "visible" : "")">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </div>
+            </div>
+            
+            @* Bottom Section - Creator & Stats *@
+            <div class="bottom-overlay">
+                @if (!string.IsNullOrWhiteSpace(CreatorUsername))
+                {
+                    <div class="creator-section">
+                        <div class="creator-avatar">
+                            @if (!string.IsNullOrWhiteSpace(CreatorImage))
+                            {
+                                <img src="@CreatorImage" alt="@CreatorUsername" />
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-user"></i>
+                            }
+                        </div>
+                        <span class="creator-name">@CreatorUsername</span>
+                    </div>
+                }
+                
+                <div class="title-section">
+                    <span class="resource-title">@Title</span>
+                </div>
+                
+                @if (ShowStats)
+                {
+                    <div class="stats-section">
+                        @if (DownloadCount > 0)
+                        {
+                            <span class="stat-item">
+                                <i class="fa-solid fa-download"></i>
+                                @FormatNumber(DownloadCount)
+                            </span>
+                        }
+                        @if (FavoriteCount > 0)
+                        {
+                            <span class="stat-item">
+                                <i class="fa-solid fa-bookmark"></i>
+                                @FormatNumber(FavoriteCount)
+                            </span>
+                        }
+                        @if (CommentCount > 0)
+                        {
+                            <span class="stat-item">
+                                <i class="fa-solid fa-comment"></i>
+                                @FormatNumber(CommentCount)
+                            </span>
+                        }
+                        @if (Rating > 0)
+                        {
+                            <span class="stat-item rating">
+                                <i class="fa-solid fa-thumbs-up"></i>
+                                @FormatNumber((int)Math.Round(Rating * RatingCount / 5))
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? ImageSrc { get; set; }
+    [Parameter] public string Type { get; set; } = "Model";
+    [Parameter] public string HoverColor { get; set; } = "mud-palette-primary";
+    [Parameter] public EventCallback OnLoad { get; set; }
+    [Parameter] public string Width { get; set; } = "16rem";
+    [Parameter] public float Opacity { get; set; } = 1f;
+    [Parameter] public string Filter { get; set; } = string.Empty;
+    
+    // CivitAI-specific properties
+    [Parameter] public string? CreatorUsername { get; set; }
+    [Parameter] public string? CreatorImage { get; set; }
+    [Parameter] public bool IsNsfw { get; set; }
+    [Parameter] public bool IsEarlyAccess { get; set; }
+    [Parameter] public int DownloadCount { get; set; }
+    [Parameter] public int FavoriteCount { get; set; }
+    [Parameter] public int CommentCount { get; set; }
+    [Parameter] public double Rating { get; set; }
+    [Parameter] public int RatingCount { get; set; }
+    [Parameter] public bool ShowStats { get; set; } = true;
+
+    private bool _isHovered;
+    private string _videoId = $"vid-{Guid.NewGuid():N}";
+
+    private async Task OnMouseEnter()
+    {
+        _isHovered = true;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"document.getElementById('{_videoId}')?.play()"); }
+            catch { }
+        }
+    }
+
+    private async Task OnMouseLeave()
+    {
+        _isHovered = false;
+        if (IsVideo())
+        {
+            try { await JS.InvokeVoidAsync("eval", $"(function(){{var v=document.getElementById('{_videoId}');if(v){{v.pause();v.currentTime=0;}}}})()"); }
+            catch { }
+        }
+    }
+
+    private bool IsVideo()
+    {
+        if (!string.IsNullOrWhiteSpace(ImageSrc))
+        {
+            var url = ImageSrc.ToLowerInvariant();
+            return url.Contains(".mp4") || url.Contains(".webm");
+        }
+        return false;
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = "civitai-resource-card";
+        if (_isHovered) classes += " hovered";
+        return classes;
+    }
+
+    private string GetCardStyle()
+    {
+        var style = $"--card-width: {Width}; --hover-color: var(--{HoverColor});";
+        if (Opacity < 1f) style += $" opacity: {Opacity};";
+        if (!string.IsNullOrWhiteSpace(Filter)) style += $" filter: {Filter};";
+        return style;
+    }
+
+    private string GetTypeBadgeStyle()
+    {
+        return $"background-color: var(--{HoverColor});";
+    }
+
+    private string FormatNumber(int number)
+    {
+        if (number >= 1000000)
+            return $"{number / 1000000.0:0.#}M";
+        if (number >= 1000)
+            return $"{number / 1000.0:0.#}K";
+        return number.ToString();
+    }
+}

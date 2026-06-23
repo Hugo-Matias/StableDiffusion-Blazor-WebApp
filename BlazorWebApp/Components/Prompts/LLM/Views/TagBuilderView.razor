@@ -1,0 +1,394 @@
+@* Tag Builder: Natural language -> Danbooru tag prompt via two-pass retrieval *@
+@using BlazorWebApp.Events
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject TagPromptService TagService
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IEventService Events
+@inject IJSRuntime JSRuntime
+@inject IPromptSendToService PromptSendTo
+@implements IAsyncDisposable
+
+<div class="tag-builder-page">
+<MudStack Spacing="4">
+    <LLMToolPageDescription Title="Tag Builder" Icon="@Icons.Material.Filled.LocalOffer"
+                            Description="Turn a plain language description into a verified Danbooru tag prompt. Pick a verbosity, a model preset, and let the LLM extract concepts that get resolved against the local CSV catalogue. Use Hybrid for speed, Two-Pass for fidelity." />
+
+    @* Input Section: flat, auto-grow, Enter-to-build (Shift+Enter for newline) *@
+    <MudCard Elevation="2" Class="pa-4">
+        <div @ref="_inputRoot">
+            <MudTextField @bind-Value="_userInput"
+                          Placeholder="Describe what you want in plain language (e.g. 'woman at the beach, sunset lighting'). Enter to build, Shift+Enter for newline."
+                          Lines="1" AutoGrow="true" MaxLines="8" Variant="Variant.Text" Margin="Margin.Dense" Immediate="true"
+                          OnKeyDown="OnInputKeyDownAsync" />
+        </div>
+    </MudCard>
+
+    @* Settings Section *@
+    <MudCard Elevation="2" Class="pa-4">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.subtitle1">Settings</MudText>
+
+            @* Verbosity Slider *@
+            <div class="d-flex align-center gap-4">
+                <span style="min-width: 90px;">Verbosity:</span>
+                <MudSlider @bind-Value="_verbosityIndex" Min="0" Max="3" Step="1" TickMarks="true"
+                           Class="flex-grow-1" />
+                <MudChip Color="Color.Primary" Size="Size.Small" Class="ml-2">
+                    @_verbosityLabels[_verbosityIndex]
+                </MudChip>
+            </div>
+
+            @* Mode Toggle (Two-Pass vs Hybrid) *@
+            <MudSelect @bind-Value="_mode" Label="Pipeline Mode" Variant="Variant.Text" Dense
+                       HelperText="Two-Pass: extract concepts then resolve via CSV (highest fidelity). Hybrid: single LLM call, CSV-verified (faster, needs capable model).">
+                <MudSelectItem Value="@TagBuilderMode.TwoPass">Two-Pass (default)</MudSelectItem>
+                <MudSelectItem Value="@TagBuilderMode.Hybrid">Hybrid (one-pass)</MudSelectItem>
+            </MudSelect>
+
+            @* Model Preset Dropdown *@
+            <MudSelect @bind-Value="_preset" Label="Model Preset" Variant="Variant.Text" Dense>
+                @foreach (var preset in _presetOptions)
+                {
+                    <MudSelectItem Value="@preset.Value">@preset.Label</MudSelectItem>
+                }
+            </MudSelect>
+
+            @* Category Toggles *@
+            <MudText Typo="Typo.subtitle2" Class="mt-2">Tag Categories</MudText>
+            <div class="d-flex flex-wrap gap-4">
+                @foreach (var category in _categoryOptions)
+                {
+                    <MudCheckBox @bind-Value="_categoryToggles[category.Key]" Label="@category.Value"
+                                 Color="Color.Secondary" Size="Size.Small" />
+                }
+            </div>
+
+            <MudCheckBox @bind-Value="_keepUnverified" Label="Keep unverified tags" Color="Color.Warning"
+                         Size="Size.Small" />
+        </MudStack>
+    </MudCard>
+
+    @* Build Button *@
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleBuild"
+               Disabled="_isBuilding || string.IsNullOrWhiteSpace(_userInput)" StartIcon="@Icons.Material.Filled.Build">
+        @(_isBuilding ? "Building..." : "Build Prompt")
+    </MudButton>
+
+    @* Resolution Preview (shown after build) *@
+    @if (_result != null && _result.ResolvedConcepts.Any())
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center">
+                        <MudText Typo="Typo.subtitle1">Resolution Preview</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-auto">
+                            @_result.ResolvedConcepts.Count concepts resolved
+                        </MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudStack Spacing="2">
+                        @foreach (var rc in _result.ResolvedConcepts)
+                        {
+                            <MudPaper Elevation="1" Class="pa-3">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@rc.Concept.Text</MudText>
+                                        @if (rc.Concept.Category.HasValue)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Info">
+                                                @rc.Concept.Category.Value
+                                            </MudChip>
+                                        }
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var tag in rc.Candidates)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Default" Class="tag-chip">
+                                                @tag.Name (@tag.FuzzyScore)
+                                            </MudChip>
+                                        }
+                                    </div>
+                                </div>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudCard>
+    }
+
+    @* Result Section *@
+    @if (_result != null)
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="2">
+                <div class="d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.subtitle1">Generated Prompt</MudText>
+                    <div class="d-flex gap-2">
+                        <MudChip Size="Size.Small" Color="Color.Info">@_result.Mode</MudChip>
+                        <MudChip Size="Size.Small" Color="Color.Primary">@_result.Preset</MudChip>
+                        <MudChip Size="Size.Small" Color="Color.Secondary">@_result.Verbosity</MudChip>
+                    </div>
+                </div>
+
+                <MudTextField @bind-Value="_finalPromptText" Lines="4" Variant="Variant.Outlined" ReadOnly="true" />
+
+                @if (_result.DroppedAugmentations?.Any() == true)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Dropped @(_result.DroppedAugmentations.Count) unverified tag(s):
+                        @string.Join(", ", _result.DroppedAugmentations)
+                    </MudAlert>
+                }
+
+                @* Workshop-style send-to action bar split into two groups: LLM tool destinations and Workflows. *@
+                <div class="send-to-section tag-builder-send-to" @onclick:stopPropagation="true">
+                    <div class="send-to-group">
+                        <span class="send-to-group-label">LLM Tools</span>
+                        <div class="send-to-buttons">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Variant="Variant.Text"
+                                           OnClick="HandleCopyToClipboard" Title="Copy prompt" aria-label="Copy prompt" />
+                            @if (OnSendToProcess.HasDelegate)
+                            {
+                                <button type="button" class="send-to-btn" @onclick="HandleSendToProcessAsync"
+                                        title="Send to Process">
+                                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+                                    <span>Process</span>
+                                </button>
+                            }
+                            @if (OnSendToWorkshop.HasDelegate)
+                            {
+                                <button type="button" class="send-to-btn" @onclick="HandleSendToWorkshopAsync"
+                                        title="Send to Workshop (new session)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Small" />
+                                    <span>Workshop</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (_sendWorkflows.Count > 0)
+                    {
+                        <div class="send-to-group">
+                            <span class="send-to-group-label">Workflows</span>
+                            <div class="send-to-buttons">
+                                @foreach (var wf in _sendWorkflows)
+                                {
+                                    <button type="button" class="send-to-btn @PromptSendTo.GetWorkflowModeClass(wf.Mode)"
+                                            @onclick="() => PromptSendTo.SendPromptToWorkflow(_finalPromptText, wf)"
+                                            title="Send to @wf.Title">
+                                        <MudIcon Icon="@PromptSendTo.GetWorkflowIcon(wf.Mode)" Size="Size.Small" />
+                                        <span>@wf.Title</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @* Debug / Raw Responses *@
+                @if (!string.IsNullOrWhiteSpace(_result.RawPass1) || !string.IsNullOrWhiteSpace(_result.RawPass2))
+                {
+                    <MudExpansionPanel Text="Debug / Raw LLM responses">
+                        <MudStack Spacing="2">
+                            @if (!string.IsNullOrWhiteSpace(_result.RawPass1))
+                            {
+                                <MudText Typo="Typo.caption" Class="font-weight-bold">Pass 1 (concept extraction):</MudText>
+                                <MudTextField Value="_result.RawPass1" T="string" Lines="6" ReadOnly="true"
+                                              Variant="Variant.Outlined" />
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_result.RawPass2))
+                            {
+                                <MudText Typo="Typo.caption" Class="font-weight-bold">
+                                    @(_result.Mode == TagBuilderMode.Hybrid ? "Hybrid response" : "Pass 2 (assembly)"):
+                                </MudText>
+                                <MudTextField Value="_result.RawPass2" T="string" Lines="6" ReadOnly="true"
+                                              Variant="Variant.Outlined" />
+                            }
+                        </MudStack>
+                    </MudExpansionPanel>
+                }
+            </MudStack>
+        </MudCard>
+    }
+
+    @* Empty State *@
+    @if (_result == null && !_isBuilding)
+    {
+        <div class="d-flex flex-column align-center pa-6" style="opacity: 0.6;">
+            <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.subtitle1">No prompt built yet</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1">
+                Enter a description above and click "Build Prompt" to generate Danbooru tags.
+            </MudText>
+        </div>
+    }
+</MudStack>
+</div>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+    [Parameter] public EventCallback<string> OnSendToWorkshop { get; set; }
+
+    private string _userInput = string.Empty;
+    private ElementReference _inputRoot;
+    private int _verbosityIndex = 1; // Standard
+    private TagModelPreset _preset = TagModelPreset.Pony;
+    private TagBuilderMode _mode = TagBuilderMode.TwoPass;
+    private bool _keepUnverified = false;
+    private Dictionary<TagCategory, bool> _categoryToggles = new()
+    {
+        [TagCategory.General] = true,
+        [TagCategory.Artist] = false,
+        [TagCategory.Copyright] = true,
+        [TagCategory.Character] = true,
+        [TagCategory.Meta] = true
+    };
+
+    private bool _isBuilding;
+    private TagBuilderResult? _result;
+    private string _finalPromptText = string.Empty;
+    private List<BlazorWebApp.Models.Workflow> _sendWorkflows = new();
+
+    private static readonly string[] _verbosityLabels = { "Minimal", "Standard", "Detailed", "Exhaustive" };
+
+    private static readonly (TagModelPreset Value, string Label)[] _presetOptions =
+    {
+        (TagModelPreset.Pony, "Pony Diffusion"),
+        (TagModelPreset.Illustrious, "Illustrious"),
+        (TagModelPreset.NoobAI, "NoobAI"),
+        (TagModelPreset.Anima, "Anima")
+    };
+
+    private static readonly Dictionary<TagCategory, string> _categoryOptions = new()
+    {
+        [TagCategory.General] = "General",
+        [TagCategory.Artist] = "Artist",
+        [TagCategory.Copyright] = "Copyright",
+        [TagCategory.Character] = "Character",
+        [TagCategory.Meta] = "Meta"
+    };
+
+    private async Task HandleBuild()
+    {
+        if (string.IsNullOrWhiteSpace(_userInput))
+        {
+            Snackbar.Add("Enter a description first.", Severity.Warning);
+            return;
+        }
+
+        _isBuilding = true;
+        State.State.Prompts.LLM.TagBuilder.Verbosity = (TagVerbosity)_verbosityIndex;
+        State.State.Prompts.LLM.TagBuilder.Preset = _preset;
+        State.State.Prompts.LLM.TagBuilder.Mode = _mode;
+        State.State.Prompts.LLM.TagBuilder.KeepUnverifiedAugmentations = _keepUnverified;
+        await State.SaveState();
+
+        try
+        {
+            var request = new TagBuilderRequest(
+                UserInput: _userInput.Trim(),
+                Verbosity: (TagVerbosity)_verbosityIndex,
+                Preset: _preset,
+                CategoryToggles: _categoryToggles,
+                GroundingPrompt: null,
+                Mode: _mode,
+                KeepUnverifiedAugmentations: _keepUnverified);
+
+            var modelName = SelectedModel;
+
+            if (string.IsNullOrWhiteSpace(modelName))
+            {
+                Snackbar.Add("Select an LLM model in the settings panel first.", Severity.Warning);
+                return;
+            }
+
+            var options = State.State.Generation.LLM.Options.ToOllamaOptions();
+            _result = await TagService.BuildAsync(request, modelName, options);
+            _finalPromptText = _result.FinalPrompt;
+            _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+
+            if (string.IsNullOrWhiteSpace(_result.FinalPrompt))
+            {
+                Snackbar.Add("Failed to generate prompt. Try a different description.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add($"Built prompt with {_result.ResolvedConcepts.Count} concepts resolved.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Build failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBuilding = false;
+        }
+    }
+
+    private async Task OnInputKeyDownAsync(KeyboardEventArgs e)
+    {
+        // JS layer (workshopComposer.attach) prevents the default newline; we only detect intent.
+        if (e.Key == "Enter" && !e.ShiftKey && !e.CtrlKey && !e.AltKey)
+        {
+            await HandleBuild();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Reuse the Workshop composer's Enter-prevent helper - it just hooks any
+        // <textarea> beneath the supplied root and is idempotent across renders.
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("workshopComposer.attach", _inputRoot);
+        }
+        catch { /* non-fatal: Enter still triggers build via OnKeyDown */ }
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    private async Task HandleCopyToClipboard()
+    {
+        if (!string.IsNullOrWhiteSpace(_finalPromptText))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _finalPromptText);
+            Snackbar.Add("Copied to clipboard.", Severity.Success);
+        }
+    }
+
+    private async Task HandleSendToProcessAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_finalPromptText)) return;
+        if (OnSendToProcess.HasDelegate)
+            await OnSendToProcess.InvokeAsync(_finalPromptText);
+    }
+
+    private async Task HandleSendToWorkshopAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_finalPromptText)) return;
+        if (OnSendToWorkshop.HasDelegate)
+            await OnSendToWorkshop.InvokeAsync(_finalPromptText);
+    }
+
+    protected override void OnInitialized()
+    {
+        // Load persisted settings
+        var tagBuilder = State.State.Prompts.LLM.TagBuilder;
+        _verbosityIndex = (int)tagBuilder.Verbosity;
+        _preset = tagBuilder.Preset;
+        _mode = tagBuilder.Mode;
+        _keepUnverified = tagBuilder.KeepUnverifiedAugmentations;
+        foreach (var kvp in tagBuilder.CategoryToggles)
+        {
+            _categoryToggles[kvp.Key] = kvp.Value;
+        }
+
+        _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+    }
+}

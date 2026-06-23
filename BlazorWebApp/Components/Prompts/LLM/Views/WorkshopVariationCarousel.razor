@@ -1,0 +1,115 @@
+@* Workshop variation carousel - horizontal sibling switcher (Phase 8.6 Step 3) *@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@implements IDisposable
+@inject IDatabaseService Db
+@inject IIOService IO
+@inject IEventService Events
+
+<div class="workshop-carousel">
+    <div class="workshop-carousel-strip">
+        @foreach (var sibling in Siblings)
+        {
+            var isActive = sibling.Id == ActiveSiblingId;
+            <div class="workshop-carousel-card @(isActive ? "is-active" : "")"
+                 @onclick="@(() => OnSelect.InvokeAsync(sibling))" title="@sibling.PromptText">
+                <div class="workshop-carousel-thumb">
+                    @if (_thumbs.TryGetValue(sibling.Id, out var src) && !string.IsNullOrEmpty(src))
+                    {
+                        <img src="@src" alt="variation" />
+                    }
+                    else if (_statuses.TryGetValue(sibling.Id, out var status) && status == WorkshopPreviewStatus.Queued)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                    }
+                    else if (_statuses.TryGetValue(sibling.Id, out var status2) && status2 == WorkshopPreviewStatus.Failed)
+                    {
+                        <MudTooltip
+                            Text="@(_errors.TryGetValue(sibling.Id, out var err) && !string.IsNullOrEmpty(err) ? err : "Preview failed")">
+                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" Color="Color.Error" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Outlined.ImageNotSupported" Size="Size.Small" Class="text-disabled" />
+                    }
+                </div>
+                <div class="workshop-carousel-text">@Truncate(sibling.PromptText, 80)</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<PromptWorkshopNode> Siblings { get; set; } = Array.Empty<PromptWorkshopNode>();
+    [Parameter] public int? ActiveSiblingId { get; set; }
+    [Parameter] public EventCallback<PromptWorkshopNode> OnSelect { get; set; }
+
+    private readonly Dictionary<int, string?> _thumbs = new();
+    private readonly Dictionary<int, int?> _loadedPreviewIds = new();
+
+    // Phase 8.6 Step 6 - lifecycle status per sibling node id.
+    private readonly Dictionary<int, WorkshopPreviewStatus> _statuses = new();
+    private readonly Dictionary<int, string?> _errors = new();
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshThumbsAsync();
+    }
+
+    private async Task RefreshThumbsAsync()
+    {
+        foreach (var node in Siblings)
+        {
+            var loaded = _loadedPreviewIds.TryGetValue(node.Id, out var prev) ? prev : null;
+            if (loaded == node.PreviewImageId) continue;
+
+            _loadedPreviewIds[node.Id] = node.PreviewImageId;
+            if (node.PreviewImageId is int id && id > 0)
+            {
+                var image = await Db.GetImageById(id);
+                _thumbs[node.Id] = image == null || string.IsNullOrWhiteSpace(image.Path)
+                    ? null
+                    : IO.GetImageStaticFile(image.Path);
+            }
+            else
+            {
+                _thumbs[node.Id] = null;
+            }
+        }
+    }
+
+    private async void OnPreviewGenerated(WorkshopPreviewGeneratedEventArgs args)
+    {
+        var match = Siblings.FirstOrDefault(s => s.Id == args.NodeId);
+        if (match == null) return;
+
+        _statuses[args.NodeId] = args.Status;
+        _errors[args.NodeId] = args.ErrorMessage;
+
+        if (args.Status == WorkshopPreviewStatus.Completed && args.ImageId > 0)
+            match.PreviewImageId = args.ImageId;
+
+        await InvokeAsync(async () =>
+        {
+            await RefreshThumbsAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+    }
+
+    private static string Truncate(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+}

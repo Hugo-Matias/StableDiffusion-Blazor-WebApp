@@ -1,0 +1,131 @@
+@* Slim chat options dialog (Phase 8.6 Step 4 + verbosity follow-up).
+   Provides depth + model + verbosity + temperature overrides for the inline composer's gear button.
+   The instruction textfield was removed - the composer carries the message text. *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 380px;">
+            <MudText Typo="Typo.body2" Class="text-disabled">
+                Tune how the LLM applies your next chat-edit. These settings persist across sessions.
+            </MudText>
+
+            @* Verbosity *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">Verbosity</MudText>
+                <MudToggleGroup T="ChatVerbosity" Value="_verbosity" ValueChanged="(ChatVerbosity v) => _verbosity = v"
+                                SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary" Size="Size.Small">
+                    <MudToggleItem Value="ChatVerbosity.Minimal">Minimal</MudToggleItem>
+                    <MudToggleItem Value="ChatVerbosity.Match">Match</MudToggleItem>
+                    <MudToggleItem Value="ChatVerbosity.Detailed">Detailed</MudToggleItem>
+                    <MudToggleItem Value="ChatVerbosity.Elaborate">Elaborate</MudToggleItem>
+                </MudToggleGroup>
+                <MudText Typo="Typo.caption" Class="text-disabled" Style="font-size: 0.7rem;">
+                    @VerbosityHelp(_verbosity)
+                </MudText>
+            </div>
+
+            @* Depth *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">Context depth</MudText>
+                <div class="d-flex align-center gap-2">
+                    <MudSlider @bind-Value="_ancestorDepth" Min="1" Max="10" TickMarks="true" Style="flex: 1;" />
+                    <MudText Typo="Typo.caption" Class="text-disabled" Style="min-width: 18px;">@_ancestorDepth
+                    </MudText>
+                    @if (_ancestorDepth == 1)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                            Parent only
+                        </MudChip>
+                    }
+                </div>
+                <MudText Typo="Typo.caption" Class="text-disabled" Style="font-size: 0.7rem;">
+                    How many ancestor prompts to include in chat history. Higher = more context, more tokens.
+                </MudText>
+            </div>
+
+            @* Temperature *@
+            <div class="d-flex flex-column gap-1">
+                <MudText Typo="Typo.caption" Class="text-disabled">Temperature</MudText>
+                <div class="d-flex align-center gap-2">
+                    <MudSlider T="float" @bind-Value="_temperature" Min="0.1f" Max="1.5f" Step="0.05f"
+                               Style="flex: 1;" />
+                    <MudText Typo="Typo.caption" Class="text-disabled" Style="min-width: 36px;">
+                        @_temperature.ToString("0.00")</MudText>
+                    </div>
+                </div>
+
+                @* Model *@
+                @if (_models.Count > 0)
+                {
+                    <MudSelect @bind-Value="_model" Label="Model" Variant="Variant.Text">
+                        @foreach (var m in _models)
+                        {
+                            <MudSelectItem Value="@m.Name">@m.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton OnClick="Confirm" Variant="Variant.Filled" Color="Color.Primary">Apply</MudButton>
+        </DialogActions>
+    </MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance Dialog { get; set; } = null!;
+
+    [Parameter] public int AncestorDepth { get; set; } = 3;
+    [Parameter] public string Model { get; set; } = string.Empty;
+    [Parameter] public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+    [Parameter] public float Temperature { get; set; } = 0.7f;
+    [Parameter] public List<OllamaModel> Models { get; set; } = new();
+
+    private int _ancestorDepth = 3;
+    private string _model = string.Empty;
+    private ChatVerbosity _verbosity = ChatVerbosity.Match;
+    private float _temperature = 0.7f;
+    private List<OllamaModel> _models = new();
+
+    protected override void OnParametersSet()
+    {
+        _ancestorDepth = AncestorDepth;
+        _verbosity = Verbosity;
+        _temperature = Temperature;
+        _models = Models;
+        _model = !string.IsNullOrWhiteSpace(Model)
+            ? Model
+            : (_models.FirstOrDefault()?.Name ?? string.Empty);
+    }
+
+    private static string VerbosityHelp(ChatVerbosity v) => v switch
+    {
+        ChatVerbosity.Minimal => "Smallest possible change. Often just appends or substitutes a phrase.",
+        ChatVerbosity.Detailed => "Expands the affected segment with descriptive language.",
+        ChatVerbosity.Elaborate => "Heavily reimagines affected segments with rich sensory detail.",
+        _ => "Integrates the edit smoothly while matching the base prompt's density.",
+    };
+
+    private void Cancel() => Dialog.Cancel();
+
+    private void Confirm()
+    {
+        Dialog.Close(DialogResult.Ok(new WorkshopChatResult
+        {
+            AncestorDepth = _ancestorDepth,
+            Model = _model,
+            Verbosity = _verbosity,
+            Temperature = _temperature,
+        }));
+    }
+
+    public class WorkshopChatResult
+    {
+        public int AncestorDepth { get; set; } = 3;
+        public string Model { get; set; } = string.Empty;
+        public ChatVerbosity Verbosity { get; set; } = ChatVerbosity.Match;
+        public float Temperature { get; set; } = 0.7f;
+    }
+}

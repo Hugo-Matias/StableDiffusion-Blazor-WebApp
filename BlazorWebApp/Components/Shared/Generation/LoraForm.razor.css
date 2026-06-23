@@ -1,0 +1,59 @@
+/* ==========================================
+   SubType collapsible group wrapper
+   ========================================== */
+
+.lora-subtype-group {
+  /* container only */
+}
+
+/* ==========================================
+   SubType toggle row (divider + chevron + label)
+   ========================================== */
+
+.lora-subtype-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lora-subtype-toggle:hover .lora-subtype-label {
+  color: var(--mud-palette-text-primary);
+}
+
+.lora-subtype-toggle ::deep .mud-divider {
+  flex: 1;
+}
+
+.lora-subtype-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.lora-chevron {
+  font-size: 0.6rem !important;
+  transition: transform 0.2s ease;
+}
+
+.lora-count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+/* Flush panels container - no extra spacing */
+.loras-panels-flush {
+  margin-top: 4px;
+}

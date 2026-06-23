@@ -1,0 +1,461 @@
+@inject IResourcesService ResourcesService
+@inject IDatabaseService DB
+@inject IStateService State
+@inject CivitaiService Civitai
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IEventService Events
+@inject IIOService IO
+@inject IGalleryService Gallery
+
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="_sidebarCollapsed" SidebarTitle="Import Settings">
+    <Sidebar>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle2">Shared Metadata</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                These values will be applied to all selected files. Leave blank to use filename as title.
+            </MudText>
+            
+            <MudTextField @bind-Value="_sharedTitle" Label="Title (Optional)" Placeholder="Leave blank for filename"
+                          Clearable />
+
+            <MudSelect @bind-Value="_selectedTypeId" Label="Resource Type" T="int?" Clearable>
+                @foreach (var type in _resourceTypes)
+                {
+                    <MudSelectItem Value="@((int?)type.Id)">@type.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudAutocomplete @bind-Value="_sharedSubType" Label="Sub-Type (Optional)" SearchFunc="SearchSubTypes"
+                             T="string" ResetValueOnEmptyText Clearable Dense />
+
+            <MudAutocomplete @bind-Value="_sharedBaseModel" Label="Base Model (Optional)" SearchFunc="SearchBaseModels"
+                             T="string" ResetValueOnEmptyText Clearable Dense Placeholder="e.g., SD 1.5, SDXL" />
+
+            <MudStack Row Spacing="1">
+                <MudTextField @bind-Value="_currentTriggerWord" Label="Trigger Words (Optional)"
+                              Placeholder="Add trigger word" Class="flex-grow-1" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="AddTriggerWord" Color="Color.Primary"
+                               Disabled="@string.IsNullOrWhiteSpace(_currentTriggerWord)" />
+            </MudStack>
+            @if (_sharedTriggerWords != null && _sharedTriggerWords.Count > 0)
+            {
+                <MudChipSet OnClose="chip => _sharedTriggerWords.Remove(chip.Text)" AllClosable>
+                    @foreach (var word in _sharedTriggerWords)
+                    {
+                        <MudChip Text="@word" Size="Size.Small" />
+                    }
+                </MudChipSet>
+            }
+
+            <MudDivider Class="my-1" />
+
+            <MudButton OnClick="ImportSelected" StartIcon="@Icons.Material.Filled.CloudUpload" Variant="Variant.Filled"
+                       Color="Color.Primary" Disabled="@(_selectedFiles.Count == 0 || _importing)" FullWidth>
+                @if (_importing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate />
+                    <span class="ml-2">Importing...</span>
+                }
+                else
+                {
+                    <span>Import @_selectedFiles.Count Selected</span>
+                }
+            </MudButton>
+        </MudStack>
+    </Sidebar>
+
+    <Content>
+        <MudStack Spacing="2">
+            @if (_loading)
+            {
+                <MudProgressLinear Indeterminate />
+                <MudText Align="Align.Center" Color="Color.Secondary">Scanning for untracked files...</MudText>
+            }
+            else if (_untrackedFiles.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">
+                    No untracked resource files found. All files in your resource directories are already imported.
+                </MudAlert>
+            }
+            else
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">Untracked Files (@_untrackedFiles.Count)</MudText>
+                    <MudButton OnClick="RefreshScan" StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small"
+                               Variant="Variant.Text">
+                        Refresh
+                    </MudButton>
+                    <MudSpacer />
+                    <MudButton OnClick="SelectAll" Size="Size.Small" Variant="Variant.Text">
+                        Select All
+                    </MudButton>
+                    <MudButton OnClick="DeselectAll" Size="Size.Small" Variant="Variant.Text">
+                        Deselect All
+                    </MudButton>
+                    <MudButton OnClick="DeleteSelected" Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Delete" Disabled="@(_selectedFiles.Count == 0)">
+                        Delete Selected
+                    </MudButton>
+                </MudStack>
+
+                <MudExpansionPanels MultiExpansion="true">
+                    @foreach (var group in _untrackedFiles.GroupBy(f => f.Type.Name).OrderBy(g => g.Key))
+                    {
+                        <MudExpansionPanel>
+                            <TitleContent>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="width: 100%;">
+                                    <MudText Typo="Typo.subtitle1">
+                                        <strong>@group.Key</strong>
+                                    </MudText>
+                                    <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                        @group.Count() files
+                                    </MudChip>
+                                    <MudSpacer />
+                                    <MudButton OnClick="@(() => SelectAllInGroup(group.ToList()))" Size="Size.Small"
+                                               Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBox">
+                                        Select All
+                                    </MudButton>
+                                </MudStack>
+                            </TitleContent>
+                            <ChildContent>
+                                <MudStack Spacing="1" Class="pa-2">
+                                    @foreach (var file in group.OrderBy(f => f.Filename))
+                                    {
+                                        <MudPaper Elevation="0" Class="pa-2" Style="border: 1px solid var(--mud-palette-divider);">
+                                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                                <MudCheckBox Value="@_fileSelectionState[file]"
+                                                             ValueChanged="@((bool val) => OnFileSelectionChanged(file, val))" T="bool" Dense
+                                                             Color="Color.Primary" />
+                                                
+                                                @if (_fileCoverPaths.TryGetValue(file, out var coverPath) &&
+                                                                                                                            !string.IsNullOrEmpty(coverPath))
+                                                {
+                                                    <MudImage Src="@coverPath" Alt="Cover" Width="60" Height="60"
+                                                              ObjectFit="ObjectFit.Cover" Class="rounded" />
+                                                }
+                                                else
+                                                {
+                                                    <div
+                                                        style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-surface); border-radius: 4px;">
+                                                        <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" />
+                                                    </div>
+                                                }
+                                                
+                                                <MudStack Spacing="0" Style="flex: 1;">
+                                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                                        <MudChip Size="Size.Small"
+                                                                 Color="@(file.IsEnabled? Color.Success: Color.Default)"
+                                                                 Variant="Variant.Text">
+                                                            @(file.IsEnabled ? "Active" : "Inactive")
+                                                        </MudChip>
+                                                        <MudText Typo="Typo.body2">@file.Filename</MudText>
+                                                    </MudStack>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        @($"{file.SizeKb / 1024:F1} MB • {file.DetectedPath}")
+                                                    </MudText>
+                                                </MudStack>
+                                                
+                                                <MudButton OnClick="@(() => OpenImagePickerForFile(file))"
+                                                           StartIcon="@Icons.Material.Filled.Image" Size="Size.Small"
+                                                           Variant="Variant.Text">
+                                                    @(_fileCoverPaths.ContainsKey(file) &&
+                                        !string.IsNullOrEmpty(_fileCoverPaths[file]) ?
+                             "Change" : "Set Cover")
+                                                </MudButton>
+                                                @if (_fileCoverPaths.ContainsKey(file) &&
+                                                                                    !string.IsNullOrEmpty(_fileCoverPaths[file]))
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                                   OnClick="@(() => _fileCoverPaths[file] = null)" Size="Size.Small"
+                                                                   Title="Clear cover" />
+                                                }
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                </MudStack>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
+        </MudStack>
+    </Content>
+</TwoColumnLayout>
+
+@code {
+    private bool _loading = true;
+    private bool _importing = false;
+    private bool _sidebarCollapsed = false;
+    private List<ImportResourceModel> _untrackedFiles = new();
+    private List<ResourceType> _resourceTypes = new();
+    private Dictionary<ImportResourceModel, bool> _fileSelectionState = new();
+    private HashSet<ImportResourceModel> _selectedFiles = new();
+
+    // Form fields
+    private string? _sharedTitle;
+    private int? _selectedTypeId;
+    private string? _sharedSubType;
+    private string? _sharedBaseModel;
+    private List<string> _sharedTriggerWords = new();
+    private string? _currentTriggerWord;
+    private Dictionary<ImportResourceModel, string?> _fileCoverPaths = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadResourceTypes();
+        await RefreshScan();
+    }
+
+    private async Task LoadResourceTypes()
+    {
+        _resourceTypes = await DB.GetResourceTypes(ordered: true);
+    }
+
+    private async Task RefreshScan()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        _untrackedFiles = await ResourcesService.GetUntrackedResources();
+        
+        // Initialize selection state
+        _fileSelectionState.Clear();
+        _selectedFiles.Clear();
+        _fileCoverPaths.Clear();
+        foreach (var file in _untrackedFiles)
+        {
+            _fileSelectionState[file] = false;
+            _fileCoverPaths[file] = null;
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task<IEnumerable<string>> SearchSubTypes(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return await DB.GetResourceSubtypeNames("");
+        
+        return await DB.GetResourceSubtypeNames(value);
+    }
+
+    private Task<IEnumerable<string>> SearchBaseModels(string value)
+    {
+        // Get all model names from CivitAI base models data
+        var allModels = Civitai.BaseModelsData?.Models?.Select(m => m.Name).ToList() ?? new List<string>();
+        
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(allModels.Take(20).AsEnumerable());
+
+        var filtered = allModels
+            .Where(m => m.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Take(20);
+        
+        return Task.FromResult(filtered.AsEnumerable());
+    }
+
+    private void AddTriggerWord()
+    {
+        if (!string.IsNullOrWhiteSpace(_currentTriggerWord) && !_sharedTriggerWords.Contains(_currentTriggerWord))
+        {
+            _sharedTriggerWords.Add(_currentTriggerWord);
+            _currentTriggerWord = null;
+        }
+    }
+
+    private void OnFileSelectionChanged(ImportResourceModel file, bool isSelected)
+    {
+        _fileSelectionState[file] = isSelected;
+        UpdateSelectedFiles();
+    }
+
+    private void SelectAll()
+    {
+        foreach (var file in _untrackedFiles)
+        {
+            _fileSelectionState[file] = true;
+        }
+        UpdateSelectedFiles();
+    }
+
+    private void DeselectAll()
+    {
+        foreach (var file in _untrackedFiles)
+        {
+            _fileSelectionState[file] = false;
+        }
+        UpdateSelectedFiles();
+    }
+
+    private void SelectAllInGroup(List<ImportResourceModel> groupFiles)
+    {
+        foreach (var file in groupFiles)
+        {
+            _fileSelectionState[file] = true;
+        }
+        UpdateSelectedFiles();
+    }
+
+    private void UpdateSelectedFiles()
+    {
+        _selectedFiles = _fileSelectionState.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+        StateHasChanged();
+    }
+
+    private async Task OpenImagePickerForFile(ImportResourceModel file)
+    {
+        // Check if any images are selected in Gallery
+        if (Gallery.SelectedImageIds.Count == 0)
+        {
+            Snackbar.Add("Please select some images from the Gallery first", Severity.Warning);
+            return;
+        }
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
+        var parameters = new DialogParameters
+        {
+            { "SelectedImageIds", Gallery.SelectedImageIds }
+        };
+        var dialog = await DialogService.ShowAsync<ImagePickerDialog>("Select Cover Image", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            _fileCoverPaths[file] = result.Data.ToString();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ImportSelected()
+    {
+        UpdateSelectedFiles();
+        
+        if (_selectedFiles.Count == 0)
+        {
+            Snackbar.Add("No files selected for import", Severity.Warning);
+            return;
+        }
+
+        _importing = true;
+        StateHasChanged();
+
+        try
+        {
+            var filesToImport = _selectedFiles.ToList();
+            
+            // Set cover image paths on each file
+            foreach (var file in filesToImport)
+            {
+                if (_fileCoverPaths.TryGetValue(file, out var coverPath))
+                {
+                    file.CoverImagePath = coverPath;
+                }
+            }
+            
+            // Override type if specified
+            if (_selectedTypeId.HasValue)
+            {
+                var selectedType = _resourceTypes.FirstOrDefault(t => t.Id == _selectedTypeId.Value);
+                if (selectedType != null)
+                {
+                    foreach (var file in filesToImport)
+                    {
+                        file.Type = selectedType;
+                    }
+                }
+            }
+
+            var importedCount = await ResourcesService.ImportResources(
+                filesToImport,
+                _sharedTitle,
+                _sharedSubType,
+                _sharedBaseModel,
+                _sharedTriggerWords
+            );
+
+            if (importedCount > 0)
+            {
+                Snackbar.Add($"Successfully imported {importedCount} resource(s)", Severity.Success);
+                await RefreshScan();
+                
+                // Clear form
+                _sharedTitle = null;
+                _selectedTypeId = null;
+                _sharedSubType = null;
+                _sharedBaseModel = null;
+                _sharedTriggerWords.Clear();
+            }
+            else
+            {
+                Snackbar.Add("No resources were imported. They may already exist.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Import failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _importing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteSelected()
+    {
+        UpdateSelectedFiles();
+        
+        if (_selectedFiles.Count == 0)
+        {
+            Snackbar.Add("No files selected for deletion", Severity.Warning);
+            return;
+        }
+
+        var fileList = string.Join(", ", _selectedFiles.Take(5).Select(f => f.Filename));
+        if (_selectedFiles.Count > 5)
+        {
+            fileList += $" and {_selectedFiles.Count - 5} more...";
+        }
+
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete Untracked Files",
+            $"Are you sure you want to permanently delete {_selectedFiles.Count} file(s) from disk?\\n\\n{fileList}\\n\\nThis action cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+        
+        if (result == true)
+        {
+            try
+            {
+                var deletedCount = 0;
+                foreach (var file in _selectedFiles.ToList())
+                {
+                    try
+                    {
+                        IO.DeleteFile(file.File.FullName);
+                        deletedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to delete {file.Filename}: {ex.Message}");
+                    }
+                }
+
+                if (deletedCount > 0)
+                {
+                    Snackbar.Add($"Successfully deleted {deletedCount} file(s)", Severity.Success);
+                    await RefreshScan();
+                }
+                else
+                {
+                    Snackbar.Add("No files were deleted", Severity.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting files: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

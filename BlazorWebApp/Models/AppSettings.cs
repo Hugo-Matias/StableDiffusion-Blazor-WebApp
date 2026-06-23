@@ -1,4 +1,6 @@
-﻿namespace BlazorWebApp.Models
+using BlazorWebApp.Services.Cleanup;
+
+namespace BlazorWebApp.Models
 {
     public class AppSettings
     {
@@ -6,9 +8,16 @@
         public bool IsDarkMode { get; set; } = true;
         public GenerationSettingsModel Generation { get; set; } = new();
         public ResourcesSettingsModel Resources { get; set; } = new();
-        public WebuiSettingsModel Webui { get; set; } = new();
-        public ScriptsSettingsModel Scripts { get; set; } = new();
         public PromptsSettingsModel Prompts { get; set; } = new();
+        public CleanupSettingsModel Cleanup { get; set; } = new();
+    }
+
+    public class CleanupSettingsModel
+    {
+        public CleanupEmbeddingOptions Embeddings { get; set; } = new();
+        public CleanupScoringOptions Scoring { get; set; } = new();
+        public CleanupIndexingQueueOptions IndexingQueue { get; set; } = new();
+        public CleanupGroupExplanationOptions VisionLanguage { get; set; } = new();
     }
 
     #region Generation
@@ -19,6 +28,7 @@
         public Txt2ImgSettingsModel Txt2Img { get; set; } = new();
         public Img2ImgSettingsModel Img2Img { get; set; } = new();
         public UpscaleSettingsModel Upscale { get; set; } = new();
+        public Img2VidSettingsModel Img2Vid { get; set; } = new();
     }
 
     public class RandomImagesSettingsModel
@@ -43,6 +53,14 @@
         public CfgScaleSettingsModel CfgScale { get; set; } = new();
         public DistilledCfgSettingsModel DistilledCfg { get; set; } = new();
         public DenoisingSettingsModel Denoising { get; set; } = new();
+        public LLMEnhancerSettingsModel LLMEnhancer { get; set; } = new();
+        public List<QuickResolution> QuickResolutions { get; set; } = new()
+        {
+            new() { Width = 512, Height = 768 },
+            new() { Width = 832, Height = 1248 },
+            new() { Width = 1024, Height = 1024 },
+            new() { Width = 1920, Height = 1088 },
+        };
     }
 
     public class StepsSettingsModel
@@ -96,7 +114,7 @@
     {
         public float Value { get; set; } = 2.5f;
         public float Min { get; set; } = 1.0f;
-        public float Max { get; set; } = 10.0f;
+        public float Max { get; set; } = 7.0f;
         public float Step { get; set; } = 0.1f;
     }
 
@@ -107,12 +125,30 @@
         public double Max { get; set; } = 1;
         public double Step { get; set; } = 0.01;
     }
+
+    public class LLMEnhancerSettingsModel
+    {
+        public string Model { get; set; } = "Llama-3.2-3B-Instruct-abliterated.Q5_K_M.gguf";
+        public string Instructions { get; set; } = "Expand this simple prompt into a detailed, descriptive image generation prompt: \"{prompt}\". Add artistic details, lighting, mood, and composition elements. Keep it concise with as few paragraphs as possible.";
+        public string NegativeInstructions { get; set; } = "Expand this negative prompt with detailed descriptions of what to avoid: \"{prompt}\". Add specific undesired elements, artifacts, and quality issues. Keep it concise with as few paragraphs as possible.";
+        public IntRange Seed { get; set; } = new() { Min = -1, Max = int.MaxValue, Value = -1, Step = 1 };
+        public FloatRange Temperature { get; set; } = new() { Min = 0f, Max = 2f, Value = 1.0f, Step = 0.1f };
+        public IntRange TopK { get; set; } = new() { Min = 1, Max = 100, Value = 50, Step = 1 };
+        public FloatRange TopP { get; set; } = new() { Min = 0f, Max = 1f, Value = 0.9f, Step = 0.05f };
+        public FloatRange MinP { get; set; } = new() { Min = 0f, Max = 1f, Value = 0.05f, Step = 0.01f };
+        public IntRange NumCtx { get; set; } = new() { Min = 128, Max = 32768, Value = 2048, Step = 128 };
+        public IntRange NumPredict { get; set; } = new() { Min = 50, Max = 8192, Value = 500, Step = 50 };
+    }
+
     #endregion
 
     #region Txt2Img
     public class Txt2ImgSettingsModel
     {
         public HighresSettingsModel HighRes { get; set; } = new();
+        public SeedVR2Settings SeedVR2 { get; set; } = new();
+        public ConditioningVariationSettings ConditioningVariation { get; set; } = new();
+        public SeedVarianceEnhancerSettings SeedVarianceEnhancer { get; set; } = new();
     }
     public class HighresSettingsModel
     {
@@ -156,6 +192,40 @@
         public int Min { get; set; } = 0;
         public int Max { get; set; } = 150;
         public int Step { get; set; } = 1;
+    }
+
+    public class SeedVR2Settings
+    {
+        public bool Enabled { get; set; } = false;
+        public string Model { get; set; } = "seedvr2_ema_7b-Q4_K_M.gguf";
+        public string VaeModel { get; set; } = "ema_vae_fp16.safetensors";
+        public IntRange BlocksToSwap { get; set; } = new() { Min = 0, Max = 36, Value = 36, Step = 1 };
+        public IntRange VaeTileSize { get; set; } = new() { Min = 128, Max = 2048, Value = 1024, Step = 64 };
+        public IntRange VaeTileOverlap { get; set; } = new() { Min = 0, Max = 512, Value = 128, Step = 32 };
+        public IntRange Resolution { get; set; } = new() { Min = 512, Max = 4096, Value = 2048, Step = 64 };
+        public DoubleRange Scale { get; set; } = new() { Min = 1, Max = 10, Value = 2.0, Step = 0.5 };
+        public IntRange BatchSize { get; set; } = new() { Min = 1, Max = 10, Value = 1, Step = 1 };
+        public DoubleRange InputNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
+        public DoubleRange LatentNoiseScale { get; set; } = new() { Min = 0, Max = 1, Value = 0.0, Step = 0.01 };
+    }
+
+    public class ConditioningVariationSettings
+    {
+        public bool Enabled { get; set; } = false;
+        public DoubleRange SwitchPoint { get; set; } = new() { Min = 0, Max = 1, Value = 0.2, Step = 0.05 };
+    }
+
+    public class SeedVarianceEnhancerSettings
+    {
+        public bool Enabled { get; set; } = false;
+        public IntRange RandomizePercent { get; set; } = new() { Min = 0, Max = 100, Value = 50, Step = 5 };
+        public IntRange Strength { get; set; } = new() { Min = 0, Max = 100, Value = 20, Step = 1 };
+        public List<string> NoiseInsertOptions { get; set; } = new() { "noise on beginning steps", "noise on ending steps", "noise on all steps", "disabled" };
+        public string DefaultNoiseInsert { get; set; } = "noise on beginning steps";
+        public IntRange StepsSwitchoverPercent { get; set; } = new() { Min = 0, Max = 100, Value = 20, Step = 5 };
+        public List<string> MaskStartsAtOptions { get; set; } = new() { "beginning", "end" };
+        public string DefaultMaskStartsAt { get; set; } = "beginning";
+        public IntRange MaskPercent { get; set; } = new() { Min = 0, Max = 100, Value = 0, Step = 5 };
     }
     #endregion
 
@@ -217,855 +287,54 @@
         public int Step { get; set; } = 32;
     }
     #endregion
-    #endregion
 
-    #region Scripts
-    public class ScriptsSettingsModel
+    #region Img2Vid
+    public class Img2VidSettingsModel
     {
-        public ControlNetSettingsModel ControlNet { get; set; } = new();
-        public CutoffSettingsModel Cutoff { get; set; } = new();
-        public DynamicPromptsSettingsModel DynamicPrompts { get; set; } = new();
-        public UltimateUpscaleSettingsModel UltimateUpscale { get; set; } = new();
-        public MultiDiffusionSettingsModel MultiDiffusion { get; set; } = new();
-        public RegionalPrompterSettingsModel RegionalPrompter { get; set; } = new();
-        public XYZPlotSettingsModel XYZPlot { get; set; } = new();
-        public ADetailerSettingsModel ADetailer { get; set; } = new();
-        public IncantationsSettingsModel Incantations { get; set; } = new();
+        public Img2VidModelSettingsModel Models { get; set; } = new();
+        public Img2VidVideoSettingsModel Video { get; set; } = new();
+        public Img2VidSamplingSettingsModel Sampling { get; set; } = new();
+        public Img2VidFrameInterpolationSettingsModel FrameInterpolation { get; set; } = new();
     }
 
-    #region ControlNet
-    public class ControlNetSettingsModel
+    public class Img2VidModelSettingsModel
     {
-        public bool IsEnabled { get; set; } = false;
-        public ControlNetPreprocessor Preprocessor { get; set; } = ControlNetPreprocessor.none;
-        public string Model { get; set; } = "None";
-        public bool IsLowVRam { get; set; } = false;
-        public List<string> ControlModes { get; set; } = new() { "Balanced", "My prompt is more important", "ControlNet is more important" };
-        public List<string> ResizeModes { get; set; } = new() { "Just Resize", "Crop and Resize", "Resize and Fill" };
-        public ControlNetWeightSettingsModel Weight { get; set; } = new();
-        public ControlNetGuidanceSettingsModel Guidance { get; set; } = new();
-        public Dictionary<ControlNetPreprocessor, ControlNetProcessorSettingsModel?> PreprocessorSettings { get; set; } = new()
+        public string HighModel { get; set; } = "wan22RemixT2VI2V_i2vHighV20.safetensors";
+        public string LowModel { get; set; } = "wan22RemixT2VI2V_i2vLowV20.safetensors";
+        public string Clip { get; set; } = "umt5_xxl_fp8_e4m3fn_scaled.safetensors";
+        public string ClipVision { get; set; } = "clip_vision_h.safetensors";
+        public string Vae { get; set; } = "wan_2.1_vae.safetensors";
+    }
+
+    public class Img2VidVideoSettingsModel
+    {
+        public IntRange Length { get; set; } = new() { Value = 81, Min = 17, Max = 257, Step = 8 };
+        public IntRange FrameRate { get; set; } = new() { Value = 16, Min = 8, Max = 60, Step = 1 };
+        public FloatRange MotionAmplitude { get; set; } = new() { Value = 1.1f, Min = 0.1f, Max = 3.0f, Step = 0.1f };
+    }
+
+    public class Img2VidSamplingSettingsModel
+    {
+        public IntRange Shift { get; set; } = new() { Value = 5, Min = 1, Max = 20, Step = 1 };
+        public IntRange Steps { get; set; } = new() { Value = 8, Min = 1, Max = 50, Step = 1 };
+        public FloatRange CfgScale { get; set; } = new() { Value = 1.0f, Min = 1.0f, Max = 15.0f, Step = 0.5f };
+        public string Sampler { get; set; } = "euler";
+        public string Scheduler { get; set; } = "simple";
+    }
+
+    public class Img2VidFrameInterpolationSettingsModel
+    {
+        public bool Enabled { get; set; } = true;
+        public DoubleRange ScaleBy { get; set; } = new() { Value = 2.0, Min = 1.0, Max = 4.0, Step = 0.5 };
+        public IntRange Multiplier { get; set; } = new() { Value = 2, Min = 1, Max = 8, Step = 1 };
+        public string RifeModel { get; set; } = "rife49.pth";
+        public List<string> RifeModels { get; set; } = new()
         {
-            { ControlNetPreprocessor.none, null },
-            { ControlNetPreprocessor.invert, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.animal_openpose, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.blur_gaussian, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "Sigma", Value = 9f, Min = 0.01f, Max = 64f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.canny, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label= "Low Threshold", Value = 100f, Min = 1f, Max = 255f, Step = 1 }, B = new() { Label = "High Threshold", Value = 200f, Min = 1f, Max = 255f, Step = 1f } } } },
-            { ControlNetPreprocessor.densepose, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.densepose_parula, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.depth_anything, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.depth_hand_refiner, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.depth_leres, new() { Resolution = new() { Label = "LeReS Resolution" }, Threshold = new() { A = new() { Label= "Remove Near %", Value = 0f, Min = 0f, Max = 100f, Step = 0.1f }, B = new() { Label = "Remove Background %", Value = 0f, Min = 0f, Max = 100f, Step = 0.1f } } } },
-            { ControlNetPreprocessor.depth_midas, new() { Resolution = new() { Label = "Midas Resolution" } } },
-            { ControlNetPreprocessor.depth_zoe, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.dw_openpose_full, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.inpaint_global_harmonious, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.inpaint_only, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.instant_id_face_embedding, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.instant_id_face_keypoints, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.ipadapter_clip_sd15, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.ipadapter_clip_sdxl, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.ipadapter_clip_sdxl_plus_vith, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.ipadapter_face_id, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.ipadapter_face_id_plus, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart_anime, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart_anime_denoise, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart_coarse, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart_realistic, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.lineart_standard, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.mediapipe_face, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label= "Max Faces", Value = 1, Min = 1, Max = 10, Step = 1 }, B = new() { Label = "Min Face Confidence", Value = 0.5f, Min = 0.01f, Max = 1, Step = 0.01f } } } },
-            { ControlNetPreprocessor.mlsd, new() { Resolution = new() { Label = "Hough Resolution" }, Threshold = new() { A = new() { Label= "Hough Value", Value = 0.1f, Min = 0.01f, Max = 2f, Step = 0.01f }, B = new() { Label = "Hough Distance", Value = 0.1f, Min = 0.01f, Max = 20f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.normal_bae, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.normal_midas, new() { Resolution = new() { Label = "Normal Resolution" }, Threshold = new() { A = new() { Label = "Background Threshold", Min = 0, Max = 1, Value = 0.4f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.openpose, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.openpose_face, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.openpose_faceonly, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.openpose_full, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.openpose_hand, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.recolor_intensity, new() { Threshold = new() { A= new() { Label = "Gamma Correction", Value = 1f, Min = 0.1f, Max = 2f, Step = 0.001f } } } },
-            { ControlNetPreprocessor.recolor_luminance, new() { Threshold = new() { A= new() { Label = "Gamma Correction", Value = 1f, Min = 0.1f, Max = 2f, Step = 0.001f } } } },
-            { ControlNetPreprocessor.reference_only, new() { Threshold = new() { A = new() { Label = "Style Fidelity (\"Balanced\" mode only)", Value = 0.5f, Min = 0.0f, Max = 1.0f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.reference_adain, new() { Threshold = new() { A = new() { Label = "Style Fidelity (\"Balanced\" mode only)", Value = 0.5f, Min = 0.0f, Max = 1.0f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.revision_clipvision, new() { Threshold = new() { A= new() { Label = "Noise Augmentation", Value = 0f, Min = 0f, Max = 1f, Step = 1f } } } },
-            { ControlNetPreprocessor.revision_ignore_prompt, new() { Threshold = new() { A= new() { Label = "Noise Augmentation", Value = 0f, Min = 0f, Max = 1f, Step = 1f } } } },
-            { ControlNetPreprocessor.scribble_hed, new() { Resolution = new() { Label = "HED Resolution" } } },
-            { ControlNetPreprocessor.scribble_pidinet, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.scribble_xdog, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "XDoG Threshold", Value = 32, Min = 1, Max = 64, Step = 1 } } } },
-            { ControlNetPreprocessor.seg_anime_face, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.seg_ofade20k, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.seg_ofcoco, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.seg_ufade20k, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.shuffle, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.softedge_hed, new() { Resolution = new() { Label = "HED Resolution" } } },
-            { ControlNetPreprocessor.softedge_hedsafe, new() { Resolution = new() { Label = "HED Resolution" } } },
-            { ControlNetPreprocessor.softedge_pidinet, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.softedge_pidisafe, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.softedge_teed, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A= new() { Label = "Safe Steps", Value = 2f, Min = 0f, Max = 10f, Step = 1f} } } },
-            { ControlNetPreprocessor.t2ia_color_grid, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.t2ia_sketch_pidi, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.t2ia_style_clipvision, new() { Resolution = new() { Label = "Annotator Resolution" } } },
-            { ControlNetPreprocessor.threshold, new() { Resolution = new() { Label = "Annotator Resolution" }, Threshold = new() { A = new() { Label = "Binarization Threshold", Value = 127, Min = 0, Max = 255, Step = 1 } } } },
-            { ControlNetPreprocessor.tile_resample, new() { Threshold = new() { A = new() { Label = "Downsampling Rate", Value = 1.0f, Min = 1.0f, Max = 8.0f, Step = 0.01f } } } },
-            { ControlNetPreprocessor.tile_colorfix, new() { Threshold = new() { A = new() { Label = "Variation", Value = 8.0f, Min = 3.0f, Max = 32.0f, Step = 1.0f } } } },
+            "rife49.pth",
+            "rife48.pth",
+            "rife47.pth",
+            "rife46.pth"
         };
-    }
-
-    public class ControlNetWeightSettingsModel
-    {
-        public float Value { get; set; } = 1f;
-        public float Min { get; set; } = 0f;
-        public float Max { get; set; } = 2f;
-        public float Step { get; set; } = 0.05f;
-    }
-
-    public class ControlNetGuidanceSettingsModel
-    {
-        public float Strenght { get; set; } = 1f;
-        public float Start { get; set; } = 0f;
-        public float End { get; set; } = 1f;
-        public float Min { get; set; } = 0f;
-        public float Max { get; set; } = 1f;
-        public float Step { get; set; } = 0.01f;
-    }
-
-    public class ControlNetProcessorSettingsModel
-    {
-        public ControlNetProcessorResolutionSettingsModel Resolution { get; set; } = new();
-        public ControlNetProcessorThresholdSettingsModel? Threshold { get; set; }
-    }
-
-    public class ControlNetProcessorResolutionSettingsModel
-    {
-        public string Label { get; set; } = string.Empty;
-        public int Value { get; set; } = 512;
-        public int Min { get; set; } = 64;
-        public int Max { get; set; } = 2048;
-        public int Step { get; set; } = 8;
-    }
-
-    public class ControlNetProcessorThresholdSettingsModel
-    {
-        public ControlNetThresholdSettingsModel A { get; set; } = new();
-        public ControlNetThresholdSettingsModel? B { get; set; }
-    }
-
-    public class ControlNetThresholdSettingsModel
-    {
-        public string Label { get; set; }
-        public float Value { get; set; }
-        public float Min { get; set; }
-        public float Max { get; set; }
-        public float Step { get; set; }
-    }
-    #endregion
-
-    #region Cutoff
-    public class CutoffSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public string Targets { get; set; } = string.Empty;
-        public CutoffWeightSettingsModel Weight { get; set; } = new();
-        public bool DisableNegative { get; set; } = false;
-        public bool Strong { get; set; } = false;
-        public string Padding { get; set; } = string.Empty;
-        public string Interpolation { get; set; } = "Lerp";
-        public bool Debug { get; set; } = false;
-    }
-
-    public class CutoffWeightSettingsModel
-    {
-        public float Value { get; set; } = 1f;
-        public float Min { get; set; } = -1f;
-        public float Max { get; set; } = 2f;
-        public float Step { get; set; } = 0.01f;
-    }
-    #endregion
-
-    #region Dynamic Prompts
-    public class DynamicPromptsSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public DPCombinatorialSettingsModel Combinatorial { get; set; } = new();
-        public DPPromptMagicSettingsModel PromptMagic { get; set; } = new();
-        public bool UseFixedSeed { get; set; } = false;
-        public bool UnlinkSeedFromPrompt { get; set; } = false;
-        public bool DisableNegativePrompt { get; set; } = false;
-        public bool EnableJinjaTemplates { get; set; } = false;
-        public bool NoImageGeneration { get; set; } = false;
-    }
-
-    public class DPCombinatorialSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public DPCombinatorialBatchSettingsModel Batches { get; set; } = new();
-        public DPCombinatorialMaxGenSettingsModel MaxGenerations { get; set; } = new();
-    }
-
-    public class DPCombinatorialBatchSettingsModel
-    {
-        public int Value { get; set; } = 1;
-        public int Min { get; set; } = 1;
-        public int Max { get; set; } = 100;
-        public int Step { get; set; } = 1;
-    }
-
-    public class DPCombinatorialMaxGenSettingsModel
-    {
-        public int Value { get; set; } = 0;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 1000;
-        public int Step { get; set; } = 1;
-    }
-
-    public class DPPromptMagicSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public bool IsFeelingLucky { get; set; } = false;
-        public DPPromptMagicAttentionGrabberSettingsModel AttentionGrabber { get; set; } = new();
-        public DPPromptMagicLengthSettingsModel Length { get; set; } = new();
-        public DPPromptMagicCreativitySettingsModel Creativity { get; set; } = new();
-        public string? MagicBlocklistRegex { get; set; } = null;
-        public List<string> MagicModelList { get; set; } = new()
-        {
-            "Gustavosta/MagicPrompt-Stable-Diffusion",
-            "daspartho/prompt-extend",
-            "succinctly/text2image-prompt-generator",
-            "microsoft/Promptist",
-            "AUTOMATIC/promptgen-lexart",
-            "AUTOMATIC/promptgen-majinai-safe",
-            "AUTOMATIC/promptgen-majinai-unsafe",
-            "kmewhort/stable-diffusion-prompt-bolster",
-            "Gustavosta/MagicPrompt-Dalle",
-            "Ar4ikov/gpt2-650k-stable-diffusion-prompt-generator",
-            "Ar4ikov/gpt2-medium-650k-stable-diffusion-prompt-generator",
-            "crumb/bloom-560m-RLHF-SD2-prompter-aesthetic",
-            "Meli/GPT2-Prompt",
-            "DrishtiSharma/StableDiffusion-Prompt-Generator-GPT-Neo-125M",
-        };
-    }
-
-    public class DPPromptMagicAttentionGrabberSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public float ValueMin { get; set; } = 1.1f;
-        public float ValueMax { get; set; } = 1.5f;
-        public float Min { get; set; } = -1f;
-        public float Max { get; set; } = 2f;
-        public float Step { get; set; } = 0.1f;
-    }
-
-    public class DPPromptMagicLengthSettingsModel
-    {
-        public int Value { get; set; } = 100;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 300;
-        public int Step { get; set; } = 10;
-    }
-
-    public class DPPromptMagicCreativitySettingsModel
-    {
-        public float Value { get; set; } = 0.7f;
-        public float Min { get; set; } = 0.1f;
-        public float Max { get; set; } = 3f;
-        public float Step { get; set; } = 0.1f;
-    }
-    #endregion
-
-    #region Ultimate Upscale
-    public class UltimateUpscaleSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public int UpscalerIndex { get; set; } = 0;
-        public int SeamFixType { get; set; } = 0;
-        public int TargetSizeType { get; set; } = 2;
-        public int RedrawMode { get; set; } = 1;
-        public bool SaveUpscaledImage { get; set; } = false;
-        public bool SaveSeamFixImage { get; set; } = false;
-        public UUSeamFixSettingsModel SeamFix { get; set; } = new();
-        public UUTileResolutionSettingsModel TileResolution { get; set; } = new();
-        public UUMaskBlurSettingsModel MaskBlur { get; set; } = new();
-        public UUPaddingSettingsModel Padding { get; set; } = new();
-        public UUTargetSizeResolutionSettingsModel TargetResolution { get; set; } = new();
-        public UUTargetSizeScaleSettingsModel TargetScale { get; set; } = new();
-        public List<string> TargetSizeTypes { get; set; } = new()
-        {
-            "Img2Img Settings",
-            "Resolution",
-            "Scale"
-        };
-        public List<string> SeamFixTypes { get; set; } = new()
-        {
-            "None",
-            "Band pass",
-            "Half tile offset pass",
-            "Half tile offset pass + intersections"
-        };
-        public List<string> RedrawModes { get; set; } = new()
-        {
-            "Linear",
-            "Chess",
-            "None"
-        };
-    }
-    public class UUTileResolutionSettingsModel
-    {
-        public int Width { get; set; } = 512;
-        public int Heigth { get; set; } = 512;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 2048;
-        public int Step { get; set; } = 64;
-    }
-    public class UUMaskBlurSettingsModel
-    {
-        public int Value { get; set; } = 16;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 64;
-        public int Step { get; set; } = 1;
-    }
-    public class UUPaddingSettingsModel
-    {
-        public int Value { get; set; } = 32;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 128;
-        public int Step { get; set; } = 1;
-    }
-    public class UUTargetSizeResolutionSettingsModel
-    {
-        public int CustomWidth { get; set; } = 2048;
-        public int CustomHeight { get; set; } = 2048;
-        public int Min { get; set; } = 64;
-        public int Max { get; set; } = 8192;
-        public int Step { get; set; } = 64;
-    }
-    public class UUTargetSizeScaleSettingsModel
-    {
-        public float Value { get; set; } = 4f;
-        public float Min { get; set; } = 1f;
-        public float Max { get; set; } = 16f;
-        public float Step { get; set; } = 0.1f;
-    }
-    public class UUSeamFixSettingsModel
-    {
-        public UUPaddingSettingsModel Padding { get; set; } = new();
-        public UUMaskBlurSettingsModel MaskBlur { get; set; } = new();
-        public UUSeamFixWidthSettingsModel Width { get; set; } = new();
-        public UUSeamFixDenoiseSettingsModel Denoise { get; set; } = new();
-    }
-    public class UUSeamFixWidthSettingsModel
-    {
-        public int Value { get; set; } = 64;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 128;
-        public int Step { get; set; } = 1;
-    }
-    public class UUSeamFixDenoiseSettingsModel
-    {
-        public float Value { get; set; } = 0.25f;
-        public float Min { get; set; } = 0f;
-        public float Max { get; set; } = 1f;
-        public float Step { get; set; } = 0.01f;
-    }
-    #endregion
-
-    #region MultiDiffusion
-    public class MultiDiffusionSettingsModel
-    {
-        public MultiDiffusionTiledDiffusionSettingsModel TiledDiffusion { get; set; } = new();
-        public MultiDiffusionTiledVaeSettingsModel TiledVae { get; set; } = new();
-    }
-
-    #region Tiled Diffusion
-    public class MultiDiffusionTiledDiffusionSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public List<string> Methods { get; set; } = new()
-        {
-            "MultiDiffusion",
-            "Mixture of Diffusers"
-        };
-        public string UpscalerIndex { get; set; } = "None";
-        public bool ControlTensorCpu { get; set; } = false;
-        public bool EnableBBoxControl { get; set; } = false;
-        public bool DrawBackground { get; set; } = false;
-        public bool CasualLayers { get; set; } = false;
-        public MultiDiffusionNoiseInverseSettingsModel NoiseInverse { get; set; } = new();
-        public MultiDiffusionLatentTileSettingsModel LatentTile { get; set; } = new();
-        public MultiDiffusionImageSettingsModel Image { get; set; } = new();
-        public MultiDiffusionBBoxSettingsModel BBoxControl { get; set; } = new();
-    }
-
-    public class MultiDiffusionNoiseInverseSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public MultiDiffusionNoiseInverseStepsSettingsModel Steps { get; set; } = new();
-        public MultiDiffusionNoiseInverseRetouchSettingsModel Retouch { get; set; } = new();
-        public MultiDiffusionNoiseInverseRenoiseSettingsModel Renoise { get; set; } = new();
-    }
-
-    public class MultiDiffusionNoiseInverseStepsSettingsModel
-    {
-        public int Value { get; set; } = 10;
-        public int Min { get; set; } = 1;
-        public int Max { get; set; } = 100;
-        public int Step { get; set; } = 1;
-    }
-
-    public class MultiDiffusionNoiseInverseRetouchSettingsModel
-    {
-        public float Value { get; set; } = 1;
-        public float Min { get; set; } = 1;
-        public float Max { get; set; } = 100;
-        public float Step { get; set; } = 0.1f;
-    }
-
-    public class MultiDiffusionNoiseInverseRenoiseSettingsModel
-    {
-        public MultiDiffusionNoiseInverseRenoiseStrengthSettingsModel Strength { get; set; } = new();
-        public MultiDiffusionNoiseInverseRenoiseKernelSettingsModel Kernel { get; set; } = new();
-    }
-
-    public class MultiDiffusionNoiseInverseRenoiseStrengthSettingsModel
-    {
-        public float Value { get; set; } = 1;
-        public float Min { get; set; } = 0;
-        public float Max { get; set; } = 2;
-        public float Step { get; set; } = 0.01f;
-    }
-
-    public class MultiDiffusionNoiseInverseRenoiseKernelSettingsModel
-    {
-        public int Value { get; set; } = 64;
-        public int Min { get; set; } = 2;
-        public int Max { get; set; } = 512;
-        public int Step { get; set; } = 1;
-    }
-
-    public class MultiDiffusionLatentTileSettingsModel
-    {
-        public MultiDiffusionLatentTileResolutionSettingsModel Resolution { get; set; } = new();
-        public MultiDiffusionLatentTileOverlapSettingsModel Overlap { get; set; } = new();
-        public MultiDiffusionLatentTileBatchSettingsModel Batch { get; set; } = new();
-    }
-
-    public class MultiDiffusionLatentTileResolutionSettingsModel
-    {
-        public int Width { get; set; } = 96;
-        public int Height { get; set; } = 96;
-        public int Min { get; set; } = 16;
-        public int Max { get; set; } = 256;
-        public int Step { get; set; } = 16;
-    }
-
-    public class MultiDiffusionLatentTileOverlapSettingsModel
-    {
-        public int Value { get; set; } = 48;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 256;
-        public int Step { get; set; } = 4;
-    }
-
-    public class MultiDiffusionLatentTileBatchSettingsModel
-    {
-        public int Value { get; set; } = 1;
-        public int Min { get; set; } = 1;
-        public int Max { get; set; } = 8;
-        public int Step { get; set; } = 1;
-    }
-
-    public class MultiDiffusionImageSettingsModel
-    {
-        // Used in Txt2Img
-        public bool OverwriteImageSize { get; set; } = false;
-        public MultiDiffusionImageResolutionSettingsModel Resolution { get; set; } = new();
-        // Used in Img2Img
-        public bool KeepInputSize { get; set; } = true;
-        public MultiDiffusionScaleSettingsModel Scale { get; set; } = new();
-    }
-
-    public class MultiDiffusionImageResolutionSettingsModel
-    {
-        public int Width { get; set; } = 1024;
-        public int Height { get; set; } = 1024;
-        public int Min { get; set; } = 256;
-        public int Max { get; set; } = 8192;
-        public int Step { get; set; } = 32;
-    }
-
-    public class MultiDiffusionScaleSettingsModel
-    {
-        public float Value { get; set; } = 2;
-        public float Min { get; set; } = 1;
-        public float Max { get; set; } = 8;
-        public float Step { get; set; } = 0.1f;
-    }
-
-    public class MultiDiffusionBBoxSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public string Prompt { get; set; } = string.Empty;
-        public string NegativePrompt { get; set; } = string.Empty;
-        public int Seed { get; set; } = -1;
-        public MultiDiffusionBBoxMultiplierSettingsModel Multiplier { get; set; } = new();
-        public MultiDiffusionBBoxRegionSettingsModel Region { get; set; } = new();
-    }
-
-    public class MultiDiffusionBBoxMultiplierSettingsModel
-    {
-        public float Value { get; set; } = 1f;
-        public float Min { get; set; } = 0f;
-        public float Max { get; set; } = 10f;
-        public float Step { get; set; } = 0.1f;
-    }
-
-    public class MultiDiffusionBBoxRegionSettingsModel
-    {
-        public float CoordX { get; set; } = 0.4f;
-        public float CoordY { get; set; } = 0.4f;
-        public float Width { get; set; } = 0.2f;
-        public float Height { get; set; } = 0.2f;
-        public float Min { get; set; } = 0f;
-        public float Max { get; set; } = 1f;
-        public float Step { get; set; } = 0.01f;
-    }
-    #endregion
-
-    #region Tiled Vae
-    public class MultiDiffusionTiledVaeSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public bool VaeToGpu { get; set; } = false;
-        public bool FastDecoder { get; set; } = true;
-        public bool FastEncoder { get; set; } = true;
-        public bool ColorFix { get; set; } = false;
-        public MultiDiffusionVaeEncoderSettingsModel Encoder { get; set; } = new();
-        public MultiDiffusionVaeDecoderSettingsModel Decoder { get; set; } = new();
-    }
-
-    public class MultiDiffusionVaeEncoderSettingsModel
-    {
-        public int Value { get; set; } = 1536;
-        public int Min { get; set; } = 256;
-        public int Max { get; set; } = 4096;
-        public int Step { get; set; } = 16;
-    }
-
-    public class MultiDiffusionVaeDecoderSettingsModel
-    {
-        public int Value { get; set; } = 96;
-        public int Min { get; set; } = 48;
-        public int Max { get; set; } = 512;
-        public int Step { get; set; } = 16;
-    }
-    #endregion
-    #endregion
-
-    #region Regional Prompter
-    public class RegionalPrompterSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public bool IsDebug { get; set; } = false;
-        public string DivideRatio { get; set; } = "1,1";
-        public string BaseRatio { get; set; } = "0.2";
-        public bool UseBasePrompt { get; set; } = false;
-        public bool UseCommonPrompt { get; set; } = false;
-        public bool UseNegativeCommonPrompt { get; set; } = false;
-        public bool DisableConvertAND { get; set; } = false;
-        public List<string> MatrixModes { get; set; } = new()
-        {
-            "Horizontal",
-            "Vertical"
-        };
-        public List<string> GenerationModes { get; set; } = new()
-        {
-            "Attention",
-            "Latent"
-        };
-    }
-    #endregion
-
-    #region XYZ Plot
-    public class XYZPlotSettingsModel
-    {
-        public bool DrawLegend { get; set; } = true;
-        public bool IncludeSubImages { get; set; } = false;
-        public bool IncludeSubGrids { get; set; } = false;
-        public bool RandomSeed { get; set; } = false;
-        public XYZPlotMarginSettingsModel Margin { get; set; } = new();
-
-        public List<XYZPlotType> AxisTypes { get; set; } = new()
-        {
-            new() { Name = "None", IsImg2Img = null },
-            new() { Name = "Seed", IsImg2Img = null },
-            new() { Name = "Var. Seed", IsImg2Img = null },
-            new() { Name = "Var. Strenght", IsImg2Img = null },
-            new() { Name = "Steps", IsImg2Img = null },
-            new() { Name = "Hires Steps", IsImg2Img = false },
-            new() { Name = "CFG Scale", IsImg2Img = null },
-            new() { Name = "Image CFG Scale", IsImg2Img = true },
-            new() { Name = "Prompt S/R", IsImg2Img = null },
-            new() { Name = "Prompt Order", IsImg2Img = null },
-            new() { Name = "Sampler", IsImg2Img = null },
-            new() { Name = "Checkpoint Name", IsImg2Img = null },
-            new() { Name = "Sigma Churn", IsImg2Img = null },
-            new() { Name = "Sigma Min", IsImg2Img = null },
-            new() { Name = "Sigma Max", IsImg2Img = null },
-            new() { Name = "Sigma Noise", IsImg2Img = null },
-            new() { Name = "ETA", IsImg2Img = null },
-            new() { Name = "Clip Skip", IsImg2Img = null },
-            new() { Name = "Denoising", IsImg2Img = null },
-            new() { Name = "Hires Upscaler", IsImg2Img = false },
-            new() { Name = "Cond. Image Mask Weight", IsImg2Img = true },
-            new() { Name = "VAE", IsImg2Img = null },
-            new() { Name = "Styles", IsImg2Img = null },
-            new() { Name = "UniPC Order", IsImg2Img = null },
-            new() { Name = "Face Restore", IsImg2Img = null },
-            new() { Name = "ControlNet Enabled", IsImg2Img = null },
-            new() { Name = "ControlNet Model", IsImg2Img = null },
-            new() { Name = "ControlNet Weight", IsImg2Img = null },
-            new() { Name = "ControlNet Guidance Start", IsImg2Img = null },
-            new() { Name = "ControlNet Guidance End", IsImg2Img = null },
-            new() { Name = "ControlNet Resize Mode", IsImg2Img = null },
-            new() { Name = "ControlNet Preprocessor", IsImg2Img = null },
-            new() { Name = "ControlNet Pre Resolution", IsImg2Img = null },
-            new() { Name = "ControlNet Pre Threshold A", IsImg2Img = null },
-            new() { Name = "ControlNet Pre Threshold B", IsImg2Img = null },
-            new() { Name = "Cutoff Enabled", IsImg2Img = null },
-            new() { Name = "Cutoff Targets", IsImg2Img = null },
-            new() { Name = "Cutoff Weight", IsImg2Img = null },
-            new() { Name = "Cutoff Disable Negative Prompt", IsImg2Img = null },
-            new() { Name = "Cutoff Strong", IsImg2Img = null },
-            new() { Name = "Cutoff Padding", IsImg2Img = null },
-            new() { Name = "Cutoff Interpolation", IsImg2Img = null },
-        };
-    }
-
-    public class XYZPlotType
-    {
-        public string Name { get; set; }
-        // Null == both modes | False == Txt2Img only | True == Img2Img only
-        public bool? IsImg2Img { get; set; }
-    }
-
-    public class XYZPlotMarginSettingsModel
-    {
-        public int Value { get; set; } = 0;
-        public int Min { get; set; } = 0;
-        public int Max { get; set; } = 100;
-        public int Step { get; set; } = 1;
-    }
-    #endregion
-
-    #region ADetailer
-    public class ADetailerSettingsModel
-    {
-        public List<string> Models { get; set; } = new()
-        {
-            "None",
-            "face_yolov8n.pt",
-            "face_yolov8s.pt",
-            "hand_yolov8n.pt",
-            "person_yolov8n-seg.pt",
-            "person_yolov8s-seg.pt",
-            "mediapipe_face_full",
-            "mediapipe_face_short",
-            "mediapipe_face_mesh",
-            "mediapipe_face_mesh_eyes_only"
-        };
-        public List<string> MaskMergeModes { get; set; } = new() { "None", "Merge", "Merge and Invert" };
-
-        public bool IsEnabled { get; set; } = false;
-        public string Model { get; set; } = "None";
-        public string Prompt { get; set; } = string.Empty;
-        public string NegativePrompt { get; set; } = string.Empty;
-        public ADetailerConfidenceSettings Confidence { get; set; } = new();
-        public ADetailerMaskKLargestSettings MaskKLargest { get; set; } = new();
-        public ADetailerMaskRatioSettings MaskRatio { get; set; } = new();
-        public ADetailerMaskOffsetSettings MaskOffset { get; set; } = new();
-        public ADetailerErosionDilationSettings MaskErosionDilation { get; set; } = new();
-        public ADetailerMaskBlurSettings MaskBlur { get; set; } = new();
-        public ADetailerDenoisingStrengthSettings DenoisingStrength { get; set; } = new();
-        public bool InpaintOnlyMasked { get; set; } = true;
-        public ADetailerInpaintMaskedPaddingSettings InpaintMaskedPadding { get; set; } = new();
-        public bool UseInpaintWidthHeight { get; set; } = false;
-        public bool UseSteps { get; set; } = false;
-        public bool UseCFGScale { get; set; } = false;
-        public bool UseCheckpoint { get; set; } = false;
-        public string Checkpoint { get; set; } = "Use same checkpoint";
-        public bool UseVAE { get; set; } = false;
-        public string VAE { get; set; } = "Use same VAE";
-        public bool UseSampler { get; set; } = false;
-        public string Sampler { get; set; } = "DPM++ 2M Karras";
-        public bool UseNoiseMultiplier { get; set; } = false;
-        public ADetailerNoiseMultiplierSettings NoiseMultiplier { get; set; } = new();
-        public bool UseClipSkip { get; set; } = false;
-        public bool RestoreFace { get; set; } = false;
-        public string ControlNetModel { get; set; } = "None";
-        public string ControlNetModule { get; set; } = "None";
-        public float ControlNetWeight { get; set; } = 1.0f;
-
-        public class ADetailerConfidenceSettings
-        {
-            public float Value { get; set; } = 0.3f;
-            public float Min { get; set; } = 0f;
-            public float Max { get; set; } = 1f;
-            public float Step { get; set; } = 0.01f;
-        }
-
-        public class ADetailerMaskKLargestSettings
-        {
-            public int Value { get; set; } = 0;
-            public int Min { get; set; } = 0;
-            public int Max { get; set; } = 10;
-            public int Step { get; set; } = 1;
-        }
-
-        public class ADetailerMaskRatioSettings
-        {
-            public float ValueMin { get; set; } = 0f;
-            public float ValueMax { get; set; } = 1f;
-            public float Min { get; set; } = 0f;
-            public float Max { get; set; } = 1f;
-            public float Step { get; set; } = 0.001f;
-        }
-
-        public class ADetailerMaskOffsetSettings
-        {
-            public int ValueX { get; set; } = 0;
-            public int ValueY { get; set; } = 0;
-            public int Min { get; set; } = -200;
-            public int Max { get; set; } = 200;
-            public int Step { get; set; } = 1;
-        }
-
-        public class ADetailerErosionDilationSettings
-        {
-            public int Value { get; set; } = 4;
-            public int Min { get; set; } = -128;
-            public int Max { get; set; } = 128;
-            public int Step { get; set; } = 4;
-        }
-
-        public class ADetailerMaskBlurSettings
-        {
-            public int Value { get; set; } = 4;
-            public int Min { get; set; } = 0;
-            public int Max { get; set; } = 64;
-            public int Step { get; set; } = 1;
-        }
-
-        public class ADetailerDenoisingStrengthSettings
-        {
-            public float Value { get; set; } = 0.4f;
-            public float Min { get; set; } = 0f;
-            public float Max { get; set; } = 1f;
-            public float Step { get; set; } = 0.01f;
-        }
-
-        public class ADetailerInpaintMaskedPaddingSettings
-        {
-            public int Value { get; set; } = 32;
-            public int Min { get; set; } = 0;
-            public int Max { get; set; } = 256;
-            public int Step { get; set; } = 4;
-        }
-
-        public class ADetailerNoiseMultiplierSettings
-        {
-            public float Value { get; set; } = 1f;
-            public float Min { get; set; } = 0.5f;
-            public float Max { get; set; } = 1.5f;
-            public float Step { get; set; } = 0.01f;
-
-        }
-    }
-    #endregion
-
-    #region Incantations
-    public class IncantationsSettingsModel
-    {
-        public bool IsEnabled { get; set; } = false;
-        public IncantationsPAGSettings PAG { get; set; } = new();
-        public IncantationsMultiConceptSettings MultiConcept { get; set; } = new();
-        public IncantationsSeekSettings Seek { get; set; } = new();
-        public class IncantationsPAGSettings
-        {
-            public bool IsPAGEnabled { get; set; } = false;
-            public float Value { get; set; } = 1f;
-            public float Min { get; set; } = 0f;
-            public float Max { get; set; } = 20f;
-            public float Step { get; set; } = 0.5f;
-        }
-        public class IncantationsMultiConceptSettings
-        {
-            public bool IsMultiConceptEnabled { get; set; } = false;
-            public bool UNK1 { get; set; } = false;
-            public string UNK2 { get; set; } = string.Empty;
-            public IncantationsMCCorrectionSizeSettings CorrectionSize { get; set; } = new();
-            public IncantationsMCCbSScoreThresholdSettings CbSScoreThreshold { get; set; } = new();
-            public IncantationsMCCbSCorrectionStrengthSettings CbSCorrectionStrength { get; set; } = new();
-            public IncantationsMCSuppresionAlphaSettings SuppresionAlpha { get; set; } = new();
-            public IncantationsMCEMAFactor EMAFactor { get; set; } = new();
-            public IncantationsMCStepEnd StepEnd { get; set; } = new();
-            public class IncantationsMCCorrectionSizeSettings
-            {
-                public int Value { get; set; } = 3;
-                public int Min { get; set; } = 0;
-                public int Max { get; set; } = 100;
-                public float Step { get; set; } = 1;
-            }
-            public class IncantationsMCCbSScoreThresholdSettings
-            {
-                public float Value { get; set; } = 0f;
-                public float Min { get; set; } = 0f;
-                public float Max { get; set; } = 1f;
-                public float Step { get; set; } = 0.001f;
-            }
-            public class IncantationsMCCbSCorrectionStrengthSettings
-            {
-                public float Value { get; set; } = 0.1f;
-                public float Min { get; set; } = 0f;
-                public float Max { get; set; } = 0.99f;
-                public float Step { get; set; } = 0.01f;
-            }
-            public class IncantationsMCSuppresionAlphaSettings
-            {
-                public float Value { get; set; } = 0.1f;
-                public float Min { get; set; } = 0f;
-                public float Max { get; set; } = 1f;
-                public float Step { get; set; } = 0.01f;
-            }
-            public class IncantationsMCEMAFactor
-            {
-                public float Value { get; set; } = 0f;
-                public float Min { get; set; } = 0f;
-                public float Max { get; set; } = 4f;
-                public float Step { get; set; } = 0.01f;
-            }
-            public class IncantationsMCStepEnd
-            {
-                public int Value { get; set; } = 25;
-                public int Min { get; set; } = 0;
-                public int Max { get; set; } = 150;
-                public int Step { get; set; } = 1;
-            }
-        }
-        public class IncantationsSeekSettings
-        {
-            public bool IsSeekEnabled { get; set; } = false;
-            public bool AppendGenCaption { get; set; } = false;
-            public bool DeepbooruInterrogate { get; set; } = false;
-            public string Delimiter { get; set; } = "BREAK";
-            public string WordReplacement { get; set; } = "-";
-            public int UNK3 { get; set; } = 10;
-            public IncantationsSeekGamma Gamma { get; set; } = new();
-            public class IncantationsSeekGamma
-            {
-                public float Value { get; set; } = 0.2f;
-                public float Min { get; set; } = -1f;
-                public float Max { get; set; } = 1f;
-                public float Step { get; set; } = 0.001f;
-            }
-        }
     }
     #endregion
     #endregion
@@ -1167,7 +436,9 @@
         public string ImageMissingFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(125deg)";
         public string ImageExtraFilter { get; set; } = "sepia(70%) saturate(200%) brightness(70%) hue-rotate(25deg)";
         public string ImageOkFilter { get; set; } = "grayscale(70%) brightness(70%)";
-        public List<string> BaseModels { get; set; } = new() { "All", "ODOR", "SD 1.4", "SD 1.5", "SD 1.5 LCM", "SD 1.5 Hyper", "SD 2.0", "SD 2.0 768", "SD 2.1", "SD 2.1 768", "SD 2.1 Unclip", "SDXL 0.9", "SDXL 1.0", "SD 3", "Pony", "Flux.1 S", "Flux.1 D", "AuraFlow", "SDXL 1.0 LCM", "SDXL Distilled", "SDXL Turbo", "SDXL Lightning", "SDXL Hyper", "Stable Cascade", "SVD", "SVD XT", "Playground v2", "PixArt a", "PixArt E", "Hunyuan 1", "Lumina", "Kolors", "Other" };
+        public List<string> DisabledFamilies { get; set; } = new();
+        public List<string> DisabledModels { get; set; } = new();
+        public bool DownloadResourceImages { get; set; } = true;
         public CivitaiLimitSettingsModel Limit { get; set; } = new();
     }
 
@@ -1207,18 +478,36 @@
     }
     #endregion
 
-    #region WebUI
-    public class WebuiSettingsModel
+    #region Types
+    public class IntRange
     {
-        public ClipSkipSettingsModel ClipSkip { get; set; } = new();
+        public int Min { get; set; }
+        public int Max { get; set; }
+        public int Value { get; set; }
+        public int Step { get; set; }
     }
 
-    public class ClipSkipSettingsModel
+    public class FloatRange
     {
-        public int Value { get; set; } = 1;
-        public int Min { get; set; } = 1;
-        public int Max { get; set; } = 12;
-        public int Step { get; set; } = 1;
+        public float Min { get; set; }
+        public float Max { get; set; }
+        public float Value { get; set; }
+        public float Step { get; set; }
+    }
+
+    public class DoubleRange
+    {
+        public double Min { get; set; }
+        public double Max { get; set; }
+        public double Value { get; set; }
+        public double Step { get; set; }
+    }
+
+    public class QuickResolution
+    {
+        public string Label => $"{Width}x{Height}";
+        public int Width { get; set; }
+        public int Height { get; set; }
     }
     #endregion
 }

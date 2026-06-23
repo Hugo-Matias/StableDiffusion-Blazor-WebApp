@@ -1,0 +1,139 @@
+@using BlazorWebApp.Data.Entities
+@inject IDatabaseService Database
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_value" 
+                          Label="Entry Value" 
+                          Required 
+                          HelperText="Text that will be inserted when this wildcard is used"
+                          Lines="2"
+                          Variant="Variant.Text" />
+            
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.body2">Weight: @_weight.ToString("F1")</MudText>
+                <MudSlider @bind-Value="_weight" 
+                           Min="0.1" 
+                           Max="2.0" 
+                           Step="0.1"
+                           Color="Color.Primary"
+                           ValueLabel>
+                    Weight
+                </MudSlider>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Higher weight = higher probability of selection
+                </MudText>
+            </MudStack>
+
+            @if (_totalWeight > 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense>
+                    <strong>Estimated Probability:</strong> ~@_probability.ToString("F1")%
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Save" 
+                   Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   Disabled="string.IsNullOrWhiteSpace(_value)">
+            @(_isEdit ? "Update" : "Add")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public WildcardEntry? Entry { get; set; }
+
+    [Parameter]
+    public int CollectionId { get; set; }
+
+    [Parameter]
+    public int NextSortOrder { get; set; }
+
+    private string _value = string.Empty;
+    private double _weight = 1.0;
+    private bool _isEdit = false;
+    private double _probability = 0;
+    private double _totalWeight = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Entry != null)
+        {
+            _isEdit = true;
+            _value = Entry.Value;
+            _weight = Entry.Weight;
+            CollectionId = Entry.CollectionId;
+        }
+
+        await CalculateProbability();
+    }
+
+    private async Task CalculateProbability()
+    {
+        try
+        {
+            var entries = await Database.GetEntriesByCollectionId(CollectionId);
+            _totalWeight = entries.Where(e => _isEdit ? e.Id != Entry!.Id : true).Sum(e => e.Weight);
+            _totalWeight += _weight;
+            
+            if (_totalWeight > 0)
+            {
+                _probability = (_weight / _totalWeight) * 100;
+            }
+        }
+        catch
+        {
+            _probability = 0;
+            _totalWeight = 0;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Save()
+    {
+        try
+        {
+            if (_isEdit && Entry != null)
+            {
+                Entry.Value = _value.Trim();
+                Entry.Weight = (float)_weight;
+                await Database.UpdateWildcardEntry(Entry);
+            }
+            else
+            {
+                var newEntry = new WildcardEntry
+                {
+                    CollectionId = CollectionId,
+                    Value = _value.Trim(),
+                    Weight = (float)_weight,
+                    SortOrder = NextSortOrder
+                };
+                await Database.CreateWildcardEntry(newEntry);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving entry: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnWeightChanged(double value)
+    {
+        _weight = value;
+        await CalculateProbability();
+        StateHasChanged();
+    }
+}

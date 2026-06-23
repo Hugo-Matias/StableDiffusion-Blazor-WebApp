@@ -1,0 +1,261 @@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@inject OllamaService OllamaAPI
+@inject IDatabaseService DB
+@inject IStateService State
+@inject ISettingsService Settings
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_currentPrompt" Label="Simple Prompt" Variant="Variant.Outlined" Lines="3"
+                          Placeholder="e.g., beautiful woman, sunset, beach" Immediate />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudSelect Value="_selectedTemplateId" ValueChanged="OnTemplateChanged" Label="Template"
+                       Variant="Variant.Outlined" T="int">
+                @if (_templates != null)
+                {
+                    foreach (var template in _templates)
+                    {
+                        <MudSelectItem Value="@template.Id">
+                            <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                                <span>@template.Name</span>
+                                @if (template.IsDefault)
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
+                                }
+                            </div>
+                        </MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="6">
+            <MudNumericField @bind-Value="State.State.Generation.LLM.Options.Seed" Label="Seed"
+                             Variant="Variant.Outlined" Min="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Min"
+                             Max="@Settings.Settings.Generation.Shared.LLMEnhancer.Seed.Max" Immediate />
+        </MudItem>
+
+        <MudItem xs="6" Class="d-flex align-center">
+            <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary">
+                <MudButton OnClick="GeneratePrompt" Disabled="_isGenerating"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome">
+                    @(_isGenerating ? "Generating..." : "Enhance Prompt")
+                </MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" OnClick="RandomizeSeed" Disabled="_isGenerating" />
+            </MudButtonGroup>
+        </MudItem>
+
+        @{
+            var enhancedPrompt = IsNegativePrompt
+                ? State.State.Generation.LLM.EnhancedNegativePrompt
+                : State.State.Generation.LLM.EnhancedPrompt;
+        }
+
+        @if (!string.IsNullOrEmpty(enhancedPrompt))
+        {
+            <MudItem xs="12">
+                <MudDivider Class="my-2" />
+                <MudTextField @bind-Value="_currentEnhancedPrompt" Label="Enhanced Prompt" Variant="Variant.Filled"
+                              Lines="20" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudButtonGroup Variant="Variant.Filled" Color="Color.Success">
+                    <MudButton OnClick="ApplyToMainPrompt" StartIcon="@Icons.Material.Filled.Check">
+                        Apply to Main Prompt
+                    </MudButton>
+                    <MudButton OnClick="GeneratePrompt" StartIcon="@Icons.Material.Filled.Refresh">
+                        Regenerate
+                    </MudButton>
+                    <MudButton OnClick="ClearResult" StartIcon="@Icons.Material.Filled.Clear" Color="Color.Default">
+                        Clear
+                    </MudButton>
+                </MudButtonGroup>
+            </MudItem>
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Error" Dense>@_errorMessage</MudAlert>
+            </MudItem>
+        }
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnPromptApplied { get; set; }
+
+    [Parameter]
+    public bool IsNegativePrompt { get; set; }
+
+    private bool _isGenerating;
+    private string? _errorMessage;
+    private List<SystemPromptTemplate>? _templates;
+    private int _selectedTemplateId;
+    private SystemPromptTemplate? _selectedTemplate;
+
+    private string _currentPrompt
+    {
+        get => IsNegativePrompt ? State.State.Generation.LLM.NegativePrompt : State.State.Generation.LLM.Prompt;
+        set
+        {
+            if (IsNegativePrompt)
+                State.State.Generation.LLM.NegativePrompt = value;
+            else
+                State.State.Generation.LLM.Prompt = value;
+        }
+    }
+
+    private string _currentEnhancedPrompt
+    {
+        get => IsNegativePrompt ? State.State.Generation.LLM.EnhancedNegativePrompt : State.State.Generation.LLM.EnhancedPrompt;
+        set
+        {
+            if (IsNegativePrompt)
+                State.State.Generation.LLM.EnhancedNegativePrompt = value;
+            else
+                State.State.Generation.LLM.EnhancedPrompt = value;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+            
+            if (_templates != null && _templates.Any())
+            {
+                // Select appropriate default template based on IsNegativePrompt
+                var defaultTemplate = _templates.FirstOrDefault(t =>
+                    t.IsDefault && t.Name.Contains(IsNegativePrompt ? "Negative" : "Enhance"));
+                
+                if (defaultTemplate != null)
+                {
+                    _selectedTemplateId = defaultTemplate.Id;
+                    await LoadSelectedTemplate();
+                }
+                else
+                {
+                    _selectedTemplateId = _templates[0].Id;
+                    await LoadSelectedTemplate();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading templates: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnTemplateChanged(int templateId)
+    {
+        _selectedTemplateId = templateId;
+        await LoadSelectedTemplate();
+        StateHasChanged();
+    }
+
+    private async Task LoadSelectedTemplate()
+    {
+        if (_selectedTemplateId <= 0) return;
+
+        try
+        {
+            _selectedTemplate = await DB.GetSystemPromptTemplate(_selectedTemplateId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading template: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task GeneratePrompt()
+    {
+        if (string.IsNullOrWhiteSpace(_currentPrompt))
+        {
+            _errorMessage = "Please enter a prompt first.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(State.State.Generation.LLM.Model))
+        {
+            _errorMessage = "Please select an LLM model in the toolbar first.";
+            return;
+        }
+
+        if (_selectedTemplate == null)
+        {
+            _errorMessage = "Please select a template first.";
+            return;
+        }
+
+        _isGenerating = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Get messages from selected template and replace {prompt} placeholder
+            var messages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
+            {
+                Role = m.Role,
+                Content = m.Content?.Replace("{prompt}", _currentPrompt) ?? ""
+            }).ToList();
+
+            var response = await OllamaAPI.SendChatMessage(
+                State.State.Generation.LLM.Model,
+                messages,
+                State.State.Generation.LLM.Options.ToOllamaOptions());
+
+            if (response?.Message?.Content != null)
+            {
+                _currentEnhancedPrompt = response.Message.Content;
+                await State.SaveState();
+            }
+            else
+            {
+                _errorMessage = "No response received from model.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error generating prompt: {ex.Message}";
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RandomizeSeed()
+    {
+        State.State.Generation.LLM.Options.Seed = new Random().Next();
+    }
+
+    private async Task ApplyToMainPrompt()
+    {
+        if (!string.IsNullOrEmpty(_currentEnhancedPrompt))
+        {
+            await OnPromptApplied.InvokeAsync(_currentEnhancedPrompt);
+        }
+    }
+
+    private async Task ClearResult()
+    {
+        _currentEnhancedPrompt = string.Empty;
+        await State.SaveState();
+    }
+}

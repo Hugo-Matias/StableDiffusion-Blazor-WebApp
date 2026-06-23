@@ -1,0 +1,217 @@
+/* ===========================================
+   Artist Card - Base
+   =========================================== */
+
+.artist-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.artist-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ===========================================
+   Image / Placeholder
+   =========================================== */
+
+.artist-image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: var(--mud-palette-dark);
+}
+
+.artist-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.artist-card:hover .artist-image {
+    transform: scale(1.05);
+}
+
+.artist-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--mud-palette-dark) 0%, var(--mud-palette-surface) 100%);
+    color: var(--mud-palette-text-disabled);
+    font-size: 2rem;
+}
+
+/* ===========================================
+   Favorite Button
+   =========================================== */
+
+.artist-fav-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+}
+
+.artist-fav-btn.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.artist-fav-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.15);
+}
+
+.artist-fav-btn.active {
+    color: var(--mud-palette-error);
+}
+
+.artist-fav-btn.active:hover {
+    background: rgba(244, 67, 54, 0.2);
+}
+
+/* ===========================================
+   Tag Button
+   =========================================== */
+
+.artist-tag-btn {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+    backdrop-filter: blur(4px);
+    z-index: 5;
+}
+
+.artist-tag-btn.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.artist-tag-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.15);
+}
+
+.artist-tag-btn.has-tags {
+    color: var(--mud-palette-info);
+}
+
+.artist-tag-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--mud-palette-info);
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 700;
+    border-radius: 50%;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* ===========================================
+   Tag Popover
+   =========================================== */
+
+.artist-tag-popover {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--mud-palette-surface);
+    border-radius: 0 0 8px 8px;
+    padding: 8px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.artist-tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.artist-tag-chips ::deep .mud-chip {
+    height: 20px;
+    font-size: 0.65rem;
+}
+
+/* ===========================================
+   Info Footer
+   =========================================== */
+
+.artist-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 4px;
+    min-height: 28px;
+}
+
+.artist-slug {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--mud-palette-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.artist-count {
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: var(--mud-palette-text-secondary);
+    flex-shrink: 0;
+}

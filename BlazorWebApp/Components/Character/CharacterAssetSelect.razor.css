@@ -1,0 +1,3 @@
+.character-asset-loading {
+  min-height: var(--character-asset-loading-height, 3rem);
+}

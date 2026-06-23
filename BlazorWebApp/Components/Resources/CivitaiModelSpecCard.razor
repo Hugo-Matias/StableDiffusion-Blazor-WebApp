@@ -1,0 +1,356 @@
+@inject IStateService State
+@inject ISettingsService Settings
+@inject IDatabaseService DB
+@inject IProgressService Progress
+@inject ISnackbar Snackbar
+@inject CivitaiService Civitai
+@inject ICivitaiResourceImageService ImageSaver
+@inject IJSRuntime JS
+@using BlazorWebApp.Data.Dtos
+
+<div class="civitai-model-spec">
+    <div class="civitai-model-spec__action-row">
+        @if (Version.Files != null && Version.Files.Count > 1)
+        {
+            <MudSelect T="CivitaiModelVersionFileDto" Class="civitai-model-spec__file-select" Label="File"
+                       Variant="Variant.Text" Value="_selected" ValueChanged="SelectFile" Dense ToStringFunc="FileLabel">
+                @foreach (var file in Version.Files)
+                {
+                    <MudSelectItem Value="file">@FileLabel(file)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        @if (Model.Type == "Checkpoint")
+        {
+            <MudSelect T="string" Class="civitai-model-spec__type-select" Label="Resource Type" Variant="Variant.Text"
+                       @bind-Value="State.State.Civitai.ResourceTypeOverride" Dense>
+                <MudSelectItem Value="@("Checkpoint")">Checkpoint</MudSelectItem>
+                <MudSelectItem Value="@("Diffusion")">Diffusion</MudSelectItem>
+            </MudSelect>
+        }
+
+        <MudAutocomplete T="string" Class="civitai-model-spec__subtype" Label="Sub-Type" Variant="Variant.Text"
+                         @bind-Value="State.State.Civitai.ResourceSubtype" SearchFunc="DB.GetResourceSubtypeNames" MaxItems="50"
+                         CoerceValue ResetValueOnEmptyText Clearable />
+
+        <div class="civitai-model-spec__primary-actions">
+            <MudButton Class="civitai-model-spec__download" Variant="Variant.Filled" Color="@_color" StartIcon="@_icon"
+                       OnClick="DownloadSelected" Disabled="_isDownloading || _selected == null">
+                @(_isDownloading ? "Downloading..." : _buttonText)
+            </MudButton>
+            <MudButton Class="send-to-btn" StartIcon="fa-solid fa-images" OnClick="SaveAllImagesClick"
+                       Disabled="_isSavingImages || Version.Images == null || Version.Images.Count == 0">
+                @(_isSavingImages ? "Saving..." : "Save All")
+            </MudButton>
+        </div>
+
+        @if (Version.IsEarlyAccess)
+        {
+            <MudChip Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Lock" Variant="Variant.Filled">
+                Early Access
+            </MudChip>
+        }
+
+        @if (_selected?.PickleScanResult != null && _selected.PickleScanResult != "Success")
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning">@_selected.PickleScanMessage</MudText>
+        }
+
+        @if (Version.Files != null && Version.Files.Any(f => f.Type == "Config"))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Info">Config file available</MudText>
+        }
+    </div>
+
+    <div class="civitai-model-spec__meta">
+        <div class="civitai-model-spec__meta-cell">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Base Model</MudText>
+            <MudText Typo="Typo.body2">@($"{Version.BaseModelType}: {Version.BaseModel}")</MudText>
+        </div>
+        @if (_selected != null)
+        {
+            <div class="civitai-model-spec__meta-cell">
+                <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Size</MudText>
+                <MudText Typo="Typo.body2">@Parser.ParseSizeKb(_selected.SizeKb)</MudText>
+            </div>
+            <div class="civitai-model-spec__meta-cell">
+                <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Verified</MudText>
+                <MudText Typo="Typo.body2">
+                    @(_selected.ScannedAt != null
+                        ? Parser.ParseCivitaiScanTimespan((DateTime)_selected.ScannedAt)
+                        : "Pending")
+                </MudText>
+            </div>
+        }
+        <div class="civitai-model-spec__meta-cell">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Created</MudText>
+            <MudText Typo="Typo.body2">@Version.CreatedAt.ToString("dd MMM yyyy")</MudText>
+        </div>
+        @if (Version.UpdatedAt != default)
+        {
+            <div class="civitai-model-spec__meta-cell">
+                <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Updated</MudText>
+                <MudText Typo="Typo.body2">@Version.UpdatedAt.ToString("dd MMM yyyy")</MudText>
+            </div>
+        }
+        <div class="civitai-model-spec__meta-cell">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">NSFW Level</MudText>
+            <MudText Typo="Typo.body2">@Version.NsfwLevel</MudText>
+        </div>
+    </div>
+
+    @if (_selected?.Hashes != null)
+    {
+        <div class="civitai-model-spec__hashes">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Hashes</MudText>
+            <div class="civitai-model-spec__hash-row">
+                <span class="civitai-model-spec__hash-label">AutoV2</span>
+                <MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.AutoV2))"
+                           EndIcon="fa-regular fa-clipboard" Size="Size.Small" Class="civitai-model-spec__hash-btn">
+                    @_selected.Hashes.AutoV2
+                </MudButton>
+            </div>
+            @if (_showMoreHashes)
+            {
+                <div class="civitai-model-spec__hash-row">
+                    <span class="civitai-model-spec__hash-label">AutoV1</span>
+                    <MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.AutoV1))"
+                               EndIcon="fa-regular fa-clipboard" Size="Size.Small" Class="civitai-model-spec__hash-btn">
+                        @_selected.Hashes.AutoV1
+                    </MudButton>
+                </div>
+                <div class="civitai-model-spec__hash-row">
+                    <span class="civitai-model-spec__hash-label">SHA256</span>
+                    <MudButton OnClick="@(async () => await CopyToClipboard(_selected.Hashes.SHA256))"
+                               EndIcon="fa-regular fa-clipboard" Size="Size.Small" Class="civitai-model-spec__hash-btn">
+                        @_selected.Hashes.SHA256
+                    </MudButton>
+                </div>
+            }
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _showMoreHashes = !_showMoreHashes)">
+                @(_showMoreHashes ? "Hide hashes" : "More hashes")
+            </MudButton>
+        </div>
+    }
+
+    @if (Version.TrainedWords != null && Version.TrainedWords.Count > 0)
+    {
+        <div class="civitai-model-spec__rail">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Trigger Words</MudText>
+            <MudChipSet Class="civitai-model-spec__chips">
+                @foreach (var word in Version.TrainedWords)
+                {
+                    <MudChip Color="Color.Primary" Size="Size.Small" Text="@word">@word</MudChip>
+                }
+            </MudChipSet>
+        </div>
+    }
+
+    @if (Tags != null && Tags.Count > 0)
+    {
+        <div class="civitai-model-spec__rail">
+            <MudText Class="civitai-model-spec__meta-label" Typo="Typo.caption">Tags</MudText>
+            <div
+                class="civitai-model-spec__tags @(_tagsExpanded ? "civitai-model-spec__tags--expanded" : "civitai-model-spec__tags--clamped")">
+                @foreach (var tag in Tags)
+                {
+                    <MudChip Size="Size.Small">@tag</MudChip>
+                }
+            </div>
+            @if (Tags.Count > TagPreviewCount)
+            {
+                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => _tagsExpanded = !_tagsExpanded)">
+                    @(_tagsExpanded ? "Show less" : $"+{Tags.Count - TagPreviewCount} more")
+                </MudButton>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CivitaiModelDto Model { get; set; } = default!;
+    [Parameter, EditorRequired] public CivitaiModelVersionDto Version { get; set; } = default!;
+    [Parameter] public List<string>? Tags { get; set; }
+    [Parameter] public EventCallback OnDownloadCompleted { get; set; }
+
+    private const int TagPreviewCount = 12;
+
+    private CivitaiModelVersionFileDto? _selected;
+    private string _icon = string.Empty;
+    private Color _color = Color.Default;
+    private string _buttonText = "Download";
+    private bool _isDownloading;
+    private bool _isSavingImages;
+    private bool _showMoreHashes;
+    private bool _tagsExpanded;
+
+    private string _resolvedType => Model.Type == "Checkpoint"
+        ? State.State.Civitai.ResourceTypeOverride ?? Model.Type
+        : Model.Type;
+
+    protected override void OnParametersSet()
+    {
+        if (Version?.Files == null || Version.Files.Count == 0)
+        {
+            _selected = null;
+            return;
+        }
+
+        if (_selected != null && Version.Files.Contains(_selected)) return;
+
+        var primary = Version.Files.FirstOrDefault(f => f.Primary == true) ?? Version.Files[0];
+        SelectFile(primary);
+    }
+
+    private void SelectFile(CivitaiModelVersionFileDto file)
+    {
+        _selected = file;
+        if (file == null) return;
+        var scanResult = Parser.ParseCivitaiScanResult(file.VirusScanResult);
+        _color = Parser.ParseCivitaiScanColor(scanResult);
+        _icon = Parser.ParseCivitaiScanIcon(scanResult);
+        _buttonText = ResolveButtonText(file);
+    }
+
+    private static string ResolveButtonText(CivitaiModelVersionFileDto file)
+    {
+        if (file.Metadata?.Format == "Other") return file.Type;
+        if (file.Type == "Model") return file.Metadata?.Format ?? "Download";
+        if (file.Type == "Pruned Model") return $"{file.Metadata?.Format} (Pruned)";
+        return $"{file.Metadata?.Format} | {file.Type}";
+    }
+
+    private static string FileLabel(CivitaiModelVersionFileDto file)
+    {
+        if (file == null) return string.Empty;
+        var format = file.Metadata?.Format != null && file.Metadata.Format != "Other"
+            ? $" {file.Metadata.Format}"
+            : string.Empty;
+        return $"{file.Type}{format} ({Parser.ParseSizeKb(file.SizeKb)})";
+    }
+
+    private async Task DownloadSelected()
+    {
+        if (_selected == null) return;
+        _isDownloading = true;
+        try
+        {
+            var typeOverride = Model.Type == "Checkpoint" ? State.State.Civitai.ResourceTypeOverride : null;
+            var downloadResourceImages = Settings.Settings.Resources.Civitai.DownloadResourceImages;
+            var status = await Civitai.DownloadResource(Model, Version, _selected, State.State.Civitai.ResourceSubtype,
+                typeOverride, downloadResourceImages);
+            switch (status)
+            {
+                case CivitaiDownloadStatus.Success:
+                    Snackbar.Add($"{_selected.Name} downloaded successfully!", Severity.Success);
+                    break;
+                case CivitaiDownloadStatus.Database:
+                    Snackbar.Add($"New database record created for {_selected.Name}!", Severity.Info);
+                    break;
+                case CivitaiDownloadStatus.Exists:
+                    Snackbar.Add($"File already downloaded {_selected.Name}!", Severity.Warning);
+                    break;
+                case CivitaiDownloadStatus.Error:
+                    Snackbar.Add($"Something went wrong downloading {_selected.Name}!", Severity.Error);
+                    break;
+            }
+
+            if (downloadResourceImages && Version.Images != null && Version.Images.Count > 0)
+            {
+                await SaveImage(Version.Images[0], Version.Id, isPreview: true, showSnackbar: false);
+                await SaveAllImagesInternal(showProgress: false);
+            }
+
+            await OnDownloadCompleted.InvokeAsync();
+        }
+        finally
+        {
+            _isDownloading = false;
+        }
+    }
+
+    private async Task SaveAllImagesClick()
+    {
+        await SaveAllImagesInternal(showProgress: true);
+    }
+
+    private async Task SaveAllImagesInternal(bool showProgress)
+    {
+        if (Version.Images == null || Version.Images.Count == 0) return;
+
+        _isSavingImages = true;
+        var index = 1;
+        var saved = 0;
+        var failed = 0;
+        var progress = new BaseProgress() { BarColor = Color.Secondary };
+        if (showProgress) Progress.Add(progress);
+
+        foreach (var image in Version.Images)
+        {
+            var pct = (index * 100) / Version.Images.Count;
+            if (showProgress) Progress.Update(progress.Id, pct);
+            try
+            {
+                if (await SaveImage(image, Version.Id, filename: index.ToString(), showSnackbar: false))
+                    saved++;
+                else
+                    failed++;
+            }
+            catch (Exception)
+            {
+                failed++;
+            }
+            index++;
+        }
+
+        if (showProgress) Progress.Remove(progress.Id);
+        if (failed == 0)
+            Snackbar.Add($"All images saved!\n{Model.Name}", Severity.Success);
+        else if (saved > 0)
+            Snackbar.Add($"Saved {saved} image(s); {failed} failed.\n{Model.Name}", Severity.Warning);
+        else
+            Snackbar.Add($"No images could be saved.\n{Model.Name}", Severity.Error);
+        _isSavingImages = false;
+    }
+
+    private async Task<bool> SaveImage(CivitaiImageDto image, int versionId, string filename = "", bool isPreview = false, bool showSnackbar = true)
+    {
+        var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
+        {
+            Image = image,
+            ModelId = Model.Id,
+            ModelName = Model.Name,
+            ModelVersionId = versionId,
+            ResourceType = _resolvedType,
+            Filename = filename,
+            IsPreview = isPreview,
+            EnrichFromModelVersion = true
+        });
+
+        if (!showSnackbar)
+            return result.ImageAvailable;
+
+        if (!result.ImageAvailable)
+        {
+            Snackbar.Add("Unable to save image.", Severity.Warning);
+            return false;
+        }
+        else if (result.FileAlreadyExisted)
+        {
+            Snackbar.Add("Image and parameters already saved!", Severity.Warning);
+            return true;
+        }
+        else
+        {
+            Snackbar.Add("Image saved!", Severity.Success);
+            return true;
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        await JS.InvokeVoidAsync("clipboardCopy.copyText", text);
+    }
+}

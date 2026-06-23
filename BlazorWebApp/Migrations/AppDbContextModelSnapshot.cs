@@ -17,6 +17,458 @@ namespace BlazorWebApp.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.11");
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CharacterEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ThumbnailImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Characters");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Confidence")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("EstimatedBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GroupKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MemberCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("MaxSimilarity")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("MinSimilarity")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RepresentativeImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RepresentativeImageId");
+
+                    b.HasIndex("RunId");
+
+                    b.HasIndex("RunId", "GroupKey")
+                        .IsUnique();
+
+                    b.ToTable("CleanupGroups");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupExplanation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Caption")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RepresentativeImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Style")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId")
+                        .IsUnique();
+
+                    b.HasIndex("RepresentativeImageId");
+
+                    b.ToTable("CleanupGroupExplanations");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Distance")
+                        .HasColumnType("REAL");
+
+                    b.Property<long?>("EstimatedBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("SimilarityScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SuggestedAction")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("GroupId", "ImageId")
+                        .IsUnique();
+
+                    b.ToTable("CleanupGroupMembers");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfigurationJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ScopeKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SummaryJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalGroups")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalMembers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Strategy");
+
+                    b.ToTable("CleanupGroupRuns");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageEmbedding", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Dimensions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RuntimeProvider")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Vector")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("ImageId", "ModelKey", "ModelHash")
+                        .IsUnique();
+
+                    b.ToTable("CleanupImageEmbeddings");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageScore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("MaxScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("MinScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ModelHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RuntimeProvider")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ScoreName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("ScoreName");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ImageId", "ModelKey", "ModelHash", "ScoreName")
+                        .IsUnique();
+
+                    b.ToTable("CleanupImageScores");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageIndex", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExactHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("FileExists")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("FileLastWriteUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("FileSizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("HashIndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("IndexVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("MetadataIndexedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ModeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PerceptualHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PromptFingerprint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PromptNormalized")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PromptTokenSignature")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ResourceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExactHash");
+
+                    b.HasIndex("ImageId")
+                        .IsUnique();
+
+                    b.HasIndex("PerceptualHash");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("PromptFingerprint");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.ToTable("CleanupImageIndexes");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Folder", b =>
                 {
                     b.Property<int>("Id")
@@ -27,12 +479,45 @@ namespace BlazorWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Folders");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.GenerateStatePreset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.ToTable("GenerateStatePresets");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Image", b =>
@@ -56,11 +541,8 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("Height")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Info")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("InfoPath")
-                        .HasColumnType("TEXT");
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("ModeId")
                         .HasColumnType("INTEGER");
@@ -78,8 +560,15 @@ namespace BlazorWebApp.Migrations
                     b.Property<string>("Prompt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ResourceId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("SamplerId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Scheduler")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Score")
                         .HasColumnType("INTEGER");
@@ -93,13 +582,61 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("Width")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("WorkflowId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ModeId");
 
                     b.HasIndex("ProjectId");
 
+                    b.HasIndex("ResourceId");
+
                     b.ToTable("Images");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.JobEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Jobs");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Mode", b =>
@@ -148,11 +685,24 @@ namespace BlazorWebApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Category")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ImagePath")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsFavorite")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Loras")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Negative")
                         .HasColumnType("TEXT");
@@ -160,13 +710,92 @@ namespace BlazorWebApp.Migrations
                     b.Property<string>("Positive")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Prompts");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopNode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GenerationNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Instruction")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelUsed")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PreviewImageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PromptText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("PromptWorkshopNodes");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CurrentNodeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PromptWorkshopSessions");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Resource", b =>
@@ -176,6 +805,9 @@ namespace BlazorWebApp.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Author")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BaseModel")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("CivitaiModelId")
@@ -395,6 +1027,102 @@ namespace BlazorWebApp.Migrations
                     b.ToTable("Samplers");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.SchedulerDraft", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EditingJobId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SchedulerDrafts");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.SavedDanbooruMedia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DanbooruPostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsVideo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreviewUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Rating")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SampleUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TagsBundle")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DanbooruPostId")
+                        .IsUnique();
+
+                    b.ToTable("SavedDanbooruMedia");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.Selection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Selections");
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.State", b =>
                 {
                     b.Property<int>("Id")
@@ -407,17 +1135,11 @@ namespace BlazorWebApp.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Img2ImgParameters")
+                    b.Property<string>("GenerationParameters")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Txt2ImgParameters")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpscaleParameters")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
@@ -426,6 +1148,260 @@ namespace BlazorWebApp.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("States");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.SystemPromptTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MessagesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemPromptTemplates");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardCollection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("WildcardCollections");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CollectionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<float>("Weight")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectionId");
+
+                    b.HasIndex("SortOrder");
+
+                    b.ToTable("WildcardEntries");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WorkflowState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Parameters")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowStates");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.OdditariumSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .IsUnique()
+                        .HasFilter("\"SessionId\" IS NOT NULL");
+
+                    b.ToTable("OdditariumSessions");
+                });
+
+            modelBuilder.Entity("ImageSelection", b =>
+                {
+                    b.Property<int>("ImagesId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SelectionsId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ImagesId", "SelectionsId");
+
+                    b.HasIndex("SelectionsId");
+
+                    b.ToTable("ImageSelection");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroup", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.CleanupGroupRun", "Run")
+                        .WithMany("Groups")
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "RepresentativeImage")
+                        .WithMany()
+                        .HasForeignKey("RepresentativeImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RepresentativeImage");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupExplanation", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.CleanupGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "RepresentativeImage")
+                        .WithMany()
+                        .HasForeignKey("RepresentativeImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RepresentativeImage");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupMember", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.CleanupGroup", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageEmbedding", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageScore", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupImageIndex", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", "Image")
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Image", b =>
@@ -441,6 +1417,12 @@ namespace BlazorWebApp.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Resource", "Model")
+                        .WithMany()
+                        .HasForeignKey("ResourceId");
+
+                    b.Navigation("Model");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Project", b =>
@@ -469,9 +1451,68 @@ namespace BlazorWebApp.Migrations
                     b.Navigation("Type");
                 });
 
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardEntry", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.WildcardCollection", "Collection")
+                        .WithMany("Entries")
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Collection");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.PromptWorkshopNode", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopNode", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+
+                    b.HasOne("BlazorWebApp.Data.Entities.PromptWorkshopSession", "Session")
+                        .WithMany("Nodes")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.OdditariumSession", b =>
+                {
+                    // SessionId is a soft reference only - no FK constraint (SQLite migration limitations).
+                });
+
+            modelBuilder.Entity("ImageSelection", b =>
+                {
+                    b.HasOne("BlazorWebApp.Data.Entities.Image", null)
+                        .WithMany()
+                        .HasForeignKey("ImagesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BlazorWebApp.Data.Entities.Selection", null)
+                        .WithMany()
+                        .HasForeignKey("SelectionsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Folder", b =>
                 {
                     b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroup", b =>
+                {
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.CleanupGroupRun", b =>
+                {
+                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Mode", b =>
@@ -482,6 +1523,11 @@ namespace BlazorWebApp.Migrations
             modelBuilder.Entity("BlazorWebApp.Data.Entities.Project", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("BlazorWebApp.Data.Entities.WildcardCollection", b =>
+                {
+                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

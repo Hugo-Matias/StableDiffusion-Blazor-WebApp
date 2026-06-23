@@ -1,0 +1,223 @@
+@* Workshop right-panel: preview controls only (Phase 8.6 Step 3 trim).
+   Prompt editing, instruction display, and Chat Edit / Spawn Variations actions
+   moved to WorkshopChatBubble + the view header. *@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Data.Enums
+@implements IDisposable
+@inject IStateService State
+@inject IDatabaseService Db
+@inject IIOService IO
+@inject IWorkshopService WorkshopService
+@inject IEventService Events
+@inject ISnackbar Snackbar
+
+<div class="pa-3">
+    <MudStack Spacing="2">
+
+        @* Header: mode + model + timestamp *@
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@GetIconFor(Node.Mode)" Size="Size.Small" />
+            <MudText Typo="Typo.subtitle2" Class="text-capitalize">@Node.Mode</MudText>
+            @if (!string.IsNullOrEmpty(Node.ModelUsed))
+            {
+                <MudChip Color="Color.Info" Text="@Node.ModelUsed" Variant="Variant.Outlined" Size="Size.Small" />
+            }
+        </div>
+
+        <MudText Typo="Typo.caption" Class="text-disabled">
+            Gen @Node.GenerationNumber . @Node.CreatedAt.ToString("MMM d, HH:mm")
+        </MudText>
+
+        @* Preview image area *@
+        <div class="d-flex align-center justify-center"
+             style="width: 100%; aspect-ratio: 3/4; border-radius: 4px; overflow: hidden; background-color: var(--mud-palette-background-grey);">
+            @if (!string.IsNullOrEmpty(_previewSrc))
+            {
+                <img src="@_previewSrc" alt="preview"
+                     style="width: 100%; height: 100%; object-fit: contain; display: block;" />
+            }
+            else
+            {
+                <div class="d-flex flex-column align-center text-disabled gap-1">
+                    <MudIcon Icon="@Icons.Material.Outlined.ImageNotSupported" Size="Size.Large" />
+                    <MudText Typo="Typo.caption">No preview yet</MudText>
+                </div>
+            }
+        </div>
+
+        @* Preview controls: workflow + orientation + seed *@
+        <MudSelect T="Guid?" Value="_workshopState.LastWorkflowId" Label="Workflow"
+                   ValueChanged="OnWorkflowChanged" Variant="Variant.Text" Dense="true">
+            @foreach (var wf in _txt2ImgWorkflows)
+            {
+                <MudSelectItem T="Guid?" Value="@((Guid?)wf.Id)">@wf.Title (@wf.Base)</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudToggleGroup T="PreviewOrientation" Value="_workshopState.Orientation"
+                        ValueChanged="OnOrientationChanged" SelectionMode="SelectionMode.SingleSelection"
+                        Color="Color.Primary" Size="Size.Small">
+            <MudToggleItem Value="PreviewOrientation.Portrait">Portrait</MudToggleItem>
+            <MudToggleItem Value="PreviewOrientation.Landscape">Landscape</MudToggleItem>
+        </MudToggleGroup>
+
+        <MudNumericField T="long" Value="_workshopState.LastSeed"
+                         ValueChanged="OnSeedChanged"
+                         Label="Seed" Variant="Variant.Text" HideSpinButtons="true"
+                         Min="-1" HelperText="Use -1 for random" />
+
+        <MudSwitch T="bool" Value="_workshopState.UseEnhancements" ValueChanged="OnUseEnhancementsChanged"
+                   Label="Use Enhancements" Color="Color.Primary" Size="Size.Small" />
+
+        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                   StartIcon="@Icons.Material.Filled.Image"
+                   OnClick="OnGeneratePreviewAsync"
+                   Disabled="@(_isGenerating || _workshopState.LastWorkflowId == null)">
+            @(_isGenerating ? "Generating..." : "Generate Preview")
+        </MudButton>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public PromptWorkshopNode Node { get; set; } = null!;
+
+    private AppStatePromptsLLMWorkshop _workshopState => State.State.Prompts.LLM.Workshop;
+    private List<Workflow> _txt2ImgWorkflows = new();
+    private int _loadedNodeId = 0;
+    private int? _loadedPreviewImageId;
+    private string? _previewSrc;
+    private bool _isGenerating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+        RefreshWorkflows();
+        await SyncFromNodeAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Node.Id != _loadedNodeId || Node.PreviewImageId != _loadedPreviewImageId)
+            await SyncFromNodeAsync();
+    }
+
+    private void RefreshWorkflows()
+    {
+        var currentBase = State.State.Generation.WorkflowBase;
+        _txt2ImgWorkflows = State.State.Generation.Workflows?
+            .Where(w => w.Mode == ModeType.Txt2Img && w.Base == currentBase)
+            .OrderBy(w => w.Title)
+            .ToList() ?? new();
+
+        var persistedStillValid = _workshopState.LastWorkflowId is Guid id
+            && _txt2ImgWorkflows.Any(w => w.Id == id);
+        if (!persistedStillValid && _txt2ImgWorkflows.Count > 0)
+        {
+            var current = _txt2ImgWorkflows.FirstOrDefault(w => w.Id == State.GenerationParameters.WorkflowId)
+                ?? _txt2ImgWorkflows.First();
+            _workshopState.LastWorkflowId = current.Id;
+        }
+        else if (_txt2ImgWorkflows.Count == 0)
+        {
+            _workshopState.LastWorkflowId = null;
+        }
+    }
+
+    private async Task SyncFromNodeAsync()
+    {
+        _loadedNodeId = Node.Id;
+        _loadedPreviewImageId = Node.PreviewImageId;
+        await LoadPreviewAsync();
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        if (Node.PreviewImageId is int id && id > 0)
+        {
+            var image = await Db.GetImageById(id);
+            _previewSrc = image == null || string.IsNullOrWhiteSpace(image.Path)
+                ? null
+                : IO.GetImageStaticFile(image.Path);
+        }
+        else
+        {
+            _previewSrc = null;
+        }
+    }
+
+    private async Task OnWorkflowChanged(Guid? value)
+    {
+        _workshopState.LastWorkflowId = value;
+        await State.SaveState();
+    }
+
+    private async Task OnOrientationChanged(PreviewOrientation value)
+    {
+        _workshopState.Orientation = value;
+        await State.SaveState();
+    }
+
+    private async Task OnSeedChanged(long value)
+    {
+        _workshopState.LastSeed = value;
+        await State.SaveState();
+    }
+
+    private async Task OnUseEnhancementsChanged(bool value)
+    {
+        _workshopState.UseEnhancements = value;
+        await State.SaveState();
+    }
+
+    private async Task OnGeneratePreviewAsync()
+    {
+        if (_workshopState.LastWorkflowId is not Guid workflowId)
+        {
+            Snackbar.Add("Pick a workflow first.", Severity.Warning);
+            return;
+        }
+
+        var seedToUse = _workshopState.LastSeed;
+
+        _isGenerating = true;
+        try
+        {
+            var imageId = await WorkshopService.GeneratePreviewAsync(Node.Id, workflowId, _workshopState.Orientation, seedToUse, _workshopState.UseEnhancements);
+            if (imageId == null)
+            {
+                Snackbar.Add("Preview generation failed.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isGenerating = false;
+        }
+    }
+
+    private async void OnPreviewGenerated(WorkshopPreviewGeneratedEventArgs args)
+    {
+        if (args.NodeId != Node.Id) return;
+        await InvokeAsync(async () =>
+        {
+            if (args.Success && args.ImageId > 0)
+                Node.PreviewImageId = args.ImageId;
+            await LoadPreviewAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+    }
+
+    private static string GetIconFor(string mode) => mode.ToLower() switch
+    {
+        "root" => Icons.Material.Filled.AutoAwesome,
+        "chat" => Icons.Material.Filled.Chat,
+        "evolve" => Icons.Material.Filled.Science,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+}
