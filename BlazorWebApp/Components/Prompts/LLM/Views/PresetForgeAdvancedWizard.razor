@@ -1,0 +1,146 @@
+@using BlazorWebApp.Services.PresetForge.Models
+
+<MudExpansionPanels MultiExpansion="false">
+    <MudExpansionPanel Text="1. Purpose" IsInitiallyExpanded="true">
+        <MudStack Spacing="2">
+            <MudSelect T="PresetForgeKind" @bind-Value="_kind" Label="Preset type" Variant="Variant.Text" Dense="true">
+                <MudSelectItem Value="PresetForgeKind.FullPrompt">T2I full prompt</MudSelectItem>
+                <MudSelectItem Value="PresetForgeKind.BuildingBlock">T2I building block</MudSelectItem>
+                <MudSelectItem Value="PresetForgeKind.EditInstruction">I2I targeted edit</MudSelectItem>
+            </MudSelect>
+            <MudTextField T="string" @bind-Value="_theme" Label="Pack theme" Lines="3" Variant="Variant.Text"
+                          HelperText="Describe the related presets this pack should contain." />
+        </MudStack>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="2. Behavior">
+        <MudStack Spacing="2">
+            @if (_kind == PresetForgeKind.BuildingBlock)
+            {
+                <MudSelect T="string" @bind-Value="_facet" Label="Composable facet" Variant="Variant.Text" Dense="true">
+                    @foreach (var facet in Facets)
+                    {
+                        <MudSelectItem Value="@facet">@facet</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+            else if (_kind == PresetForgeKind.EditInstruction)
+            {
+                <MudSelect T="PresetPreservationPolicy" @bind-Value="_preservationPolicy" Label="Preservation policy"
+                           Variant="Variant.Text" Dense="true">
+                    <MudSelectItem Value="PresetPreservationPolicy.Full">Full preservation: style, medium, lighting
+                    </MudSelectItem>
+                    <MudSelectItem Value="PresetPreservationPolicy.Body">Body preservation: clothing, coverage, surfaces
+                    </MudSelectItem>
+                    <MudSelectItem Value="PresetPreservationPolicy.PartialBody">Partial body: targeted feature changes
+                    </MudSelectItem>
+                    <MudSelectItem Value="PresetPreservationPolicy.IdentityAndComposition">Identity: pose, camera,
+                        composition</MudSelectItem>
+                    </MudSelect>
+                    <MudTextField T="string" @bind-Value="_keepUnchanged" Label="Additional constraints" Lines="2"
+                                  Variant="Variant.Text" HelperText="Optional details that every edit must keep unchanged." />
+                }
+            else
+                {
+                    <MudText Typo="Typo.body2">Full prompts describe a complete final image without reference-image language.
+                    </MudText>
+                }
+            </MudStack>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="3. Pack design">
+            <MudStack Spacing="2">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string" @bind-Value="_category" Label="Category" Variant="Variant.Text"
+                                      Dense="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string" @bind-Value="_namingPrefix" Label="Naming prefix" Variant="Variant.Text"
+                                      Dense="true" HelperText="Optional, for example Expression or Style." />
+                    </MudItem>
+                </MudGrid>
+                <MudSlider T="int" @bind-Value="_count" Min="1" Max="24" Step="1" ValueLabel="true">Count: @_count
+                </MudSlider>
+                <MudSwitch T="bool" @bind-Value="_broadCoverage" Label="Broad, diverse coverage" Color="Color.Primary" />
+                <MudSwitch T="bool" @bind-Value="_includeNegativePrompts" Label="Generate paired negative prompts"
+                           Color="Color.Primary" />
+            </MudStack>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="4. Examples and constraints">
+            <MudStack Spacing="2">
+                <MudTextField T="string" @bind-Value="_requiredConcepts" Label="Required concepts" Lines="2"
+                              Variant="Variant.Text" />
+                <MudTextField T="string" @bind-Value="_excludedConcepts" Label="Excluded concepts" Lines="2"
+                              Variant="Variant.Text" />
+                <MudTextField T="string" @bind-Value="_additionalTags" Label="Additional tags" Variant="Variant.Text"
+                              HelperText="Comma-separated; semantic Forge tags are added automatically." />
+                @for (var index = 0; index < _examples.Count; index++)
+                {
+                    var currentIndex = index;
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudTextField T="string" Value="@_examples[currentIndex]"
+                                      ValueChanged="@((string value) => _examples[currentIndex] = value)" Label="Example preset"
+                                      Variant="Variant.Text" Class="flex-grow-1" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       OnClick="@(() => _examples.RemoveAt(currentIndex))" />
+                    </MudStack>
+                }
+                @if (_examples.Count < 5)
+                {
+                    <button type="button" class="send-to-btn" @onclick="() => _examples.Add(string.Empty)">
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                        <span>Add example</span>
+                    </button>
+                }
+            </MudStack>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+@code {
+    private static readonly string[] Facets =
+    [
+        "Expression", "Clothing", "Pose", "Lighting", "Environment", "Style", "Camera", "Atmosphere", "Custom"
+    ];
+
+    private PresetForgeKind _kind = PresetForgeKind.BuildingBlock;
+    private PresetPreservationPolicy _preservationPolicy = PresetPreservationPolicy.Full;
+    private string _theme = string.Empty;
+    private string _facet = "Expression";
+    private string _keepUnchanged = string.Empty;
+    private string _category = string.Empty;
+    private string _namingPrefix = string.Empty;
+    private string _requiredConcepts = string.Empty;
+    private string _excludedConcepts = string.Empty;
+    private string _additionalTags = string.Empty;
+    private int _count = 12;
+    private bool _broadCoverage;
+    private bool _includeNegativePrompts;
+    private readonly List<string> _examples = [];
+
+    public PresetForgeRequest BuildRequest() => new()
+    {
+        Operation = PresetForgeOperation.Generate,
+        Kind = _kind,
+        PreservationPolicy = _kind == PresetForgeKind.EditInstruction
+            ? _preservationPolicy
+            : PresetPreservationPolicy.None,
+        Theme = _theme.Trim(),
+        Facet = _kind == PresetForgeKind.BuildingBlock ? _facet : string.Empty,
+        KeepUnchanged = _keepUnchanged.Trim(),
+        Category = _category.Trim(),
+        NamingPrefix = _namingPrefix.Trim(),
+        RequiredConcepts = _requiredConcepts.Trim(),
+        ExcludedConcepts = _excludedConcepts.Trim(),
+        Count = _count,
+        BroadCoverage = _broadCoverage,
+        IncludeNegativePrompts = _includeNegativePrompts,
+        AdditionalTags = SplitTags(_additionalTags),
+        SeedExamples = _examples.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).ToList()
+    };
+
+    private static List<string> SplitTags(string value) => value
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+}
