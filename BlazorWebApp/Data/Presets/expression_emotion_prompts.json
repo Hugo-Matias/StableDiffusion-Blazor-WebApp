@@ -1,0 +1,650 @@
+﻿[
+    {
+        "name":  "Expression: Gentle Smile",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a gentle, warm smile. Make the lips curve upward softly at both corners with a relaxed, natural expression. Keep subject position and their pose the same as the reference. Ensure the smile looks authentic and warm without exaggeration. Make sure the eye area remains relaxed and friendly. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the cheeks lift slightly with the natural muscle movement of a genuine smile. Ensure no other facial features are altered. Keep in focus. The result should be a warm, gentle smile on the unchanged face.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "subtle",
+                     "natural",
+                     "smile"
+                 ]
+    },
+    {
+        "name":  "Expression: Bright Grin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a wide, bright grin showing teeth. Make the mouth open in a broad smile with upper teeth visible and corners pulled back strongly. Keep subject position and their pose the same as the reference. Ensure the eyes crinkle at the corners with genuine joy. Make sure the cheeks lift high and the nasolabial folds deepen naturally. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression radiates happiness and energy. Ensure the grin looks natural and not forced. Keep in focus. The result should be a bright, joyful grin.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "intense",
+                     "joyful",
+                     "grin"
+                 ]
+    },
+    {
+        "name":  "Expression: Joyful Laugh",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to a full, joyful laugh. Make the mouth open wide in laughter with teeth visible and head tilted slightly back. Keep subject position and their pose the same as the reference. Ensure the eyes close or squint tightly with mirth. Make sure the entire face animates with genuine laughter â€” cheeks raised, nose crinkled, jaw relaxed downward. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the laugh reads as spontaneous and infectious. Ensure neck muscles show natural tension from laughing. Keep in focus. The result should be a genuine, joyful laugh.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "intense",
+                     "laughing",
+                     "joy"
+                 ]
+    },
+    {
+        "name":  "Expression: Warm Smirk",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a warm, knowing smirk. Make one corner of the mouth rise higher than the other in an asymmetrical smile. Keep subject position and their pose the same as the reference. Ensure one eyebrow lifts slightly for a playful, confident look. Make sure the eyes hold a hint of amusement and self-assurance. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the smirk feels charming rather than arrogant. Ensure the expression conveys quiet confidence and warmth. Keep in focus. The result should be a warm, knowing smirk.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "subtle",
+                     "confident",
+                     "smirk"
+                 ]
+    },
+    {
+        "name":  "Expression: Playful Giggling",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to playful, suppressed giggling. Make the mouth pressed together or slightly open as if trying not to laugh out loud. Keep subject position and their pose the same as the reference. Ensure the eyes sparkle with contained mirth and crinkle at the corners. Make sure one hand may be near the mouth in a gesture of suppression. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the cheeks show tension from holding back laughter. Ensure the expression reads as playful and lighthearted. Keep in focus. The result should be a playful, suppressed giggle.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "moderate",
+                     "playful",
+                     "giggling"
+                 ]
+    },
+    {
+        "name":  "Expression: Contented Peace",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a contented, peaceful look of satisfaction. Make the lips rest in a soft, closed-mouth smile with relaxed tension. Keep subject position and their pose the same as the reference. Ensure the eyes are calm and softly focused with gentle warmth. Make sure all facial muscles appear relaxed â€” no furrows, no tension. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys deep inner satisfaction and tranquility. Ensure the brows are smooth and unfurrowed. Keep in focus. The result should be a peaceful, contented expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "subtle",
+                     "calm",
+                     "content"
+                 ]
+    },
+    {
+        "name":  "Expression: Excited Surprise",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to excited, delighted surprise. Make the eyes widen dramatically with bright, sparkling pupils and the mouth open in an enthusiastic gasp or smile. Keep subject position and their pose the same as the reference. Ensure both eyebrows raise high on the forehead. Make sure the expression reads as positive shock â€” thrilled rather than frightened. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the cheeks lift with excitement energy. Ensure the open mouth shows teeth in an eager, happy shape. Keep in focus. The result should be excited, positive surprise.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "intense",
+                     "surprise",
+                     "excited"
+                 ]
+    },
+    {
+        "name":  "Expression: Proud Beam",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a proud, beaming smile of accomplishment. Make the mouth form a wide confident smile with lips pulled back showing teeth. Keep subject position and their pose the same as the reference. Ensure the eyes hold direct, self-assured contact with a bright gleam. Make sure the chin lifts slightly and the chest energy projects through the face. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression radiates pride and self-worth without arrogance. Ensure the cheeks are lifted with genuine happiness. Keep in focus. The result should be a proud, confident beam.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "happy",
+                     "moderate",
+                     "confident",
+                     "proud"
+                 ]
+    },
+    {
+        "name":  "Expression: Quiet Sadness",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to quiet, understated sadness. Make the lips press together with corners turned slightly downward in a gentle frown. Keep subject position and their pose the same as the reference. Ensure the eyes look downcast or distant with a soft, melancholy gaze. Make sure the brows furrow slightly at the inner corners. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys gentle sorrow without dramatic display. Ensure the face holds a quiet, introspective sadness. Keep in focus. The result should be a subtle, melancholic expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "sad",
+                     "subtle",
+                     "melancholy",
+                     "downcast"
+                 ]
+    },
+    {
+        "name":  "Expression: Deep Sorrow",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to deep, overwhelming sorrow. Make the mouth downturn sharply with lips trembling slightly and tears welling in the eyes. Keep subject position and their pose the same as the reference. Ensure heavy eyelids droop downward with exhaustion from grief. Make sure the inner brows pull together and upward creating vertical worry lines. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure tear tracks may appear on the cheeks. Ensure the entire face collapses inward with profound sadness. Keep in focus. The result should be deep, visible sorrow.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "sad",
+                     "intense",
+                     "crying",
+                     "grief"
+                 ]
+    },
+    {
+        "name":  "Expression: Angry Scowl",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to an angry, hostile scowl. Make the brows furrow deeply and pull together above the nose with the mouth set in a tight, pressed line or snarling slightly. Keep subject position and their pose the same as the reference. Ensure the eyes glare intensely with narrowed eyelids. Make sure the jaw clenches visibly with tension in the cheek muscles. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the nose may wrinkle slightly from the brow tension. Ensure the expression reads as clear, unambiguous anger. Keep in focus. The result should be an angry scowl.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "angry",
+                     "intense",
+                     "hostile",
+                     "scowl"
+                 ]
+    },
+    {
+        "name":  "Expression: Irritated Frown",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to mild irritation and annoyance. Make the lips press together in a thin, tight line with corners slightly downturned. Keep subject position and their pose the same as the reference. Ensure one or both brows furrow mildly above the nose. Make sure the jaw shows slight tension without full clenching. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the eyes hold a flat, unamused stare. Ensure the expression reads as bothered rather than furious. Keep in focus. The result should be an irritated, annoyed frown.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "angry",
+                     "subtle",
+                     "annoyed",
+                     "irritated"
+                 ]
+    },
+    {
+        "name":  "Expression: Fearful Dread",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to fearful, terrified dread. Make the eyes widen maximally showing more white around the iris with lips parted in a trembling gasp. Keep subject position and their pose the same as the reference. Ensure both eyebrows raise high and pull together creating horizontal forehead wrinkles. Make sure the mouth corners pull back and down exposing upper teeth slightly. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the face appears pale or tense with visible fear response. Ensure the neck muscles tighten from the fear reaction. Keep in focus. The result should be a terrified, fearful expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "fear",
+                     "intense",
+                     "terrified",
+                     "dread"
+                 ]
+    },
+    {
+        "name":  "Expression: Nervous Anxiety",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to nervous, anxious tension. Make one lip bite or chew slightly with the other lip pressed tight and eyes darting sideways or unfocused. Keep subject position and their pose the same as the reference. Ensure the brows furrow unevenly with one side higher than the other. Make sure the jaw shows subtle clenching and the cheeks appear tense. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys worry and unease without full panic. Ensure shallow breathing tension is visible at the neck. Keep in focus. The result should be a nervous, anxious expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "fear",
+                     "moderate",
+                     "anxious",
+                     "nervous"
+                 ]
+    },
+    {
+        "name":  "Expression: Disgusted Curl",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to clear disgust and repulsion. Make the upper lip raise revealing teeth slightly with the nose wrinkled deeply at the bridge. Keep subject position and their pose the same as the reference. Ensure the lower eyelids lift and the brows pull down and together creating a scrunched look. Make sure the mouth corners turn downward in revulsion. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as visceral distaste and rejection. Ensure the neck may show slight tension from the recoil response. Keep in focus. The result should be a disgusted, repulsed expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "disgust",
+                     "moderate",
+                     "repulsed",
+                     "revulsion"
+                 ]
+    },
+    {
+        "name":  "Expression: Heartbroken Grief",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to devastating heartbreak and grief. Make the mouth open in a silent wail or sob with lips trembling uncontrollably and tears streaming down both cheeks. Keep subject position and their pose the same as the reference. Ensure the eyes are red-rimmed and swollen with heavy, glassy tears. Make sure the entire face crumples with overwhelming emotional pain â€” brows drawn together deeply, forehead wrinkled, jaw slack from sobbing. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys total devastation and loss. Ensure the nose may wrinkle slightly from crying. Keep in focus. The result should be heartbroken, devastating grief.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "sad",
+                     "intense",
+                     "devastated",
+                     "heartbreak"
+                 ]
+    },
+    {
+        "name":  "Expression: Thoughtful Pondering",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to thoughtful, deep pondering. Make the gaze distant and unfocused as if looking inward with a slight brow furrow of concentration. Keep subject position and their pose the same as the reference. Ensure the lips part slightly or press together in contemplation. Make sure one hand may rest near the chin in a thinking gesture. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys active mental engagement and reflection. Ensure the face shows quiet intellectual focus without tension. Keep in focus. The result should be a thoughtful, pondering expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "neutral",
+                     "moderate",
+                     "thinking",
+                     "contemplative"
+                 ]
+    },
+    {
+        "name":  "Expression: Skeptical Doubt",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to skeptical doubt and questioning. Make one eyebrow raise higher than the other with a half-smile of disbelief at one corner of the mouth. Keep subject position and their pose the same as the reference. Ensure the eyes shift slightly sideways in a side-eye glance of suspicion. Make sure the lips form an asymmetrical expression â€” one side slightly curled upward in doubt. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as questioning rather than hostile. Ensure the head may tilt slightly to one side. Keep in focus. The result should be a skeptical, doubtful expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "subtle",
+                     "skeptical",
+                     "doubt"
+                 ]
+    },
+    {
+        "name":  "Expression: Mischievous Plotting",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a mischievous, plotting look of playful scheming. Make the lips curl into a sly, narrow grin with narrowed eyes that gleam with cunning amusement. Keep subject position and their pose the same as the reference. Ensure one eyebrow lifts slightly for a conspiratorial feel. Make sure the cheeks show tension from suppressing a wider smile. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as playful troublemaking rather than malice. Ensure the eyes hold a spark of wicked fun. Keep in focus. The result should be a mischievous, plotting expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "moderate",
+                     "mischievous",
+                     "sly"
+                 ]
+    },
+    {
+        "name":  "Expression: Embarrassed Flush",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to embarrassed, flustered shame. Make the gaze avert downward or sideways with a slight uncomfortable smile of self-consciousness. Keep subject position and their pose the same as the reference. Ensure the cheeks show a visible warm flush or blush spreading across them. Make sure the lips press together nervously or one corner twitches in an awkward half-smile. Keep skin tone slightly warmer on the cheeks to suggest blushing. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys genuine embarrassment without humiliation. Ensure the brows remain relaxed rather than furrowed. Keep in focus. The result should be an embarrassed, flustered expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "subtle",
+                     "embarrassed",
+                     "blush"
+                 ]
+    },
+    {
+        "name":  "Expression: Confident Stare",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a confident, self-assured stare. Make direct, unwavering eye contact with a firm set jaw and a slight knowing smile at one corner of the mouth. Keep subject position and their pose the same as the reference. Ensure the brows remain smooth and relaxed â€” no furrowing or raising. Make sure the chin holds steady without jutting or retreating. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression radiates quiet authority and self-belief. Ensure the gaze is penetrating but not aggressive. Keep in focus. The result should be a confident, commanding stare.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "moderate",
+                     "confident",
+                     "stare"
+                 ]
+    },
+    {
+        "name":  "Expression: Sympathetic Concern",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to sympathetic, compassionate concern. Make the brows furrow gently at the inner corners with a soft worried frown and warm, caring eyes. Keep subject position and their pose the same as the reference. Ensure the lips part slightly or press together in gentle empathy. Make sure the head may tilt slightly forward showing engagement and care. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys genuine compassion without pity. Ensure the eyes hold a soft, understanding warmth. Keep in focus. The result should be a sympathetic, concerned expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "subtle",
+                     "empathy",
+                     "concern"
+                 ]
+    },
+    {
+        "name":  "Expression: Flattered Blush",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a flattered, pleased blush of being complimented. Make the eyes avert slightly downward with a soft, pleased smile that doesn\u0027t quite meet direct gaze. Keep subject position and their pose the same as the reference. Ensure warm color spreads across the cheeks in a genuine blush response. Make sure the lips curve upward gently with modest happiness. Keep skin tone slightly warmer on the cheeks to suggest blushing. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as genuinely touched rather than arrogant. Ensure the smile feels humble and appreciative. Keep in focus. The result should be a flattered, pleased blush.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "subtle",
+                     "pleased",
+                     "flattered"
+                 ]
+    },
+    {
+        "name":  "Expression: Determined Focus",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to determined, steely focus and resolve. Make the stare intense and unblinking with a set jaw showing firm commitment. Keep subject position and their pose the same as the reference. Ensure the brows draw together slightly in concentration without anger. Make sure the lips press into a thin, resolute line â€” no smile, no frown, just determination. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression conveys unwavering purpose and willpower. Ensure the eyes burn with focused intensity. Keep in focus. The result should be a determined, resolute expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "social",
+                     "moderate",
+                     "determined",
+                     "focused"
+                 ]
+    },
+    {
+        "name":  "Expression: Startled Jump",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to a startled, jumpy shock reaction. Make the eyes snap wide open showing maximum iris exposure with the mouth falling open in an agape gasp and both eyebrows shooting high on the forehead. Keep subject position and their pose the same as the reference. Ensure the entire face freezes momentarily in surprise â€” cheeks pulled back, jaw dropped suddenly. Make sure the expression reads as a sudden startle reflex rather than sustained fear. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the neck muscles tense from the jump reaction. Ensure the upper eyelids lift maximally exposing more eye white above the iris. Keep in focus. The result should be a startled, jumpy shock expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "intense",
+                     "shocked",
+                     "startled"
+                 ]
+    },
+    {
+        "name":  "Expression: Pleasant Surprise",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a soft, pleasant surprise of delight. Make the eyes widen gently with sparkling warmth and the mouth form a small \u0027o\u0027 shape of a quiet gasp that transitions into a smile. Keep subject position and their pose the same as the reference. Ensure both eyebrows lift slightly but not dramatically â€” more wonder than shock. Make sure the cheeks begin to rise as the surprise turns into happiness. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as genuinely touched and pleasantly surprised. Ensure the lips tremble slightly between gasp and smile. Keep in focus. The result should be a pleasant, delighted surprise.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "moderate",
+                     "positive",
+                     "delight"
+                 ]
+    },
+    {
+        "name":  "Expression: Shocked Disbelief",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to stunned, frozen disbelief. Make the mouth hang open in a slack-jawed stare with eyes wide and unblinking â€” completely frozen in shock. Keep subject position and their pose the same as the reference. Ensure both eyebrows raise high and stay fixed creating horizontal forehead wrinkles. Make sure the face appears paralyzed momentarily â€” no smile, no frown, just pure stunned stillness. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as cognitive overload from shocking news or sight. Ensure the pupils may appear slightly dilated from shock response. Keep in focus. The result should be a shocked, disbelieving stare.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "intense",
+                     "stunned",
+                     "disbelief"
+                 ]
+    },
+    {
+        "name":  "Expression: Curious Interest",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to curious, inquisitive interest. Make the head tilt slightly to one side with eyebrows raised gently and eyes focused intently on something of fascination. Keep subject position and their pose the same as the reference. Ensure the lips part slightly in an open, receptive manner â€” neither smiling nor frowning. Make sure the gaze is bright and engaged showing genuine intellectual curiosity. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as eager to learn and understand. Ensure the face shows alert, attentive engagement without excitement or anxiety. Keep in focus. The result should be a curious, interested expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "subtle",
+                     "curious",
+                     "inquisitive"
+                 ]
+    },
+    {
+        "name":  "Expression: Amused Chuckle",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a quiet, amused chuckle of humor appreciation. Make the mouth form a suppressed smile with one corner twitching upward as if holding back laughter and eyes crinkling at the corners with mirth. Keep subject position and their pose the same as the reference. Ensure the nose may wrinkle slightly from the suppressed chuckle. Make sure the cheeks lift gently showing contained amusement. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as finding something genuinely funny but keeping it quiet. Ensure the eyes sparkle with shared humor. Keep in focus. The result should be an amused, chuckling expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "amusement",
+                     "moderate",
+                     "humor",
+                     "chuckle"
+                 ]
+    },
+    {
+        "name":  "Expression: Dramatic Gasping",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to a dramatic, theatrical gasp of surprise. Make one hand press against the chest or near the mouth with eyes wide and mouth open in an exaggerated \u0027O\u0027 shape of theatrical astonishment. Keep subject position and their pose the same as the reference. Ensure both eyebrows shoot high creating deep horizontal forehead lines. Make sure the expression reads as performative drama â€” over-the-top surprise meant for effect. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the cheeks pull back dramatically from the wide gasp. Ensure the neck stretches slightly forward with the theatrical gesture. Keep in focus. The result should be a dramatic, theatrical gasping expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "intense",
+                     "dramatic",
+                     "theatrical"
+                 ]
+    },
+    {
+        "name":  "Expression: Bewildered Confusion",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to bewildered, lost confusion. Make the head tilt to one side with brows furrowed deeply in the center and mouth slightly open in a puzzled \u0027what?\u0027 expression. Keep subject position and their pose the same as the reference. Ensure the eyes look unfocused or darting between points as if trying to process something incomprehensible. Make sure the forehead wrinkles from the brow furrowing creating both horizontal and vertical lines. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as genuinely lost and unable to understand. Ensure the lips press together uncertainly between opening in confusion. Keep in focus. The result should be a bewildered, confused expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "confusion",
+                     "moderate",
+                     "bewildered",
+                     "puzzled"
+                 ]
+    },
+    {
+        "name":  "Expression: Realization Epiphany",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a sudden \u0027aha\u0027 moment of realization and epiphany. Make the eyes snap wider with sudden clarity and brightness while the mouth opens slightly in an \u0027oh!\u0027 of understanding that transitions into a knowing smile. Keep subject position and their pose the same as the reference. Ensure both eyebrows lift sharply then relax as comprehension dawns. Make sure the face lights up with the energy of discovery â€” cheeks lifting, eyes gleaming. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as a genuine cognitive breakthrough moment. Ensure the smile that follows feels earned and satisfying. Keep in focus. The result should be an \u0027aha\u0027 realization, epiphany expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "surprise",
+                     "moderate",
+                     "realization",
+                     "epiphany"
+                 ]
+    },
+    {
+        "name":  "Expression: Neutral Resting",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a completely neutral, resting face with no visible emotion. Make all facial muscles relax into their natural resting position â€” lips closed but not pressed, brows smooth and unfurrowed, jaw loose. Keep subject position and their pose the same as the reference. Ensure the eyes hold a calm, even gaze without intensity or softness. Make sure there is no smile, frown, tension, or animation anywhere on the face. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as blank neutrality â€” neither positive nor negative. Ensure the face appears completely at rest with zero emotional signaling. Keep in focus. The result should be a neutral, emotionless resting face.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "neutral",
+                     "subtle",
+                     "resting",
+                     "blank"
+                 ]
+    },
+    {
+        "name":  "Expression: Slight Amusement",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a barely-there micro-expression of slight amusement. Make just one corner of the mouth twitch upward almost imperceptibly â€” the smallest hint of a smile that hasn\u0027t quite formed yet. Keep subject position and their pose the same as the reference. Ensure the eyes show the faintest crinkle at the inner corners suggesting suppressed mirth. Make sure the rest of the face remains nearly neutral â€” this is a micro-expression, not a full smile. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as someone trying not to show they find something funny. Ensure only the subtlest muscle movement betrays the amusement. Keep in focus. The result should be a barely-visible micro-expression of slight amusement.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "amusement",
+                     "subtle",
+                     "micro-expression",
+                     "suppressed"
+                 ]
+    },
+    {
+        "name":  "Expression: Suppressed Anger",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to suppressed, controlled anger barely held in check. Make the jaw tighten visibly with a slight vein pulse at the temple while the lips press into an impossibly thin line of restraint. Keep subject position and their pose the same as the reference. Ensure the eyes hold a cold, hard stare â€” not wide or glaring but fixed with dangerous calm. Make sure the nostrils flare slightly from controlled breathing tension. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as someone actively holding back anger rather than displaying it openly. Ensure the neck muscles show subtle tension from the suppression effort. Keep in focus. The result should be suppressed, controlled anger.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "angry",
+                     "subtle",
+                     "suppressed",
+                     "controlled"
+                 ]
+    },
+    {
+        "name":  "Expression: Exhausted Weariness",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to exhausted, deep weariness and fatigue. Make the eyelids droop heavily as if fighting to stay open with a slack mouth that hangs slightly open from tiredness. Keep subject position and their pose the same as the reference. Ensure all facial muscles appear deflated â€” no tension, just complete depletion of energy. Make sure dark circles or shadows may appear under the eyes suggesting sleep deprivation. Keep skin tone and lighting unchanged but the complexion may look slightly duller from fatigue. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as bone-deep tiredness rather than sadness. Ensure the brows remain flat â€” no furrowing, just heavy drooping. Keep in focus. The result should be an exhausted, weary expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "neutral",
+                     "moderate",
+                     "tired",
+                     "exhausted"
+                 ]
+    },
+    {
+        "name":  "Expression: Wistful Nostalgia",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to wistful, nostalgic longing for a memory or lost moment. Make the gaze soft and distant looking past something with a slight sad smile that mixes fondness with melancholy. Keep subject position and their pose the same as the reference. Ensure the lips curve upward gently at one corner while the eyes hold a glassy, faraway quality. Make sure the expression reads as remembering something beautiful that is now gone â€” bittersweet reminiscence. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the brows remain relaxed â€” no furrowing, just soft drooping at the outer edges. Ensure a single tear may well without falling. Keep in focus. The result should be a wistful, nostalgic expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "sad",
+                     "subtle",
+                     "nostalgic",
+                     "wistful"
+                 ]
+    },
+    {
+        "name":  "Expression: Bittersweet Mix",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a complex bittersweet mix of simultaneous joy and sadness. Make the mouth form a trembling smile that fights against tears â€” lips curving upward while water wells in the eyes. Keep subject position and their pose the same as the reference. Ensure one emotion pulls at the face while the other pushes back creating an emotionally layered expression. Make sure the brows furrow slightly from sadness even as the cheeks lift from happiness. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as genuinely mixed emotions â€” happy tears of a meaningful moment. Ensure the face shows the beautiful complexity of feeling two things at once. Keep in focus. The result should be a bittersweet, emotionally complex expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "complex",
+                     "moderate",
+                     "bittersweet",
+                     "mixed"
+                 ]
+    },
+    {
+        "name":  "Expression: Wink Playful",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a playful, cheeky wink with one eye closed deliberately. Make one eye close in a quick wink while the other remains open and bright with a mischievous glint. Keep subject position and their pose the same as the reference. Ensure the mouth forms a sly half-smile with one corner raised higher than the other. Make sure the cheeks lift asymmetrically â€” more on the winking side creating a dimple or crease. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as flirtatious fun and playful teasing. Ensure the open eye holds a spark of shared secret humor. Keep in focus. The result should be a playful, cheeky wink.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "playful",
+                     "subtle",
+                     "flirty",
+                     "wink"
+                 ]
+    },
+    {
+        "name":  "Expression: Stoic Composure",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to stoic, unshakeable composure and emotional control. Make the face completely still with an unblinking steady gaze â€” no smile, no frown, no visible reaction whatsoever. Keep subject position and their pose the same as the reference. Ensure the jaw sets firm but not clenched â€” controlled rather than tense. Make sure the eyes hold a penetrating, unwavering stare that gives nothing away. Keep skin tone and lighting unchanged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as disciplined emotional mastery â€” someone who cannot be rattled. Ensure every muscle appears deliberately held in place by willpower. Keep in focus. The result should be a stoic, composed expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "neutral",
+                     "moderate",
+                     "stoic",
+                     "composed"
+                 ]
+    },
+    {
+        "name":  "Expression: Flustered Blush",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a flustered, flustered blush from sudden attraction. Make the cheeks flush warm with color spreading rapidly while the gaze darts away nervously and one lip gets caught between teeth in a nervous bite. Keep subject position and their pose the same as the reference. Ensure the eyes avoid direct contact â€” looking down or sideways with shy embarrassment mixed with pleasure. Make sure the mouth shows uncertainty between smiling and biting the lip from flustered energy. Keep skin tone warmer on cheeks, nose bridge, and ears to suggest genuine blushing. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as being caught off-guard by attraction â€” cute fluster rather than confidence. Ensure the brows remain relaxed with no tension. Keep in focus. The result should be a flustered, blushing expression of attraction.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "attraction",
+                     "subtle",
+                     "flustered",
+                     "blush"
+                 ]
+    },
+    {
+        "name":  "Expression: Heavy-Lidded Desire",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to heavy-lidded, sensual desire with a slow, deliberate gaze. Make the eyelids droop halfway creating a half-closed, languid look while the lips part softly and glisten slightly as if moistened. Keep subject position and their pose the same as the reference. Ensure the eyes hold an intense but slow-burning stare â€” not wide or alert but heavy with want. Make sure the mouth relaxes open just enough to show breathy parted lips without teeth showing aggressively. Keep skin tone and lighting unchanged but the complexion may warm slightly suggesting internal heat. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as deep sensual longing rather than casual interest. Ensure the neck relaxes forward slightly with the languid energy. Keep in focus. The result should be a heavy-lidded, desiring expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "desire",
+                     "moderate",
+                     "sensual",
+                     "heavy-lidded"
+                 ]
+    },
+    {
+        "name":  "Expression: Passionate Intensity",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to passionate, burning intensity of deep desire and emotional fire. Make the stare lock with fierce unwavering focus while the face flushes warm from internal heat â€” lips parting wider as breath quickens and the mouth opens slightly in hungry anticipation. Keep subject position and their pose the same as the reference. Ensure the eyes burn with an almost visible intensity â€” pupils dilated, gaze locked without blinking. Make sure the skin shows a deep flush spreading across cheeks and neck from passionate arousal. Keep skin tone warmer overall suggesting heated blood flow. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as consuming passion â€” emotional and physical desire combined into one burning look. Ensure the jaw may clench slightly from restrained intensity. Keep in focus. The result should be a passionate, intensely desiring expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "desire",
+                     "intense",
+                     "passionate",
+                     "burning"
+                 ]
+    },
+    {
+        "name":  "Expression: Sultry Smolder",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a sultry, smoldering look of confident seduction. Make the gaze slow and deliberate with half-lidded eyes that track deliberately while a slight smirk curls one corner of the mouth in self-assured temptation. Keep subject position and their pose the same as the reference. Ensure the lips part slowly as if about to speak or kiss â€” moist and inviting without desperation. Make sure the expression carries an air of knowing confidence â€” this person knows their effect on others. Keep skin tone and lighting unchanged but the complexion may carry a warm undertone. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as calculated seduction rather than nervous attraction. Ensure the head tilts slightly with deliberate slowness. Keep in focus. The result should be a sultry, smoldering expression of confident seduction.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "attraction",
+                     "moderate",
+                     "sultry",
+                     "seductive"
+                 ]
+    },
+    {
+        "name":  "Expression: Breathless Awe",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to breathless awe â€” mouth slightly open in a gaspy, stunned look of being overwhelmed by beauty or desire. Make the eyes widen softly (not in fear but in wonder) with flushed cheeks and lips parted as if the breath was knocked out. Keep subject position and their pose the same as the reference. Ensure the expression reads as someone seeing something so beautiful or desirable they momentarily forget to breathe. Make sure the face shows a mix of surprise, admiration, and attraction all at once. Keep skin tone warmer on cheeks suggesting a flush from being overwhelmed. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the parted lips look naturally moist â€” not forced or exaggerated. Ensure the gaze holds wonder rather than shock. Keep in focus. The result should be a breathless, awestruck expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "desire",
+                     "moderate",
+                     "breathless",
+                     "awe"
+                 ]
+    },
+    {
+        "name":  "Expression: Lip Bite Temptation",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a tempting lip-bite look of suppressed desire and invitation. Make the lower lip get caught between the teeth with gentle pressure while looking upward through lowered eyelashes in a classic seductive gaze. Keep subject position and their pose the same as the reference. Ensure the eyes hold a soft, inviting stare â€” not aggressive but warmly beckoning. Make sure the bitten lip appears slightly swollen or glistening from the pressure suggesting sensuality. Keep skin tone and lighting unchanged but cheeks may carry a warm undertone. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the expression reads as playful temptation â€” inviting without being explicit. Ensure the neck tilts slightly exposing the throat with vulnerable invitation. Keep in focus. The result should be a tempting, lip-biting expression of seduction.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "attraction",
+                     "subtle",
+                     "tempting",
+                     "lip-bite"
+                 ]
+    },
+    {
+        "name":  "Expression: Ecstatic Bliss",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to ecstatic bliss â€” eyes closed in pure pleasure with head tilted back and mouth open in a soft, breathy expression of overwhelming happiness and physical joy. Make the face completely relax into the sensation with cheeks lifted high and every muscle releasing into euphoric surrender. Keep subject position and their pose the same as the reference. Ensure the expression reads as peak emotional and physical bliss â€” transcendent happiness beyond simple smiling. Make sure the lips part naturally in a soft \u0027ah\u0027 shape of release and the tongue rests gently behind lower teeth. Keep skin tone warmer with a healthy glow suggesting endorphin rush. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the neck arches back slightly from the head tilt into bliss. Ensure tears of joy may well at the corners without falling. Keep in focus. The result should be an ecstatic, blissful expression of peak pleasure.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "pleasure",
+                     "intense",
+                     "ecstatic",
+                     "bliss"
+                 ]
+    },
+    {
+        "name":  "Expression: Intimate Whisper",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to an intimate, tender whisper â€” leaning close with soft parted lips as if sharing a secret and warm, affectionate eyes that hold deep tenderness. Make the mouth form the shape of speaking softly â€” lips barely separated in a quiet murmur with rounded corners suggesting warmth rather than urgency. Keep subject position and their pose the same as the reference. Ensure the eyes soften completely â€” no intensity or demand, just pure affectionate connection. Make sure the expression reads as sharing something personal and close â€” vulnerability mixed with trust. Keep skin tone and lighting unchanged but the complexion may carry a warm undertone of intimacy. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the brows remain gentle and relaxed â€” no furrowing or raising. Ensure the slight forward lean suggests closeness without invading space. Keep in focus. The result should be an intimate, tender whispering expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "intimacy",
+                     "subtle",
+                     "tender",
+                     "whisper"
+                 ]
+    },
+    {
+        "name":  "Expression: Orgasmic Ecstasy",
+        "prompt":  "Keep pose. Keep angle. Keep viewing direction. Modify only the subject\u0027s facial expression to peak orgasmic ecstasy â€” head thrown back with eyes rolling upward or squeezed tightly shut, mouth wide open in a silent cry of overwhelming pleasure, and the entire face contorted into the most intense expression of physical release possible. Make every muscle in the face contract and release simultaneously â€” forehead deeply wrinkled, nose scrunched, jaw dropped completely open, cheeks pulled back maximally exposing teeth and gums. Keep subject position and their pose the same as the reference. Ensure the expression reads as absolute peak sensation beyond control â€” total surrender to overwhelming physical pleasure. Make sure the neck muscles strain visibly from the head tilt and the throat shows tension from the silent vocalization. Keep skin tone significantly warmer with a deep flush covering the entire face and neck suggesting maximum blood flow and arousal. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure tears may stream from the intensity of sensation without sadness â€” pure physical overwhelm. Ensure the tongue presses against the lower teeth or hangs slightly from the open mouth in complete release. Keep in focus. The result should be an expression of peak orgasmic ecstasy.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "pleasure",
+                     "intense",
+                     "orgasmic",
+                     "peak"
+                 ]
+    },
+    {
+        "name":  "Expression: Deep Arousal Flush",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to deep, heavy arousal â€” face flushed dark with heat, glazed half-closed eyes that look unfocused from pleasure haze, and the tongue pressing against parted lips in a slow, involuntary moistening motion. Make the complexion carry an intense warm flush spreading across cheeks, nose bridge, neck, and chest suggesting deep physical arousal and blood flow. Keep subject position and their pose the same as the reference. Ensure the eyes appear glassy and unfocused â€” pupils dilated wide with heavy lids that struggle to stay open from pleasure overload. Make sure the lips part naturally with the tongue visible pressing against the lower lip or teeth in a slow, sensual movement. Keep skin tone significantly warmer overall with visible flush patterns suggesting intense arousal response. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the breathing appears heavy â€” chest rising and falling visibly with the parted mouth showing quickened breath. Ensure a sheen of light sweat may appear on the skin from physical intensity. Keep in focus. The result should be a deeply aroused, flushed expression.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "arousal",
+                     "intense",
+                     "flushed",
+                     "heavy"
+                 ]
+    },
+    {
+        "name":  "Expression: Pleasured Moan",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to a deep, vocalized moan of pleasure â€” eyes squeezed tightly shut against waves of sensation, mouth open wide in an elongated \u0027ahhh\u0027 shape with the tongue flat and relaxed behind lower teeth, and the neck arched backward as the head tilts up releasing into the sound. Make every feature of the face show complete surrender to physical pleasure â€” cheeks hollowed slightly from the vocalization, jaw completely dropped, forehead smooth from relaxation into sensation rather than tension. Keep subject position and their pose the same as the reference. Ensure the expression reads as someone actively vocalizing their pleasure through a sustained moan â€” throat working, chest heaving with breath. Make sure the lips form an open oval shape natural to moaning â€” rounded but not tight, relaxed into the sound. Keep skin tone warmer with a deep flush suggesting ongoing physical arousal and exertion. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the neck stretches back fully exposing the throat muscles working from vocalization effort. Ensure the shoulders drop and relax into the pleasure rather than tensing up. Keep in focus. The result should be an expression of a deep, pleasured moan.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "pleasure",
+                     "intense",
+                     "moaning",
+                     "vocal"
+                 ]
+    },
+    {
+        "name":  "Expression: Overwhelmed Sensation",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to being completely overwhelmed by intense physical sensation â€” face trembling with uncontrollable intensity, eyes squeezed shut against waves too powerful to process, jaw dropped open in a rictus of overwhelming feeling, and tears streaming freely from pure sensory overload. Make the entire face shake slightly as if the body cannot contain the intensity â€” lips quivering, nose scrunched, forehead deeply wrinkled from the effort of processing sensation beyond normal limits. Keep subject position and their pose the same as the reference. Ensure the expression reads as someone pushed past their threshold into overwhelming physical experience â€” not pain but pleasure so intense it borders on unbearable. Make sure every muscle group in the face contracts involuntarily â€” cheeks pulsing, jaw trembling, brows drawn together from sensory overload rather than anger. Keep skin tone extremely warm with a deep, full-face flush and visible sheen of sweat suggesting maximum physical exertion and arousal. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the tears flow freely without sadness â€” pure overflow from sensation exceeding emotional capacity. Ensure the mouth opens wider between tremors as involuntary sounds escape. Keep in focus. The result should be an expression of being overwhelmed by intense physical sensation.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "pleasure",
+                     "intense",
+                     "overwhelmed",
+                     "trembling"
+                 ]
+    },
+    {
+        "name":  "Expression: Animalistic Hunger",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to animalistic, raw physical hunger and craving â€” tongue licking slowly across the lips in a predatory sweep, eyes narrowing into focused predatory slits with flushed skin burning from internal heat, and an expression of pure physical craving that borders on feral desire. Make the mouth open slightly between lip-licks showing teeth in a hungry snarl rather than aggression â€” this is want, not anger. Keep subject position and their pose the same as the reference. Ensure the eyes carry a predatory intensity â€” pupils dilated wide with narrowed lids creating a dangerous, focused stare of someone who wants something badly enough to take it. Make sure the flushed complexion spreads deep across face and neck suggesting feverish internal heat from raw physical desire. Keep skin tone significantly warmer with visible flush patterns and a slight sheen of sweat. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the jaw works slightly â€” teeth pressing together between lip-licks showing restrained hunger barely held in check. Ensure the nostrils flare slightly from quickened breathing driven by physical craving. Keep in focus. The result should be an animalistic, hungry expression of raw physical desire.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "arousal",
+                     "moderate",
+                     "hungry",
+                     "predatory"
+                 ]
+    },
+    {
+        "name":  "Expression: Afterglow Bliss",
+        "prompt":  "Keep pose. Keep angle. Keep eyes shape. Keep viewing direction. Modify only the subject\u0027s facial expression to post-pleasure afterglow bliss â€” soft unfocused gaze drifting lazily, relaxed parted lips breathing slowly and deeply, a gentle warm flush still fading across the cheeks, and an expression of peaceful serenity that follows intense physical satisfaction. Make every muscle in the face completely released â€” no tension anywhere, just total relaxation into contentment with heavy-lidded eyes that struggle to focus from pleasure exhaustion. Keep subject position and their pose the same as the reference. Ensure the expression reads as someone recovering from peak intensity â€” still riding the wave of endorphins and satisfaction with a dreamy, disconnected quality. Make sure the lips rest naturally parted showing slow, deep breathing as the body returns to calm â€” mouth slightly open in relaxed contentment rather than active pleasure. Keep skin tone carrying a warm undertone that\u0027s gradually fading â€” flush still visible on cheeks but softening suggesting the peak has passed and recovery is underway. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the eyes hold a glassy, unfocused quality â€” pupils still slightly dilated from recent intensity slowly returning to normal. Ensure a gentle satisfied smile plays at the corners of the mouth without fully forming â€” too relaxed for active expression but clearly content. Keep in focus. The result should be an afterglow bliss expression of post-pleasure serenity.",
+        "negative_prompt":  null,
+        "category":  "Expression \u0026 Emotion Edits",
+        "tags":  [
+                     "pleasure",
+                     "subtle",
+                     "afterglow",
+                     "serene"
+                 ]
+    }
+]

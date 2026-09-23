@@ -1,0 +1,219 @@
+[
+  {
+    "name": "Increase Detail",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Significantly increase the level of visual detail and intricate complexity on the targeted element. Add ultra-fine textures, complex surface patterns, and high-fidelity details. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the new details are integrated naturally and follow the visual logic of the scene. Make it extremely detailed. Add hyper-detailed features. Prioritize the request to add extreme detail while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a high-definition, more detailed version of the target.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["detail", "quality", "enhancement"]
+  },
+  {
+    "name": "Decrease Detail",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Decrease the level of visual detail on the targeted element. Simplify textures, smooth out fine features, and reduce complexity for a cleaner look. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the simplification respects the visual context and maintains the core form. Make it simpler. Reduce surface details. Prioritize the request to reduce detail while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate simplified version of the target.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["detail", "quality", "simplify"]
+  },
+  {
+    "name": "Mosaic Censor",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply a mosaic pixelation effect to censor the targeted area. Ensure the pixelation is dense enough to obscure details while following the shape of the target. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Integrate the mosaic effect seamlessly into the image context. Apply mosaic censorship. Hide the target with pixelation. Prioritize the censorship request while keeping the rest of the image unedited and in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate censored version with mosaic effects.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["censorship", "effect"]
+  },
+  {
+    "name": "Black Bar Censor",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply solid black bars to censor the targeted area. Ensure the bars are positioned precisely to obscure the intended content. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Maintain the overall composition of the image while prioritizing the censorship request. Add black censorship bars. Obscure the target with black bars. Keep unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate censored version with black bars.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["censorship", "effect"]
+  },
+  {
+    "name": "Increase Muscles",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Dramatically increase the subject's muscular mass and definition. Transform the physique to be heavily muscled, powerful, and ripped. Emphasize large, bulging biceps, broad shoulders, a thick neck, and deep, etched abdominal definition. Ensure the muscles look dense and powerful. Increase muscularity significantly. Make the subject extremely muscular, buff, and strong. Prioritize the massive muscle growth while keeping the subject's identity and the background intact. Ensure that lighting is accurate for the scene, highlighting the new muscle contours. Ensure shadows are displayed correctly in the muscle crevices. Keep in focus. The result should be a powerful, heavily muscled version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique", "muscles"]
+  },
+  {
+    "name": "Undefined Body Shape",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's body to have a less defined or more ambiguous shape. Soften muscular definition and simplify body contours while maintaining the overall silhouette. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the changes are integrated naturally. Make the body less defined. Soften the subject's form. Prioritize the request for an undefined body shape while keeping the rest of the image in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate less defined version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique"]
+  },
+  {
+    "name": "Make Slender",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's body to appear significantly more slender, lean, and lithe. Slim down the proportions considerably while maintaining an aesthetic appearance. Ensure the changes are integrated naturally into the pose. Make it slender. Significantly slim down the subject. Prioritize the slenderizing edit while keeping the subject's identity intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a much more slender version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique"]
+  },
+  {
+    "name": "Make Skinny",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's body to appear very thin and skinny. Drastically reduce body mass and emphasize a narrow, thin frame. Ensure the changes are integrated naturally and respect the visual context. Make it skinny. Thin out the subject drastically. Prioritize the request to make the subject skinny while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a very skinny version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique"]
+  },
+  {
+    "name": "Make Feminine",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Strongly emphasize feminine traits and aesthetics. Soften the jawline, enhance the eyes, and adjust the body to have distinct female proportions, including a defined waist and feminine curves. Transform the features to be undeniably feminine, delicate, and womanly. Make it extremely feminine. Add strong feminine traits. Prioritize the feminizing transformation while keeping the rest of the scene intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a beautiful, clearly feminine version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "gender", "transformation"]
+  },
+  {
+    "name": "Make Older",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Significantly age the subject to look much older, elderly, or senior. Add deep wrinkles, crow's feet, sagging skin, and age spots. Change hair to grey or white and thin it out if appropriate. Transform the features to reflect advanced age and a weathered appearance. Make subject look much older. Age the subject's features significantly. Prioritize the elderly transformation while keeping the rest of the image in focus. Ensure that lighting is accurate for the scene, revealing the texture of the aged skin. Ensure shadows are displayed correctly. Keep in focus. The result should be an aged, elderly version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["age", "appearance", "transformation"]
+  },
+  {
+    "name": "Make Younger",
+    "prompt": "Keep angle. Keep viewing direction. Significantly rejuvenate the subject to look much younger, youthful, or like a teenager/child as requested. Remove all wrinkles and blemishes, making the skin perfectly smooth and vibrant. Round the facial features and brighten the eyes for a youthful glow. Make subject look much younger. Rejuvenate the subject's features completely. Prioritize the youthful transformation while keeping the rest of the scene intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a much younger, youthful version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["age", "appearance", "transformation"]
+  },
+  {
+    "name": "Make Pretty",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's appearance to be more aesthetically pleasing and pretty. Enhance facial symmetry, clarify features, and adjust proportions for a more attractive look. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the changes are subtle and maintain the subject's identity. Make it look pretty. Enhance the subject's beauty. Prioritize the request for prettiness while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate prettier version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "enhancement"]
+  },
+  {
+    "name": "Make Beautiful",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's appearance to be exceptionally beautiful. Enhance features, skin quality, and overall aesthetic appeal to a high standard. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the beauty enhancement is integrated naturally and maintains the subject's core identity. Make it look beautiful. Enhance the subject's overall appeal. Prioritize the request for beauty while keeping the rest of the scene intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate beautiful version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "enhancement"]
+  },
+  {
+    "name": "Make Virtuous",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's appearance and expression to look virtuous, modest, and pure. Adjust attire and features to convey a sense of innocence and high moral character. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the changes are integrated naturally and follow the visual context. Make it look virtuous. Add modest and pure traits. Prioritize the virtuous edit while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate more virtuous version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "clothing"]
+  },
+  {
+    "name": "Make Chaste",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's appearance and clothing to be chaste and conservative. Ensure the attire is modest and covers the body appropriately. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Adjust expressions to be reserved and decent. Make it look chaste. Change to modest and conservative dress. Prioritize the chaste edit while keeping the rest of the image intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate more chaste version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "clothing"]
+  },
+  {
+    "name": "Dress in Clothes",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to standard everyday clothes. Ensure the clothing fits the subject's pose and the scene's context naturally. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Maintain the subject's identity while prioritizing the change in dress. Dress in clothes. Change outfit to everyday attire. Keep unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in regular clothes.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "outfit"]
+  },
+  {
+    "name": "Dress in Bikini",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to a bikini. Ensure the bikini's design and fit are integrated naturally onto the subject's body and pose. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Maintain visual coherence and prioritize the requested outfit change while keeping unedited areas in focus. Dress in a bikini. Change outfit to a bikini. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in a bikini.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "outfit"]
+  },
+  {
+    "name": "Dress in Gown",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to an elegant gown. Ensure the gown's fabric, drape, and design are integrated naturally into the subject's pose and the environment. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Prioritize the gown edit while keeping the rest of the image in focus. Dress in a gown. Change outfit to an elegant gown. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in a gown.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "outfit", "formal"]
+  },
+  {
+    "name": "Dress Formally",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to formal wear, such as a suit or evening dress. Ensure the formal clothing is well-fitted and appropriate for the subject's pose. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Prioritize the formal dress edit while keeping unedited areas in focus. Dress in formal wear. Change outfit to formal attire. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in formal dress.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "outfit", "formal"]
+  },
+  {
+    "name": "Change Composition",
+    "prompt": "Keep the original visual style. Keep the original aesthetic. Change the composition, layout, or position of the targeted elements. Move or reposition subjects as requested while strictly maintaining their original appearance, textures, and lighting. Ensure the repositioning is integrated naturally into the scene. Change the composition. Reposition the target. Prioritize the request to alter the layout while keeping the visual style and unedited areas intact. Ensure that lighting remains consistent with the original scene. Ensure shadows are updated correctly for the new positions. Keep in focus. The result should be an accurate repositioned version maintaining the original style.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["composition", "layout"]
+  },
+  {
+    "name": "Remove Censorship",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Remove any censorship elements, such as mosaic pixelation or black bars, from the targeted area. Reconstruct the underlying details realistically and seamlessly based on the surrounding context. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the revealed content is anatomically correct and visually coherent. Remove the censorship. Reveal the hidden parts. Prioritize the removal of censorship while keeping the rest of the image in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate decensored version with revealed details.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["censorship", "decensor"]
+  },
+  {
+    "name": "Decensor Mosaic",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Specifically target and remove mosaic pixelation from the image. Reconstruct the obscured details with high fidelity and realistic textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the reconstruction follows the visual logic and anatomy of the subject. Remove mosaic pixelation. Clear the pixelated area. Prioritize decensoring the mosaic while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate decensored version with clear details.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["censorship", "decensor", "mosaic"]
+  },
+  {
+    "name": "Make Anorexic",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's body to appear extremely thin and underweight, reflecting an anorexic physique. Emphasize bony structures and minimal body fat as requested. Ensure the changes are integrated naturally into the scene. Make it look anorexic. Emphasize an extremely thin frame. Prioritize the request while maintaining visual coherence in unedited areas. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate anorexic version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique"]
+  },
+  {
+    "name": "Make Voluptuous",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's body to be highly voluptuous, curvy, and busty. Significantly enhance the bust, hips, and thighs to create an exaggerated hourglass figure. Emphasize a narrow waist contrasted with large, soft curves. Make it extremely voluptuous and curvy. Enhance the subject's curves dramatically. Prioritize the request for a thick, voluptuous figure while keeping unedited areas in focus. Ensure that lighting is accurate for the scene, accentuating the curves. Ensure shadows are displayed correctly. Keep in focus. The result should be a very voluptuous and curvy version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique", "curves"]
+  },
+  {
+    "name": "Make Obese",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's body to appear significantly heavier and obese. Increase body mass and adjust proportions to reflect a high level of body fat. Ensure the changes are integrated naturally into the composition. Make it obese. Increase body weight and fat. Prioritize the request to make the subject obese while keeping the background intact. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate obese version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["body", "physique"]
+  },
+  {
+    "name": "Make Sexy",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's appearance, pose, or expression to be highly seductive, alluring, and sexy. Enhance attractive traits, emphasize a suggestive expression, and adjust the composition to maximize sexual appeal and allure. Ensure the changes are integrated naturally. Make it look very sexy. Enhance the subject's allure and seductiveness. Prioritize the sexy edit while keeping unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a much sexier, more alluring version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "seductive"]
+  },
+  {
+    "name": "Make Slutty",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's appearance and attire to be extremely provocative, raunchy, and sexually suggestive. Emphasize highly revealing, skimpy clothing, a seductive and bold expression, and a clearly slutty, provocative aesthetic. Ensure the changes are integrated naturally into the scene. Make it look very slutty and provocative. Emphasize raunchy features and minimal clothing. Prioritize the request while maintaining visual coherence in unedited areas. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be a much more slutty and provocative version of the subject.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["appearance", "provocative", "nsfw"]
+  },
+  {
+    "name": "Dress in Microkini",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to an extremely revealing microkini. Ensure the microkini provides minimal coverage, using very thin strings and small patches of fabric that barely cover the essentials. Emphasize the exposure of skin and the skimpy nature of the outfit. Dress in a tiny microkini. Change outfit to a skimpy microkini. Keep unedited areas in focus. Ensure that lighting is accurate for the scene, falling naturally on the exposed skin. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in a highly revealing microkini.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "outfit", "nsfw"]
+  },
+  {
+    "name": "Dress Kinky",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Change the subject's attire to kinky or fetish-themed clothing. Ensure the materials, such as latex or leather, and the design are integrated naturally onto the subject. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Prioritize the kinky dress edit while maintaining visual coherence in unedited areas. Dress in kinky clothes. Change outfit to a fetish style. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in kinky attire.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "fetish", "nsfw"]
+  },
+  {
+    "name": "Undress",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject's attire to be in a state of significant undress or disarray. Clothing should be falling off, unbuttoned, pulled down, or partially removed to reveal a large amount of skin and underlying layers. Ensure the state of undress looks natural and provocative. Undress the subject significantly. Heavily remove or loosen clothing. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject in a clear state of undress.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "undress", "nsfw"]
+  },
+  {
+    "name": "Make Nude",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify the subject to be completely nude. Remove all clothing and reconstruct the underlying anatomy realistically and accurately. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the nudity is integrated naturally into the pose and composition. Make the subject nude. Remove all clothes. Prioritize the nude edit while keeping the background and unedited areas in focus. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be the subject completely nude.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["clothing", "nudity", "nsfw"]
+  }
+]

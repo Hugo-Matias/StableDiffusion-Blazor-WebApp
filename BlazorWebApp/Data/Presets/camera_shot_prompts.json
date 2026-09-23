@@ -1,0 +1,142 @@
+[
+  {
+    "name": "Extreme Wide Shot",
+    "prompt": "Show this scene as an extreme wide shot. The subject should appear as a tiny element inside a vast surrounding environment. The setting should fill the entire image. The subject should be identifiable but occupy only a small fraction of the total image. Deep depth of field. The entire environment should be sharp from the foreground to the far distance. Lighting should be consistent across the full expanse of the scene. The result should convey the overwhelming scale of the surrounding world relative to the small subject within it.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing", "wide"]
+  },
+  {
+    "name": "Wide Shot",
+    "prompt": "Show this scene as a wide shot. The complete body of the subject should be visible from head to feet with generous space given to the surrounding environment. The subject should be clearly recognizable, but the setting shares the image and provides spatial context. Include visible ground beneath the subject and open space above. Deep depth of field. Both the subject and background should be sharp. Lighting should be consistent across the full scene. The result should establish a clear relationship between the subject and the space around them.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing", "wide"]
+  },
+  {
+    "name": "Full Shot",
+    "prompt": "Show this scene as a full shot. The body of the subject should be visible from the top of the head to the feet, with only a thin margin of space around them. The subject is the primary element in the image. The environment is reduced to a narrow strip of context behind. Moderate depth of field. The subject should be sharp while the background begins to soften. Lighting should emphasize the form of the subject across the entire body. The result should present the complete figure of the subject as the dominant focus.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing"]
+  },
+  {
+    "name": "Medium Wide Shot",
+    "prompt": "Show this scene as a medium wide shot. The subject should be visible from approximately mid thigh upward. The lower legs and feet are not shown. This view should reveal the stance, hip position, and weight distribution of the subject while still showing hand placement and arm posture. A slice of the environment remains visible behind to ground the subject in the setting. Moderate depth of field. The subject should be sharp while the background softens lightly. Lighting should be clearly defined across the visible portions of the subject. The result should emphasize body language and physical stance within the environment.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing"]
+  },
+  {
+    "name": "Medium Shot",
+    "prompt": "Show this scene as a medium shot. The subject should be visible from the waist upward. This view captures hand gestures, arm movement, and upper body posture while the face remains clearly readable. The background should be visible but secondary. Moderate depth of field. The subject should be in crisp focus and the background gently softened. Lighting on the face and upper body of the subject should create clear dimensionality. The result should present the subject at a natural conversational distance where both expression and gesture are equally visible.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing"]
+  },
+  {
+    "name": "Medium Close-Up",
+    "prompt": "Show this scene as a medium close up. The subject should be visible from the upper chest and shoulders upward. The face should be prominent and take up a significant portion of the image. The visible shoulder line provides a sense of physical orientation and posture. The background should be minimal and noticeably out of focus. Shallow depth of field. The subject should be isolated from the surroundings. Lighting should carefully define the facial features with natural shadow transitions. The result should draw attention primarily to the facial expression of the subject while the shoulders anchor the composition.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing", "close-up"]
+  },
+  {
+    "name": "Headshot Portrait",
+    "prompt": "Show this scene as a headshot portrait. The face of the subject should take up the entire image from just above the hairline to the chin. Every nuance of expression should be revealed. The eyes, the set of the mouth, the tension in the brow. No significant background should be visible. Any remaining sliver should be heavily blurred into an abstract wash of colour. Shallow depth of field. The eyes should be perfectly sharp while the ear tips may begin to soften. Render skin texture and fine facial details with care. Lighting should sculpt the face with clear highlights and shadows that give depth and volume. The result should create maximum emotional intensity through an intimate portrait filling the full image.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "framing", "close-up", "portrait"]
+  },
+  {
+    "name": "Close-Up",
+    "prompt": "Show this scene as a close up view of the target. The target should take up most of the image, isolated from the surrounding context. Surface details, texture, and form of the target should become the dominant visual elements. The background should fall heavily out of focus, becoming an indistinct wash that provides no distraction. Shallow depth of field. The target should be separated crisply from everything around it. Fine surface qualities such as material texture, colour gradation, wear, and imperfections should be rendered with clarity. Lighting should highlight the form of the target with defined highlights and shadow transitions. The result should show the target as the sole point of interest with far greater intimacy and detail than a wider view would allow.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "close-up", "composition"]
+  },
+  {
+    "name": "Extreme Close-Up",
+    "prompt": "Show this scene as an extreme close up view of a single small detail of the target, magnified so it takes up the entire image. The selected detail should be magnified to the point where it becomes almost abstract. Reveal micro texture, surface imperfections, fine grain, and material qualities invisible at normal viewing distance. No surrounding context should be visible. Very shallow depth of field. Even parts of the selected detail may fall out of sharp focus. Lighting should be precise and reveal the finest surface characteristics with crisp highlights and micro shadows. The result should present an intensely focused, magnified study of one specific detail.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["shot-size", "close-up", "detail"]
+  },
+  {
+    "name": "Eye Level Angle",
+    "prompt": "Show this scene from an eye level view. The perspective should be at the same height as the eyes of the subject, looking straight ahead with zero upward or downward tilt. The horizon line should cross the image at eye height. This creates the most neutral perspective with no power dynamic between the viewer and the subject. Vertical lines in the environment should remain straight and parallel with no convergence. The proportions of the subject should appear natural and accurate with no foreshortening distortion. Lighting should be rendered as seen from a natural standing viewpoint. The result should feel grounded and direct. The viewer meets the subject as an equal.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective"]
+  },
+  {
+    "name": "Low Angle",
+    "prompt": "Show this scene from a low angle view, looking upward at the subject from below the eye line. The subject should appear to tower over the viewer. The sky or ceiling should be visible above and behind the subject. This angle makes the subject look taller, more powerful, and imposing. The underside of the chin and jawline become visible. Perspective lines in the background should converge upward. Foreshortening should make the lower body appear slightly larger relative to the head. Light sources from above will create lighting along the upper edges and silhouette the outline of the subject. The result should convey authority and dominance of the subject over the viewer.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective", "dynamic"]
+  },
+  {
+    "name": "High Angle",
+    "prompt": "Show this scene from a high angle view, looking downward at the subject from above the eye line. The subject should appear smaller, compressed, and diminished. The top of the head and the shoulders become the most prominent features while the forehead shortens. The ground or floor behind the subject becomes the dominant backdrop. Perspective lines should converge downward. Lighting from above should cast downward shadows on the face. The brow may shadow the eyes. The nose casts a longer shadow toward the chin. The result should convey vulnerability and smallness with the viewer looking down from an elevated vantage point.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective"]
+  },
+  {
+    "name": "Dutch Angle",
+    "prompt": "Show this scene with a Dutch angle. Tilt the viewing axis so the horizon line runs diagonally across the image instead of horizontally. Vertical lines in the scene should lean noticeably to one side. Apply a clear and intentional tilt of approximately 15 to 30 degrees. It should be unmistakably deliberate. The subject may remain upright within the scene, but the tilted perspective transforms the mood into one of unease, tension, and instability. All compositional elements should follow the diagonal tilt consistently. Lighting should remain coherent with the original scene. The result should feel deliberately disorienting and dramatically charged through the skewed visual axis.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective", "dynamic", "mood"]
+  },
+  {
+    "name": "Bird's Eye View",
+    "prompt": "Show this scene from a birds eye view, looking directly downward from high above at a 90 degree angle to the ground plane. The subject should be seen from directly overhead. The top of the head, the tops of the shoulders, and the spatial layout of elements on the ground become the primary visual information. There is no horizon line, no vanishing point, and minimal sense of height. The subject appears flattened into the ground plane. Shadows should cast directly below objects and the subject, radiating outward from their base. The result should present an overhead perspective that reveals spatial patterns, positioning, and layout from a detached vantage point directly above.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective"]
+  },
+  {
+    "name": "Worm's Eye View",
+    "prompt": "Show this scene from a worms eye view, seen from ground level looking steeply upward. The subject should tower dramatically above the viewer with extreme foreshortening. Feet and legs appear massive while the torso and head recede sharply into the distance above. The sky or ceiling dominates the upper image while the ground plane acts as the immediate foreground edge. Perspective lines converge sharply upward toward a vanishing point in the sky. Vertical structures stretch and taper as they rise. The vantage point is essentially on the floor. Lighting from above should create strong backlighting and lighting along the silhouette edges of the subject. The result should create an overwhelming sense of towering scale from the lowest possible vantage point.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["angle", "perspective", "dynamic"]
+  },
+  {
+    "name": "Over the Shoulder",
+    "prompt": "Show this scene as an over the shoulder view. The back of one person and one shoulder should occupy the near foreground of the image. The main subject should face the viewer in the middle ground, seen within the negative space created by the foreground person. The foreground person should be slightly out of focus and partially visible, showing just the back of the head, neck, and shoulder on one side of the image. The main subject should be in sharp focus. This composition establishes a spatial and conversational relationship between two people. Moderate to shallow depth of field. The two depth planes should be clearly separated. Lighting should distinguish the foreground silhouette from the focused subject behind. The result should create the perspective of witnessing an exchange from the vantage point of one participant while maintaining focus on the other.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["composition", "framing", "two-person"]
+  },
+  {
+    "name": "Point of View",
+    "prompt": "Show this scene as a point of view shot from the perspective of the subject. Depict exactly what the subject would see from their height and viewing direction. The subject should not be visible in the image except for their own hands or forearms at the lower edge if they are reaching toward something. The scene should be rendered from the perspective of the subject with the correct eye height matching the stature and natural head orientation. Objects being looked at should be in sharp focus. Include subtle perspective cues that convey physical presence. The viewing height should match the posture and the angle should match where they are looking. Lighting should be consistent with what would be perceived from the position of the subject in the scene. The result should fully immerse the viewer into seeing through the eyes of the subject.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["composition", "perspective", "immersive"]
+  },
+  {
+    "name": "Two Shot",
+    "prompt": "Show this scene as a two shot. The image should include two subjects positioned together, both equally visible and sharing the composition with balanced visual weight. Neither subject should dominate. Each should occupy roughly half of the image. Both subjects should be visible from the waist or chest upward. The space between them and their body language relative to each other carries as much meaning as the subjects themselves. Depth of field should keep both subjects in sharp focus while the background softens. Lighting should illuminate both faces with equal care, rendered with consistent quality across both sides of the image. The result should present the dynamic between two people as the primary focus communicated through shared composition.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["composition", "framing", "two-person"]
+  },
+  {
+    "name": "Establishing Shot",
+    "prompt": "Show this scene as an establishing shot. The full scope of the location where the scene takes place should dominate the image. The architecture, geography, time of day, weather, and atmosphere of the environment should be the primary focus. If a subject is present, they should be secondary to the location, visible but small within the larger context. Prominent landmarks, building facades, skylines, and landscape features should be clearly readable and recognizable. Deep depth of field. The entire environment should be sharp from foreground to the farthest visible distance. Lighting should clearly communicate the time of day and atmospheric conditions. The result should immediately communicate where and when the scene takes place, providing the full geographic and temporal context of the setting.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["composition", "framing", "environment", "wide"]
+  },
+  {
+    "name": "Keep Camera Angle",
+    "prompt": "Maintain the exact viewing angle and direction from which the subject is viewed. The camera perspective relative to the subject must remain unchanged. Do not alter the elevation, tilt, or horizontal vantage point. Allow the subject or environment to be modified as requested, but strictly preserve the direction from which they are observed. This locks the vantage point while allowing changes to the scene content itself. The result should present the modified scene from the identical viewing direction as the reference image.",
+    "negative_prompt": null,
+    "category": "Camera Shots",
+    "tags": ["preserve", "angle"]
+  }
+]

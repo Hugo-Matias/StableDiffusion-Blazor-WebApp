@@ -1,0 +1,170 @@
+[
+  {
+    "name": "Transform: Polished Gold",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as polished gold metal. Make it look like refined bullion with warm amber reflections and smooth specular highlights. Keep subject position and their pose the same as the reference. Ensure surface reflections follow metallic gold aesthetics. Make surfaces look mirror-polished with subtle directional grain. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with gold properties correctly — warm specular highlights and rich golden reflections. Ensure edges catch bright rim light. Keep in focus. The result should be a faithful polished gold transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["gold", "metal", "precious", "reflective"]
+  },
+  {
+    "name": "Transform: Brushed Silver",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as brushed silver metal. Make it look like finely milled silver with directional grain texture and cool metallic sheen. Keep subject position and their pose the same as the reference. Ensure surface reflections follow brushed metal aesthetics. Make surfaces look satin-smooth with fine linear grain marks visible. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with silver properties correctly — soft diffuse highlights along the grain direction with cool-toned reflections. Ensure subtle anisotropic shimmer. Keep in focus. The result should be a faithful brushed silver transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["silver", "metal", "brushed", "grain"]
+  },
+  {
+    "name": "Transform: Frosted Crystal",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as translucent frosted crystal. Make it look like carved ice quartz with internal refraction and soft light diffusion. Keep subject position and their pose the same as the reference. Ensure translucency follows crystalline aesthetics. Make surfaces look semi-transparent with a frosted matte finish that scatters light internally. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with crystal properties correctly — soft internal glow, prismatic color fringing at edges, and diffused transmission through thicker areas. Ensure subtle crystalline facets are visible beneath the frost. Keep in focus. The result should be a faithful frosted crystal transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["crystal", "frosted", "translucent", "refractive"]
+  },
+  {
+    "name": "Transform: Clear Glass",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as transparent blown glass. Make it look like hand-blown studio glass with clean transparency and sharp specular highlights. Keep subject position and their pose the same as the reference. Ensure transparency follows glass aesthetics. Make surfaces look perfectly clear with thin-wall translucency at edges where light concentrates. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with glass properties correctly — bright specular highlights, caustic patterns on surrounding surfaces, and chromatic aberration at thick edges. Ensure subtle internal bubbles or swirl marks add character. Keep in focus. The result should be a faithful clear blown glass transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["glass", "transparent", "blown-glass", "specular"]
+  },
+  {
+    "name": "Transform: Colored Stained Glass",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as colored stained glass. Make it look like a cathedral window with vibrant colored panes separated by dark lead came lines. Keep subject position and their pose the same as the reference. Ensure color distribution follows stained glass aesthetics — bold saturated regions separated by geometric lead lines. Make surfaces look translucent with rich jewel tones that glow when backlit. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with stained glass properties correctly — strong backlight transmission, colored light casting onto surroundings, and dark silhouettes of lead lines. Ensure each pane has slight color variation like hand-painted glass. Keep in focus. The result should be a faithful stained glass transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["stained-glass", "colored", "lead-lines", "translucent"]
+  },
+  {
+    "name": "Transform: Molten Lava",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as flowing molten lava. Make it look like active volcanic flow with glowing orange-red cracks and floating ember particles. Keep subject position and their pose the same as the reference. Ensure surface texture follows molten rock aesthetics — dark cooling crust broken by bright incandescent fissures. Make surfaces look viscous and slowly flowing with a rough basaltic skin. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with lava properties correctly — self-illumination from within, warm orange glow casting onto surroundings, rising heat haze, and floating sparks. Ensure cooling edges show dark scoriaceous texture. Keep in focus. The result should be a faithful molten lava transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["lava", "molten", "glowing", "flowing"]
+  },
+  {
+    "name": "Transform: Living Flora",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as living plant matter. Make it look like a dense composition of vines, leaves, flowers, and moss growing in the shape of the original form. Keep subject position and their pose the same as the reference. Ensure botanical details follow natural flora aesthetics — varied leaf shapes, climbing tendrils, small blossoms, and velvety moss patches. Make surfaces look organic with layered vegetation texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with plant matter correctly — dappled light filtering through leaves, soft green tones with flower color accents, and natural shadow patterns from overlapping foliage. Ensure some dew drops catch highlights on leaf surfaces. Keep in focus. The result should be a faithful living flora transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["flora", "plant", "organic", "living"]
+  },
+  {
+    "name": "Transform: Weathered Stone",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as carved weathered stone. Make it look like ancient sandstone sculpture with erosion patterns and natural patina. Keep subject position and their pose the same as the reference. Ensure surface texture follows weathered rock aesthetics — pitted grain, wind-smoothed curves, and subtle crack networks. Make surfaces look rough and mineral with earthy tones ranging from warm tan to cool grey. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with stone properties correctly — diffuse scattering across rough surfaces, deep shadows in crevices, and subtle rim light catching raised edges. Ensure lichen or moss accents appear in sheltered recesses. Keep in focus. The result should be a faithful weathered stone transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["stone", "carved", "weathered", "erosion"]
+  },
+  {
+    "name": "Transform: Draped Silk Fabric",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as flowing draped silk fabric. Make it look like luxurious satin silk arranged in soft cascading folds and gentle drapes following the original form. Keep subject position and their pose the same as the reference. Ensure fold patterns follow draped textile aesthetics — smooth curves, sharp pleat lines at tension points, and soft billowing areas. Make surfaces look silky with a subtle sheen that shifts with angle. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with silk properties correctly — soft anisotropic highlights along fold curves, gentle color shifts between light and shadow areas, and delicate translucency where fabric thins. Ensure thread-level smoothness without visible weave. Keep in focus. The result should be a faithful draped silk transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["silk", "fabric", "draped", "flowing"]
+  },
+  {
+    "name": "Transform: Liquid Water Form",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as liquid water held in form by surface tension. Make it look like a sculpted water sculpture with ripples, droplets, and fluid transparency. Keep subject position and their pose the same as the reference. Ensure fluid dynamics follow water aesthetics — smooth curved surfaces broken by gentle ripple patterns and suspended droplets at edges. Make surfaces look wet and transparent with caustic light refraction. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with water properties correctly — bright specular highlights, internal refraction distorting background elements, and caustic patterns projected onto surroundings. Ensure subtle blue-green tint in thicker areas. Keep in focus. The result should be a faithful liquid water transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["water", "liquid", "surface-tension", "ripples"]
+  },
+  {
+    "name": "Transform: Charcoal & Ash",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as burnt charcoal with ash particles and ember glow. Make it look like a charred remnant — black carbonized structure dusted with grey ash and faint red embers glowing from within cracks. Keep subject position and their pose the same as the reference. Ensure surface texture follows combustion aesthetics — cracked carbon shell, powdery ash accumulation in recesses, and warm ember light bleeding through fissures. Make surfaces look brittle and dark with subtle orange glow spots. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with charcoal properties correctly — self-illumination from embers casting warm local light, ash catching cool ambient highlights, and smoke wisps rising faintly. Ensure charred edges show layered carbon texture. Keep in focus. The result should be a faithful charcoal and ash transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["charcoal", "ash", "burnt", "ember"]
+  },
+  {
+    "name": "Transform: Ceramic Glaze",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Transform the subject's material to appear as glazed ceramic pottery. Make it look like hand-thrown stoneware with a glossy glaze finish showing natural glaze runs and pooling at contours. Keep subject position and their pose the same as the reference. Ensure surface quality follows ceramic aesthetics — smooth vitrified body beneath a glassy glaze layer with subtle color variation from firing. Make surfaces look hard and glossy with occasional crystalline patterns in the glaze. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting interacts with glazed ceramic properties correctly — sharp specular highlights on glossy areas, soft subsurface glow where glaze thins, and warm earthy undertones visible beneath transparent glaze layers. Ensure glaze drips pool naturally at form transitions. Keep in focus. The result should be a faithful glazed ceramic transformation of the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["ceramic", "glazed", "pottery", "glossy"]
+  },
+  {
+    "name": "Surface: Heavy Weathering",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply heavy weathering to the subject's surfaces while maintaining the underlying form. Make the surface show deep scratches, scuff marks, paint chips, and accumulated grime from prolonged exposure. Keep subject position and their pose the same as the reference. Ensure wear patterns follow natural aging — concentrated damage at edges and high-contact areas, with sheltered recesses showing less deterioration. Make textures look rough and degraded with exposed underlayers visible where surface material has worn away. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the weathering correctly — scratches catching directional highlights, grime creating matte patches that absorb light, and chipped areas showing depth through micro-shadows. Ensure dust accumulation softens sharp edges. Keep in focus. The result should show heavy weathering applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["weathering", "wear", "scratches", "aged"]
+  },
+  {
+    "name": "Surface: Polished Mirror Finish",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply a polished mirror finish to the subject's surfaces while maintaining the underlying form. Make the surface show flawless reflective smoothness with zero visible texture or grain. Keep subject position and their pose the same as the reference. Ensure reflectivity follows optical mirror aesthetics — clear undistorted reflections of surrounding environment mapped across all exposed surfaces. Make textures look perfectly glass-smooth with bright specular highlights that are sharp and well-defined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the mirror finish correctly — environment reflections dominate surface appearance, highlights are crisp and concentrated, and no diffuse scattering softens the reflection. Ensure edge transitions between reflected surfaces show clean geometric boundaries. Keep in focus. The result should show a polished mirror finish applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["polished", "mirror", "reflective", "smooth"]
+  },
+  {
+    "name": "Surface: Rust & Oxidation",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply rust and oxidation patterns to the subject's surfaces while maintaining the underlying form. Make the surface show reddish-brown iron oxide corrosion with flaking scales and deep pitting in advanced areas. Keep subject position and their pose the same as the reference. Ensure corrosion follows natural oxidation patterns — heavier buildup at seams, joints, and water-trapping recesses, with lighter patina on exposed flat surfaces. Make textures look rough and crumbly where rust is thick, transitioning to smooth orange-brown staining in thinner areas. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the rust correctly — matte oxide surfaces absorbing light, flaking edges catching micro-highlights, and underlying metal peeking through where corrosion thins. Ensure rust runoff streaks appear below horizontal surfaces. Keep in focus. The result should show rust and oxidation applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["rust", "oxidation", "corroded", "patina"]
+  },
+  {
+    "name": "Surface: Ice Frost Coating",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply an ice frost coating to the subject's surfaces while maintaining the underlying form. Make the surface show crystalline frost patterns with delicate ice feathers and frozen texture overlaying the original material. Keep subject position and their pose the same as the reference. Ensure frost follows natural freezing patterns — denser crystal growth on exposed edges, feathery fern-like structures in sheltered areas, and smooth rime ice on wind-facing surfaces. Make textures look cold and crystalline with translucent blue-white ice layers of varying thickness. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the frost correctly — ice crystals scattering light into soft halos, subsurface transmission through thicker ice creating cool blue glow, and sharp specular highlights on smooth rime surfaces. Ensure condensation droplets appear where frost begins to melt. Keep in focus. The result should show an ice frost coating applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["frost", "ice", "coated", "crystalline"]
+  },
+  {
+    "name": "Surface: Burn & Scorch Marks",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply burn marks and scorch patterns to the subject's surfaces while maintaining the underlying form. Make the surface show heat damage — blackened char, blistered texture, and orange-brown thermal discoloration radiating from impact points. Keep subject position and their pose the same as the reference. Ensure burn patterns follow natural fire damage — concentrated charring at the point of contact, radiating scorch marks fading outward, and soot deposition on upper surfaces from rising smoke. Make textures look cracked and blistered where heat was intense, transitioning to yellow-brown staining in moderate areas. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the burn marks correctly — charred black areas absorbing light deeply, blistered surfaces creating micro-relief shadows, and soot catching faint directional highlights. Ensure heat discoloration gradient fades naturally from dark to warm tones. Keep in focus. The result should show burn and scorch marks applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["burn", "scorch", "heat-damage", "charred"]
+  },
+  {
+    "name": "Surface: Water Damage Stains",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Apply water damage stains to the subject's surfaces while maintaining the underlying form. Make the surface show moisture damage — tide marks, mineral deposits, dark damp patches, and efflorescence patterns from repeated wetting and drying. Keep subject position and their pose the same as the reference. Ensure stain patterns follow natural water damage — horizontal tide lines marking maximum water levels, downward streaking from drip points, white crystalline salt deposits at evaporation edges, and darkened areas where moisture remains trapped. Make textures look slightly raised where mineral deposits accumulate and softened where material has been water-logged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the water damage correctly — damp patches appearing darker and more matte, mineral deposits catching bright specular highlights, and tide lines creating visible texture transitions. Ensure subtle warping suggests prolonged moisture exposure. Keep in focus. The result should show water damage stains applied to the original subject.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["water-damage", "stains", "moisture", "tide-marks"]
+  },
+  {
+    "name": "Convert: Photo to Pencil Sketch",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image medium from photograph to graphite pencil sketch. Make it look like a hand-drawn pencil study on textured paper with visible graphite strokes and tonal gradation. Keep subject position and their pose the same as the reference. Ensure rendering follows pencil drawing conventions — directional hatching for midtones, cross-hatching for shadows, and lifted highlights where graphite is removed to reveal paper. Make textures follow graphite medium characteristics — smooth blending in skin tones, sharp stroke definition in edges, and visible paper grain beneath the graphite layer. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to pencil sketch rendering style — values mapped to graphite density from 6B darks to HB midtones with preserved white paper for highlights. Ensure eraser marks create soft highlight transitions. Keep in focus. The result should be a faithful pencil sketch conversion of the original image.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["pencil-sketch", "graphite", "hand-drawn", "conversion"]
+  },
+  {
+    "name": "Convert: Photo to Ink Drawing",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image medium from photograph to ink line drawing. Make it look like a pen and ink illustration with clean confident lines and cross-hatching shading on white paper. Keep subject position and their pose the same as the reference. Ensure rendering follows ink drawing conventions — bold contour lines defining major forms, progressively finer hatching for tonal areas, and stippling for subtle texture transitions. Make textures follow ink medium characteristics — uniform black line weight with slight variation from pen pressure, clean white paper showing through uninked areas, and deliberate cross-hatch angles creating grey values. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to ink drawing rendering style — shadows built from dense cross-hatching patterns, midtones from single-direction hatching, and highlights preserved as blank paper. Ensure line weight varies with form edges — thicker at silhouettes, thinner for internal details. Keep in focus. The result should be a faithful ink drawing conversion of the original image.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["ink-drawing", "line-art", "crosshatch", "conversion"]
+  },
+  {
+    "name": "Convert: Render to Oil Painting",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image medium from 3D render to oil painting. Make it look like a traditional canvas oil painting with visible brushstrokes, impasto texture, and rich pigment layering. Keep subject position and their pose the same as the reference. Ensure rendering follows oil painting conventions — directional brush marks following form contours, thick impasto application in highlighted areas, and thin glaze layers in shadow regions. Make textures follow oil paint characteristics — visible canvas weave beneath thinner passages, buttery paint consistency with knife marks and palette刀 edges, and subtle color mixing transitions where pigments blend wet-on-wet. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to oil painting rendering style — warm shadow glazes over cool underpainting, thick white highlights applied with a palette knife, and atmospheric color harmony typical of traditional oil technique. Ensure brushstroke direction follows anatomical flow. Keep in focus. The result should be a faithful oil painting conversion of the original render.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["oil-painting", "brushstrokes", "impasto", "conversion"]
+  },
+  {
+    "name": "Convert: Illustration to Photo-Realism",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image medium from illustration to photorealistic rendering. Make it look like a high-resolution photograph with natural textures, accurate lighting physics, and realistic material responses. Keep subject position and their pose the same as the reference. Ensure rendering follows photographic conventions — continuous tone without visible brushwork or line art, physically accurate shadows and reflections, and natural depth of field falloff. Make textures follow real-world material characteristics — skin pores and micro-textures, fabric weave patterns, metal grain direction, and environmental surface imperfections. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to photorealistic rendering style — accurate global illumination, natural color temperature transitions between direct and ambient light, and realistic specular behavior matching each material type. Ensure subtle chromatic aberration and film grain add photographic authenticity. Keep in focus. The result should be a faithful photorealistic conversion of the original illustration.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["photorealism", "natural-textures", "realistic", "conversion"]
+  },
+  {
+    "name": "Convert: Extract Line Art Only",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image to clean line art only, removing all shading and color. Make it look like a precise outline drawing with black lines on white background — no grey values, no fills, pure contour definition. Keep subject position and their pose the same as the reference. Ensure rendering follows line art extraction conventions — continuous closed contours for major forms, internal detail lines for anatomical features and surface patterns, and clean line weight hierarchy distinguishing primary silhouettes from secondary details. Make textures follow technical line art characteristics — uniform black ink with no tonal variation, smooth bezier-curve quality lines without hand-drawn jitter, and white negative space where no lines exist. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to line art rendering style — form suggested through contour density and line weight rather than shading, with thicker lines at major silhouettes and progressively thinner lines for internal details. Ensure no hatching or stippling remains — pure outline only. Keep in focus. The result should be a faithful line art extraction of the original image.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["line-art", "outline", "extracted", "minimal"]
+  },
+  {
+    "name": "Convert: Photo to Charcoal Drawing",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Convert the image medium from photograph to charcoal drawing. Make it look like a studio charcoal study on toned paper with smudged shading, gestural marks, and visible paper texture beneath the pigment. Keep subject position and their pose the same as the reference. Ensure rendering follows charcoal drawing conventions — broad smudged areas for shadow masses, directional finger-blending for midtone transitions, and sharp charcoal strokes for edge definition and detail accents. Make textures follow charcoal medium characteristics — dusty soft black pigment that can be erased to create highlights, visible paper grain showing through lighter passages, and gestural sweep marks where the charcoal was applied quickly. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting translates to charcoal drawing rendering style — deep rich blacks from compressed charcoal in core shadows, soft grey midtones from vine charcoal blending, and preserved paper tone for highlights created by erasing rather than adding white. Ensure smudge transitions are organic with no hard digital edges. Keep in focus. The result should be a faithful charcoal drawing conversion of the original image.",
+    "negative_prompt": null,
+    "category": "Material Transforms",
+    "tags": ["charcoal-drawing", "smudged", "paper-texture", "conversion"]
+  }
+]

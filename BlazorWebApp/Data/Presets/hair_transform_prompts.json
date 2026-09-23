@@ -1,0 +1,962 @@
+﻿[
+    {
+        "name":  "Hair: Short Pixie Cut",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a short pixie cut with close-cropped sides and back and slightly longer textured layers on top. Make it look like a bold, edgy pixie hairstyle. Keep subject position and their pose the same as the reference. Ensure hair length is uniform around the ears and nape. Make sure the top has enough texture for light styling. Make hairline look clean and defined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the pixie cut shape. Ensure facial features are framed by the short style. Keep in focus. The result should be a stylish short pixie haircut.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pixie",
+                     "short",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Classic Bob Cut",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a classic bob cut ending at jawline or chin level with clean, even lines. Make it look like a polished, timeless bob hairstyle. Keep subject position and their pose the same as the reference. Ensure hair falls straight or with a slight inward curve at the ends. Make sure the length is uniform around the face. Make hair look smooth and well-groomed. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the bob silhouette. Ensure the cut frames the face elegantly. Keep in focus. The result should be a classic chin-length bob haircut.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "bob",
+                     "medium",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Long Bob (Lob)",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a long bob falling just above or at the shoulders with soft layered ends. Make it look like a versatile, modern lob hairstyle. Keep subject position and their pose the same as the reference. Ensure hair has gentle movement and natural fall. Make sure the length grazes the collarbone area. Make ends look softly textured rather than blunt. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the layered texture. Ensure the style looks effortless and wearable. Keep in focus. The result should be a shoulder-length long bob.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "lob",
+                     "shoulder-length",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Long Flowing",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to long, flowing locks extending well past the shoulders down to mid-back or lower. Make it look like lush, cascading long hair. Keep subject position and their pose the same as the reference. Ensure hair has natural movement and volume. Make sure strands fall smoothly with gentle waves. Make ends look healthy and tapered. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates highlights along the length. Ensure the hair looks full and lustrous. Keep in focus. The result should be long, flowing hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "long",
+                     "flowing",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: High Ponytail",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a high ponytail gathered at the crown of the head and secured tightly. Make it look like an energetic, sporty ponytail style. Keep subject position and their pose the same as the reference. Ensure the ponytail sits high on the skull with smooth sides. Make sure the tail falls straight or slightly curved behind. Make the hairline around the pony base look clean and pulled-back. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the ponytail volume. Ensure face is fully exposed by the pulled-back style. Keep in focus. The result should be a high, sleek ponytail.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "ponytail",
+                     "high",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Low Ponytail",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a low ponytail gathered at the nape of the neck and secured neatly. Make it look like an elegant, understated ponytail style. Keep subject position and their pose the same as the reference. Ensure the ponytail sits low near the neckline with smooth gathered sides. Make sure the tail hangs straight down the back. Make the hairline around ears look clean and tucked. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the sleek gathered lines. Ensure the style reads polished and refined. Keep in focus. The result should be a low, elegant ponytail.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "ponytail",
+                     "low",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Elegant Bun Updo",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to an elegant bun updo gathered and twisted into a neat coil at the back of the head. Make it look like a formal, sophisticated updo hairstyle. Keep subject position and their pose the same as the reference. Ensure all hair is pulled back smoothly with no loose strands. Make sure the bun sits securely at the crown or nape. Make the gathered base look tight and polished. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the smooth pulled-back surface. Ensure the neckline looks clean and exposed. Keep in focus. The result should be an elegant bun updo.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "bun",
+                     "updo",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Multiple Braids",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair into multiple neat braids distributed across the head. Make it look like an intricate braided hairstyle with several individual plaits. Keep subject position and their pose the same as the reference. Ensure each braid is tight and uniform in thickness. Make sure the braiding pattern covers the full scalp area. Make braid ends look finished and tidy. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the texture of individual braids. Ensure the overall pattern reads organized and deliberate. Keep in focus. The result should be a multiple-braided hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "braids",
+                     "plaits",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Afro Natural",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a full, rounded afro shape with natural coiled texture expanding outward from the scalp. Make it look like a proud, voluminous natural afro hairstyle. Keep subject position and their pose the same as the reference. Ensure the afro has a defined spherical or cloud-like silhouette. Make sure individual coils are visible in the dense texture. Make the hairline around the forehead look natural and full. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates depth within the afro volume. Ensure the shape frames the face with a bold halo effect. Keep in focus. The result should be a full, natural afro hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "afro",
+                     "natural",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Full Bangs Fringe",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to feature a full fringe of bangs cut across the forehead falling to eyebrow level or slightly above. Make it look like a deliberate, styled bangs haircut. Keep subject position and their pose the same as the reference. Ensure the bangs create an even horizontal line across the brow area. Make sure the rest of the hair flows naturally behind or to the sides. Make the fringe density match the overall hair volume. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the bangs edge against the forehead. Ensure eyes remain visible beneath the fringe line. Keep in focus. The result should be a full-bangs hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "bangs",
+                     "fringe",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Side-Swept",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a side-swept style with all hair brushed diagonally across the forehead and draped to one side. Make it look like an elegant, asymmetrical swept hairstyle. Keep subject position and their pose the same as the reference. Ensure the part line is deep on one side creating a clean division. Make sure the swept section covers the opposite temple and brow area. Make the fall direction read clearly from high to low across the face. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the diagonal flow lines. Ensure one side of the face is partially framed by hair. Keep in focus. The result should be a dramatic side-swept hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "side-swept",
+                     "asymmetrical",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Messy Bedhead",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a deliberately messy bedhead style with tousled, disheveled strands sticking out in multiple directions. Make it look like an intentionally undone, lived-in hairstyle. Keep subject position and their pose the same as the reference. Ensure individual clumps and flyaways create visual chaos. Make sure the overall shape still reads as intentional rather than neglected. Make roots look slightly lifted for volume. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the textured messiness. Ensure the style reads casual and effortless. Keep in focus. The result should be a messy, tousled bedhead hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "messy",
+                     "bedhead",
+                     "tousled",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair: Slicked Back",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a slicked-back style with all hair brushed flat against the scalp and pulled straight back from the forehead. Make it look like a sharp, controlled slicked-back hairstyle. Keep subject position and their pose the same as the reference. Ensure the hairline is fully exposed with no forward-facing strands. Make sure the surface looks smooth and compressed against the skull shape. Make any product sheen visible for a polished finish. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the sleek scalp-following lines. Ensure the face is completely unobstructed by hair. Keep in focus. The result should be a clean, slicked-back hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "slicked-back",
+                     "smooth",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Mohawk",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a mohawk style with the sides and back shaved or closely cropped and a raised strip of longer hair running from forehead to nape along the crown. Make it look like a bold, punk-inspired mohawk hairstyle. Keep subject position and their pose the same as the reference. Ensure the central strip stands upright or is styled upward. Make sure the shaved sides create sharp contrast with the tall center. Make the transition line between shaved and long read clearly. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting emphasizes the mohawk height and silhouette. Ensure the shaved areas look clean and even. Keep in focus. The result should be a striking mohawk hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "mohawk",
+                     "punk",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Dreadlocks",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair into well-defined dreadlocks â€” thick, rope-like strands of matted hair hanging from the scalp. Make it look like a mature, established loc hairstyle. Keep subject position and their pose the same as the reference. Ensure each lock has uniform thickness and a cylindrical shape. Make sure the locks hang naturally with weight and movement. Make the roots where locks emerge from the scalp look organized. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the textured surface of individual locs. Ensure the overall style reads intentional and well-maintained. Keep in focus. The result should be a full head of dreadlocks.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "dreadlocks",
+                     "locs",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Two-Strand Twists",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair into two-strand twists â€” sections of hair twisted around each other creating defined spiral ropes from scalp to ends. Make it look like a neat, protective twist hairstyle. Keep subject position and their pose the same as the reference. Ensure each twist is uniform in size and tightly wound at the root. Make sure the twists are evenly distributed across the head. Make the twisted pattern read clearly with visible spiral definition. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the twisted texture. Ensure the style looks clean and well-executed. Keep in focus. The result should be a full head of two-strand twists.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "twists",
+                     "protective",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Tight Ringlet Curls",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair into tight, springy ringlet curls with defined spiral shapes throughout the length. Make it look like a bouncy, curly hairstyle with uniform ringlets. Keep subject position and their pose the same as the reference. Ensure each curl forms a clear circular or S-shaped coil. Make sure the curls have volume and bounce. Make individual ringlets distinguishable from one another. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates highlights within the spiral shapes. Ensure the overall look reads vibrant and full of movement. Keep in focus. The result should be tight, defined ringlet curls.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "ringlets",
+                     "curls",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Beach Waves",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair into loose, effortless beach waves with soft S-shaped undulations running through the length. Make it look like a sun-kissed, windswept wavy hairstyle. Keep subject position and their pose the same as the reference. Ensure the wave pattern is irregular and natural rather than uniform. Make sure the texture reads tousled but intentional. Make ends look slightly separated and piecey. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the dimensional wave movement. Ensure the style looks fresh and casual. Keep in focus. The result should be loose beach waves.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "waves",
+                     "beach-waves",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Pin-Straight Sleek",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to pin-straight, sleek strands falling perfectly flat with zero wave or curl. Make it look like a glass-hair, ultra-smooth straightened style. Keep subject position and their pose the same as the reference. Ensure each strand runs parallel to its neighbors creating a smooth surface. Make sure the hair has a glossy, reflective sheen. Make ends look clean and even. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates sharp specular highlights along the straight surface. Ensure the style reads polished and controlled. Keep in focus. The result should be pin-straight, sleek hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "straight",
+                     "sleek",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair: Voluminous Blown Out",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair to a voluminous blown-out style with maximum body and lift at the roots creating a full, rounded silhouette around the head. Make it look like a salon-perfect blowout with dramatic volume. Keep subject position and their pose the same as the reference. Ensure the hair expands outward from the scalp creating height and width. Make sure the surface has smooth, flowing movement despite the volume. Make the root lift read clearly beneath the weight of the hair. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the dimensional curves created by the volume. Ensure the style reads glamorous and polished. Keep in focus. The result should be a voluminous, blown-out hairstyle.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "voluminous",
+                     "blown-out",
+                     "head-hair",
+                     "style"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Silky Smooth",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to silky smooth with a glossy, flowing surface that catches light like satin ribbon. Make it look like ultra-soft, perfectly conditioned hair with zero frizz. Keep subject position and their pose the same as the reference. Ensure individual strands blend into a unified smooth surface. Make sure the hair has a liquid-like sheen reflecting ambient light. Make the texture read as luxurious and well-maintained. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates long specular highlights along the silky surface. Ensure the movement looks fluid and weighty. Keep in focus. The result should be silky, smooth hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "silky",
+                     "smooth",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Coarse \u0026 Thick",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to coarse and thick with dense, heavy strands that have a rough, substantial feel. Make it look like robust, high-density hair with visible individual strand thickness. Keep subject position and their pose the same as the reference. Ensure the hair reads as physically dense and hard to part. Make sure the surface has a matte, non-reflective quality from the coarse cuticle. Make each clump look substantial and weighty. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows texture variation across the thick strands. Ensure the volume reads dense rather than airy. Keep in focus. The result should be coarse, thick hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "coarse",
+                     "thick",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Fine \u0026 Wispy",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to fine and wispy with delicate, thin individual strands that appear light and airy. Make it look like soft, feather-light hair with a translucent quality at the edges. Keep subject position and their pose the same as the reference. Ensure individual hairs are visible and separate rather than clumped. Make sure the overall density reads lower with gaps of skin showing through near the parting. Make the ends taper to fine points. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting passes through the wispy strands creating a soft halo. Ensure the texture looks ethereal and delicate. Keep in focus. The result should be fine, wispy hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "fine",
+                     "wispy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Kinky-Coil",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to tight kinky-coil with densely packed, spring-like curls forming tiny Z-shaped and circular patterns close to the scalp. Make it look like natural Type 4 coiled hair with rich textural complexity. Keep subject position and their pose the same as the reference. Ensure each coil is distinct yet blends into a unified textured mass. Make sure the pattern creates significant volume expansion from the tight curling. Make individual coils catch light at different angles creating depth. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the intricate coil-by-coil texture. Ensure the shape reads as a defined textured crown. Keep in focus. The result should be tight kinky-coil hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "kinky-coil",
+                     "type-4",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Medium Waves",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to medium waves with consistent S-shaped undulations running through the full length creating a rhythmic wave pattern. Make it look like classic wavy hair between straight and curly. Keep subject position and their pose the same as the reference. Ensure each wave has uniform amplitude and spacing. Make sure the wave direction flows naturally from root to tip. Make the surface read as dimensional with alternating light and shadow along the curves. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting accentuates the wave rhythm. Ensure the texture looks natural and bouncy. Keep in focus. The result should be medium wavy hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "wavy",
+                     "medium-wave",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Frizzy \u0026 Flyaway",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to frizzy with flyaways â€” individual strands breaking away from the main body creating a halo of loose, unruly hairs around the silhouette. Make it look like humidity-affected or naturally frizz-prone hair. Keep subject position and their pose the same as the reference. Ensure stray hairs radiate outward in multiple directions from the main mass. Make sure the core shape is still recognizable beneath the frizz. Make individual flyaways visible against contrasting backgrounds. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the scattered stray strands creating a fuzzy outline. Ensure the texture reads uncontrolled but natural. Keep in focus. The result should be frizzy, flyaway hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "frizzy",
+                     "flyaways",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Mohair-Fuzzy",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to a mohair-like fuzzy quality with dense, crimpy micro-texture creating a soft, clouded surface that diffuses light. Make it look like ultra-soft, densely crimped hair with a woolen appearance. Keep subject position and their pose the same as the reference. Ensure individual strands are too fine to distinguish separately â€” only the fuzzy mass is visible. Make sure the texture creates a velvety silhouette edge rather than sharp strand lines. Make the surface read as plush and tactile. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting diffuses through the fuzzy layer creating soft shadows. Ensure the volume reads dense and rounded. Keep in focus. The result should be a mohair-like, fuzzy hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "mohair",
+                     "fuzzy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Wire-Hair Stiff",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to wire-hair stiff â€” rigid, bristly strands that hold their shape and resist falling flat creating a spiky, structured appearance. Make it look like coarse, springy hair with structural integrity. Keep subject position and their pose the same as the reference. Ensure individual strands stand apart from each other rather than blending together. Make sure the hair holds defined shapes and angles without product. Make the surface read as rough and tactile. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates sharp highlights on the stiff strand edges. Ensure the texture reads rigid and architectural. Keep in focus. The result should be wire-hair, stiff hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "wire-hair",
+                     "stiff",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Cotton-Soft Downy",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to cotton-soft downy â€” ultra-fine, velvety strands creating a soft, cloud-like surface with minimal definition between individual hairs. Make it look like baby-soft, incredibly gentle hair with a plush appearance. Keep subject position and their pose the same as the reference. Ensure the texture reads as impossibly soft to touch. Make sure the surface diffuses light evenly without sharp highlights. Make the silhouette edges look feathered and blurred rather than crisp. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting wraps around the downy volume creating a gentle glow. Ensure the texture looks warm and inviting. Keep in focus. The result should be cotton-soft, downy hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "cotton-soft",
+                     "downy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Greasy \u0026 Clumped",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to greasy and clumped â€” strands matted together in oily sections with a heavy, weighed-down appearance and visible shine from excess oil. Make it look like unwashed, product-heavy hair with stringy clumps. Keep subject position and their pose the same as the reference. Ensure individual clumps hang separately creating a rope-like effect. Make sure the surface has an unnatural glossy sheen from oil buildup. Make roots look flattened against the scalp from weight. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates harsh specular reflections on the oily surface. Ensure the texture reads heavy and unrefreshed. Keep in focus. The result should be greasy, clumped hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "greasy",
+                     "clumped",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Dry \u0026 Brittle",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to dry and brittle â€” damaged, dehydrated strands with split ends, rough surface, and a dull matte appearance lacking natural sheen. Make it look like chemically or heat-damaged hair in poor condition. Keep subject position and their pose the same as the reference. Ensure individual strands look frayed at the tips with visible splitting. Make sure the surface reads rough and lifeless without healthy reflection. Make broken fragments visible near the ends. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the dull, non-reflective damaged surface. Ensure the texture looks fragile and weathered. Keep in focus. The result should be dry, brittle hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "dry",
+                     "brittle",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Wet \u0026 Stringy",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to wet and stringy â€” saturated strands clinging together in heavy, dripping sections with a darkened appearance from water saturation. Make it look like freshly soaked hair hanging in clumped ropes. Keep subject position and their pose the same as the reference. Ensure individual wet clumps hang straight down following gravity. Make sure the surface has a high-gloss reflection from the water film. Make visible droplets cling to strand surfaces. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates sharp wet-surface highlights. Ensure the color reads darker from saturation. Keep in focus. The result should be wet, stringy hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "wet",
+                     "stringy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Powdered Matte",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to powdered matte â€” a completely non-reflective, velvety surface with maximum grip and volume holding created by dry-textured powder coating each strand. Make it look like hair treated with volumizing dry powder creating a soft-touch finish. Keep subject position and their pose the same as the reference. Ensure zero specular highlights on the hair surface â€” all light is absorbed or diffused. Make sure individual strands have separation and grip rather than sliding together. Make the texture read as velvety and tactile. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals only soft shadow transitions on the matte surface. Ensure the volume reads lifted and structured. Keep in focus. The result should be a powdered, matte hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "powdered",
+                     "matte",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Metallic Shiny",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to metallic shiny â€” each strand reflecting light like polished metal wire creating an extreme, mirror-like sheen across the entire hairstyle. Make it look like hair coated in liquid metal or chrome with supernatural reflectivity. Keep subject position and their pose the same as the reference. Ensure sharp, defined specular highlights run along every visible strand. Make sure reflections of the environment are visible on the hair surface. Make the texture read as hard and polished rather than organic. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates dramatic mirror-like reflections across the metallic surface. Ensure the shine reads futuristic and otherworldly. Keep in focus. The result should be a metallic, highly reflective hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "metallic",
+                     "shiny",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Texture: Translucent Ethereal",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair texture to translucent ethereal â€” semi-transparent strands that allow light to pass through creating a ghostly, luminous quality with soft internal glow. Make it look like hair made of fine glass fiber or spun silk with supernatural translucency. Keep subject position and their pose the same as the reference. Ensure background elements are faintly visible through overlapping strands. Make sure the edges blur into the surrounding light rather than having hard boundaries. Make individual hairs read as delicate filaments catching internal illumination. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure backlighting creates a luminous halo effect through the translucent strands. Ensure the texture reads dreamlike and otherworldly. Keep in focus. The result should be a translucent, ethereal hair texture.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "texture",
+                     "translucent",
+                     "ethereal",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Platinum Blonde",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to platinum blonde â€” an extremely light, almost white blonde with cool silver undertones and no warm yellow tones. Make it look like professionally bleached and toned platinum hair. Keep subject position and their pose the same as the reference. Ensure the color is uniformly pale across all visible strands. Make sure the cool silver cast reads clearly rather than brassy yellow. Make highlights appear nearly white in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the cool-toned platinum quality. Ensure roots match the pale blonde without dark contrast. Keep in focus. The result should be platinum blonde hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "platinum-blonde",
+                     "cool-tone",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Golden Blonde",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to golden blonde â€” a warm, honey-toned blonde with rich yellow-gold undertones that glow in sunlight. Make it look like natural sun-kissed golden hair. Keep subject position and their pose the same as the reference. Ensure the warm gold cast is visible throughout all strands. Make sure the color reads sunny and vibrant rather than pale or ashy. Make highlights appear bright amber-yellow in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the golden warmth. Ensure the tone looks healthy and luminous. Keep in focus. The result should be golden blonde hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "golden-blonde",
+                     "warm-tone",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Ash Blonde",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to ash blonde â€” a muted, cool-toned blonde with gray-green undertones and zero warmth or brassiness. Make it look like professionally toned ash-blonde hair with a sophisticated neutral quality. Keep subject position and their pose the same as the reference. Ensure the cool gray cast eliminates all yellow tones. Make sure the color reads subdued and elegant rather than bright. Make highlights appear silvery-gray in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the muted ash quality without warmth. Ensure the tone looks refined and modern. Keep in focus. The result should be ash blonde hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "ash-blonde",
+                     "cool-tone",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Dark Brown",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to dark brown â€” a deep, rich brunette shade close to black but with visible warm brown undertones in direct light. Make it look like natural dark brown hair with depth and dimension. Keep subject position and their pose the same as the reference. Ensure the base reads nearly black in shadow areas. Make sure warm chocolate tones emerge where light hits directly. Make highlights appear medium brown rather than blonde. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the rich brown depth beneath the dark surface. Ensure the color looks natural and healthy. Keep in focus. The result should be dark brown hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "dark-brown",
+                     "brunette",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Light Brown Chestnut",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to light brown chestnut â€” a medium-warm brown with reddish-copper undertones creating a rich, nutty appearance. Make it look like natural chestnut hair with warm dimension. Keep subject position and their pose the same as the reference. Ensure the warm red-brown cast is visible throughout. Make sure the color reads richer than plain light brown but lighter than dark brunette. Make highlights appear coppery-gold in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the chestnut warmth. Ensure the tone looks natural and dimensional. Keep in focus. The result should be light brown chestnut hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "chestnut",
+                     "light-brown",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Jet Black",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to jet black â€” a deep, absolute black with no visible brown or red undertones creating maximum contrast against the skin. Make it look like intensely pigmented natural black hair. Keep subject position and their pose the same as the reference. Ensure the color reads uniformly dark across all strands even in bright light. Make sure any highlights appear only as blue-black reflections rather than lighter pigment. Make the surface have a deep, absorbing quality that swallows light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates sharp contrast between the black hair and surrounding elements. Ensure the darkness looks rich and healthy rather than flat. Keep in focus. The result should be jet black hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "jet-black",
+                     "dark",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Blue-Black",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to blue-black â€” an extremely dark shade with a distinct cool blue undertone visible in direct light creating a mysterious, deep appearance. Make it look like black hair with a subtle navy cast. Keep subject position and their pose the same as the reference. Ensure the base reads nearly black in shadow areas. Make sure blue reflections emerge clearly where strong light hits. Make highlights appear dark navy rather than brown or gray. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the cool blue undertone beneath the dark surface. Ensure the color looks sophisticated and moody. Keep in focus. The result should be blue-black hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "blue-black",
+                     "cool-dark",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Auburn Red",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to auburn red â€” a rich, warm reddish-brown with deep copper and mahogany undertones creating a fiery appearance. Make it look like natural auburn hair with vibrant warmth. Keep subject position and their pose the same as the reference. Ensure the red-brown cast dominates all visible strands. Make sure the color reads warmer than chestnut with clear red presence. Make highlights appear bright copper in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the auburn warmth and depth. Ensure the tone looks rich and dimensional. Keep in focus. The result should be auburn red hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "auburn",
+                     "red-brown",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Copper Red",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to copper red â€” a bright, metallic red with orange-gold undertones creating a vivid, eye-catching appearance like polished copper metal. Make it look like vibrant red hair with maximum warmth and intensity. Keep subject position and their pose the same as the reference. Ensure the copper-orange cast is bold and unmistakable throughout all strands. Make sure the color reads brighter than auburn with clear orange presence. Make highlights appear golden-amber in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting makes the copper tones glow. Ensure the color looks vivid and striking. Keep in focus. The result should be copper red hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "copper-red",
+                     "vivid",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Ginger Red",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to ginger red â€” a light, orange-red shade with warm strawberry undertones creating a natural redhead appearance. Make it look like natural fiery ginger hair. Keep subject position and their pose the same as the reference. Ensure the orange-red cast is bright and warm throughout all strands. Make sure the color reads lighter than copper with clear strawberry presence. Make highlights appear peachy-gold in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the ginger warmth. Ensure the tone looks natural and vibrant. Keep in focus. The result should be ginger red hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "ginger",
+                     "strawberry-red",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Silver White",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to silver white â€” a completely depigmented shade with cool gray-silver undertones creating an elegant, distinguished appearance. Make it look like natural silver-white hair with luminous quality. Keep subject position and their pose the same as the reference. Ensure the color is uniformly pale across all strands with no warm tones. Make sure the silver cast reads clearly rather than yellow or cream. Make highlights appear nearly white in direct light with a metallic sheen. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates a luminous glow on the silver surface. Ensure the color looks distinguished and refined. Keep in focus. The result should be silver white hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "silver-white",
+                     "gray",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Salt and Pepper",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to salt and pepper â€” a natural mix of dark and white strands creating a speckled, graying appearance with no clear dominant color. Make it look like transitional gray hair with even distribution of both tones. Keep subject position and their pose the same as the reference. Ensure individual dark and light strands are visible throughout creating a mottled pattern. Make sure neither black nor white dominates â€” the mix reads roughly equal. Make the overall impression read medium-gray from distance but speckled up close. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals both dark and light strands clearly. Ensure the pattern looks natural and gradual. Keep in focus. The result should be salt and pepper hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "salt-pepper",
+                     "graying",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Honey Brown",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to honey brown â€” a medium warm brown with golden-amber undertones creating a sweet, luminous appearance like liquid honey. Make it look like natural honey-toned brunette hair. Keep subject position and their pose the same as the reference. Ensure the golden-brown cast is warm and inviting throughout all strands. Make sure the color reads lighter than chestnut with clear amber presence. Make highlights appear bright golden in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting makes the honey tones glow warmly. Ensure the color looks rich and dimensional. Keep in focus. The result should be honey brown hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "honey-brown",
+                     "warm-golden",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Espresso Dark Brown",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to espresso dark brown â€” the deepest possible brown shade with barely perceptible warm undertones creating a rich, coffee-colored appearance just above pure black. Make it look like intensely pigmented dark brunette hair. Keep subject position and their pose the same as the reference. Ensure the color reads almost black in most lighting conditions. Make sure subtle warm brown tones emerge only under very direct illumination. Make highlights appear deep chocolate rather than lighter brown. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure strong lighting reveals the espresso warmth beneath the dark surface. Ensure the color looks deep and luxurious. Keep in focus. The result should be espresso dark brown hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "espresso",
+                     "darkest-brown",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Dirty Blonde",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to dirty blonde â€” a muted, sandy shade between light brown and pale blonde with neutral-to-warm undertones creating an understated, natural appearance. Make it look like effortless, low-maintenance blonde hair. Keep subject position and their pose the same as the reference. Ensure the sandy beige cast reads clearly without bright golden or cool silver dominance. Make sure the color sits in the middle ground between brown and blonde. Make highlights appear warm beige in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the subtle sandy warmth. Ensure the tone looks natural and unforced. Keep in focus. The result should be dirty blonde hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "dirty-blonde",
+                     "sandy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Pastel Pink",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to pastel pink â€” a soft, muted rose-pink with low saturation creating a gentle, dreamy appearance. Make it look like delicately tinted cotton-candy pink hair. Keep subject position and their pose the same as the reference. Ensure the pale pink cast is visible throughout all strands without overwhelming brightness. Make sure the color reads sweet and subtle rather than neon or aggressive. Make highlights appear nearly white-pink in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the soft pastel quality. Ensure the tone looks whimsical and feminine. Keep in focus. The result should be pastel pink hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "pastel-pink",
+                     "fantasy",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Electric Blue",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to electric blue â€” a vivid, high-saturation cobalt blue with intense brightness creating a striking, attention-grabbing appearance. Make it look like neon-blue dyed hair with maximum impact. Keep subject position and their pose the same as the reference. Ensure the bright blue cast dominates all visible strands uniformly. Make sure the color reads bold and energetic rather than muted or navy. Make highlights appear cyan in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting makes the electric blue pop dramatically. Ensure the tone looks vibrant and modern. Keep in focus. The result should be electric blue hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "electric-blue",
+                     "vivid",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Vivid Purple Violet",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to vivid purple violet â€” a rich, saturated deep violet with high intensity creating a regal, dramatic appearance. Make it look like bold purple-dyed hair with maximum depth and saturation. Keep subject position and their pose the same as the reference. Ensure the deep violet cast is uniform across all strands. Make sure the color reads luxurious and mysterious rather than pink-leaning or blue-leaning. Make highlights appear lavender in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the purple depth and richness. Ensure the tone looks bold and enchanting. Keep in focus. The result should be vivid purple violet hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "vivid-purple",
+                     "violet",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Neon Green",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to neon green â€” a bright, fluorescent lime-green with extreme saturation creating an energetic, punk-inspired appearance. Make it look like high-visibility neon-dyed hair that glows under light. Keep subject position and their pose the same as the reference. Ensure the vivid green cast is unmistakable throughout all strands. Make sure the color reads electric and aggressive rather than muted olive or forest green. Make highlights appear yellow-green in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting makes the neon green appear to glow. Ensure the tone looks rebellious and bold. Keep in focus. The result should be neon green hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "neon-green",
+                     "fluorescent",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Lavender Pastel",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to lavender pastel â€” a soft, muted purple-pink with low saturation creating a gentle, ethereal appearance like dried lavender flowers. Make it look like delicately tinted lilac hair with dreamy quality. Keep subject position and their pose the same as the reference. Ensure the pale lavender cast is visible throughout all strands without overwhelming brightness. Make sure the color reads soft and romantic rather than vivid or dark. Make highlights appear nearly white-lavender in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the gentle pastel quality. Ensure the tone looks whimsical and delicate. Keep in focus. The result should be lavender pastel hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "lavender",
+                     "pastel-purple",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Teal Turquoise",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to teal turquoise â€” a vivid blue-green with equal parts ocean-blue and sea-green creating a tropical, aquatic appearance. Make it look like bright turquoise-dyed hair reminiscent of tropical waters. Keep subject position and their pose the same as the reference. Ensure the balanced blue-green cast is uniform across all strands. Make sure the color reads fresh and vibrant rather than leaning too far toward navy or lime. Make highlights appear aquamarine in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting enhances the teal vibrancy. Ensure the tone looks refreshing and bold. Keep in focus. The result should be teal turquoise hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "teal",
+                     "turquoise",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Fire Orange",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to fire orange â€” a bright, saturated tangerine-orange with high intensity creating an energetic, flame-like appearance. Make it look like vividly dyed orange hair that resembles flickering flames. Keep subject position and their pose the same as the reference. Ensure the vivid orange cast dominates all visible strands uniformly. Make sure the color reads warm and aggressive rather than muted or brown-leaning. Make highlights appear yellow-orange in direct light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting makes the fire orange glow with warmth. Ensure the tone looks bold and dynamic. Keep in focus. The result should be fire orange hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "fire-orange",
+                     "vivid",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Rainbow Multi-Color",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to rainbow multi-color â€” distinct sections or streaks of red, orange, yellow, green, blue, and violet distributed across the head creating a full-spectrum appearance. Make it look like vibrantly dyed rainbow hair with clear color transitions. Keep subject position and their pose the same as the reference. Ensure each rainbow band is distinguishable from its neighbors. Make sure the color sequence reads clearly across the visible surface. Make individual color sections saturated and bright. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals all rainbow colors vividly. Ensure the overall effect looks playful and eye-catching. Keep in focus. The result should be rainbow multi-color hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "rainbow",
+                     "multi-color",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Iridescent Holographic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to iridescent holographic â€” a shifting, multi-spectral surface that reflects different colors depending on the viewing angle creating a rainbow oil-slick effect across each strand. Make it look like hair coated with holographic film displaying spectral color shifts. Keep subject position and their pose the same as the reference. Ensure adjacent strands show different reflected colors based on their orientation to light. Make sure the base reads pale or translucent allowing the iridescent overlay to dominate. Make individual highlights cycle through rainbow hues along each strand length. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting maximizes the color-shifting effect. Ensure the surface looks futuristic and otherworldly. Keep in focus. The result should be iridescent, holographic hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "iridescent",
+                     "holographic",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Hair Color: Glowing Bioluminescent",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 hair color to glowing bioluminescent â€” strands that emit their own soft internal light creating a supernatural glow effect independent of external illumination. Make it look like hair infused with living bioluminescent organisms producing ethereal radiance. Keep subject position and their pose the same as the reference. Ensure each strand appears to generate its own luminous halo rather than merely reflecting ambient light. Make sure the glow color reads cool cyan, soft green, or pale blue â€” typical bioluminescent hues. Make the emitted light cast a faint illumination on nearby surfaces and skin. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the self-illumination creates visible glow even in shadow areas. Ensure the effect reads organic and magical rather than artificial neon. Keep in focus. The result should be glowing, bioluminescent hair color.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "color",
+                     "bioluminescent",
+                     "glowing",
+                     "head-hair"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Full Chest Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 body to feature a full, dense patch of chest hair covering the sternum and spreading across both pectoral regions down toward the solar plexus. Make it look like thick, mature male chest hair with natural distribution. Keep subject position and their pose the same as the reference. Ensure the hair density is highest at center and gradually thins toward the edges. Make sure individual strands are visible creating a textured surface over the skin. Make the coverage extend from below the collarbone to above the navel. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the chest hair texture against the skin. Ensure the pattern reads natural and masculine. Keep in focus. The result should be full, dense chest hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "chest-hair",
+                     "full",
+                     "masculine"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Light Chest Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 body to feature light, sparse chest hair with fine individual strands scattered across the sternum area creating a subtle, understated appearance. Make it look like minimal male chest hair â€” visible but not dense. Keep subject position and their pose the same as the reference. Ensure individual hairs are distinguishable rather than forming a solid patch. Make sure the distribution is concentrated along the center line with few stray hairs spreading outward. Make the skin clearly visible between strands. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals individual fine hairs against the skin tone. Ensure the coverage reads light and natural. Keep in focus. The result should be light, sparse chest hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "chest-hair",
+                     "light",
+                     "sparse"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Smooth Hairless Chest",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 chest to be completely smooth and hairless with zero visible body hair across the entire pectoral and sternum region. Make it look like a clean, shaved or naturally hairless chest surface. Keep subject position and their pose the same as the reference. Ensure the skin reads uniformly smooth without stray hairs or fuzz. Make sure no stubble dots are visible â€” the surface is completely clear. Make the skin texture natural despite being hair-free. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reflects evenly off the smooth chest surface. Ensure the appearance reads clean and groomed. Keep in focus. The result should be a completely smooth, hairless chest.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "hairless",
+                     "smooth",
+                     "chest"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Dense Arm Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 arms to feature dense body hair covering both forearms and upper arms with thick, visible strands creating a hairy appearance along the full length. Make it look like heavy male arm hair with substantial coverage. Keep subject position and their pose the same as the reference. Ensure the hair density is consistent from wrist to elbow and elbow to shoulder. Make sure individual strands create a textured surface over the skin. Make the hair follow natural growth patterns along the arm contours. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the arm hair texture. Ensure the coverage reads thick and masculine. Keep in focus. The result should be dense, hairy arms.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "arm-hair",
+                     "dense",
+                     "masculine"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Full Back Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 back to feature a full covering of body hair extending from the shoulder blades down across the entire back surface creating a dense, furry appearance. Make it look like heavy male back hair with complete coverage. Keep subject position and their pose the same as the reference. Ensure the hair density is uniform across the upper and lower back. Make sure individual strands create a textured, hairy surface over the skin. Make the growth direction follow natural downward patterns along the spine. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the back hair texture and depth. Ensure the coverage reads thick and wild. Keep in focus. The result should be a fully hairy back.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "back-hair",
+                     "full",
+                     "masculine"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Stubble / 5 O\u0027Clock Shadow",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 face and jaw to feature short stubble â€” closely cropped facial hair creating a rough, shadowed texture across the cheeks, chin, upper lip, and jawline without forming distinct beard shapes. Make it look like 1-2 day growth of facial stubble with visible dark dots. Keep subject position and their pose the same as the reference. Ensure individual stubble points create a uniform dotted pattern over the skin. Make sure the shadow effect reads darker than bare skin but shorter than defined beard hair. Make the coverage follow natural male facial hair growth zones. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting accentuates the stubble texture against the skin. Ensure the appearance reads rugged and masculine. Keep in focus. The result should be short stubble, 5 o\u0027clock shadow.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "stubble",
+                     "facial-hair",
+                     "shadow"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Dense Leg Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 legs to feature dense body hair covering both thighs and calves with thick, visible strands creating a hairy appearance along the full length of each leg. Make it look like heavy male leg hair with substantial coverage. Keep subject position and their pose the same as the reference. Ensure the hair density is consistent from ankle to knee and knee to thigh. Make sure individual strands create a textured surface over the skin. Make the hair follow natural downward growth patterns along the leg contours. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the leg hair texture. Ensure the coverage reads thick and natural. Keep in focus. The result should be dense, hairy legs.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "leg-hair",
+                     "dense",
+                     "masculine"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Smooth Shaved Legs",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 legs to be completely smooth and hairless with zero visible body hair across both thighs, knees, calves, and shins creating a clean, polished appearance. Make it look like freshly shaved or naturally hairless legs. Keep subject position and their pose the same as the reference. Ensure the skin reads uniformly smooth without stray hairs or fuzz along the entire leg surface. Make sure no stubble dots are visible â€” the surface is completely clear. Make the skin texture natural despite being hair-free. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reflects evenly off the smooth leg surfaces. Ensure the appearance reads clean and groomed. Keep in focus. The result should be completely smooth, shaved legs.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "hairless",
+                     "smooth",
+                     "legs"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Full Underarm Hair",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 underarms to feature full, untrimmed armpit hair covering the entire axillary region with natural density and growth pattern. Make it look like natural, ungroomed underarm body hair. Keep subject position and their pose the same as the reference. Ensure the hair fills the crease between arm and torso completely. Make sure the coverage extends from the armpit crease upward onto the upper inner arm and downward toward the side of the ribcage. Make the growth direction follow natural patterns radiating from the center. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the underarm hair texture in shadow areas. Ensure the appearance reads natural and unshaved. Keep in focus. The result should be full, natural underarm hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "underarm-hair",
+                     "full",
+                     "natural"
+                 ]
+    },
+    {
+        "name":  "Body Hair: Full Body Fur (Werewolf)",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 entire visible body to be covered in thick, dense fur-like body hair creating a werewolf or beastman appearance with heavy coverage across arms, chest, back, legs, and face. Make it look like an anthropomorphic creature with full-body animal fur while maintaining human proportions. Keep subject position and their pose the same as the reference. Ensure the fur density is substantial enough to obscure most underlying skin creating a furry silhouette. Make sure individual fur strands create deep texture with visible layering. Make the fur color read as natural wolf-gray, brown, or black depending on lighting. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the layered fur depth creating rich shadow transitions. Ensure the coverage reads wild and animalistic while preserving humanoid form. Keep in focus. The result should be full-body werewolf-like fur covering.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "body-hair",
+                     "full-body-fur",
+                     "werewolf",
+                     "fantasy"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Full Natural Bush",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a full, untrimmed natural bush of pubic hair with dense coverage extending from the mons pubis downward and laterally toward the inner thighs creating a thick, triangular growth pattern. Make it look like completely natural, ungroomed pubic hair with maximum density and spread. Keep subject position and their pose the same as the reference. Ensure the hair fills the entire pubic triangle with substantial volume. Make sure individual strands create deep texture with visible layering and natural curl patterns. Make the coverage extend naturally toward the groin creases without artificial boundaries. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the pubic hair depth and texture. Ensure the appearance reads completely natural and unaltered. Keep in focus. The result should be a full, natural pubic bush.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "full-bush",
+                     "natural",
+                     "ungroomed"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Trimmed \u0026 Neat",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a neatly trimmed patch of pubic hair â€” uniformly short length across the entire growth area creating a clean, groomed appearance while maintaining full coverage. Make it look like recently trimmed pubic hair with even, controlled length throughout. Keep subject position and their pose the same as the reference. Ensure all visible hairs are cut to approximately the same short length creating a uniform textured surface. Make sure the natural triangular growth pattern is preserved but tamed by the even trim. Make edges read soft rather than sharply defined â€” no artificial shape lines. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the evenly trimmed texture. Ensure the appearance reads clean and well-maintained. Keep in focus. The result should be neatly trimmed pubic hair.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "trimmed",
+                     "neat",
+                     "groomed"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Landscaped Triangle",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a deliberately shaped triangular patch of pubic hair â€” wider at the top near the mons pubis and tapering to a point downward with clean, defined edges creating an intentional geometric shape. Make it look like carefully landscaped pubic hair styled into a neat triangle. Keep subject position and their pose the same as the reference. Ensure the triangle base sits horizontally across the upper pubic area. Make sure the sides converge cleanly toward a rounded point below. Make everything outside the triangle completely smooth and hairless creating sharp contrast with the filled shape. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the triangle edges clearly against bare skin. Ensure the shape reads deliberate and groomed. Keep in focus. The result should be a landscaped triangular pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "triangle",
+                     "landscaped",
+                     "styled"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Vertical Landing Strip",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a vertical landing strip â€” a narrow horizontal band of pubic hair remaining at the top near the mons pubis with everything below and to the sides completely shaved smooth creating a clean horizontal line of hair against bare skin. Make it look like a classic landing strip grooming style. Keep subject position and their pose the same as the reference. Ensure the strip runs horizontally across the upper pubic area with uniform width. Make sure the lower edge reads as a clean, defined line separating hair from smooth skin. Make everything below the strip completely hairless extending down to the groin crease. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the strip boundary clearly. Ensure the style reads intentional and modern. Keep in focus. The result should be a vertical landing strip pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "landing-strip",
+                     "shaved",
+                     "styled"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Completely Shaved Bare",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to be completely smooth and hairless with zero visible pubic hair across the entire mons pubis, labial or penile area, perineum, and upper inner thigh creases creating a fully bare appearance. Make it look like freshly waxed or shaved with absolutely no remaining hair. Keep subject position and their pose the same as the reference. Ensure the skin reads uniformly smooth without stray hairs, fuzz, or stubble dots across the entire pubic zone. Make sure the surface is completely clear from the lower abdomen down through the groin creases. Make the transition to any surrounding body hair read as a clean boundary. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reflects evenly off the smooth bare surface. Ensure the appearance reads completely clean and hair-free. Keep in focus. The result should be a completely shaved, bare pubic region.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "shaved",
+                     "bare",
+                     "hairless"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: High-Cut Bikini Line",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a high-cut bikini line â€” hair removed from the lower abdomen and upper hip creases with the removal line extending upward along both sides of the hip bones creating a dramatic, elongated silhouette that exposes more skin than a standard bikini trim. Make it look like a professional high-cut grooming style common in fashion and modeling. Keep subject position and their pose the same as the reference. Ensure the hair removal boundary sweeps upward from the groin crease toward the anterior superior iliac spine on each side creating an angled, sculpted edge. Make sure the central pubic area retains natural coverage while the sides are cleanly bare. Make the hip bone area completely smooth extending well above a standard bikini line. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the high-cut boundary lines clearly against the skin. Ensure the style reads sculpted and fashion-forward. Keep in focus. The result should be a high-cut bikini line pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "high-cut",
+                     "bikini-line",
+                     "fashion"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Inverted Triangle Patch",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature an inverted triangle patch of pubic hair â€” wider at the top near the lower abdomen and tapering downward to a point with everything outside the shape cleanly removed creating a deliberate, groomed appearance. Make it look like a classic male landscaped style with clean geometric edges. Keep subject position and their pose the same as the reference. Ensure the wide base of the triangle sits horizontally across the upper pubic area just below the navel line. Make sure the sides converge smoothly toward a rounded point at the lower edge. Make everything outside the inverted triangle completely smooth creating sharp contrast with the filled shape. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the geometric edges clearly against bare skin. Ensure the style reads intentional and well-groomed. Keep in focus. The result should be an inverted triangle pubic patch.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "inverted-triangle",
+                     "landscaped",
+                     "styled"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Handlebar / Monkey Tail",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a handlebar or monkey tail style â€” hair retained only along the labial folds or penile shaft creating two parallel strips that extend downward like rails with the central area between them completely shaved smooth. Make it look like a deliberate handlebar grooming pattern. Keep subject position and their pose the same as the reference. Ensure each strip runs vertically from the upper pubic area downward following the natural fold lines. Make sure the width of each strip is uniform creating parallel rail-like shapes. Make the central zone between the strips completely bare extending from top to bottom. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines both hair strips clearly against the smooth center. Ensure the pattern reads deliberate and stylized. Keep in focus. The result should be a handlebar, monkey tail pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "handlebar",
+                     "monkey-tail",
+                     "styled"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Circle of Life Donut",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a circle-of-life or donut style â€” a ring of pubic hair surrounding a central circular patch of completely shaved smooth skin creating a hollowed-out ring appearance with hair on the perimeter and bare skin in the middle. Make it look like a deliberate donut-shaped grooming pattern. Keep subject position and their pose the same as the reference. Ensure the outer edge of the hair ring follows a roughly circular boundary. Make sure the inner circle of bare skin is clearly defined and centered within the ring. Make the hair band between the two edges have uniform width creating a clean toroidal shape. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines both the outer and inner boundaries of the donut shape clearly. Ensure the pattern reads deliberate and stylized. Keep in focus. The result should be a circle-of-life, donut pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "circle-of-life",
+                     "donut",
+                     "styled"
+                 ]
+    },
+    {
+        "name":  "Pubic Hair: Heart Shape",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects\u0027 pubic region to feature a heart-shaped patch of pubic hair â€” two rounded lobes at the top converging to a point at the bottom creating a clear, recognizable heart silhouette with everything outside the shape cleanly removed. Make it look like a deliberately shaped heart grooming style. Keep subject position and their pose the same as the reference. Ensure the two upper lobes are symmetrical and rounded forming the classic heart top. Make sure the sides converge smoothly toward a centered point at the lower edge. Make everything outside the heart completely smooth creating sharp contrast with the filled shape. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the heart outline clearly against bare skin. Ensure the shape reads playful and intentional. Keep in focus. The result should be a heart-shaped pubic style.",
+        "negative_prompt":  null,
+        "category":  "Hair Transforms",
+        "tags":  [
+                     "pubic-hair",
+                     "heart-shape",
+                     "landscaped",
+                     "styled"
+                 ]
+    }
+]
