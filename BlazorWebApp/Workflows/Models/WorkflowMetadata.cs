@@ -228,6 +228,14 @@ public record WorkflowSource
     /// Default loader settings for video sources.
     /// </summary>
     public VideoSourceOptions? DefaultVideoOptions { get; init; }
+
+    /// <summary>
+    /// When true and Type is Video, the source panel shows an explicit "Include Audio" toggle so
+    /// the user opts this video's own soundtrack into workflows that accept a paired reference-audio
+    /// input alongside the video (e.g. MiniMax H3 Reference-to-Video). Off by default because most
+    /// video-source workflows never consume the video's audio track.
+    /// </summary>
+    public bool ShowIncludeAudioToggle { get; init; }
 }
 
 /// <summary>

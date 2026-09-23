@@ -172,9 +172,9 @@
         <MudPaper Class="pa-3 mt-1" Elevation="2">
             <MudStack Spacing="2">
                 <MudText Typo="Typo.caption" Style="opacity:0.6;">
-                    Generates preview images using your active generation settings. The positive prompt is overridden
-                    with the per-group template; the negative prompt is taken from the current generation parameters.
-                    Use <code>{tag}</code> as the placeholder.
+                    Generates preview images using your active generation settings. The positive prompt is driven by the
+                    per-group template; the negative prompt is taken from the current generation parameters.
+                    Use <code>{tag}</code> or <code>{tags}</code> as the tag placeholder.
                 </MudText>
 
                 @* Template editor for currently active group *@
@@ -182,7 +182,7 @@
                 {
                     <MudTextField T="string"
                                   @bind-Value="_editPositiveTemplate"
-                                  Label="Positive template ({tag} = tag name)"
+                                  Label="Positive template ({tag} or {tags} = tag name)"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   FullWidth />
@@ -214,6 +214,12 @@
                     <MudCheckBox T="bool" @bind-Value="_genSkipExisting"
                                  Label="Skip existing"
                                  Dense Size="Size.Small" />
+
+                    <MudTooltip Text="Prepend co-occurring tags to the prompt for abstract tags (requires co_tags data in the JSONL)">
+                        <MudCheckBox T="bool" @bind-Value="_genUseCoTags"
+                                     Label="Use co-tags"
+                                     Dense Size="Size.Small" />
+                    </MudTooltip>
 
                     @if (TagService.PreviewProgress.IsRunning)
                     {
@@ -326,6 +332,7 @@
     // Generator state
     private int  _genBatchSize      = 0;
     private bool _genSkipExisting   = true;
+    private bool _genUseCoTags      = false;
     private CancellationTokenSource? _genCts;
     private int  _generationVersion = 0;
 
@@ -477,6 +484,7 @@
             tags:         _filteredTags,
             batchSize:    _genBatchSize,
             skipExisting: _genSkipExisting,
+            useCoTags:    _genUseCoTags,
             ct:           _genCts.Token,
             onProgress:   async () =>
             {

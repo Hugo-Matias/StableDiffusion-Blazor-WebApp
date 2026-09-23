@@ -270,6 +270,7 @@ namespace BlazorWebApp.Services
             List<DanbooruTag> tags,
             int batchSize,
             bool skipExisting,
+            bool useCoTags,
             CancellationToken ct,
             Func<Task>? onProgress = null)
         {
@@ -317,7 +318,20 @@ namespace BlazorWebApp.Services
                     try
                     {
                         var cfg = GetConfig(tag.Group);
-                        var positive = cfg.PreviewTemplate.Replace("{tag}", tag.Name.EscapeParenthesis());
+                        var tagToken = tag.Name.EscapeParenthesis();
+                        var prompt = cfg.PreviewTemplate
+                            .Replace("{tag}", tagToken, StringComparison.OrdinalIgnoreCase)
+                            .Replace("{tags}", tagToken, StringComparison.OrdinalIgnoreCase);
+
+                        // When co-tags are available and requested, prepend them so
+                        // the generation has richer context for abstract/complex tags.
+                        if (useCoTags && tag.CoTags?.Count > 0)
+                        {
+                            var coTagsCsv = string.Join(", ", tag.CoTags.Select(t => t.EscapeParenthesis()));
+                            prompt = $"{coTagsCsv}, {prompt}";
+                        }
+
+                        var positive = prompt;
 
                         var prepared = _state.GenerationParameters.Clone();
                         var promptsFrag = prepared.GetFragment(Fragments.Prompts);
@@ -507,6 +521,7 @@ namespace BlazorWebApp.Services
                         Section = section,
                         Group = groupSlug,
                         Category = category,
+                        CoTags = row.CoTags?.Count > 0 ? row.CoTags : null,
                     });
                 }
 

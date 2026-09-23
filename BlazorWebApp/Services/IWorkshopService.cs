@@ -5,6 +5,13 @@ namespace BlazorWebApp.Services
 {
     public enum PreviewOrientation { Portrait, Landscape }
 
+    /// <summary>
+    /// Controls how <see cref="IWorkshopService.ResolvePreviewResolution"/> picks the preview's
+    /// width/height. <c>Fast</c> uses a small, base-model-appropriate resolution for quick
+    /// iteration. <c>Workflow</c> uses the selected workflow's own configured latent default.
+    /// </summary>
+    public enum WorkshopResolutionMode { Fast, Workflow }
+
     public interface IWorkshopService
     {
         Task<PromptWorkshopSession> CreateSessionAsync(string name, string rootPrompt);
@@ -24,6 +31,17 @@ namespace BlazorWebApp.Services
         Task UpdateNodePromptAsync(int nodeId, string promptText);
 
         /// <summary>
+        /// Computes the final preview width/height for a workflow + orientation + resolution
+        /// mode, without generating anything. Used to drive the read-only resolution display
+        /// in the right panel and by <see cref="GeneratePreviewAsync"/> internally.
+        /// <c>Workflow</c> mode reads the workflow's currently configured resolution (live
+        /// in-memory parameters if it's the active Generate-page workflow, otherwise its last
+        /// saved <see cref="Data.Entities.WorkflowState"/>), falling back to the fragment's
+        /// static schema default when nothing has been saved yet.
+        /// </summary>
+        Task<(int Width, int Height)> ResolvePreviewResolutionAsync(Workflow workflow, PreviewOrientation orientation, WorkshopResolutionMode mode);
+
+        /// <summary>
         /// Generates a single preview image for the node using the live generation parameters
         /// from <see cref="IStateService"/>, with prompt / batch size / resolution / seed overridden.
         /// The image is persisted as <see cref="Image.IsHidden"/> = true and assigned to
@@ -32,6 +50,6 @@ namespace BlazorWebApp.Services
         /// fragments (Detailer, Upscale, Refiner, SeedVR2, SeedVarianceEnhancer, etc.) are
         /// deactivated on the cloned snapshot so the preview workflow stays lean.
         /// </summary>
-        Task<int?> GeneratePreviewAsync(int nodeId, Guid workflowId, PreviewOrientation orientation, long seed, bool useEnhancements = false);
+        Task<int?> GeneratePreviewAsync(int nodeId, Guid workflowId, PreviewOrientation orientation, long seed, bool useEnhancements = false, WorkshopResolutionMode resolutionMode = WorkshopResolutionMode.Fast);
     }
 }

@@ -1,3 +1,4 @@
+using BlazorWebApp.Extensions;
 using BlazorWebApp.Models;
 using ImageMagick;
 using System.Text.Json;
@@ -296,10 +297,7 @@ namespace BlazorWebApp.Services
                         if (promptsFragment != null)
                         {
                             var currentPrompt = promptsFragment.GetValueOrDefault<string>(Params.Positive, "") ?? "";
-                            var artistPrompt = string.IsNullOrWhiteSpace(currentPrompt)
-                                ? artist.Tag
-                                : $"{artist.Tag}, {currentPrompt}";
-                            promptsFragment.SetValue(Params.Positive, artistPrompt);
+                            promptsFragment.SetValue(Params.Positive, currentPrompt.InjectPreviewTag(artist.Tag));
                         }
 
                         var samplerFragment = prepared.GetFragment(Fragments.MainSampler)

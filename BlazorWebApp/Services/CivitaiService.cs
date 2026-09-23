@@ -689,7 +689,7 @@ namespace BlazorWebApp.Services
         }
 
         #region For Development
-        public async Task UpdateResourceDescriptions(Action<int> onProgress = null)
+        public async Task UpdateResourceDescriptions(Action<int>? onProgress = null)
         {
             var resources = await _db.GetResources();
             var index = 0;
@@ -731,7 +731,7 @@ namespace BlazorWebApp.Services
             }
         }
 
-        public async Task UpdateResourceBaseModels(Action<int> onProgress = null)
+        public async Task UpdateResourceBaseModels(Action<int>? onProgress = null)
         {
             var resources = await _db.GetResources();
             var index = 0;

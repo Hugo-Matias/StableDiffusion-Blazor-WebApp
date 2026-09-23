@@ -17,18 +17,13 @@
                 <MudText Typo="Typo.body2">
                     Upload a text file (.txt) with one entry per line, or a JSON file with collection data.
                 </MudText>
-                
+
                 @* File Upload Area with Drag & Drop *@
-                <MudPaper Elevation="0" 
-                          Class="@($"{_dragClass} file-upload-zone")"
-                          Style="border-color: var(--mud-palette-lines-default); cursor: pointer;"
-                          @ondragenter="SetDragClass"
-                          @ondragleave="ClearDragClass"
-                          @ondragover:preventDefault>
+                <MudPaper Elevation="0" Class="@($"{_dragClass} file-upload-zone")"
+                          Style="border-color: var(--mud-palette-lines-default); cursor: pointer;" @ondragenter="SetDragClass"
+                          @ondragleave="ClearDragClass" @ondragover:preventDefault>
                     <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="2" Class="pa-8">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" 
-                                 Size="Size.Large" 
-                                 Color="Color.Primary" />
+                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Primary" />
                         <MudText Typo="Typo.h6" Color="Color.Primary">
                             Drop file here or click to browse
                         </MudText>
@@ -36,12 +31,8 @@
                             Supports .txt and .json files (max 1MB)
                         </MudText>
                         <InputFile id="fileInput" OnChange="@OnFileSelected" accept=".txt,.json" hidden />
-                        <MudButton HtmlTag="label"
-                                   for="fileInput"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.AttachFile"
-                                   Size="Size.Large">
+                        <MudButton HtmlTag="label" for="fileInput" Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.AttachFile" Size="Size.Large">
                             Choose File
                         </MudButton>
                     </MudStack>
@@ -49,9 +40,7 @@
 
                 @if (!string.IsNullOrEmpty(_selectedFileName))
                 {
-                    <MudChip Icon="@Icons.Material.Filled.Description" 
-                             Color="Color.Info"
-                             OnClose="ClearFile">
+                    <MudChip Icon="@Icons.Material.Filled.Description" Color="Color.Info" OnClose="ClearFile">
                         @_selectedFileName
                     </MudChip>
                 }
@@ -59,15 +48,14 @@
             else
             {
                 @* Preview Section *@
-                <MudPaper Elevation="0" Class="pa-3 mud-theme-surface" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudPaper Elevation="0" Class="pa-3 mud-theme-surface"
+                          Style="border: 1px solid var(--mud-palette-lines-default);">
                     <MudStack Spacing="2">
                         <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                             <MudText Typo="Typo.h6">Preview</MudText>
-                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
-                                          Size="Size.Small" 
-                                          OnClick="ClearFile" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="ClearFile" />
                         </MudStack>
-                        
+
                         @if (_isJson)
                         {
                             <MudText Typo="Typo.body2"><strong>Collection Name:</strong> @_previewCollection?.Name</MudText>
@@ -76,24 +64,15 @@
                         }
                         else
                         {
-                            <MudTextField @bind-Value="_collectionName" 
-                                         Label="Collection Name" 
-                                         Required 
-                                         Immediate 
-                                         Variant="Variant.Text" />
-                            <MudTextField @bind-Value="_collectionCategory" 
-                                         Label="Category" 
-                                         Immediate 
-                                         Variant="Variant.Text" />
-                            <MudTextField @bind-Value="_collectionDescription" 
-                                         Label="Description" 
-                                         Lines="2" 
-                                         Immediate 
-                                         Variant="Variant.Text" />
+                            <MudTextField @bind-Value="_collectionName" Label="Collection Name" Required Immediate
+                                          Variant="Variant.Text" />
+                            <MudTextField @bind-Value="_collectionCategory" Label="Category" Immediate Variant="Variant.Text" />
+                            <MudTextField @bind-Value="_collectionDescription" Label="Description" Lines="2" Immediate
+                                          Variant="Variant.Text" />
                         }
-                        
+
                         <MudDivider />
-                        
+
                         <MudText Typo="Typo.body2"><strong>Entries (@_previewEntries.Count):</strong></MudText>
                         <MudList Dense Style="max-height: 200px; overflow-y: auto; background-color: transparent;">
                             @foreach (var entry in _previewEntries.Take(10))
@@ -133,10 +112,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" 
-                   Variant="Variant.Filled" 
-                   OnClick="Import"
-                   Disabled="@(!CanImport)">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Import" Disabled="@(!CanImport)">
             Import
         </MudButton>
     </DialogActions>
@@ -149,18 +125,18 @@
     private string? _fileContent;
     private bool _isJson;
     private string _errorMessage = string.Empty;
-    
+
     private string _collectionName = string.Empty;
     private string _collectionCategory = string.Empty;
     private string _collectionDescription = string.Empty;
-    
+
     private WildcardCollection? _previewCollection;
     private List<WildcardEntry> _previewEntries = new();
     private int _duplicateCount;
 
-    private bool CanImport => 
-        !string.IsNullOrEmpty(_fileContent) && 
-        _previewEntries.Any() && 
+    private bool CanImport =>
+        !string.IsNullOrEmpty(_fileContent) &&
+        _previewEntries.Any() &&
         (_isJson || !string.IsNullOrWhiteSpace(_collectionName));
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
@@ -168,17 +144,17 @@
         _errorMessage = string.Empty;
         var file = e.File;
         _selectedFileName = file.Name;
-        
+
         try
         {
             // Read file content (limit to 1MB)
             const long maxFileSize = 1024 * 1024;
             using var reader = new StreamReader(file.OpenReadStream(maxFileSize));
             _fileContent = await reader.ReadToEndAsync();
-            
+
             // Determine file type and parse
             _isJson = _selectedFileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
-            
+
             if (_isJson)
             {
                 await ParseJsonFile();
@@ -193,20 +169,20 @@
             _errorMessage = $"Error reading file: {ex.Message}";
             _fileContent = null;
         }
-        
+
         StateHasChanged();
     }
 
     private void ParseTextFile()
     {
         _previewEntries.Clear();
-        
+
         var lines = _fileContent!
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(l => l.Trim())
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .Distinct()
-            .ToList();
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .Where(l => !string.IsNullOrWhiteSpace(l))
+                    .Distinct()
+                    .ToList();
 
         for (int i = 0; i < lines.Count; i++)
         {
@@ -223,13 +199,26 @@
     {
         try
         {
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
             };
-            
-            var importData = JsonSerializer.Deserialize<ImportCollectionDto>(_fileContent!, options);
-            
+
+            // Try the nested "collection" wrapper format first (matches Data/Wildcards/*.json files)
+            var wrappedData = JsonSerializer.Deserialize<WrappedImportCollectionDto>(_fileContent!, options);
+            ImportCollectionDto? importData = null;
+
+            if (wrappedData?.Collection != null)
+            {
+                importData = wrappedData.Collection;
+            }
+
+            // Fall back to flat format (direct root-level properties)
+            if (importData == null)
+            {
+                importData = JsonSerializer.Deserialize<ImportCollectionDto>(_fileContent!, options);
+            }
+
             if (importData == null)
             {
                 _errorMessage = "Invalid JSON format";
@@ -283,7 +272,7 @@
         try
         {
             WildcardCollection collection;
-            
+
             if (_isJson && _previewCollection != null)
             {
                 collection = _previewCollection;
@@ -332,13 +321,19 @@
         }
     }
 
-    // DTO for JSON deserialization
+    // DTO for JSON deserialization (flat format)
     private class ImportCollectionDto
     {
         public string? Name { get; set; }
         public string? Category { get; set; }
         public string? Description { get; set; }
         public List<ImportEntryDto>? Entries { get; set; }
+    }
+
+    // DTO for nested "collection" wrapper format used by Data/Wildcards/*.json files
+    private class WrappedImportCollectionDto
+    {
+        public ImportCollectionDto? Collection { get; set; }
     }
 
     private class ImportEntryDto

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using BlazorWebApp.Models;
 using BlazorWebApp.Workflows.Builders;
 using BlazorWebApp.Workflows.Models;
@@ -39,6 +40,20 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
         /// Used by Chroma workflows that require T5 tokenizer configuration.
         /// </summary>
         public bool UseT5Tokenizer { get; set; } = false;
+        /// <summary>
+        /// When true (default), uses PCLazyLoraLoader + PCLazyTextEncode nodes that parse
+        /// LoRA syntax embedded in prompt text. Set to false to use standard CLIPTextEncode
+        /// and let explicit LoraLoader nodes (added by the workflow) handle LoRAs instead.
+        /// </summary>
+        public bool UsePCLazyLoader { get; set; } = true;
+        /// <summary>
+        /// When true, replaces the negative CLIPTextEncode with a ConditioningZeroOut node
+        /// (takes the positive conditioning and zeros all tensors). Use for distilled/CFG=1
+        /// models like Krea2 Turbo where the negative has no effect and running the large
+        /// text encoder a second time for an empty string is pure waste.
+        /// Only applies when UsePCLazyLoader = false.
+        /// </summary>
+        public bool UseConditioningZeroOut { get; set; } = false;
     }
 
     public void Build(
@@ -52,15 +67,15 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
         var detailerFragment = parameters.GetFragment("detailer");
         var promptsFragment = parameters.GetFragment("prompts");
         var latentFragment = parameters.GetFragment("latent");
-        
-        var unetName = detailerFragment?.GetString("detailer_checkpoint") 
+
+        var unetName = detailerFragment?.GetString("detailer_checkpoint")
                        ?? parameters.Assets?.GetValueOrDefault("Model") ?? "";
         var clipName = parameters.Assets?.GetValueOrDefault("Clip") ?? "";
         var clipType = "lumina2"; // Z-Image uses lumina2
         var vaeName = parameters.Assets?.GetValueOrDefault("Vae") ?? "";
-        var positive = detailerFragment?.GetString("detailer_prompt") 
+        var positive = detailerFragment?.GetString("detailer_prompt")
                        ?? promptsFragment?.GetString("positive", "") ?? "";
-        var negative = detailerFragment?.GetString("detailer_negative_prompt") 
+        var negative = detailerFragment?.GetString("detailer_negative_prompt")
                        ?? promptsFragment?.GetString("negative", "") ?? "";
         var width = latentFragment?.GetInt("width", 1024) ?? 1024;
         var height = latentFragment?.GetInt("height", 1024) ?? 1024;
@@ -136,52 +151,100 @@ public class LoadDiffusionWithPromptsFragment : IFragmentBuilder
             .Input("vae_name", p.VaeName));
 
         // Positive text primitive
+        // When using standard CLIPTextEncode (not PCLazyLoader), strip <lora:...> tags
+        // that ImageService appended for the PCLazyLoader path. Leaving them in causes
+        // ComfyUI lora-syntax hooks to re-apply the LoRAs during encoding (full LoraLoader
+        // with CLIP), undoing the LoraLoaderModelOnly approach and causing VRAM pressure.
+        var positiveText = p.UsePCLazyLoader ? p.Positive : StripLoraTags(p.Positive);
+        var negativeText = p.UsePCLazyLoader ? p.Negative : StripLoraTags(p.Negative);
+
         builder.AddNode($"{scope}text_positive", node => node
             .Type("PrimitiveStringMultiline")
             .Title($"{scopeTitle}Prompt")
-            .Input("value", p.Positive));
+            .Input("value", positiveText));
 
         // Negative text primitive
         builder.AddNode($"{scope}text_negative", node => node
             .Type("PrimitiveStringMultiline")
             .Title($"{scopeTitle}Negative Prompt")
-            .Input("value", p.Negative));
+            .Input("value", negativeText));
 
-        // LoRA loader for positive (lazy loader that handles LoRA syntax in prompts)
-        builder.AddNode($"{scope}lora_positive", node => node
-            .Type("PCLazyLoraLoader")
-            .Title($"{scopeTitle}LoRAs (Positive)")
-            .InputRef("text", ($"{scope}text_positive", 0))
-            .InputRef("model", ($"{scope}unet_loader", 0))
-            .InputRef("clip", (clipSourceNode, 0)));
+        if (p.UsePCLazyLoader)
+        {
+            // LoRA loader for positive (lazy loader that handles LoRA syntax in prompts)
+            builder.AddNode($"{scope}lora_positive", node => node
+                .Type("PCLazyLoraLoader")
+                .Title($"{scopeTitle}LoRAs (Positive)")
+                .InputRef("text", ($"{scope}text_positive", 0))
+                .InputRef("model", ($"{scope}unet_loader", 0))
+                .InputRef("clip", (clipSourceNode, 0)));
 
-        // LoRA loader for negative
-        builder.AddNode($"{scope}lora_negative", node => node
-            .Type("PCLazyLoraLoader")
-            .Title($"{scopeTitle}LoRAs (Negative)")
-            .InputRef("text", ($"{scope}text_negative", 0))
-            .InputRef("model", ($"{scope}unet_loader", 0))
-            .InputRef("clip", (clipSourceNode, 0)));
+            // LoRA loader for negative
+            builder.AddNode($"{scope}lora_negative", node => node
+                .Type("PCLazyLoraLoader")
+                .Title($"{scopeTitle}LoRAs (Negative)")
+                .InputRef("text", ($"{scope}text_negative", 0))
+                .InputRef("model", ($"{scope}unet_loader", 0))
+                .InputRef("clip", (clipSourceNode, 0)));
 
-        // Encode positive
-        builder.AddNode($"{scope}encode_positive", node => node
-            .Type("PCLazyTextEncode")
-            .Title($"{scopeTitle}Encode Positive")
-            .InputRef("text", ($"{scope}text_positive", 0))
-            .InputRef("clip", ($"{scope}lora_positive", 1)));
+            // Encode positive
+            builder.AddNode($"{scope}encode_positive", node => node
+                .Type("PCLazyTextEncode")
+                .Title($"{scopeTitle}Encode Positive")
+                .InputRef("text", ($"{scope}text_positive", 0))
+                .InputRef("clip", ($"{scope}lora_positive", 1)));
 
-        // Encode negative
-        builder.AddNode($"{scope}encode_negative", node => node
-            .Type("PCLazyTextEncode")
-            .Title($"{scopeTitle}Encode Negative")
-            .InputRef("text", ($"{scope}text_negative", 0))
-            .InputRef("clip", ($"{scope}lora_negative", 1)));
+            // Encode negative
+            builder.AddNode($"{scope}encode_negative", node => node
+                .Type("PCLazyTextEncode")
+                .Title($"{scopeTitle}Encode Negative")
+                .InputRef("text", ($"{scope}text_negative", 0))
+                .InputRef("clip", ($"{scope}lora_negative", 1)));
 
-        // Register all scoped outputs
-        registry.Register($"{scope}model_output", $"{scope}lora_positive", 0);
-        registry.Register($"{scope}clip_output", $"{scope}lora_positive", 1);
+            registry.Register($"{scope}model_output", $"{scope}lora_positive", 0);
+            registry.Register($"{scope}clip_output", $"{scope}lora_positive", 1);
+        }
+        else
+        {
+            // Standard path: CLIPTextEncode nodes; LoRAs applied via explicit LoraLoader nodes added by the workflow
+            builder.AddNode($"{scope}encode_positive", node => node
+                .Type("CLIPTextEncode")
+                .Title($"{scopeTitle}Encode Positive")
+                .InputRef("text", ($"{scope}text_positive", 0))
+                .InputRef("clip", (clipSourceNode, 0)));
+
+            if (p.UseConditioningZeroOut)
+            {
+                // Zero out the negative conditioning instead of encoding an empty string.
+                // This avoids a second pass through the large text encoder and matches the
+                // reference Krea2 workflow behavior for CFG=1 distilled models.
+                builder.AddNode($"{scope}encode_negative", node => node
+                    .Type("ConditioningZeroOut")
+                    .Title($"{scopeTitle}Zero Negative")
+                    .InputRef("conditioning", ($"{scope}encode_positive", 0)));
+            }
+            else
+            {
+                builder.AddNode($"{scope}encode_negative", node => node
+                    .Type("CLIPTextEncode")
+                    .Title($"{scopeTitle}Encode Negative")
+                    .InputRef("text", ($"{scope}text_negative", 0))
+                    .InputRef("clip", (clipSourceNode, 0)));
+            }
+
+            registry.Register($"{scope}model_output", $"{scope}unet_loader", 0);
+            registry.Register($"{scope}clip_output", clipSourceNode, 0);
+        }
+
+        // Register shared scoped outputs
         registry.Register($"{scope}vae_output", $"{scope}vae_loader", 0);
         registry.Register($"{scope}positive_output", $"{scope}encode_positive", 0);
         registry.Register($"{scope}negative_output", $"{scope}encode_negative", 0);
     }
+
+    private static readonly Regex _loraTagPattern =
+        new(@"\s*<lora:[^>]+>", RegexOptions.Compiled);
+
+    private static string StripLoraTags(string text) =>
+        string.IsNullOrEmpty(text) ? text : _loraTagPattern.Replace(text, string.Empty).Trim();
 }

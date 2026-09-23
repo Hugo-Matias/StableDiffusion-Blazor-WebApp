@@ -53,6 +53,7 @@ namespace BlazorWebApp.Models
         public CfgScaleSettingsModel CfgScale { get; set; } = new();
         public DistilledCfgSettingsModel DistilledCfg { get; set; } = new();
         public DenoisingSettingsModel Denoising { get; set; } = new();
+        public LoraWeightSettingsModel LoraWeight { get; set; } = new();
         public LLMEnhancerSettingsModel LLMEnhancer { get; set; } = new();
         public List<QuickResolution> QuickResolutions { get; set; } = new()
         {
@@ -124,6 +125,13 @@ namespace BlazorWebApp.Models
         public double Min { get; set; } = 0;
         public double Max { get; set; } = 1;
         public double Step { get; set; } = 0.01;
+    }
+
+    public class LoraWeightSettingsModel
+    {
+        public float Min { get; set; } = -10f;
+        public float Max { get; set; } = 10f;
+        public float Step { get; set; } = 0.05f;
     }
 
     public class LLMEnhancerSettingsModel

@@ -21,17 +21,17 @@ namespace BlazorWebApp.Tests.Extensions
         private Mock<IWildcardService> CreateMockWildcardService()
         {
             var mock = new Mock<IWildcardService>();
-            
+
             // Default: no wildcards exist
             mock.Setup(x => x.CollectionExists(It.IsAny<string>()))
                 .ReturnsAsync(false);
-            
+
             mock.Setup(x => x.GetRandomEntryWeighted(It.IsAny<string>()))
                 .ReturnsAsync((string?)null);
-            
+
             mock.Setup(x => x.ParseWildcards(It.IsAny<string>()))
                 .ReturnsAsync((string input) => input); // Default: no replacement
-            
+
             return mock;
         }
 
@@ -272,7 +272,7 @@ namespace BlazorWebApp.Tests.Extensions
             var mockService = CreateMockWildcardService();
             var input = "A girl wearing __clothing/tops__";
             var expected = "A girl wearing blue t-shirt";
-            
+
             mockService.Setup(x => x.ParseWildcards(input))
                 .ReturnsAsync(expected);
 
@@ -291,7 +291,7 @@ namespace BlazorWebApp.Tests.Extensions
             var mockService = CreateMockWildcardService();
             var input = "A __characters/hair-color__ girl wearing __clothing/tops__";
             var expected = "A blonde girl wearing blue t-shirt";
-            
+
             mockService.Setup(x => x.ParseWildcards(input))
                 .ReturnsAsync(expected);
 
@@ -309,7 +309,7 @@ namespace BlazorWebApp.Tests.Extensions
             // Arrange
             var mockService = CreateMockWildcardService();
             var input = "Test __nonexistent__ wildcard";
-            
+
             mockService.Setup(x => x.ParseWildcards(input))
                 .ReturnsAsync(input); // Service leaves it unchanged
 
@@ -470,6 +470,23 @@ namespace BlazorWebApp.Tests.Extensions
 
             // Assert
             result.Should().Be("test prompt, masterpiece");
+        }
+
+        [Fact]
+        public void ParseStyles_WithoutPlaceholder_PrependsStyle()
+        {
+            // Arrange
+            var prompt = "test prompt";
+            var styles = new List<PromptStyle>
+            {
+                new PromptStyle { Prompt = "masterpiece" }
+            };
+
+            // Act
+            var result = prompt.ParseStyles(styles, false, PromptApplicationMode.Prepend);
+
+            // Assert
+            result.Should().Be("masterpiece, test prompt");
         }
 
         #endregion

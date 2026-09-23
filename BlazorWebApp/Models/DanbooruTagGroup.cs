@@ -16,7 +16,12 @@ namespace BlazorWebApp.Models
         /// Taken from section_path[-1] in the flat JSONL source.
         /// </summary>
         [JsonPropertyName("section")] public string? Section { get; set; }
-
+        /// <summary>
+        /// Tags that commonly co-occur with this tag (from Danbooru related_tags API).
+        /// Populated from the co_tags field in tag_groups_flat.jsonl.
+        /// Used by preview generation when UseCoTags is enabled.
+        /// </summary>
+        [JsonIgnore] public List<string>? CoTags { get; set; }
         // Populated at load time by TagGroupService
         [JsonIgnore] public string Group { get; set; } = string.Empty;
         [JsonIgnore] public string Category { get; set; } = string.Empty;
@@ -57,5 +62,6 @@ namespace BlazorWebApp.Models
         [JsonPropertyName("tag_label")] public string? TagLabel { get; init; }
         [JsonPropertyName("canonical_name")] public string? CanonicalName { get; init; }
         [JsonPropertyName("source")] public string? Source { get; init; }
+        [JsonPropertyName("co_tags")] public List<string>? CoTags { get; init; }
     }
 }

@@ -11,6 +11,26 @@
 
         <MudTabs Elevation="4" Rounded ApplyEffectsToContainer PanelClass="pa-2 ma-4" ActivePanelIndex="_activeTab"
                  ActivePanelIndexChanged="@((index) => _activeTab = index)">
+            <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
+                <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Artists" Icon="@Icons.Material.Filled.Palette">
+                <ArtistBrowserPanel OnAppendTags="OnAppendTags" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Characters" Icon="@Icons.Material.Filled.Person">
+                <CharacterBrowserPanel OnAppendTags="OnAppendTags" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Wildcards" Icon="@Icons.Material.Filled.DataObject">
+                <WildcardBrowserPanel OnAppendTags="OnAppendTags" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Tag Groups" Icon="@Icons.Material.Filled.Category">
+                <TagGroupBrowserPanel OnAppendTags="OnAppendTags" />
+            </MudTabPanel>
+
             <MudTabPanel Text="Tag Selector" Icon="@Icons.Material.Filled.Label">
                 <MudPaper Class="pa-2" Elevation="4">
                     <MudStack>
@@ -74,22 +94,6 @@
                             <TagAccordion TagContent="item" Title="@item.Title" OnButtonClicked="AddTag" />
                         }
                     </MudExpansionPanels>
-                </MudTabPanel>
-
-                <MudTabPanel Text="Artists" Icon="@Icons.Material.Filled.Palette">
-                    <ArtistBrowserPanel OnAppendTags="OnAppendTags" />
-                </MudTabPanel>
-
-                <MudTabPanel Text="Characters" Icon="@Icons.Material.Filled.Person">
-                    <CharacterBrowserPanel OnAppendTags="OnAppendTags" />
-                </MudTabPanel>
-
-                <MudTabPanel Text="Tag Groups" Icon="@Icons.Material.Filled.Category">
-                    <TagGroupBrowserPanel OnAppendTags="OnAppendTags" />
-                </MudTabPanel>
-
-                <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
-                    <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
                 </MudTabPanel>
             </MudTabs>
         </MudDrawer>

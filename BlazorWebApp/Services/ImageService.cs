@@ -99,6 +99,12 @@ namespace BlazorWebApp.Services
             _models = models;
             _wildcardService = wildcardService;
             _events = events;
+            _events.Subscribe<ImageRecordDeletedEventArgs>(OnImageRecordDeleted);
+        }
+
+        private void OnImageRecordDeleted(ImageRecordDeletedEventArgs args)
+        {
+            RemoveGeneratedImage(args.ImageId);
         }
 
         #region Image Generation
@@ -333,11 +339,17 @@ namespace BlazorWebApp.Services
                 prompt = prompt.ParseStyles(
                     prepared.Styles
                         ?.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList() ?? new(),
-                    false);
+                    false,
+                    prepared.StyleFallbackMode);
                 negativePrompt = negativePrompt.ParseStyles(
                     prepared.Styles
                         ?.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList() ?? new(),
-                    true);
+                    true,
+                    prepared.StyleFallbackMode);
+
+                // Styles may inject wildcards — expand them now on the composed prompts
+                prompt = await _wildcardService.ParseWildcards(prompt);
+                negativePrompt = await _wildcardService.ParseWildcards(negativePrompt);
 
                 var (loraPositive, loraNegative) = GenerationParameters.ParseLorasToPromptStrings(parameters.Loras);
                 prompt += loraPositive;
@@ -1015,6 +1027,31 @@ namespace BlazorWebApp.Services
                 GeneratedImageEntities = BuildEntitiesSnapshotLocked();
             }
             NotifyStateChanged();
+        }
+
+        public bool RemoveGeneratedImage(int imageId, bool notify = true)
+        {
+            var removed = false;
+            lock (_accumulatorLock)
+            {
+                if (_batchImages == null || _batchImages.Count == 0)
+                {
+                    return false;
+                }
+
+                removed = _batchImages.RemoveAll(image => image.Id == imageId) > 0;
+                if (removed)
+                {
+                    GeneratedImageEntities = BuildEntitiesSnapshotLocked();
+                }
+            }
+
+            if (removed && notify)
+            {
+                NotifyStateChanged();
+            }
+
+            return removed;
         }
 
         #endregion

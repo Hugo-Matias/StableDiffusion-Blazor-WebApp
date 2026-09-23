@@ -15,14 +15,12 @@
 <div @ref="_containerRef" tabindex="-1" class="prompts-panel-container">
     <TwoColumnLayout>
         <Sidebar>
-            <CategoryBrowser @ref="_categoryBrowser"
-                             OnCategorySelected="HandleCategorySelected" />
+            <CategoryBrowser @ref="_categoryBrowser" OnCategorySelected="HandleCategorySelected"
+                             OnCategoryDeleted="HandleCategoryDeleted" />
         </Sidebar>
         <Content>
-            <PromptStyleTable @ref="_promptStyleTable"
-                              SelectedCategory="@_selectedCategory"
-                              OnCategoryFilterChanged="HandleCategoryFilterChanged"
-                              OnPromptChanged="HandlePromptChanged" />
+            <PromptStyleTable @ref="_promptStyleTable" SelectedCategory="@_selectedCategory"
+                              OnCategoryFilterChanged="HandleCategoryFilterChanged" OnPromptChanged="HandlePromptChanged" />
         </Content>
     </TwoColumnLayout>
 </div>
@@ -63,7 +61,7 @@
         if (firstRender && !_isDisposed)
         {
             InfoService.SetInfo(_infoContent);
-            
+
             try
             {
                 _dotNetRef = DotNetObjectReference.Create(this);
@@ -89,18 +87,30 @@
         StateHasChanged();
     }
 
+    private async Task HandleCategoryDeleted(string category)
+    {
+        if (_selectedCategory == category)
+            _selectedCategory = null;
+
+        if (_promptStyleTable != null)
+            await _promptStyleTable.RefreshPrompts();
+
+        Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptsUpdated" });
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task HandlePromptChanged()
     {
         // Refresh both components when a prompt is added/edited/deleted
         if (_categoryBrowser != null)
             await _categoryBrowser.RefreshCategories();
-        
+
         if (_promptStyleTable != null)
             await _promptStyleTable.RefreshPrompts();
-        
+
         // Notify PromptFields to reload styles from DB
         Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptsUpdated" });
-        
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -113,20 +123,20 @@
             if (index >= 0 && index < pinnedPrompts.Count)
             {
                 var prompt = pinnedPrompts[index];
-                
+
                 // Update GenerationParameters (primary)
                 var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
                 var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
                 var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
                 promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));
                 promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, prompt.Negative));
-                
+
                 // Update usage tracking
                 await DB.UpdatePromptUsage(prompt.Id);
-                
+
                 // Notify that prompts were updated
                 Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptApplied" });
-                
+
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -145,20 +155,20 @@
             if (index >= 0 && index < pinnedPrompts.Count)
             {
                 var prompt = pinnedPrompts[index];
-                
+
                 // Update GenerationParameters (primary)
                 var promptsFragment = State.GenerationParameters.GetOrCreateFragment(FragmentKeys.Fragments.Prompts);
                 var currentPositive = promptsFragment.GetValue<string>(FragmentKeys.Params.Positive) ?? "";
                 var currentNegative = promptsFragment.GetValue<string>(FragmentKeys.Params.Negative) ?? "";
                 promptsFragment.SetValue(FragmentKeys.Params.Positive, Parser.ParseStyle(currentPositive, prompt.Positive));
                 promptsFragment.SetValue(FragmentKeys.Params.Negative, Parser.ParseStyle(currentNegative, prompt.Negative));
-                
+
                 // Update usage tracking
                 await DB.UpdatePromptUsage(prompt.Id);
-                
+
                 // Notify that prompts were updated
                 Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptApplied" });
-                
+
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -172,7 +182,7 @@
     {
         _isDisposed = true;
         InfoService.ClearInfo();
-        
+
         if (_jsModule != null)
         {
             try
@@ -181,10 +191,10 @@
                 await _jsModule.DisposeAsync();
             }
             catch (Exception) { }
-            
+
             _jsModule = null;
         }
-        
+
         _dotNetRef?.Dispose();
         _dotNetRef = null;
     }

@@ -96,8 +96,9 @@
                     </div>
                     <MudText Typo="Typo.caption" Style="opacity:0.6;">
                         Generates preview images for the current artist list using your active txt2img settings. Each artist
-                        tag is prepended to your current prompt. A baseline image without any artist tag is always generated
-                        first for comparison. Set batch size to 0 to generate all artists in the current list.
+                        tag is injected into your current prompt &mdash; use <code>{tags}</code> as a placement placeholder,
+                        or omit it to prepend the tag. A baseline image without any artist tag is always generated first for
+                        comparison. Set batch size to 0 to generate all artists in the current list.
                     </MudText>
                 </div>
                 <MudStack Row AlignItems="AlignItems.Center" Spacing="2">

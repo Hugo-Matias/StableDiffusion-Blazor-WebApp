@@ -882,6 +882,14 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task DeletePromptsByCategory(string category)
+        {
+            using var context = await _factory.CreateDbContextAsync();
+            var entities = await context.Prompts.Where(p => p.Category == category).ToListAsync();
+            context.Prompts.RemoveRange(entities);
+            await context.SaveChangesAsync();
+        }
+
         public async Task<List<Resource>> GetResources()
         {
             using var context = _factory.CreateDbContext();

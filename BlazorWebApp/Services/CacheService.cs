@@ -42,6 +42,12 @@ namespace BlazorWebApp.Services
             return _tagUsageCache.TryGetValue(normalizedTag, out var count) ? count : 0;
         }
 
+        public async Task<IReadOnlyDictionary<string, int>> GetLocalTagUsageSnapshot()
+        {
+            await EnsureTagCacheUpdated();
+            return _tagUsageCache;
+        }
+
         /// <summary>
         /// Gets top N most used tags locally
         /// </summary>
@@ -382,8 +388,15 @@ namespace BlazorWebApp.Services
             if (subsequenceScore > 0) return subsequenceScore;
 
             // Levenshtein distance for fuzzy matching (typo tolerance)
-            int distance = LevenshteinDistance(search, target);
             int maxLength = Math.Max(search.Length, target.Length);
+            int maxDistance = Math.Max(0, (int)Math.Ceiling(maxLength * 0.3) - 1);
+            if (Math.Abs(search.Length - target.Length) > maxDistance)
+                return 0;
+
+            int distance = LevenshteinDistance(search, target, maxDistance);
+            if (distance > maxDistance)
+                return 0;
+
             int similarity = (int)(100 * (1 - ((double)distance / maxLength)));
 
             return similarity > 70 ? similarity : 0;
@@ -444,28 +457,41 @@ namespace BlazorWebApp.Services
         /// Calculates the Levenshtein distance between two strings.
         /// This represents the minimum number of single-character edits required to change one word into another.
         /// </summary>
-        private int LevenshteinDistance(string source, string target)
+        private int LevenshteinDistance(string source, string target, int maxDistance)
         {
             if (source.Length == 0) return target.Length;
             if (target.Length == 0) return source.Length;
 
-            int[,] matrix = new int[source.Length + 1, target.Length + 1];
+            if (source.Length > target.Length)
+                (source, target) = (target, source);
 
-            for (int i = 0; i <= source.Length; matrix[i, 0] = i++) { }
-            for (int j = 0; j <= target.Length; matrix[0, j] = j++) { }
+            var previous = new int[target.Length + 1];
+            var current = new int[target.Length + 1];
+
+            for (int j = 0; j <= target.Length; j++)
+                previous[j] = j;
 
             for (int i = 1; i <= source.Length; i++)
             {
+                current[0] = i;
+                var rowMinimum = current[0];
+
                 for (int j = 1; j <= target.Length; j++)
                 {
                     int cost = (target[j - 1] == source[i - 1]) ? 0 : 1;
-                    matrix[i, j] = Math.Min(
-                        Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
-                        matrix[i - 1, j - 1] + cost);
+                    current[j] = Math.Min(
+                        Math.Min(previous[j] + 1, current[j - 1] + 1),
+                        previous[j - 1] + cost);
+                    rowMinimum = Math.Min(rowMinimum, current[j]);
                 }
+
+                if (rowMinimum > maxDistance)
+                    return maxDistance + 1;
+
+                (previous, current) = (current, previous);
             }
 
-            return matrix[source.Length, target.Length];
+            return previous[target.Length];
         }
 
         /// <summary>

@@ -1,136 +1,273 @@
+@using BlazorWebApp.Workflows.Models
 @inject ISettingsService Settings
 
 <MudItem xs="12">
-    <MudText Typo="Typo.caption" Class="mb-4">Quick Resolution:</MudText>
-    <MudGrid Spacing="2" Justify="Justify.Center">
-        @foreach (var res in Settings.Settings.Generation.Shared.QuickResolutions)
-        {
-            <MudItem xs="6" sm="4" md="3" lg="2">
-                <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))"
-                           Variant="Variant.Text"
-                           Color="Color.Primary"
-                           FullWidth
-                           Size="Size.Small">
-                    @res.Label
+    <MudToggleGroup T="string" @bind-Value="_localMode" @bind-Value:after="OnModeChanged"
+                    SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary" Class="mb-2">
+        <MudToggleItem Value="@("manual")">Manual</MudToggleItem>
+        <MudToggleItem Value="@("calculated")">Aspect Ratio + Megapixels</MudToggleItem>
+    </MudToggleGroup>
+</MudItem>
+
+@if (_localMode == "manual")
+{
+    <MudItem xs="12">
+        <MudText Typo="Typo.caption" Class="mb-4">Quick Resolution:</MudText>
+        <MudGrid Spacing="2" Justify="Justify.Center">
+            @foreach (var res in Settings.Settings.Generation.Shared.QuickResolutions)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <MudButton OnClick="@(() => SetResolution(res.Width, res.Height))" Variant="Variant.Text"
+                               Color="Color.Primary" FullWidth Size="Size.Small">
+                        @res.Label
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+        <div class="d-flex justify-center mt-3">
+            <MudButtonGroup Variant="Variant.Text" Color="Color.Primary">
+                <MudButton OnClick="@(() => ScaleResolution(0.5))" StartIcon="fa-solid fa-compress" Size="Size.Small">
+                    x0.5
                 </MudButton>
-            </MudItem>
+                <MudButton OnClick="RotateResolution" StartIcon="fa-solid fa-image-portrait" Size="Size.Small">
+                    Rotate
+                </MudButton>
+                <MudButton OnClick="ToggleLockAspectRatio"
+                           StartIcon="@(_isAspectRatioLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open")"
+                           Color="@(_isAspectRatioLocked ? Color.Success : Color.Default)" Size="Size.Small"
+                           Title="@(_isAspectRatioLocked ? "Unlock aspect ratio" : "Lock to square aspect ratio")">
+                    Lock
+                </MudButton>
+                <MudButton OnClick="@(() => ScaleResolution(2.0))" StartIcon="fa-solid fa-expand" Size="Size.Small">
+                    x2
+                </MudButton>
+            </MudButtonGroup>
+        </div>
+    </MudItem>
+}
+else
+{
+    <MudItem xs="12" sm="4">
+        @if (HasSourceImage)
+        {
+            <MudTextField T="string" Value="@SourceImageRatioLabel" Label="Aspect Ratio" ReadOnly="true" Variant="Variant.Text"
+                          Dense="true" HelperText="@SourceImageHelperText" />
         }
-    </MudGrid>
-    <div class="d-flex justify-center mt-3">
-        <MudButtonGroup Variant="Variant.Text" Color="Color.Primary">
-            <MudButton OnClick="@(() => ScaleResolution(0.5))"
-                       StartIcon="fa-solid fa-compress"
-                       Size="Size.Small">
-                x0.5
-            </MudButton>
-            <MudButton OnClick="RotateResolution"
-                       StartIcon="fa-solid fa-image-portrait"
-                       Size="Size.Small">
-                Rotate
-            </MudButton>
-            <MudButton OnClick="ToggleLockAspectRatio"
-                       StartIcon="@(_isAspectRatioLocked ? "fa-solid fa-lock" : "fa-solid fa-lock-open")"
-                       Color="@(_isAspectRatioLocked ? Color.Success : Color.Default)"
-                       Size="Size.Small"
-                       Title="@(_isAspectRatioLocked ? "Unlock aspect ratio" : "Lock to square aspect ratio")">
-                Lock
-            </MudButton>
-            <MudButton OnClick="@(() => ScaleResolution(2.0))"
-                       StartIcon="fa-solid fa-expand"
-                       Size="Size.Small">
-                x2
-            </MudButton>
-        </MudButtonGroup>
-    </div>
-</MudItem>
-<MudItem xs="6">
-    <MudSlider T="int" 
-               @bind-Value="@_localWidth"
-               @bind-Value:after="OnWidthChanged"
-               Min="Settings.Settings.Generation.Shared.Resolution.Min" 
-               Max="Settings.Settings.Generation.Shared.Resolution.Max" 
-               Step="Settings.Settings.Generation.Shared.Resolution.Step" 
-               Variant="Variant.Filled" 
-               ValueLabel>
-        <small>Width:</small> @(_localWidth)px
-    </MudSlider>
-</MudItem>
-<MudItem xs="6">
-    <MudSlider T="int" 
-               @bind-Value="@_localHeight"
-               @bind-Value:after="OnHeightChanged"
-               Min="Settings.Settings.Generation.Shared.Resolution.Min" 
-               Max="Settings.Settings.Generation.Shared.Resolution.Max" 
-               Step="Settings.Settings.Generation.Shared.Resolution.Step" 
-               Variant="Variant.Filled" 
-               ValueLabel>
-        <small>Height:</small> @(_localHeight)px
-    </MudSlider>
-</MudItem>
+        else
+        {
+            <MudSelect T="string" @bind-Value="_localAspectRatio" @bind-Value:after="OnAspectRatioChanged" Label="Aspect Ratio"
+                       Variant="Variant.Text" Dense="true">
+                @foreach (var ratio in ResolutionSelectorMath.AspectRatios)
+                {
+                    <MudSelectItem T="string" Value="@ratio">@ratio</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double" @bind-Value="_localMegapixels" @bind-Value:after="OnMegapixelsChanged" Min="0.1"
+                   Max="@MegapixelsMax" Step="0.1" Variant="Variant.Filled" ValueLabel>
+            <small>Megapixels:</small> @(_localMegapixels.ToString("0.0")) MP
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="int" @bind-Value="_localMultipleOf" @bind-Value:after="OnMultipleOfChanged" Min="8" Max="128" Step="4"
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Multiple Of:</small> @(_localMultipleOf)
+        </MudSlider>
+    </MudItem>
+}
+@if (_localMode == "manual")
+{
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="@_localWidth" @bind-Value:after="OnWidthChanged"
+                   Min="Settings.Settings.Generation.Shared.Resolution.Min"
+                   Max="Settings.Settings.Generation.Shared.Resolution.Max"
+                   Step="Settings.Settings.Generation.Shared.Resolution.Step" Variant="Variant.Filled" ValueLabel>
+            <small>Width:</small> @(_localWidth)px
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="@_localHeight" @bind-Value:after="OnHeightChanged"
+                   Min="Settings.Settings.Generation.Shared.Resolution.Min"
+                   Max="Settings.Settings.Generation.Shared.Resolution.Max"
+                   Step="Settings.Settings.Generation.Shared.Resolution.Step" Variant="Variant.Filled" ValueLabel>
+            <small>Height:</small> @(_localHeight)px
+        </MudSlider>
+    </MudItem>
+}
+else
+{
+    <MudItem xs="12">
+        <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-2">
+            Resolution: <strong>@(_localWidth) x @(_localHeight)</strong>
+        </MudText>
+    </MudItem>
+}
 
 @code {
     /// <summary>
     /// Current width value.
     /// </summary>
     [Parameter] public int Width { get; set; } = 512;
-    
+
     /// <summary>
     /// Callback when width changes.
     /// </summary>
     [Parameter] public EventCallback<int> WidthChanged { get; set; }
-    
+
     /// <summary>
     /// Current height value.
     /// </summary>
     [Parameter] public int Height { get; set; } = 768;
-    
+
     /// <summary>
     /// Callback when height changes.
     /// </summary>
     [Parameter] public EventCallback<int> HeightChanged { get; set; }
-    
+
     /// <summary>
     /// Optional callback when any resolution change occurs (for additional side effects).
     /// </summary>
     [Parameter] public EventCallback OnResolutionChanged { get; set; }
-    
+
+    /// <summary>
+    /// Resolution mode: "manual" (direct width/height entry) or "calculated" (derived from
+    /// aspect ratio + megapixels, mirroring ComfyUI's ResolutionSelector node). Bindable so
+    /// callers can persist it alongside width/height.
+    /// </summary>
+    [Parameter] public string Mode { get; set; } = "manual";
+
+    /// <summary>
+    /// Callback when the mode changes.
+    /// </summary>
+    [Parameter] public EventCallback<string> ModeChanged { get; set; }
+
+    /// <summary>
+    /// Aspect ratio used in calculated mode. One of <see cref="ResolutionSelectorMath.AspectRatios"/>.
+    /// </summary>
+    [Parameter] public string AspectRatio { get; set; } = ResolutionSelectorMath.AspectRatios[0];
+
+    /// <summary>
+    /// Callback when the aspect ratio changes.
+    /// </summary>
+    [Parameter] public EventCallback<string> AspectRatioChanged { get; set; }
+
+    /// <summary>
+    /// Target megapixels used in calculated mode.
+    /// </summary>
+    [Parameter] public double Megapixels { get; set; } = 1.0;
+
+    /// <summary>
+    /// Callback when megapixels changes.
+    /// </summary>
+    [Parameter] public EventCallback<double> MegapixelsChanged { get; set; }
+
+    /// <summary>
+    /// Upper bound for the Megapixels slider. Callers with resource-heavy models (e.g. video
+    /// generation) can lower this from the default to keep users off unreasonably large targets.
+    /// </summary>
+    [Parameter] public double MegapixelsMax { get; set; } = 16.0;
+
+    /// <summary>
+    /// Rounding multiple used in calculated mode.
+    /// </summary>
+    [Parameter] public int MultipleOf { get; set; } = 8;
+
+    /// <summary>
+    /// Callback when the rounding multiple changes.
+    /// </summary>
+    [Parameter] public EventCallback<int> MultipleOfChanged { get; set; }
+
+    /// <summary>
+    /// Optional source image width. When set together with <see cref="SourceImageHeight"/>, calculated
+    /// mode derives the aspect ratio from this image instead of the Aspect Ratio dropdown (the dropdown
+    /// is replaced with a read-only label). Megapixels/Multiple Of still control the output resolution.
+    /// </summary>
+    [Parameter] public int? SourceImageWidth { get; set; }
+
+    /// <summary>
+    /// Optional source image height. See <see cref="SourceImageWidth"/>.
+    /// </summary>
+    [Parameter] public int? SourceImageHeight { get; set; }
+
+    /// <summary>
+    /// Display label for the source image driving the aspect ratio (e.g. "First Frame").
+    /// </summary>
+    [Parameter] public string? SourceImageLabel { get; set; }
+
+    private bool HasSourceImage => SourceImageWidth is > 0 && SourceImageHeight is > 0;
+
+    private string SourceImageRatioLabel
+    {
+        get
+        {
+            if (!HasSourceImage) return "";
+            var gcd = Gcd(SourceImageWidth!.Value, SourceImageHeight!.Value);
+            return $"{SourceImageWidth!.Value / gcd}:{SourceImageHeight!.Value / gcd}";
+        }
+    }
+
+    private static int Gcd(int a, int b) => b == 0 ? Math.Max(1, a) : Gcd(b, a % b);
+
+    private string SourceImageHelperText => $"From {SourceImageLabel ?? "source image"}";
+
     private bool _isAspectRatioLocked = false;
-    
+
     // Local state that syncs with parameters
     private int _localWidth;
     private int _localHeight;
-    
+    private string _localMode = "manual";
+    private string _localAspectRatio = ResolutionSelectorMath.AspectRatios[0];
+    private double _localMegapixels = 1.0;
+    private int _localMultipleOf = 8;
+    private int? _lastSourceImageWidth;
+    private int? _lastSourceImageHeight;
+
     protected override void OnParametersSet()
     {
         _localWidth = Width;
         _localHeight = Height;
+        _localMode = Mode;
+        _localAspectRatio = AspectRatio;
+        _localMegapixels = Megapixels;
+        _localMultipleOf = MultipleOf;
+
+        var sourceImageChanged = SourceImageWidth != _lastSourceImageWidth || SourceImageHeight != _lastSourceImageHeight;
+        _lastSourceImageWidth = SourceImageWidth;
+        _lastSourceImageHeight = SourceImageHeight;
+
+        if (sourceImageChanged && HasSourceImage && _localMode == "calculated")
+        {
+            _ = RecalculateAndApply();
+        }
     }
 
     private async Task OnWidthChanged()
     {
         await WidthChanged.InvokeAsync(_localWidth);
-        
+
         // If locked, update height to match width
         if (_isAspectRatioLocked)
         {
             _localHeight = _localWidth;
             await HeightChanged.InvokeAsync(_localHeight);
         }
-        
+
         await OnResolutionChanged.InvokeAsync();
     }
 
     private async Task OnHeightChanged()
     {
         await HeightChanged.InvokeAsync(_localHeight);
-        
+
         // If locked, update width to match height
         if (_isAspectRatioLocked)
         {
             _localWidth = _localHeight;
             await WidthChanged.InvokeAsync(_localWidth);
         }
-        
+
         await OnResolutionChanged.InvokeAsync();
     }
 
@@ -158,17 +295,17 @@
     private async Task ScaleResolution(double scale)
     {
         var step = Settings.Settings.Generation.Shared.Resolution.Step;
-        
+
         // Scale and round to nearest step
         var newWidth = (int)(Math.Round(_localWidth * scale / step) * step);
         var newHeight = (int)(Math.Round(_localHeight * scale / step) * step);
-        
+
         // Clamp to min/max
         var min = Settings.Settings.Generation.Shared.Resolution.Min;
         var max = Settings.Settings.Generation.Shared.Resolution.Max;
         _localWidth = Math.Clamp(newWidth, min, max);
         _localHeight = Math.Clamp(newHeight, min, max);
-        
+
         await WidthChanged.InvokeAsync(_localWidth);
         await HeightChanged.InvokeAsync(_localHeight);
         await OnResolutionChanged.InvokeAsync();
@@ -177,7 +314,7 @@
     private async Task ToggleLockAspectRatio()
     {
         _isAspectRatioLocked = !_isAspectRatioLocked;
-        
+
         // When locking, set both dimensions to the larger of the two
         if (_isAspectRatioLocked)
         {
@@ -188,5 +325,57 @@
             await HeightChanged.InvokeAsync(_localHeight);
             await OnResolutionChanged.InvokeAsync();
         }
+    }
+
+    private async Task OnModeChanged()
+    {
+        await ModeChanged.InvokeAsync(_localMode);
+
+        if (_localMode == "calculated")
+        {
+            await RecalculateAndApply();
+        }
+    }
+
+    private async Task OnAspectRatioChanged()
+    {
+        await AspectRatioChanged.InvokeAsync(_localAspectRatio);
+        await RecalculateAndApply();
+    }
+
+    private async Task OnMegapixelsChanged()
+    {
+        await MegapixelsChanged.InvokeAsync(_localMegapixels);
+        await RecalculateAndApply();
+    }
+
+    private async Task OnMultipleOfChanged()
+    {
+        await MultipleOfChanged.InvokeAsync(_localMultipleOf);
+        await RecalculateAndApply();
+    }
+
+    private async Task RecalculateAndApply()
+    {
+        int width, height;
+        if (HasSourceImage)
+        {
+            var size = WorkflowSizing.ScaleToTotalPixels(SourceImageWidth, SourceImageHeight, _localMegapixels, _localMultipleOf);
+            width = size.Width;
+            height = size.Height;
+        }
+        else
+        {
+            (width, height) = ResolutionSelectorMath.Calculate(_localAspectRatio, _localMegapixels, _localMultipleOf);
+        }
+
+        // Calculated mode is not bound by the manual slider's min/max - pass the
+        // ResolutionSelector-derived values through as-is.
+        _localWidth = width;
+        _localHeight = height;
+
+        await WidthChanged.InvokeAsync(width);
+        await HeightChanged.InvokeAsync(height);
+        await OnResolutionChanged.InvokeAsync();
     }
 }

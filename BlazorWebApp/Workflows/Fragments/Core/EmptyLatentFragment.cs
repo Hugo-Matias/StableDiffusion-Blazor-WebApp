@@ -10,6 +10,23 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class EmptyLatentFragment : IFragmentBuilder
 {
+    public Defaults DefaultValues { get; init; } = new();
+
+    /// <summary>
+    /// Workflow-level overrides for resolution constraints. Workflows that require a
+    /// specific alignment (e.g. Ideogram4 needs step=16, min=256) set these on the
+    /// fragment field declaration so the UI reflects the actual hardware constraint.
+    /// </summary>
+    public class Defaults
+    {
+        public int Width { get; init; } = 1024;
+        public int Height { get; init; } = 1024;
+        public int WidthStep { get; init; } = 8;
+        public int HeightStep { get; init; } = 8;
+        public int MinWidth { get; init; } = 64;
+        public int MinHeight { get; init; } = 64;
+    }
+
     public FragmentMetadata Metadata => new()
     {
         Id = "latent",
@@ -26,20 +43,20 @@ public class EmptyLatentFragment : IFragmentBuilder
                 Name = "width",
                 Label = "Width",
                 Type = ParameterType.Slider,
-                Min = 64,
+                Min = DefaultValues.MinWidth,
                 Max = 4096,
-                Step = 8,
-                DefaultValue = 1024
+                Step = DefaultValues.WidthStep,
+                DefaultValue = DefaultValues.Width
             },
             new FragmentParameter
             {
                 Name = "height",
                 Label = "Height",
                 Type = ParameterType.Slider,
-                Min = 64,
+                Min = DefaultValues.MinHeight,
                 Max = 4096,
-                Step = 8,
-                DefaultValue = 1024
+                Step = DefaultValues.HeightStep,
+                DefaultValue = DefaultValues.Height
             },
             new FragmentParameter
             {
@@ -82,8 +99,8 @@ public class EmptyLatentFragment : IFragmentBuilder
     {
         var fragment = parameters.GetFragment(Metadata.Id);
 
-        var width = fragment?.GetInt("width", 1024) ?? 1024;
-        var height = fragment?.GetInt("height", 1024) ?? 1024;
+        var width = fragment?.GetInt("width", DefaultValues.Width) ?? DefaultValues.Width;
+        var height = fragment?.GetInt("height", DefaultValues.Height) ?? DefaultValues.Height;
         var batchSize = fragment?.GetInt("batch_size", 1) ?? 1;
         var latentClass = fragment?.GetString("latent_class", "EmptySD3LatentImage") ?? "EmptySD3LatentImage";
 

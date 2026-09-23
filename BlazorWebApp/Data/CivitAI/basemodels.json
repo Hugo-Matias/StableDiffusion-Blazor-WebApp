@@ -84,6 +84,41 @@
       "key": "17",
       "name": "Baidu",
       "description": "Baidu's image generation models"
+    },
+    {
+      "key": "18",
+      "name": "Alibaba - Taotian",
+      "description": "Alibaba Taotian Future Life Lab's video generation models"
+    },
+    {
+      "key": "19",
+      "name": "HiDream",
+      "description": "HiDream.ai's image generation models"
+    },
+    {
+      "key": "20",
+      "name": "Krea AI",
+      "description": "Krea AI's in-house image generation models"
+    },
+    {
+      "key": "21",
+      "name": "Microsoft",
+      "description": "Microsoft's image generation and editing models"
+    },
+    {
+      "key": "22",
+      "name": "Ideogram",
+      "description": "Ideogram, Inc.'s text-to-image generation models with strong typography"
+    },
+    {
+      "key": "23",
+      "name": "Boogu",
+      "description": "Boogu's unified multimodal image generation and editing models"
+    },
+    {
+      "key": "24",
+      "name": "Reve AI",
+      "description": "Reve AI's controllable 4K text-to-image generation and editing models"
     }
   ],
   "groups": [],
@@ -102,7 +137,7 @@
     },
     {
       "name": "CogVideoX",
-      "type": "image"
+      "type": "video"
     },
     {
       "name": "Ernie",
@@ -171,8 +206,22 @@
       "familyDisplayName": "xAI"
     },
     {
+      "name": "HappyHorse",
+      "type": "video",
+      "family": "18",
+      "familyDisplayName": "Alibaba - Taotian"
+    },
+    {
       "name": "HiDream",
-      "type": "image"
+      "type": "image",
+      "family": "19",
+      "familyDisplayName": "HiDream"
+    },
+    {
+      "name": "HiDream-O1",
+      "type": "image",
+      "family": "19",
+      "familyDisplayName": "HiDream"
     },
     {
       "name": "Hunyuan 1",
@@ -185,6 +234,18 @@
       "type": "video",
       "family": "4",
       "familyDisplayName": "Tencent"
+    },
+    {
+      "name": "Ideogram 4.0",
+      "type": "image",
+      "family": "22",
+      "familyDisplayName": "Ideogram"
+    },
+    {
+      "name": "Boogu",
+      "type": "image",
+      "family": "23",
+      "familyDisplayName": "Boogu"
     },
     {
       "name": "Illustrious",
@@ -202,6 +263,12 @@
     {
       "name": "Kolors",
       "type": "image"
+    },
+    {
+      "name": "Krea 2",
+      "type": "image",
+      "family": "20",
+      "familyDisplayName": "Krea AI"
     },
     {
       "name": "LTXV",
@@ -222,8 +289,24 @@
       "familyDisplayName": "Lightricks"
     },
     {
+      "name": "Lens",
+      "type": "image"
+    },
+    {
       "name": "Lumina",
       "type": "image"
+    },
+    {
+      "name": "MageFlow",
+      "type": "image",
+      "family": "21",
+      "familyDisplayName": "Microsoft"
+    },
+    {
+      "name": "MAI",
+      "type": "image",
+      "family": "21",
+      "familyDisplayName": "Microsoft"
     },
     {
       "name": "Mochi",
@@ -407,6 +490,12 @@
       "hidden": true
     },
     {
+      "name": "Reve",
+      "type": "image",
+      "family": "24",
+      "familyDisplayName": "Reve AI"
+    },
+    {
       "name": "Seedream",
       "type": "image",
       "family": "12",
@@ -520,9 +609,8 @@
       "hidden": true
     },
     {
-      "name": "Hailuo by MiniMax",
-      "type": "video",
-      "hidden": true
+      "name": "MiniMax H3",
+      "type": "video"
     },
     {
       "name": "Kling",
@@ -534,6 +622,25 @@
     {
       "name": "Seedance",
       "type": "video",
+      "hidden": true
+    },
+    {
+      "name": "ACE Audio",
+      "type": "audio"
+    },
+    {
+      "name": "PolyGen",
+      "type": "image",
+      "hidden": true
+    },
+    {
+      "name": "Tripo",
+      "type": "image",
+      "hidden": true
+    },
+    {
+      "name": "Hunyuan3D",
+      "type": "image",
       "hidden": true
     }
   ]

@@ -146,6 +146,12 @@ public class SamplerFragment : IFragmentBuilder
         /// sampled latents. Default true preserves the standard pipeline contract.
         /// </summary>
         public bool RegisterLatentOutput { get; set; } = true;
+        /// <summary>
+        /// Enables bongmath per-step corrections in ClownsharKSampler_Beta.
+        /// Default true (original behavior). Set to false for distilled/turbo models
+        /// (e.g. Krea2 Turbo) where it causes extreme per-step slowdowns.
+        /// </summary>
+        public bool Bongmath { get; set; } = true;
     }
 
     public void Build(
@@ -225,7 +231,7 @@ public class SamplerFragment : IFragmentBuilder
                 .Input("cfg", p.Cfg)
                 .Input("seed", p.Seed)
                 .Input("sampler_mode", p.SamplerMode)
-                .Input("bongmath", true)
+                .Input("bongmath", p.Bongmath)
                 .InputRef("model", modelRef)
                 .InputRef("positive", positiveRef)
                 .InputRef("negative", negativeRef)

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 
 namespace BlazorWebApp.Models;
 
@@ -20,7 +21,14 @@ public static class FragmentParametersExtensions
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
 
-        return value?.ToString() ?? defaultValue;
+        return value switch
+        {
+            null => defaultValue,
+            JsonElement json when json.ValueKind == JsonValueKind.Null => defaultValue,
+            JsonElement json when json.ValueKind == JsonValueKind.String => json.GetString() ?? defaultValue,
+            JsonElement json => json.ToString(),
+            _ => value.ToString() ?? defaultValue
+        };
     }
 
     /// <summary>
@@ -47,13 +55,14 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value switch
         {
             int i => i,
             long l => (int)l,
             double d => (int)d,
             float f => (int)f,
+            JsonElement json when TryGetJsonInt32(json, out var jsonInt) => jsonInt,
             string s when int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) => i,
             _ => defaultValue
         };
@@ -71,13 +80,14 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value switch
         {
             double d => d,
             float f => f,
             int i => i,
             long l => l,
+            JsonElement json when TryGetJsonDouble(json, out var jsonDouble) => jsonDouble,
             string s when double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) => d,
             _ => defaultValue
         };
@@ -95,13 +105,14 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value switch
         {
             long l => l,
             int i => i,
             double d => (long)d,
             float f => (long)f,
+            JsonElement json when TryGetJsonInt64(json, out var jsonLong) => jsonLong,
             string s when long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l) => l,
             _ => defaultValue
         };
@@ -119,10 +130,11 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value switch
         {
             bool b => b,
+            JsonElement json when TryGetJsonBool(json, out var jsonBool) => jsonBool,
             string s when bool.TryParse(s, out var b) => b,
             int i => i != 0,
             long l => l != 0,
@@ -142,13 +154,14 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return defaultValue;
-        
+
         return value switch
         {
             float f => f,
             double d => (float)d,
             int i => i,
             long l => l,
+            JsonElement json when TryGetJsonDouble(json, out var jsonDouble) => (float)jsonDouble,
             string s when float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var f) => f,
             _ => defaultValue
         };
@@ -165,7 +178,7 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null)
             return;
-        
+
         fragment.Values[key] = value!;
     }
 
@@ -185,7 +198,69 @@ public static class FragmentParametersExtensions
     {
         if (fragment?.Values == null || !fragment.Values.TryGetValue(key, out var value))
             return null;
-        
+
         return value;
+    }
+
+    private static bool TryGetJsonInt32(JsonElement element, out int value)
+    {
+        value = default;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetInt32(out value),
+            JsonValueKind.String => int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value),
+            _ => false
+        };
+    }
+
+    private static bool TryGetJsonInt64(JsonElement element, out long value)
+    {
+        value = default;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetInt64(out value),
+            JsonValueKind.String => long.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value),
+            _ => false
+        };
+    }
+
+    private static bool TryGetJsonDouble(JsonElement element, out double value)
+    {
+        value = default;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetDouble(out value),
+            JsonValueKind.String => double.TryParse(element.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value),
+            _ => false
+        };
+    }
+
+    private static bool TryGetJsonBool(JsonElement element, out bool value)
+    {
+        if (element.ValueKind == JsonValueKind.True)
+        {
+            value = true;
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.False)
+        {
+            value = false;
+            return true;
+        }
+
+        value = default;
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => bool.TryParse(element.GetString(), out value),
+            JsonValueKind.Number when element.TryGetInt64(out var number) => SetBoolFromNumber(number, out value),
+            _ => false
+        };
+    }
+
+    private static bool SetBoolFromNumber(long number, out bool value)
+    {
+        value = number != 0;
+        return true;
     }
 }

@@ -144,6 +144,13 @@
                 <MudNumericField T="int" Label="Every Nth" Variant="Variant.Text" Dense="true" Min="1" Max="10000"
                                  Step="1" Value="@_localSelectEveryNth" ValueChanged="SetSelectEveryNth" />
             </MudItem>
+            @if (ShowIncludeAudioToggle)
+            {
+                <MudItem xs="6" sm="4">
+                    <MudSwitch T="bool" Value="@_localIncludeAudio" ValueChanged="SetIncludeAudio" Color="Color.Primary"
+                               Label="Include Audio" />
+                </MudItem>
+            }
             <MudItem xs="12" sm="4">
                 <MudSelect T="string" Label="Format" Variant="Variant.Text" Dense="true" Value="@_localFormat"
                            ValueChanged="SetFormat" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
@@ -164,6 +171,7 @@
     [Parameter] public VideoSourceOptions? VideoOptions { get; set; }
     [Parameter] public EventCallback<VideoSourceOptions> VideoOptionsChanged { get; set; }
     [Parameter] public VideoSourceOptions? DefaultVideoOptions { get; set; }
+    [Parameter] public bool ShowIncludeAudioToggle { get; set; }
     [Parameter] public string Title { get; set; } = "Video Input";
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
@@ -239,6 +247,7 @@
     private int _localSelectEveryNth = 1;
     private string _localFormat = "AnimateDiff";
     private int _localPreviewFrameOffset;
+    private bool _localIncludeAudio;
 
     protected override void OnParametersSet()
     {
@@ -251,6 +260,7 @@
         _localSelectEveryNth = Math.Max(1, options.SelectEveryNth);
         _localFormat = string.IsNullOrWhiteSpace(options.Format) ? "AnimateDiff" : options.Format;
         _localPreviewFrameOffset = Math.Clamp(options.PreviewFrameOffset, 0, PreviewFrameMax);
+        _localIncludeAudio = options.IncludeAudio;
         ClampFrameControls();
     }
 
@@ -414,7 +424,8 @@
             SkipFirstFrames = _localSkipFirstFrames,
             SelectEveryNth = Math.Max(1, _localSelectEveryNth),
             Format = string.IsNullOrWhiteSpace(_localFormat) ? "AnimateDiff" : _localFormat,
-            PreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax)
+            PreviewFrameOffset = Math.Clamp(_localPreviewFrameOffset, 0, PreviewFrameMax),
+            IncludeAudio = _localIncludeAudio
         };
     }
 
@@ -529,6 +540,12 @@
     {
         _localPreviewFrameOffset = value;
         ClampFrameControls();
+        await CommitOptionsAsync();
+    }
+
+    private async Task SetIncludeAudio(bool value)
+    {
+        _localIncludeAudio = value;
         await CommitOptionsAsync();
     }
 

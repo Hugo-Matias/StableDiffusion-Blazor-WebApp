@@ -196,6 +196,16 @@
   background: rgba(var(--mud-palette-error-rgb), 0.2);
 }
 
+.generate-btn {
+  color: var(--mud-palette-success);
+  background: rgba(var(--mud-palette-success-rgb), 0.15);
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: var(--mud-palette-success);
+  color: var(--mud-palette-success-text);
+}
+
 /* Slideshow controls */
 .slideshow-controls {
   display: flex;

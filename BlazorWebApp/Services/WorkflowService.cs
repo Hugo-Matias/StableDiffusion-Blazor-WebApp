@@ -169,7 +169,8 @@ namespace BlazorWebApp.Services
                     Required = s.Required,
                     AllowMultiple = s.AllowMultiple,
                     Parameter = s.Parameter,
-                    DefaultVideoOptions = s.DefaultVideoOptions?.Clone()
+                    DefaultVideoOptions = s.DefaultVideoOptions?.Clone(),
+                    ShowIncludeAudioToggle = s.ShowIncludeAudioToggle
                 }).ToList(),
                 CompatibleResourceBaseModels = metadata.CompatibleResourceBaseModels.Count > 0
                     ? metadata.CompatibleResourceBaseModels

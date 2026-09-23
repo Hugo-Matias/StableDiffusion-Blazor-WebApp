@@ -61,6 +61,7 @@ public class PromptSendToService : IPromptSendToService
         ModeType.Txt2Img => "fa-solid fa-font",
         ModeType.Img2Img => "fa-solid fa-image",
         ModeType.Img2Vid => "fa-solid fa-video",
+        ModeType.Ref2Vid => "fa-solid fa-photo-film",
         ModeType.Extras => "fa-solid fa-panorama",
         _ => "fa-solid fa-circle"
     };
@@ -70,6 +71,7 @@ public class PromptSendToService : IPromptSendToService
         ModeType.Txt2Img => "mode-txt2img",
         ModeType.Img2Img => "mode-img2img",
         ModeType.Img2Vid => "mode-img2vid",
+        ModeType.Ref2Vid => "mode-img2vid",
         ModeType.Extras => "mode-extras",
         _ => ""
     };

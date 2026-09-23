@@ -28,6 +28,12 @@ namespace BlazorWebApp.Services
             _db = db;
             _state = state;
             _events = events;
+            _events.Subscribe<ImageRecordDeletedEventArgs>(OnImageRecordDeleted);
+        }
+
+        private void OnImageRecordDeleted(ImageRecordDeletedEventArgs args)
+        {
+            RemoveSelectedImage(args.ImageId);
         }
 
         /// <summary>

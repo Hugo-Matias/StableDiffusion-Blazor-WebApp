@@ -1,5 +1,6 @@
 @using BlazorWebApp.Data.Dtos.Ollama
 @using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
 @inject OllamaService OllamaAPI
 @inject IDatabaseService DB
 @inject IStateService State
@@ -135,13 +136,13 @@
         try
         {
             _templates = await DB.GetSystemPromptTemplates();
-            
+
             if (_templates != null && _templates.Any())
             {
                 // Select appropriate default template based on IsNegativePrompt
                 var defaultTemplate = _templates.FirstOrDefault(t =>
                     t.IsDefault && t.Name.Contains(IsNegativePrompt ? "Negative" : "Enhance"));
-                
+
                 if (defaultTemplate != null)
                 {
                     _selectedTemplateId = defaultTemplate.Id;
@@ -207,11 +208,14 @@
 
         try
         {
-            // Get messages from selected template and replace {prompt} placeholder
+            // Get messages from selected template and replace {prompt} and {aspect_ratio} placeholders
+            var aspectRatio = ComputeAspectRatio();
             var messages = _selectedTemplate.Messages.Select(m => new OllamaChatMessage
             {
                 Role = m.Role,
-                Content = m.Content?.Replace("{prompt}", _currentPrompt) ?? ""
+                Content = m.Content
+                    ?.Replace("{prompt}", _currentPrompt)
+                    ?.Replace("{aspect_ratio}", aspectRatio) ?? ""
             }).ToList();
 
             var response = await OllamaAPI.SendChatMessage(
@@ -258,4 +262,24 @@
         _currentEnhancedPrompt = string.Empty;
         await State.SaveState();
     }
+
+    private string ComputeAspectRatio()
+    {
+        foreach (var fragment in State.GenerationParameters.Fragments.Values)
+        {
+            if (fragment.HasValue(FragmentKeys.Params.Width) && fragment.HasValue(FragmentKeys.Params.Height))
+            {
+                var width = fragment.GetInt(FragmentKeys.Params.Width);
+                var height = fragment.GetInt(FragmentKeys.Params.Height);
+                if (width > 0 && height > 0)
+                {
+                    var gcd = Gcd(width, height);
+                    return $"{width / gcd}:{height / gcd}";
+                }
+            }
+        }
+        return "auto";
+    }
+
+    private static int Gcd(int a, int b) => b == 0 ? a : Gcd(b, a % b);
 }

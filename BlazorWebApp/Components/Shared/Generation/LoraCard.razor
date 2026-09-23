@@ -1,5 +1,6 @@
 ﻿@inject IResourceCacheService ResourceCache
 @inject IIOService IO
+@inject ISettingsService Settings
 
 <div class="@(_previewSrc != null ? "lora-card lora-card--banner" : "lora-card")">
     @if (_previewSrc != null)
@@ -12,7 +13,9 @@
         </div>
         <div class="lora-card-controls">
             <MudNumericField Value="Lora.Strength" ValueChanged="@(async (float v) => await OnStrengthChanged(v))"
-                             Variant="Variant.Text" Min="-5f" Max="5f" Step="0.05f" Format="N2" Margin="Margin.Dense"
+                             Variant="Variant.Text" Min="Settings.Settings.Generation.Shared.LoraWeight.Min"
+                             Max="Settings.Settings.Generation.Shared.LoraWeight.Max"
+                             Step="Settings.Settings.Generation.Shared.LoraWeight.Step" Format="N2" Margin="Margin.Dense"
                              Style="width:38px;margin:0 4px;" />
             @if (IsDualModel)
             {

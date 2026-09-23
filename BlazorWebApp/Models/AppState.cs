@@ -401,7 +401,19 @@ namespace BlazorWebApp.Models
         public AppStatePromptsLLMSceneBuilder SceneBuilder { get; set; } = new();
         public AppStatePromptsLLMWorkshop Workshop { get; set; } = new();
         public AppStatePromptsLLMWildcardForge WildcardForge { get; set; } = new();
+        public AppStatePromptsLLMPresetForge PresetForge { get; set; } = new();
         public AppStatePromptsLLMImageToPrompt ImageToPrompt { get; set; } = new();
+    }
+
+    public class AppStatePromptsLLMPresetForge
+    {
+        public string Mode { get; set; } = "simple";
+        public string Operation { get; set; } = "Generate";
+        public string Kind { get; set; } = "BuildingBlock";
+        public string Theme { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public int Count { get; set; } = 12;
+        public BlazorWebApp.Services.PresetForge.Models.PresetForgeDraft? CurrentDraft { get; set; }
     }
 
     /// <summary>
@@ -452,6 +464,12 @@ namespace BlazorWebApp.Models
         public Guid? LastWorkflowId { get; set; }
         public long LastSeed { get; set; } = 42;
         public BlazorWebApp.Services.PreviewOrientation Orientation { get; set; } = BlazorWebApp.Services.PreviewOrientation.Portrait;
+
+        /// <summary>
+        /// Controls the preview's width/height: Fast (small, quick-iteration default) or
+        /// Workflow (the selected workflow's own configured latent resolution).
+        /// </summary>
+        public BlazorWebApp.Services.WorkshopResolutionMode ResolutionMode { get; set; } = BlazorWebApp.Services.WorkshopResolutionMode.Fast;
 
         // Phase 8.6 Step 6 - preview behaviour controls.
         // UseEnhancements: when false (default), preview snapshots deactivate enhancement fragments

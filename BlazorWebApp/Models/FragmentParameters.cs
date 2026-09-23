@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -71,26 +72,26 @@ namespace BlazorWebApp.Models
             {
                 var targetType = typeof(T);
                 var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-                
+
                 // Handle numeric conversions more robustly
                 if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
                 {
                     return (T)Convert.ChangeType(value, underlyingType);
                 }
-                
+
                 // Handle string to numeric conversions
                 if (IsNumericType(underlyingType) && value is string stringValue)
                 {
                     return ParseStringToNumeric<T>(stringValue, underlyingType);
                 }
-                
+
                 // Handle string to bool
                 if (underlyingType == typeof(bool) && value is string boolString)
                 {
                     if (bool.TryParse(boolString, out var boolResult))
                         return (T)(object)boolResult;
                 }
-                
+
                 return (T)Convert.ChangeType(value, targetType);
             }
             catch
@@ -127,7 +128,7 @@ namespace BlazorWebApp.Models
         /// </summary>
         public T GetValueOrDefault<T>(string key, T defaultValue)
         {
-            if (!Values.TryGetValue(key, out var value) || value == null)
+            if (Values == null || !Values.TryGetValue(key, out var value) || value == null)
                 return defaultValue;
 
             // Direct type match
@@ -148,21 +149,83 @@ namespace BlazorWebApp.Models
             {
                 var targetType = typeof(T);
                 var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-                
+
                 // Handle numeric conversions more robustly
                 if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
                 {
-                    return (T)Convert.ChangeType(value, underlyingType);
+                    return ConvertNumericValue<T>(value, underlyingType);
                 }
-                
-                return (T)Convert.ChangeType(value, targetType);
+
+                if (IsNumericType(underlyingType) && value is string stringValue)
+                {
+                    return TryParseStringToNumeric(stringValue, underlyingType, out T parsedValue)
+                        ? parsedValue
+                        : defaultValue;
+                }
+
+                if (underlyingType == typeof(bool) && value is string boolString)
+                {
+                    return bool.TryParse(boolString, out var boolValue)
+                        ? (T)(object)boolValue
+                        : defaultValue;
+                }
+
+                return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
             }
             catch
             {
                 return defaultValue;
             }
         }
-        
+
+        private static T ConvertNumericValue<T>(object value, Type underlyingType)
+        {
+            if (underlyingType == typeof(int))
+                return (T)(object)(int)Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+            if (underlyingType == typeof(long))
+                return (T)(object)(long)Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+            return (T)Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
+        }
+
+        private static bool TryParseStringToNumeric<T>(string value, Type underlyingType, out T result)
+        {
+            result = default!;
+
+            if (underlyingType == typeof(int) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intVal))
+            {
+                result = (T)(object)intVal;
+                return true;
+            }
+
+            if (underlyingType == typeof(long) && long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longVal))
+            {
+                result = (T)(object)longVal;
+                return true;
+            }
+
+            if (underlyingType == typeof(float) && float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatVal))
+            {
+                result = (T)(object)floatVal;
+                return true;
+            }
+
+            if (underlyingType == typeof(double) && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var doubleVal))
+            {
+                result = (T)(object)doubleVal;
+                return true;
+            }
+
+            if (underlyingType == typeof(decimal) && decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalVal))
+            {
+                result = (T)(object)decimalVal;
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Checks if a type is a numeric type.
         /// </summary>
@@ -277,53 +340,53 @@ namespace BlazorWebApp.Models
                 return element.ValueKind switch
                 {
                     // String conversions
-                    JsonValueKind.String when underlyingType == typeof(string) 
+                    JsonValueKind.String when underlyingType == typeof(string)
                         => (T?)(object?)element.GetString(),
-                    
+
                     // String to numeric (JSON might have quoted numbers)
                     JsonValueKind.String when IsNumericType(underlyingType)
                         => ParseStringToNumeric<T>(element.GetString() ?? "", underlyingType),
-                    
+
                     // String to bool
                     JsonValueKind.String when underlyingType == typeof(bool)
                         => bool.TryParse(element.GetString(), out var b) ? (T?)(object?)b : default,
-                    
+
                     // Numeric to int (handles both int and long sources)
-                    JsonValueKind.Number when underlyingType == typeof(int) 
+                    JsonValueKind.Number when underlyingType == typeof(int)
                         => element.TryGetInt32(out var i32) ? (T?)(object?)i32 : (T?)(object?)(int)element.GetDouble(),
-                    
+
                     // Numeric to long
-                    JsonValueKind.Number when underlyingType == typeof(long) 
+                    JsonValueKind.Number when underlyingType == typeof(long)
                         => element.TryGetInt64(out var i64) ? (T?)(object?)i64 : (T?)(object?)(long)element.GetDouble(),
-                    
+
                     // Numeric to float
-                    JsonValueKind.Number when underlyingType == typeof(float) 
+                    JsonValueKind.Number when underlyingType == typeof(float)
                         => (T?)(object?)element.GetSingle(),
-                    
+
                     // Numeric to double
-                    JsonValueKind.Number when underlyingType == typeof(double) 
+                    JsonValueKind.Number when underlyingType == typeof(double)
                         => (T?)(object?)element.GetDouble(),
-                    
+
                     // Numeric to decimal
-                    JsonValueKind.Number when underlyingType == typeof(decimal) 
+                    JsonValueKind.Number when underlyingType == typeof(decimal)
                         => (T?)(object?)element.GetDecimal(),
-                    
+
                     // Numeric to string (for cases where we want string representation)
                     JsonValueKind.Number when underlyingType == typeof(string)
                         => (T?)(object?)element.GetRawText(),
-                    
+
                     // Boolean
-                    JsonValueKind.True or JsonValueKind.False when underlyingType == typeof(bool) 
+                    JsonValueKind.True or JsonValueKind.False when underlyingType == typeof(bool)
                         => (T?)(object?)element.GetBoolean(),
-                    
+
                     // Boolean to string
                     JsonValueKind.True or JsonValueKind.False when underlyingType == typeof(string)
                         => (T?)(object?)(element.GetBoolean() ? "true" : "false"),
-                    
+
                     // Complex objects - use full deserialization
-                    JsonValueKind.Object or JsonValueKind.Array 
+                    JsonValueKind.Object or JsonValueKind.Array
                         => JsonSerializer.Deserialize<T>(element.GetRawText()),
-                    
+
                     // Fallback
                     _ => JsonSerializer.Deserialize<T>(element.GetRawText())
                 };

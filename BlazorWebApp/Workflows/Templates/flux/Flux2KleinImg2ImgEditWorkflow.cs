@@ -30,6 +30,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
 
     // Settings fragments
     private readonly ReferenceLatentSettingsFragment _referenceLatentSettingsFragment = new();
+    private readonly PresetConditioningFragment _presetConditioningFragment = new();
 
     // Enhancement fragments
     private readonly SeedVR2UpscaleFragment _seedVR2UpscaleFragment = new();
@@ -92,6 +93,7 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
     {
         yield return _promptsFragment;
         yield return _samplerCustomAdvancedFragment;
+        yield return _presetConditioningFragment;
         yield return _referenceLatentSettingsFragment;
         yield return _seedVR2UpscaleFragment;
         yield return _ultimateSdUpscaleFragment;
@@ -144,11 +146,15 @@ public class Flux2KleinImg2ImgEditWorkflow : IWorkflowBuilder
         _loraLoaderFragment.BuildAll(builder, registry, parameters.Loras);
 
         // 3. Encode prompts (reads LoRA-modified clip_output)
+        var basePositive = promptsFragment?.GetString("positive", "") ?? "";
         _promptsFragment.Build(builder, registry, new PromptsFragment.Parameters
         {
-            Positive = promptsFragment?.GetString("positive", "") ?? "",
+            Positive = basePositive,
             Negative = promptsFragment?.GetString("negative", "") ?? ""
         });
+
+        // 3b. Apply conditioning control blend and optional timing.
+        _presetConditioningFragment.Build(builder, parameters, registry);
 
         // 4. Chain reference images through ReferenceLatent
         // Each call wraps positive_output and negative_output with the encoded reference latent

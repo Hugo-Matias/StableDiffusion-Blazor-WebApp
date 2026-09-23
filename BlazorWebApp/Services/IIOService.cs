@@ -45,6 +45,6 @@ namespace BlazorWebApp.Services
         int GetFileIndex(string path, Outdir dir);
 
         // Metadata Operations
-        Task<string> ReadMetadata(string path);
+        Task<string?> ReadMetadata(string path);
     }
 }

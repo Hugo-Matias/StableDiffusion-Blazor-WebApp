@@ -1,4 +1,5 @@
 using BlazorWebApp.Models;
+using System.Text.Json;
 using Xunit;
 
 namespace BlazorWebApp.Tests.Extensions;
@@ -209,6 +210,42 @@ public class FragmentParametersExtensionsTests
 
         // Assert
         Assert.Equal(3.14159, result);
+    }
+
+    [Fact]
+    public void ExtensionAccessors_ConvertFromJsonElements()
+    {
+        using var document = JsonDocument.Parse("""
+        {
+            "text": "anchor",
+            "steps": 24,
+            "strength": 0.73,
+            "seed": 1234567890123,
+            "enabled": true,
+            "scale": 0.5
+        }
+        """);
+
+        var root = document.RootElement;
+        var fragment = new FragmentParameters
+        {
+            Values = new Dictionary<string, object?>
+            {
+                ["text"] = root.GetProperty("text").Clone(),
+                ["steps"] = root.GetProperty("steps").Clone(),
+                ["strength"] = root.GetProperty("strength").Clone(),
+                ["seed"] = root.GetProperty("seed").Clone(),
+                ["enabled"] = root.GetProperty("enabled").Clone(),
+                ["scale"] = root.GetProperty("scale").Clone()
+            }
+        };
+
+        Assert.Equal("anchor", FragmentParametersExtensions.GetString(fragment, "text"));
+        Assert.Equal(24, FragmentParametersExtensions.GetInt(fragment, "steps"));
+        Assert.Equal(0.73, FragmentParametersExtensions.GetDouble(fragment, "strength"));
+        Assert.Equal(1234567890123L, FragmentParametersExtensions.GetLong(fragment, "seed"));
+        Assert.True(FragmentParametersExtensions.GetBool(fragment, "enabled"));
+        Assert.Equal(0.5f, FragmentParametersExtensions.GetFloat(fragment, "scale"));
     }
 
     [Fact]

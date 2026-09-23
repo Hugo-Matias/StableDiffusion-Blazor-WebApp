@@ -171,6 +171,7 @@ public class MediaSendToService : IMediaSendToService
         ModeType.Img2Vid => "fa-solid fa-video",
         ModeType.Txt2Vid => "fa-solid fa-film",
         ModeType.Vid2Vid => "fa-solid fa-clapperboard",
+        ModeType.Ref2Vid => "fa-solid fa-photo-film",
         ModeType.Extras => "fa-solid fa-panorama",
         _ => "fa-solid fa-circle"
     };
@@ -182,6 +183,7 @@ public class MediaSendToService : IMediaSendToService
         ModeType.Img2Vid => "mode-img2vid",
         ModeType.Txt2Vid => "mode-img2vid",
         ModeType.Vid2Vid => "mode-img2vid",
+        ModeType.Ref2Vid => "mode-img2vid",
         ModeType.Extras => "mode-extras",
         _ => ""
     };

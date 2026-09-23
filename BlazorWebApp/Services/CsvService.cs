@@ -21,6 +21,7 @@ namespace BlazorWebApp.Services
         // Holds tags in their CSV form (underscored name + raw aliases) so consumers can decide on display formatting.
         private List<Tag>? _cachedRawTags;
         private HashSet<string>? _cachedRawNames; // exact-match lookup (underscored, lower-cased)
+        private List<TagSearchEntry>? _cachedSearchEntries;
         private readonly object _cacheLock = new();
 
         public CsvService(IBackendService backend, IConfiguration configuration, ICacheService cacheService)
@@ -45,70 +46,97 @@ namespace BlazorWebApp.Services
                 : Path.Combine(inputsRoot, "danbooru.csv");
         }
 
-        public async Task<IEnumerable<Tag>> SearchTags(string searchText, bool enableFuzzy = true)
+        public async Task<IEnumerable<Tag>> SearchTags(string searchText, bool enableFuzzy = true, int maxResults = 0)
         {
-            var rawTags = LoadRawTagsCached();
-            if (rawTags.Count == 0)
+            var searchEntries = LoadSearchEntriesCached();
+            if (searchEntries.Count == 0)
                 return Enumerable.Empty<Tag>();
 
-            searchText = searchText.Replace(" ", "_");
+            searchText = searchText.Replace(" ", "_").Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(searchText))
+                return Enumerable.Empty<Tag>();
 
-            var recentTags = _cacheService.GetRecentTags(10);
-            List<Tag> result = new();
+            var recentTags = new HashSet<string>(_cacheService.GetRecentTags(10), StringComparer.OrdinalIgnoreCase);
+            var localUsage = await _cacheService.GetLocalTagUsageSnapshot();
+            var resultLimit = maxResults > 0 ? maxResults : int.MaxValue;
+            var ranked = new List<TagSearchResult>(maxResults > 0 ? maxResults + 1 : 128);
 
-            foreach (var tag in rawTags)
+            foreach (var entry in searchEntries)
             {
-                var parsed = Parser.ParseCsvTag(tag);
-                parsed.Source = _fileName;
-
-                // Calculate fuzzy score
+                int fuzzyScore;
                 if (enableFuzzy)
                 {
-                    parsed.FuzzyScore = CalculateFuzzyScore(searchText, tag.Name, tag.Aliases, recentTags.Contains(tag.Name));
-
-                    if (parsed.FuzzyScore == 0) continue; // Skip if no match
+                    fuzzyScore = CalculateFuzzyScore(searchText, entry.NameSearch, entry.AliasSearchTerms, recentTags.Contains(entry.NameSearch));
+                    if (fuzzyScore == 0) continue;
                 }
                 else
                 {
-                    // Standard contains matching (fallback)
-                    if (!tag.Name.Contains(searchText, StringComparison.InvariantCultureIgnoreCase) &&
-                        !(tag.Aliases?.Contains(searchText, StringComparison.InvariantCultureIgnoreCase) ?? false))
+                    if (!entry.NameSearch.Contains(searchText, StringComparison.OrdinalIgnoreCase) &&
+                        !entry.AliasSearch.Contains(searchText, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    parsed.FuzzyScore = tag.Name.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase) ? 500 : 250;
+                    fuzzyScore = entry.NameSearch.StartsWith(searchText, StringComparison.OrdinalIgnoreCase) ? 500 : 250;
                 }
 
-                // Get local usage
-                var localUsage = await _cacheService.GetLocalTagUsageCount(tag.Name);
-                parsed.LocalUses = localUsage;
-                parsed.IsRecentlyUsed = recentTags.Contains(tag.Name);
-
-                result.Add(parsed);
+                var isRecentlyUsed = recentTags.Contains(entry.NameSearch);
+                var localUses = localUsage.TryGetValue(entry.NameSearch, out var usageCount) ? usageCount : 0;
+                AddRankedResult(ranked, new TagSearchResult(entry, fuzzyScore, localUses, isRecentlyUsed), resultLimit);
             }
 
-            // Multi-tier sorting:
-            // 1. Recently used tags first
-            // 2. Then by local usage
-            // 3. Then by fuzzy score
-            // 4. Finally by global popularity
-            return result
-                .OrderByDescending(t => t.IsRecentlyUsed ? 1 : 0)
-                .ThenByDescending(t => t.LocalUses)
-                .ThenByDescending(t => t.FuzzyScore)
-                .ThenByDescending(t => t.Uses);
+            ranked.Sort(CompareSearchResults);
+            return ranked.Select(MaterializeTag).ToList();
         }
 
-        private int CalculateFuzzyScore(string searchText, string tagName, string aliases, bool isRecent)
+        private void AddRankedResult(List<TagSearchResult> results, TagSearchResult candidate, int limit)
+        {
+            if (limit == int.MaxValue)
+            {
+                results.Add(candidate);
+                return;
+            }
+
+            results.Add(candidate);
+            results.Sort(CompareSearchResults);
+            if (results.Count > limit)
+                results.RemoveAt(results.Count - 1);
+        }
+
+        private static int CompareSearchResults(TagSearchResult left, TagSearchResult right)
+        {
+            var recentComparison = right.IsRecentlyUsed.CompareTo(left.IsRecentlyUsed);
+            if (recentComparison != 0) return recentComparison;
+
+            var localUsageComparison = right.LocalUses.CompareTo(left.LocalUses);
+            if (localUsageComparison != 0) return localUsageComparison;
+
+            var fuzzyComparison = right.FuzzyScore.CompareTo(left.FuzzyScore);
+            if (fuzzyComparison != 0) return fuzzyComparison;
+
+            return right.Entry.Uses.CompareTo(left.Entry.Uses);
+        }
+
+        private Tag MaterializeTag(TagSearchResult result) => new()
+        {
+            Name = result.Entry.DisplayName,
+            Aliases = result.Entry.DisplayAliases,
+            Color = result.Entry.Color,
+            Uses = result.Entry.Uses,
+            Source = _fileName,
+            LocalUses = result.LocalUses,
+            IsRecentlyUsed = result.IsRecentlyUsed,
+            FuzzyScore = result.FuzzyScore
+        };
+
+        private int CalculateFuzzyScore(string searchText, string tagName, IReadOnlyList<string> aliases, bool isRecent)
         {
             int score = _cacheService.CalculateFuzzyScore(searchText, tagName);
 
             // Check aliases
-            if (!string.IsNullOrWhiteSpace(aliases) && score < 500)
+            if (aliases.Count > 0 && score < 500)
             {
-                var aliasesList = aliases.ToLowerInvariant().Replace("\"", "").Split(',');
-                foreach (var alias in aliasesList)
+                foreach (var alias in aliases)
                 {
-                    int aliasScore = _cacheService.CalculateFuzzyScore(searchText, alias.Trim());
+                    int aliasScore = _cacheService.CalculateFuzzyScore(searchText, alias);
                     score = Math.Max(score, aliasScore - 50); // Slight penalty for alias match
                 }
             }
@@ -145,6 +173,13 @@ namespace BlazorWebApp.Services
         /// </summary>
         public IReadOnlyList<Tag> GetAllTagsCached() => LoadRawTagsCached();
 
+        private List<TagSearchEntry> LoadSearchEntriesCached()
+        {
+            if (_cachedSearchEntries != null) return _cachedSearchEntries;
+            LoadRawTagsCached();
+            return _cachedSearchEntries!;
+        }
+
         private List<Tag> LoadRawTagsCached()
         {
             if (_cachedRawTags != null) return _cachedRawTags;
@@ -165,6 +200,7 @@ namespace BlazorWebApp.Services
                 {
                     _cachedRawTags = new List<Tag>();
                     _cachedRawNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    _cachedSearchEntries = new List<TagSearchEntry>();
                     return _cachedRawTags;
                 }
 
@@ -178,8 +214,28 @@ namespace BlazorWebApp.Services
                     Source = _fileName
                 }).ToList();
                 _cachedRawNames = new HashSet<string>(_cachedRawTags.Select(t => t.Name.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
+                _cachedSearchEntries = _cachedRawTags.Select(CreateSearchEntry).ToList();
                 return _cachedRawTags;
             }
+        }
+
+        private TagSearchEntry CreateSearchEntry(Tag tag)
+        {
+            var aliasSearch = tag.Aliases?.ToLowerInvariant().Replace("\"", string.Empty) ?? string.Empty;
+            var aliasTerms = aliasSearch
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                .ToArray();
+
+            return new TagSearchEntry(
+                tag.Name,
+                tag.Name.ToLowerInvariant(),
+                tag.Name.Replace("_", " "),
+                tag.Aliases?.Replace("_", " ") ?? string.Empty,
+                aliasSearch,
+                aliasTerms,
+                tag.Color,
+                tag.Uses);
         }
 
         private HashSet<string> LoadRawNamesCached()
@@ -188,5 +244,17 @@ namespace BlazorWebApp.Services
             LoadRawTagsCached();
             return _cachedRawNames!;
         }
+
+        private sealed record TagSearchEntry(
+            string RawName,
+            string NameSearch,
+            string DisplayName,
+            string DisplayAliases,
+            string AliasSearch,
+            IReadOnlyList<string> AliasSearchTerms,
+            int Color,
+            int Uses);
+
+        private sealed record TagSearchResult(TagSearchEntry Entry, int FuzzyScore, int LocalUses, bool IsRecentlyUsed);
     }
 }

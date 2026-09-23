@@ -1,10 +1,10 @@
 @*
     PromptsForm - Form for prompt input
-    
-    Replaces the generic PromptFields<T> with a simpler string-based API.
+
+Replaces the generic PromptFields<T> with a simpler string-based API.
     Handles: prompt, negative prompt, styles, LoRAs, generate button
-    
-    Note: LoRA and Style selections are emitted via callbacks to parent component.
+
+Note: LoRA and Style selections are emitted via callbacks to parent component.
 *@
 @using System.Text.Json
 @using static BlazorWebApp.Data.Enums
@@ -160,15 +160,23 @@
                         </div>
                     </div>
                 </MudTabPanel>
-                @* Styles tab: search + inline apply button, then a checkable list. *@
+                @* Styles tab: search + filter toolbar + checkable list with metadata. *@
                 <MudTabPanel Text="@GetStylesTabLabel()">
                     <div class="styles-panel">
                         <div class="styles-search-row">
-                            <MudTextField @bind-Value="_stylesSearchText" Placeholder="Search styles..."
-                                          Immediate="true" Variant="Variant.Text" Adornment="Adornment.Start"
+                            <MudTextField Value="@_stylesSearchText"
+                                          ValueChanged="@((string v) => { _stylesSearchText = v; InvalidateStylesCache(); })"
+                                          Placeholder="Search styles..." Immediate="true" Variant="Variant.Text"
+                                          DebounceInterval="200" Adornment="Adornment.Start"
                                           AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Class="styles-search" />
                             @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
                             {
+                                <MudTooltip Delay="800" Duration="400" Text="@GetStyleFallbackModeTooltip()"
+                                            Placement="Placement.Top">
+                                    <MudToggleIconButton @bind-Toggled="PrependStylesWithoutPromptPlaceholder"
+                                                         Icon="fa-solid fa-arrow-right" ToggledIcon="fa-solid fa-arrow-left"
+                                                         Size="Size.Small" Color="Color.Default" ToggledColor="Color.Info" />
+                                </MudTooltip>
                                 <MudTooltip Delay="800" Duration="400"
                                             Text="Write selected styles to the prompts and clear the list."
                                             Placement="Placement.Top">
@@ -177,66 +185,113 @@
                                 </MudTooltip>
                             }
                         </div>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudSelect T="string" Value="@_stylesCategoryFilter"
+                                       ValueChanged="@((v) => { _stylesCategoryFilter = v; _stylesTagsFilter.Clear(); InvalidateStylesCache(); })"
+                                       Placeholder="Category" Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
+                                       Clearable="true" Style="flex: 1; min-width: 0;">
+                                @foreach (var cat in GetStyleCategories())
+                                {
+                                    <MudSelectItem T="string" Value="@cat">@cat</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudSelect T="string" MultiSelection="true" SelectedValues="@_stylesTagsFilter"
+                                       SelectedValuesChanged="@((v) => { _stylesTagsFilter = v.ToHashSet(); InvalidateStylesCache(); })"
+                                       Placeholder="Tags" Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
+                                       Clearable="true" Style="flex: 1; min-width: 0;">
+                                @foreach (var tag in GetStyleTags())
+                                {
+                                    <MudSelectItem T="string" Value="@tag">@tag</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTooltip Text="Show favorites only" Placement="Placement.Top" Delay="600">
+                                <MudIconButton
+                                Icon="@(_stylesFavFilter ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                                Color="@(_stylesFavFilter ? Color.Error : Color.Default)" Size="Size.Small"
+                                OnClick="@(() => { _stylesFavFilter = !_stylesFavFilter; InvalidateStylesCache(); })" />
+                            </MudTooltip>
+                        </MudStack>
                         <div class="styles-list">
-                            @foreach (var style in GetFilteredStyles())
-                            {
-                                var isSelected = IsStyleSelected(style);
-                                <div class="style-row @(isSelected ? "selected" : "")" @onclick="() => ToggleStyle(style)">
-                                    <MudCheckBox T="bool" Value="isSelected" Dense="true" Size="Size.Small"
-                                                 ReadOnly="true" />
-                                    <span class="style-name">@style.Name</span>
-                                </div>
-                            }
+                            <Virtualize TItem="IReadOnlyList<PromptStyle>" Items="@GetFilteredStyleRows()"
+                                        Context="stylePair" OverscanCount="8" ItemSize="36">
+                                <div class="styles-list-row">
+                                    @foreach (var style in stylePair)
+                                    {
+                                        var isSelected = IsStyleSelected(style);
+                                        <div @key="style.Name" class="style-row style-cell @(isSelected ? "selected" : "")"
+                                             @onclick="() => ToggleStyle(style)">
+                                            <MudCheckBox T="bool" Value="isSelected" Dense="true" Size="Size.Small"
+                                                         ReadOnly="true" />
+                                            <span class="style-name">@style.Name</span>
+                                            @if (!string.IsNullOrEmpty(style.Category))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default"
+                                                         Variant="Variant.Text" Class="style-category-chip" DisableRipple="true">
+                                                    @style.Category</MudChip>
+                                                }
+                                                @if (style.IsFavorite)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small"
+                                                             Color="Color.Error" Class="style-fav-icon" />
+                                                }
+                                            </div>
+                                        }
+                                        @if (stylePair.Count == 1)
+                                        {
+                                            <div class="style-cell style-cell-placeholder"></div>
+                                        }
+                                    </div>
+                                </Virtualize>
+                            </div>
+                        </div>
+                    </MudTabPanel>
+                </MudTabs>
+
+                @* LLM Instruction Row - Inline prompt editing via chat edit *@
+                <MudCollapse Expanded="@_showLLMInstruction">
+                    <div class="llm-instruction-row">
+                        <div class="llm-instruction-field" @ref="_llmInstructionFieldRef">
+                            <MudTextField @bind-Value="_llmInstruction"
+                                          Placeholder="Type instruction to modify the prompt - Enter to send, Shift+Enter for newline"
+                                          Variant="Variant.Text" Lines="1" AutoGrow="true" MaxLines="3" Disabled="@_isProcessingLLM"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(_isProcessingLLM ? null : Icons.Material.Filled.Send)"
+                                          AdornmentColor="Color.Primary" OnAdornmentClick="HandleLLMInstructionSend"
+                                          OnKeyDown="HandleLLMInstructionKeyDown" Class="llm-instruction-input" />
+                        </div>
+                        <div class="llm-instruction-verbosity">
+                            <MudTooltip Text="@GetVerbosityTooltip()" Placement="Placement.Top">
+                                <MudSlider T="int" Value="@((int)State.State.Generation.LLM.Verbosity)"
+                                           ValueChanged="HandleVerbosityChanged" Min="0" Max="3" Step="1" Variant="Variant.Filled"
+                                           Size="Size.Small" Disabled="@_isProcessingLLM" Class="verbosity-slider">
+                                    <small>@ChatEditPromptBuilder.ToLabel(State.State.Generation.LLM.Verbosity)</small>
+                                </MudSlider>
+                            </MudTooltip>
                         </div>
                     </div>
-                </MudTabPanel>
-            </MudTabs>
+                </MudCollapse>
 
-            @* LLM Instruction Row - Inline prompt editing via chat edit *@
-            <MudCollapse Expanded="@_showLLMInstruction">
-                <div class="llm-instruction-row">
-                    <div class="llm-instruction-field" @ref="_llmInstructionFieldRef">
-                        <MudTextField @bind-Value="_llmInstruction"
-                                      Placeholder="Type instruction to modify the prompt - Enter to send, Shift+Enter for newline"
-                                      Variant="Variant.Text" Lines="1" AutoGrow="true" MaxLines="3" Disabled="@_isProcessingLLM"
-                                      Adornment="Adornment.End"
-                                      AdornmentIcon="@(_isProcessingLLM ? null : Icons.Material.Filled.Send)"
-                                      AdornmentColor="Color.Primary" OnAdornmentClick="HandleLLMInstructionSend"
-                                      OnKeyDown="HandleLLMInstructionKeyDown" Class="llm-instruction-input" />
-                    </div>
-                    <div class="llm-instruction-verbosity">
-                        <MudTooltip Text="@GetVerbosityTooltip()" Placement="Placement.Top">
-                            <MudSlider T="int" Value="@((int)State.State.Generation.LLM.Verbosity)"
-                                       ValueChanged="HandleVerbosityChanged" Min="0" Max="3" Step="1" Variant="Variant.Filled"
-                                       Size="Size.Small" Disabled="@_isProcessingLLM" Class="verbosity-slider">
-                                <small>@ChatEditPromptBuilder.ToLabel(State.State.Generation.LLM.Verbosity)</small>
-                            </MudSlider>
-                        </MudTooltip>
-                    </div>
-                </div>
-            </MudCollapse>
+                @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
+                {
+                    <MudChipSet Class="applied-styles-chips" AllClosable="true" OnClose="HandleAppliedChipClosed">
+                        @foreach (var style in State.GenerationParameters.Styles)
+                        {
+                            <MudChip Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Value="@style">@style.Name
+                            </MudChip>
+                        }
+                    </MudChipSet>
+                }
+            </MudStack>
 
-            @if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
-            {
-                <MudChipSet Class="applied-styles-chips" AllClosable="true" OnClose="HandleAppliedChipClosed">
-                    @foreach (var style in State.GenerationParameters.Styles)
-                    {
-                        <MudChip Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Value="@style">@style.Name
-                        </MudChip>
-                    }
-                </MudChipSet>
-            }
-        </MudStack>
-
-        @* Sticky split Generate button that overlaps the paper's bottom edge
-           for a distinctive focal point. Padding-bottom is added to the paper
-           so neither the styles row above nor the button itself cover content. *@
-        <div class="gen-btn-sticky">
-            <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnClearQueue="OnClearQueue"
-                            OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
-        </div>
-    </MudPaper>
-</div>
+            @* Sticky split Generate button that overlaps the paper's bottom edge
+   for a distinctive focal point. Padding-bottom is added to the paper
+   so neither the styles row above nor the button itself cover content. *@
+            <div class="gen-btn-sticky">
+                <GenerateButton @ref="_generateButtonRef" OnGenerateClicked="OnGenerate" OnClearQueue="OnClearQueue"
+                                OnInterrupt="OnInterrupt" IsDisabled="ButtonDisabled" />
+            </div>
+        </MudPaper>
+    </div>
 
 <TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)"
            ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
@@ -246,29 +301,29 @@
 
 @code {
     #region Parameters
-    
+
     /// <summary>
     /// Fragment ID this form is associated with.
     /// </summary>
     [Parameter] public string FragmentId { get; set; } = "prompts";
-    
+
     /// <summary>
     /// Current prompt value.
     /// </summary>
     [Parameter] public string? Prompt { get; set; }
     [Parameter] public EventCallback<string> PromptChanged { get; set; }
-    
+
     /// <summary>
     /// Current negative prompt value.
     /// </summary>
     [Parameter] public string? NegativePrompt { get; set; }
     [Parameter] public EventCallback<string> NegativePromptChanged { get; set; }
-    
+
     /// <summary>
     /// Called when generate button is clicked.
     /// </summary>
     [Parameter] public EventCallback OnGenerate { get; set; }
-    
+
     /// <summary>
     /// Called when the user clears the remaining queued prompts.
     /// </summary>
@@ -278,57 +333,65 @@
     /// Called when interrupt button is clicked.
     /// </summary>
     [Parameter] public EventCallback OnInterrupt { get; set; }
-    
+
     /// <summary>
     /// Called when styles selection changes.
     /// </summary>
     [Parameter] public EventCallback OnStylesChanged { get; set; }
-    
+
     /// <summary>
     /// Called when a LoRA is selected from autocomplete.
     /// Parent should add to its LoRA list.
     /// </summary>
     [Parameter] public EventCallback<Lora> OnLoraSelected { get; set; }
-    
+
     /// <summary>
     /// Called when tags are appended to the prompt.
     /// </summary>
     [Parameter] public EventCallback<AppendedTags> OnPromptTagAppended { get; set; }
-    
+
     /// <summary>
     /// Called when tags are appended to the negative prompt.
     /// </summary>
     [Parameter] public EventCallback<AppendedTags> OnNegativePromptTagAppended { get; set; }
-    
+
     /// <summary>
     /// Whether the generate button is disabled.
     /// </summary>
     [Parameter] public bool ButtonDisabled { get; set; }
-    
+
     /// <summary>
     /// Reference to the prompt drawer (can be set externally).
     /// </summary>
     [Parameter] public TagDrawer? PromptDrawer { get; set; }
-    
+
     /// <summary>
     /// Reference to the negative prompt drawer (can be set externally).
     /// </summary>
     [Parameter] public TagDrawer? NegativePromptDrawer { get; set; }
-    
+
     /// <summary>
     /// Optional callback when any value changes.
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
-    
+
     #endregion
-    
+
     #region Private Fields
 
     private int _activePromptTab = 0;
     private bool _isConverging = false;
-    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen };
+    private List<ModelBase> _disableNegativeBases = new() { ModelBase.Flux, ModelBase.Qwen, ModelBase.Ideogram,
+ModelBase.MiniMax };
     private List<PromptStyle>? _availableStyles;
+    private List<PromptStyle>? _cachedFilteredStyles;
+    private ICollection<IReadOnlyList<PromptStyle>>? _cachedFilteredStyleRows;
+    private List<string>? _cachedStyleTags;
+    private List<string>? _cachedStyleCategories;
     private string _stylesSearchText = string.Empty;
+    private bool _stylesFavFilter = false;
+    private string? _stylesCategoryFilter = null;
+    private HashSet<string> _stylesTagsFilter = new();
     private PromptButton? _buttonTags;
     private ElementReference _containerRef;
     private GenerateButton? _generateButtonRef;
@@ -339,6 +402,13 @@
     private bool _showLLMInstruction = false;
     private string _lastPromptForHistory = string.Empty;
     private string _lastNegativePromptForHistory = string.Empty;
+
+    private bool PrependStylesWithoutPromptPlaceholder
+    {
+        get => State.GenerationParameters.StyleFallbackMode == PromptApplicationMode.Prepend;
+        set => State.GenerationParameters.StyleFallbackMode = value ? PromptApplicationMode.Prepend :
+PromptApplicationMode.Append;
+    }
 
     private void ScheduleCurrent()
     {
@@ -358,23 +428,21 @@
     private IJSObjectReference? _jsModule;
     private DotNetObjectReference<PromptsForm>? _dotNetRef;
     private ElementReference _llmInstructionFieldRef;
-    
+
     #endregion
-    
+
     #region Lifecycle
-    
+
     protected override async Task OnInitializedAsync()
     {
         // Load button tags from IOService
         LoadButtonTags();
-        
+
         // Load styles from database
         await LoadStyles();
-        
+
         _dotNetRef = DotNetObjectReference.Create(this);
-        
-        // Subscribe to state changes to update styles when they're loaded
-        Events.Subscribe<StateChangedEventArgs>(HandleStateChanged);
+
         Events.Subscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
 
         // Initialize prompt history with current state
@@ -397,7 +465,7 @@
                 // Keyboard shortcut initialization failed, but component still works
             }
         }
-        
+
         // Attach Enter-to-send handler when LLM instruction panel is visible
         if (_showLLMInstruction && _jsModule != null)
         {
@@ -411,17 +479,17 @@
             }
         }
     }
-    
+
     #endregion
-    
+
     #region Event Handlers
-    
+
     private async Task HandlePromptValueChanged(string value)
     {
         await PromptChanged.InvokeAsync(value);
         await OnChanged.InvokeAsync();
     }
-    
+
     private async Task HandleNegativePromptValueChanged(string value)
     {
         await NegativePromptChanged.InvokeAsync(value);
@@ -445,7 +513,7 @@
         PushToHistory();
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Handles LoRA selection from autocomplete trigger.
     /// Emits to parent to add to LoRA list.
@@ -463,7 +531,7 @@
     {
         // Get current styles or initialize empty list
         var currentStyles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
-        
+
         // Check if style already exists (avoid duplicates)
         if (!currentStyles.Any(s => s.Name.Equals(style.Name, StringComparison.OrdinalIgnoreCase)))
         {
@@ -498,7 +566,7 @@
     {
         await OnPromptTagAppended.InvokeAsync(tags);
     }
-    
+
     private async Task HandleNegativePromptTagAppended(AppendedTags tags)
     {
         await OnNegativePromptTagAppended.InvokeAsync(tags);
@@ -508,20 +576,33 @@
     {
         // Apply styles to current prompts and emit new values
         var styles = State.GenerationParameters.Styles?.ToList() ?? new List<PromptStyle>();
-        
+
         if (styles.Any())
         {
-            var newPrompt = Prompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(), false);
-            var newNegative = NegativePrompt.ParseStyles(styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(),
-true);
-            
+            var fallbackMode = State.GenerationParameters.StyleFallbackMode;
+            var newPrompt = Prompt.ParseStyles(
+                styles.Where(s => !string.IsNullOrWhiteSpace(s.Prompt)).ToList(),
+                false,
+                fallbackMode);
+            var newNegative = NegativePrompt.ParseStyles(
+                styles.Where(s => !string.IsNullOrWhiteSpace(s.NegativePrompt)).ToList(),
+                true,
+                fallbackMode);
+
             await PromptChanged.InvokeAsync(newPrompt);
             await NegativePromptChanged.InvokeAsync(newNegative);
             await OnChanged.InvokeAsync();
-            
+
             // Clear styles after writing
             await HandleStylesSelectionChanged(Array.Empty<PromptStyle>());
         }
+    }
+
+    private string GetStyleFallbackModeTooltip()
+    {
+        return PrependStylesWithoutPromptPlaceholder
+            ? "Styles without {prompt} are prepended before the current prompt."
+            : "Styles without {prompt} are appended after the current prompt.";
     }
 
     private async Task HandleAutocompleteChanged(bool value)
@@ -537,11 +618,11 @@ true);
         await State.SaveState();
         StateHasChanged();
     }
-    
+
     #endregion
-    
+
     #region State & Styles
-    
+
     private async Task LoadStyles()
     {
         try
@@ -549,15 +630,19 @@ true);
             // Load prompts from database and convert to styles
             var promptResources = await DB.GetPrompts();
             var styles = new List<PromptStyle>();
-            
+
             foreach (var prompt in promptResources)
             {
                 styles.Add(new PromptStyle(prompt));
             }
-            
+
             // Update available styles list
             _availableStyles = styles;
-            
+            _cachedFilteredStyles = null;
+            _cachedFilteredStyleRows = null;
+            _cachedStyleTags = null;
+            _cachedStyleCategories = null;
+
             // If there are currently selected styles in state, preserve them if they still exist
             if (State.GenerationParameters.Styles != null && State.GenerationParameters.Styles.Any())
             {
@@ -578,20 +663,13 @@ true);
         }
     }
 
-    private async void HandleStateChanged(StateChangedEventArgs args)
-    {
-        // Reload styles from database when state changes (in case new prompts were added)
-        await LoadStyles();
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async void HandleStylesChangedEvent(StylesChangedEventArgs args)
     {
-        // Skip reload if this was triggered by our own LoadStyles (would cause infinite recursion)
-        // Only reload when external changes happen (e.g., prompts added/updated/deleted from other components)
-        if (args.ChangeType == "Loaded")
+        // Only catalog edits need a database reload. Prompt applications and LoRA edits
+        // update prompt state but do not change the available style list.
+        if (args.ChangeType is "Loaded" or "PromptApplied" or "LorasUpdated")
             return;
-            
+
         // Reload styles from database when prompts are added/updated/deleted
         await LoadStyles();
         await InvokeAsync(StateHasChanged);
@@ -613,9 +691,9 @@ true
             _buttonTags = null;
         }
     }
-    
+
     #endregion
-    
+
     #region LLM Instruction Handling
 
     /// <summary>
@@ -654,7 +732,7 @@ true
 
             // Determine which prompt to edit based on active tab
             var currentPrompt = _activePromptTab == 1 ? (NegativePrompt ?? string.Empty) : (Prompt ?? string.Empty);
-            
+
             if (string.IsNullOrWhiteSpace(currentPrompt))
             {
                 Snackbar.Add("No prompt to edit. Please enter a prompt first.", Severity.Warning);
@@ -691,7 +769,7 @@ true
 
             // Clear the instruction field
             _llmInstruction = string.Empty;
-            
+
             Snackbar.Add("Prompt updated successfully", Severity.Success);
         }
         catch (Exception ex)
@@ -797,7 +875,7 @@ true
     }
 
     #endregion
-    
+
     #region Keyboard Shortcuts
 
     [JSInvokable]
@@ -875,9 +953,17 @@ true
     /// Returns the filtered list of available styles based on the search text.
     /// Empty-prompt styles are skipped. Matching is case-insensitive on the Name.
     /// </summary>
-    private IEnumerable<PromptStyle> GetFilteredStyles()
+    private void InvalidateStylesCache()
     {
-        if (_availableStyles == null) return Enumerable.Empty<PromptStyle>();
+        _cachedFilteredStyles = null;
+        _cachedFilteredStyleRows = null;
+        _cachedStyleTags = null;
+    }
+
+    private List<PromptStyle> GetFilteredStyles()
+    {
+        if (_cachedFilteredStyles != null) return _cachedFilteredStyles;
+        if (_availableStyles == null) return (_cachedFilteredStyles = new List<PromptStyle>());
 
         var query = _availableStyles
             .Where(s => !(string.IsNullOrWhiteSpace(s.Prompt) && string.IsNullOrWhiteSpace(s.NegativePrompt)));
@@ -889,7 +975,56 @@ true
                 && s.Name.Contains(needle, StringComparison.OrdinalIgnoreCase));
         }
 
-        return query.OrderBy(s => s.Name);
+        if (_stylesFavFilter)
+            query = query.Where(s => s.IsFavorite);
+
+        if (!string.IsNullOrEmpty(_stylesCategoryFilter))
+            query = query.Where(s => s.Category == _stylesCategoryFilter);
+
+        if (_stylesTagsFilter.Count > 0)
+            query = query.Where(s => s.Tags != null && _stylesTagsFilter.All(t => s.Tags.Contains(t)));
+
+        return (_cachedFilteredStyles = query.OrderBy(s => s.Name).ToList());
+    }
+
+    private ICollection<IReadOnlyList<PromptStyle>> GetFilteredStyleRows()
+    {
+        if (_cachedFilteredStyleRows != null) return _cachedFilteredStyleRows;
+
+        var styles = GetFilteredStyles();
+        var rows = new List<IReadOnlyList<PromptStyle>>((styles.Count + 1) / 2);
+
+        for (var index = 0; index < styles.Count; index += 2)
+        {
+            rows.Add(index + 1 < styles.Count
+                ? new[] { styles[index], styles[index + 1] }
+                : new[] { styles[index] });
+        }
+
+        return _cachedFilteredStyleRows = rows;
+    }
+
+    private IEnumerable<string> GetStyleCategories()
+    {
+        if (_cachedStyleCategories != null) return _cachedStyleCategories;
+        return (_cachedStyleCategories = _availableStyles
+            ?.Where(s => !string.IsNullOrEmpty(s.Category))
+            .Select(s => s.Category!)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList() ?? new List<string>());
+    }
+
+    private IEnumerable<string> GetStyleTags()
+    {
+        if (_cachedStyleTags != null) return _cachedStyleTags;
+        return (_cachedStyleTags = GetFilteredStyles()
+            .Where(s => s.Tags != null)
+            .SelectMany(s => s.Tags!)
+            .GroupBy(t => t)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .ToList());
     }
 
     private bool IsStyleSelected(PromptStyle style)
@@ -930,25 +1065,24 @@ true
     }
 
     #endregion
-    
+
     #region Dispose
-    
+
     public void Dispose()
     {
-        Events.Unsubscribe<StateChangedEventArgs>(HandleStateChanged);
         Events.Unsubscribe<StylesChangedEventArgs>(HandleStylesChangedEvent);
     }
 
     public async ValueTask DisposeAsync()
     {
         Dispose();
-        
+
         _dotNetRef?.Dispose();
         if (_jsModule != null)
         {
             await _jsModule.DisposeAsync();
         }
     }
-    
+
     #endregion
 }

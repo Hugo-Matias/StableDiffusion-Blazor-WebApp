@@ -46,6 +46,7 @@ namespace BlazorWebApp.Services
             List<DanbooruTag> tags,
             int batchSize,
             bool skipExisting,
+            bool useCoTags,
             CancellationToken ct,
             Func<Task>? onProgress = null);
     }

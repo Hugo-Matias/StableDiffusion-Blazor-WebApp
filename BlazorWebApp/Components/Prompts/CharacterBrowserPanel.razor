@@ -103,7 +103,8 @@
                 <MudStack Spacing="2">
                     <MudText Typo="Typo.caption" Style="opacity:0.6;">
                         Generates preview images using your active generation settings, make sure you are on the desired workflow.
-                        Each character trigger is prepended to your current positive prompt.
+                        Each character trigger is injected into your current positive prompt &mdash; use <code>{tags}</code>
+                        as a placement placeholder, or omit it to prepend the tag.
                         Set batch size to 0 to generate all characters in the current list.
                     </MudText>
 
@@ -123,7 +124,7 @@
                         <MudCheckBox T="bool" @bind-Value="_genUseTags"
                                      Label="Use full tags"
                                      Dense Size="Size.Small"
-                                     title="When on, all character tags are used as the prompt. When off, only the trigger/series text is used." />
+                                     title="When on, visual tags are appended after the trigger + series. When off, only trigger + series are used." />
 
                         @if (CharService.PreviewProgress.IsRunning)
                         {

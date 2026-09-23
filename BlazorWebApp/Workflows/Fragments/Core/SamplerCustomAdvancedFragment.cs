@@ -11,6 +11,14 @@ namespace BlazorWebApp.Workflows.Fragments.Core;
 /// </summary>
 public class SamplerCustomAdvancedFragment : IFragmentBuilder
 {
+    /// <summary>
+    /// Workflow-specific defaults. Set once per workflow in the field initializer using the
+    /// existing <see cref="Parameters"/> type. Both <see cref="Metadata"/> (for first-load
+    /// UI initialization) and the interface <see cref="Build"/> fallback values read from here,
+    /// making this the single source of truth for per-workflow sampler defaults.
+    /// </summary>
+    public Parameters Defaults { get; init; } = new();
+
     public FragmentMetadata Metadata => new()
     {
         Id = "main_sampler",
@@ -27,6 +35,7 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
                 Name = "sampler_name",
                 Label = "Sampler",
                 Type = ParameterType.Select,
+                DefaultValue = Defaults.SamplerName,
                 Source = new DynamicSource("KSamplerSelect", "sampler_name")
             },
             new FragmentParameter
@@ -37,7 +46,7 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
                 Min = 1,
                 Max = 150,
                 Step = 1,
-                DefaultValue = 20
+                DefaultValue = Defaults.Steps
             },
             new FragmentParameter
             {
@@ -47,7 +56,7 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
                 Min = 1,
                 Max = 30,
                 Step = 0.5,
-                DefaultValue = 5.0
+                DefaultValue = Defaults.Cfg
             },
             new FragmentParameter
             {
@@ -96,9 +105,9 @@ public class SamplerCustomAdvancedFragment : IFragmentBuilder
         BuildInternal(builder, registry, new Parameters
         {
             SamplerId = fragment?.GetString("sampler_id", "sampler_main") ?? "sampler_main",
-            SamplerName = fragment?.GetString("sampler_name", "euler") ?? "euler",
-            Steps = fragment?.GetInt("steps", 20) ?? 20,
-            Cfg = fragment?.GetDouble("cfg", 5.0) ?? 5.0,
+            SamplerName = fragment?.GetString("sampler_name", Defaults.SamplerName) ?? Defaults.SamplerName,
+            Steps = fragment?.GetInt("steps", Defaults.Steps) ?? Defaults.Steps,
+            Cfg = fragment?.GetDouble("cfg", Defaults.Cfg) ?? Defaults.Cfg,
             Seed = fragment?.GetLong("seed", 42) ?? 42,
             Width = latentFragment?.GetInt("width", 1024) ?? 1024,
             Height = latentFragment?.GetInt("height", 1024) ?? 1024,

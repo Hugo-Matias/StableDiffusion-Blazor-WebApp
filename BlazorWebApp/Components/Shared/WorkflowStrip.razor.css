@@ -17,6 +17,7 @@
   --workflow-strip-mode-img2vid: var(--mud-palette-tertiary);
   --workflow-strip-mode-txt2vid: var(--mud-palette-tertiary);
   --workflow-strip-mode-vid2vid: var(--mud-palette-info);
+  --workflow-strip-mode-ref2vid: var(--mud-palette-tertiary);
 
   /* Active-tab indicator (sits flush with the bottom accent strip so the
        two read as a single anchored highlight under the selected tab). */
@@ -59,6 +60,9 @@
 }
 .workflow-strip.mode-vid2vid {
   --workflow-strip-accent: var(--workflow-strip-mode-vid2vid);
+}
+.workflow-strip.mode-ref2vid {
+  --workflow-strip-accent: var(--workflow-strip-mode-ref2vid);
 }
 
 /* Inner container keeps buttons centered as a group when they fit, and scrolls
@@ -156,6 +160,9 @@
 }
 .workflow-strip-btn.active.mode-vid2vid {
   color: var(--workflow-strip-mode-vid2vid);
+}
+.workflow-strip-btn.active.mode-ref2vid {
+  color: var(--workflow-strip-mode-ref2vid);
 }
 
 /* Icon sizing - Size.Small on MudIcon is ~1.25rem; we override a touch

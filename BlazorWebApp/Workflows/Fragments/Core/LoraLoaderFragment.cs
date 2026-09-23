@@ -29,6 +29,12 @@ public class LoraLoaderFragment : IFragmentBuilder
         public string? LoraPath { get; set; }
         public double LoraStrength { get; set; } = 1.0;
         public double? LoraStrengthClip { get; set; }
+        /// <summary>
+        /// When true, emits a LoraLoaderModelOnly node (no CLIP input/output).
+        /// Use for models with a large text encoder (e.g. Krea2/Qwen3VL 4B) where
+        /// patching the CLIP with LoRA weights is expensive and unnecessary.
+        /// </summary>
+        public bool ModelOnly { get; set; } = false;
     }
 
     public void Build(
@@ -86,7 +92,8 @@ public class LoraLoaderFragment : IFragmentBuilder
         ComfyWorkflowBuilder builder,
         Builders.NodeRegistry registry,
         IList<Lora>? loras,
-        string scope = "")
+        string scope = "",
+        bool modelOnly = false)
     {
         if (loras == null || loras.Count == 0) return;
 
@@ -100,7 +107,8 @@ public class LoraLoaderFragment : IFragmentBuilder
                 LoraLoaderId = $"{scope}lora_loader_{i}",
                 LoraName = lora.Name ?? "",
                 LoraPath = lora.Path,
-                LoraStrength = lora.Strength
+                LoraStrength = lora.Strength,
+                ModelOnly = modelOnly
             }, scope);
         }
     }
@@ -111,25 +119,43 @@ public class LoraLoaderFragment : IFragmentBuilder
         Parameters p,
         string scope)
     {
-        // Get current model and clip references
+        // Get current model reference
         var modelRef = registry.GetRef($"{scope}model_output");
-        var clipRef = registry.GetRef($"{scope}clip_output");
 
         // Use path if available, otherwise use name
         var loraFile = !string.IsNullOrEmpty(p.LoraPath) ? p.LoraPath : p.LoraName;
-        var clipStrength = p.LoraStrengthClip ?? 1.0;
 
-        builder.AddNode(p.LoraLoaderId, node => node
-            .Type("LoraLoader")
-            .Title("LoRA Loader")
-            .Input("lora_name", loraFile)
-            .Input("strength_model", p.LoraStrength)
-            .Input("strength_clip", clipStrength)
-            .InputRef("model", modelRef)
-            .InputRef("clip", clipRef));
+        if (p.ModelOnly)
+        {
+            // LoraLoaderModelOnly: only patches the UNet, skips CLIP entirely.
+            // Use when the text encoder is a large VLM (e.g. Qwen3VL 4B for Krea2)
+            // to avoid expensive and unnecessary CLIP patching.
+            builder.AddNode(p.LoraLoaderId, node => node
+                .Type("LoraLoaderModelOnly")
+                .Title("LoRA Loader")
+                .Input("lora_name", loraFile)
+                .Input("strength_model", p.LoraStrength)
+                .InputRef("model", modelRef));
 
-        // Overwrite model and clip outputs with LoRA-modified versions
-        registry.Register($"{scope}model_output", p.LoraLoaderId, 0);
-        registry.Register($"{scope}clip_output", p.LoraLoaderId, 1);
+            registry.Register($"{scope}model_output", p.LoraLoaderId, 0);
+        }
+        else
+        {
+            var clipRef = registry.GetRef($"{scope}clip_output");
+            var clipStrength = p.LoraStrengthClip ?? 1.0;
+
+            builder.AddNode(p.LoraLoaderId, node => node
+                .Type("LoraLoader")
+                .Title("LoRA Loader")
+                .Input("lora_name", loraFile)
+                .Input("strength_model", p.LoraStrength)
+                .Input("strength_clip", clipStrength)
+                .InputRef("model", modelRef)
+                .InputRef("clip", clipRef));
+
+            // Overwrite model and clip outputs with LoRA-modified versions
+            registry.Register($"{scope}model_output", p.LoraLoaderId, 0);
+            registry.Register($"{scope}clip_output", p.LoraLoaderId, 1);
+        }
     }
 }

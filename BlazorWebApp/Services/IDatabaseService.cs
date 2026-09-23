@@ -85,6 +85,7 @@ namespace BlazorWebApp.Services
         Task CreatePrompt(Prompt prompt);
         Task UpdatePrompt(PromptResource prompt);
         Task DeletePrompt(int id);
+        Task DeletePromptsByCategory(string category);
 
         // Resource Operations
         Task<List<Resource>> GetResources();

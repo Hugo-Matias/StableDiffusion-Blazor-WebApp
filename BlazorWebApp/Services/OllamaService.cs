@@ -1,6 +1,7 @@
 using BlazorWebApp.Data.Dtos.Ollama;
 using BlazorWebApp.Data.Entities;
 using BlazorWebApp.Models;
+using Microsoft.Extensions.Hosting;
 using MudBlazor;
 using System.Text;
 using System.Text.Json;
@@ -13,15 +14,17 @@ namespace BlazorWebApp.Services
         private readonly ILogger<OllamaService> _logger;
         private readonly IProgressService _progress;
         private readonly string _baseUrl;
+        private readonly string _contentRootPath;
         private readonly Dictionary<string, List<OllamaChatMessage>> _sessionCache;
 
-        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration, IProgressService progress)
+        public OllamaService(ILogger<OllamaService> logger, IConfiguration configuration, IProgressService progress, IHostEnvironment env)
         {
             _logger = logger;
             _progress = progress;
             _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://10.0.0.11:11434";
             _client = new HttpClient { BaseAddress = new Uri(_baseUrl) };
             _sessionCache = new Dictionary<string, List<OllamaChatMessage>>();
+            _contentRootPath = env.ContentRootPath;
         }
 
         public async Task<List<OllamaModel>> GetModels()
@@ -255,8 +258,45 @@ namespace BlazorWebApp.Services
         /// </summary>
         public List<SystemPromptTemplate> GetDefaultTemplates()
         {
+            var ideogram4System = LoadPromptFile("Data/ideogram4_system_prompt.txt");
+            var minimaxBaseVideoSystem = LoadPromptFile("Data/minimax_base_video_system_prompt.txt");
+            var minimaxRefVideoSystem = LoadPromptFile("Data/minimax_ref_video_system_prompt.txt");
+
             return new List<SystemPromptTemplate>
             {
+                new SystemPromptTemplate
+                {
+                    Name = "Ideogram4",
+                    Description = "Converts a plain-language scene idea into a structured Ideogram 4 JSON caption (aspect_ratio, high_level_description, compositional_deconstruction). Use via the LLM Enhancer tab.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content = ideogram4System },
+                        new() { Role = "user", Content = "TARGET IMAGE ASPECT RATIO: {aspect_ratio}\nUser idea: {prompt}" }
+                    }
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "MiniMax H3 Video",
+                    Description = "Converts a plain-language video idea into a properly formatted MiniMax H3 T2V/I2V prompt (integrated_multimodal_description, overall_soundscape, non_diegetic_music - plus the keyframe alignment line for I2V/FL2V/L2V). Use via the LLM Enhancer tab.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content = minimaxBaseVideoSystem },
+                        new() { Role = "user", Content = "User idea: {prompt}" }
+                    }
+                },
+                new SystemPromptTemplate
+                {
+                    Name = "MiniMax H3 Ref2Vid",
+                    Description = "Converts a plain-language idea (plus a description of the uploaded reference images/video/audio) into a properly formatted MiniMax H3 Reference-to-Video prompt (subject_definitions, summary, retention_analysis, detailed_description, overall_soundscape, non_diegetic_music). Use via the LLM Enhancer tab.",
+                    IsDefault = true,
+                    Messages = new List<OllamaChatMessage>
+                    {
+                        new() { Role = "system", Content = minimaxRefVideoSystem },
+                        new() { Role = "user", Content = "User idea and reference notes: {prompt}" }
+                    }
+                },
                 new SystemPromptTemplate
                 {
                     Name = "Enhance",
@@ -478,6 +518,22 @@ namespace BlazorWebApp.Services
                     }
                 },
             };
+        }
+
+        private string LoadPromptFile(string relativePath)
+        {
+            try
+            {
+                var fullPath = Path.IsPathRooted(relativePath)
+                    ? relativePath
+                    : Path.GetFullPath(Path.Combine(_contentRootPath, relativePath));
+                return File.ReadAllText(fullPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "OllamaService: failed to load prompt file '{Path}'.", relativePath);
+                return string.Empty;
+            }
         }
 
         private List<OllamaChatMessage> GetSimplifyInstructions(string input)

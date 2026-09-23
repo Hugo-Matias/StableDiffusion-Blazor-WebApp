@@ -63,6 +63,17 @@
             <MudToggleItem Value="PreviewOrientation.Landscape">Landscape</MudToggleItem>
         </MudToggleGroup>
 
+        <div class="d-flex align-center gap-2">
+            <MudToggleGroup T="WorkshopResolutionMode" Value="_workshopState.ResolutionMode"
+                            ValueChanged="OnResolutionModeChanged" SelectionMode="SelectionMode.SingleSelection"
+                            Color="Color.Primary" Size="Size.Small" Class="flex-grow-1">
+                <MudToggleItem Value="WorkshopResolutionMode.Fast">Fast</MudToggleItem>
+                <MudToggleItem Value="WorkshopResolutionMode.Workflow">Workflow</MudToggleItem>
+            </MudToggleGroup>
+            <MudTextField T="string" Value="@_resolutionText" ReadOnly="true" Variant="Variant.Text"
+                          Dense="true" Label="Resolution" Style="width: 110px; flex: none;" />
+        </div>
+
         <MudNumericField T="long" Value="_workshopState.LastSeed"
                          ValueChanged="OnSeedChanged"
                          Label="Seed" Variant="Variant.Text" HideSpinButtons="true"
@@ -89,11 +100,14 @@
     private int? _loadedPreviewImageId;
     private string? _previewSrc;
     private bool _isGenerating;
+    private string _resolutionText = "-";
+    private int _resolutionRequestId;
 
     protected override async Task OnInitializedAsync()
     {
         Events.Subscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
         RefreshWorkflows();
+        await RecomputeResolutionTextAsync();
         await SyncFromNodeAsync();
     }
 
@@ -125,6 +139,28 @@
         }
     }
 
+    /// <summary>
+    /// Recomputes the read-only resolution display from the selected workflow + orientation + mode.
+    /// A monotonic request id guards against a slower, superseded call overwriting a newer result.
+    /// </summary>
+    private async Task RecomputeResolutionTextAsync()
+    {
+        var workflow = _txt2ImgWorkflows.FirstOrDefault(w => w.Id == _workshopState.LastWorkflowId);
+        if (workflow == null)
+        {
+            _resolutionText = "-";
+            StateHasChanged();
+            return;
+        }
+
+        var requestId = ++_resolutionRequestId;
+        var (width, height) = await WorkshopService.ResolvePreviewResolutionAsync(workflow, _workshopState.Orientation, _workshopState.ResolutionMode);
+        if (requestId != _resolutionRequestId) return;
+
+        _resolutionText = $"{width} x {height}";
+        StateHasChanged();
+    }
+
     private async Task SyncFromNodeAsync()
     {
         _loadedNodeId = Node.Id;
@@ -150,12 +186,21 @@
     private async Task OnWorkflowChanged(Guid? value)
     {
         _workshopState.LastWorkflowId = value;
+        await RecomputeResolutionTextAsync();
         await State.SaveState();
     }
 
     private async Task OnOrientationChanged(PreviewOrientation value)
     {
         _workshopState.Orientation = value;
+        await RecomputeResolutionTextAsync();
+        await State.SaveState();
+    }
+
+    private async Task OnResolutionModeChanged(WorkshopResolutionMode value)
+    {
+        _workshopState.ResolutionMode = value;
+        await RecomputeResolutionTextAsync();
         await State.SaveState();
     }
 
@@ -184,7 +229,7 @@
         _isGenerating = true;
         try
         {
-            var imageId = await WorkshopService.GeneratePreviewAsync(Node.Id, workflowId, _workshopState.Orientation, seedToUse, _workshopState.UseEnhancements);
+            var imageId = await WorkshopService.GeneratePreviewAsync(Node.Id, workflowId, _workshopState.Orientation, seedToUse, _workshopState.UseEnhancements, _workshopState.ResolutionMode);
             if (imageId == null)
             {
                 Snackbar.Add("Preview generation failed.", Severity.Error);

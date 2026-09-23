@@ -145,6 +145,17 @@
 
                     <!-- Right: Actions -->
                     <div class="control-section actions-section">
+                        @if (ShowGenerateButton)
+                        {
+                            <MudTooltip Text="@(IsGenerating ? "Generating..." : "Generate New (G)")" Delay="300">
+                                <button class="viewer-btn generate-btn" @onclick="RequestGenerate"
+                                        disabled="@(IsGenerating || !CanGenerate)"
+                                        title="@(IsGenerating ? "Generating..." : "Generate New")">
+                                    <MudIcon Icon="@(IsGenerating ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-bolt")" />
+                                </button>
+                            </MudTooltip>
+                        }
+
                         @if (Assets.Count > 1)
                         {
                             <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
@@ -262,6 +273,14 @@
     [Parameter] public bool ShowOpenInExplorer { get; set; } = true;
     [Parameter] public string? ExternalSourceUrl { get; set; }
     [Parameter] public Func<ImageEntity, Task<ImageEntity?>>? OnRequestSaveLocal { get; set; }
+
+    // Optional in-viewer generation trigger. Only meaningful for consumers backed by the
+    // live generation output (e.g., the Generate page's Results container), so it defaults
+    // to hidden for every other AssetViewer usage (Gallery, Danbooru, CivitAI, etc.).
+    [Parameter] public bool ShowGenerateButton { get; set; }
+    [Parameter] public bool IsGenerating { get; set; }
+    [Parameter] public bool CanGenerate { get; set; } = true;
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
     [Parameter] public string ExternalImageHintText { get; set; } = "Bookmark this image to enable workflow send. Only prompt parameters are available for external images.";
     [Parameter] public string ExternalImageActionText { get; set; } = "Bookmark";
     [Parameter] public string ExternalImageActionIcon { get; set; } = "fa-solid fa-bookmark";
@@ -783,6 +802,7 @@ e.ClientY);
             case " ": ToggleAutoPlay(); break;
             case "i": case "I": ToggleInfo(); break;
             case "f": case "F": await ToggleFavorite(); break;
+            case "g": case "G": await RequestGenerate(); break;
             case "z": case "Z": await TogglePanMode(); break;
             case "r": case "R": await ResetPanZoomAsync(); break;
             case "c": case "C": await ToggleCompareMode(); break;
@@ -817,6 +837,12 @@ e.ClientY);
                 }
                 break;
         }
+    }
+
+    private async Task RequestGenerate()
+    {
+        if (!ShowGenerateButton || IsGenerating || !CanGenerate) return;
+        await OnGenerateRequested.InvokeAsync();
     }
 
     private async Task ToggleFavorite()

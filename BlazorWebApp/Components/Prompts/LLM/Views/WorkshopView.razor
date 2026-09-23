@@ -586,12 +586,13 @@
         var orientation = workshop.Orientation;
         var seed = workshop.LastSeed;
         var useEnhancements = workshop.UseEnhancements;
+        var resolutionMode = workshop.ResolutionMode;
 
         _ = Task.Run(async () =>
         {
             try
             {
-                await WorkshopService.GeneratePreviewAsync(nodeId, workflowId, orientation, seed, useEnhancements);
+                await WorkshopService.GeneratePreviewAsync(nodeId, workflowId, orientation, seed, useEnhancements, resolutionMode);
             }
             catch
             {

@@ -97,6 +97,100 @@ public class Flux2KleinUltimateSdUpscaleWorkflowTests
     }
 
     [Fact]
+    public void Img2ImgEdit_PresetConditioningBlankAnchorWithReducedStrength_ShouldBuildBlend()
+    {
+        var workflow = new Flux2KleinImg2ImgEditWorkflow();
+        var parameters = CreateImg2ImgEditParameters();
+        var preset = parameters.GetOrCreateFragment("preset_conditioning");
+        preset.IsActive = true;
+        preset.SetValue("preset_text", "");
+        preset.SetValue("preset_strength", 0.73);
+
+        using var json = JsonDocument.Parse(workflow.Build(parameters).Json);
+
+        var instructionsInputs = json.RootElement.GetProperty("instructions_encode").GetProperty("inputs");
+        instructionsInputs.GetProperty("text").GetString().Should().Be("");
+
+        var blendInputs = json.RootElement.GetProperty("preset_blend").GetProperty("inputs");
+        blendInputs.GetProperty("conditioning_to")[0].GetString().Should().Be("positive_encode");
+        blendInputs.GetProperty("conditioning_from")[0].GetString().Should().Be("instructions_encode");
+        blendInputs.GetProperty("conditioning_to_strength").GetDouble().Should().Be(0.73);
+
+        var referencePositiveInputs = json.RootElement.GetProperty("ref_latent_positive_0").GetProperty("inputs");
+        referencePositiveInputs.GetProperty("conditioning")[0].GetString().Should().Be("preset_blend");
+    }
+
+    [Fact]
+    public void Img2ImgEdit_PresetConditioningStaleExtendedStrength_ShouldClampToNeutralNoOp()
+    {
+        var workflow = new Flux2KleinImg2ImgEditWorkflow();
+        var parameters = CreateImg2ImgEditParameters();
+        var preset = parameters.GetOrCreateFragment("preset_conditioning");
+        preset.IsActive = true;
+        preset.SetValue("preset_text", "");
+        preset.SetValue("preset_strength", 1.5);
+
+        using var json = JsonDocument.Parse(workflow.Build(parameters).Json);
+
+        json.RootElement.TryGetProperty("instructions_encode", out _).Should().BeFalse();
+        json.RootElement.TryGetProperty("preset_blend", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Img2ImgEdit_PresetConditioningTimedMode_ShouldApplyBlendOnlyInsideWindow()
+    {
+        var workflow = new Flux2KleinImg2ImgEditWorkflow();
+        var parameters = CreateImg2ImgEditParameters();
+        var preset = parameters.GetOrCreateFragment("preset_conditioning");
+        preset.IsActive = true;
+        preset.SetValue("preset_text", "anchor");
+        preset.SetValue("preset_strength", 0.55);
+        preset.SetValue("timing_mode", PresetConditioningFragment.TimingCustom);
+        preset.SetValue("timing_start", 0.2);
+        preset.SetValue("timing_end", 0.8);
+
+        using var json = JsonDocument.Parse(workflow.Build(parameters).Json);
+
+        var blendRangeInputs = json.RootElement.GetProperty("preset_blend_range").GetProperty("inputs");
+        json.RootElement.GetProperty("preset_blend_range").GetProperty("class_type").GetString().Should().Be("ConditioningSetTimestepRange");
+        blendRangeInputs.GetProperty("conditioning")[0].GetString().Should().Be("preset_blend");
+        blendRangeInputs.GetProperty("start").GetDouble().Should().Be(0.2);
+        blendRangeInputs.GetProperty("end").GetDouble().Should().Be(0.8);
+
+        var beforeInputs = json.RootElement.GetProperty("preset_main_before_range").GetProperty("inputs");
+        beforeInputs.GetProperty("conditioning")[0].GetString().Should().Be("positive_encode");
+        beforeInputs.GetProperty("start").GetDouble().Should().Be(0.0);
+        beforeInputs.GetProperty("end").GetDouble().Should().Be(0.2);
+
+        var afterInputs = json.RootElement.GetProperty("preset_main_after_range").GetProperty("inputs");
+        afterInputs.GetProperty("conditioning")[0].GetString().Should().Be("positive_encode");
+        afterInputs.GetProperty("start").GetDouble().Should().Be(0.8);
+        afterInputs.GetProperty("end").GetDouble().Should().Be(1.0);
+
+        var referencePositiveInputs = json.RootElement.GetProperty("ref_latent_positive_0").GetProperty("inputs");
+        referencePositiveInputs.GetProperty("conditioning")[0].GetString().Should().Be("preset_timed_combine_after");
+    }
+
+    [Fact]
+    public void Img2ImgEdit_InactivePresetConditioning_ShouldNotBuildBlend()
+    {
+        var workflow = new Flux2KleinImg2ImgEditWorkflow();
+        var parameters = CreateImg2ImgEditParameters();
+        var preset = parameters.GetOrCreateFragment("preset_conditioning");
+        preset.IsActive = false;
+        preset.SetValue("preset_text", "");
+        preset.SetValue("preset_strength", 0.73);
+
+        using var json = JsonDocument.Parse(workflow.Build(parameters).Json);
+
+        json.RootElement.TryGetProperty("instructions_encode", out _).Should().BeFalse();
+        json.RootElement.TryGetProperty("preset_blend", out _).Should().BeFalse();
+
+        var referencePositiveInputs = json.RootElement.GetProperty("ref_latent_positive_0").GetProperty("inputs");
+        referencePositiveInputs.GetProperty("conditioning")[0].GetString().Should().Be("positive_encode");
+    }
+
+    [Fact]
     public void GridRef_ShouldExposeAndBuildUltimateSdUpscale()
     {
         var workflow = new Flux2KleinGridRefWorkflow();

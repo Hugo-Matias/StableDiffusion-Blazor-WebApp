@@ -93,6 +93,12 @@ namespace BlazorWebApp.Models
             public const string Height = "height";
             public const string BatchSize = "batch_size";
 
+            // Resolution panel calculated-mode parameters (ResolutionSelector-style: aspect ratio + megapixels)
+            public const string ResolutionMode = "resolution_mode";
+            public const string AspectRatio = "aspect_ratio";
+            public const string Megapixels = "megapixels";
+            public const string MultipleOf = "multiple_of";
+
             // Common model parameters (used in load fragments)
             public const string UnetName = "unet_name";
             public const string ClipName = "clip_name";
@@ -125,6 +131,12 @@ namespace BlazorWebApp.Models
             // Flux-specific parameters
             public const string Guidance = "guidance";
             public const string RefluxEnabled = "reflux_enabled";
+
+            // Ideogram-specific parameters
+            public const string Mu = "mu";
+            public const string Std = "std";
+            public const string CfgStart = "cfg_start";
+            public const string CfgEnd = "cfg_end";
             public const string Scaling = "scaling";
             public const string MaxShift = "max_shift";
             public const string BaseShift = "base_shift";

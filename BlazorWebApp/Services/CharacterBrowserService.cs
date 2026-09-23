@@ -279,18 +279,20 @@ namespace BlazorWebApp.Services
                     {
                         var prepared = _state.GenerationParameters.Clone();
 
-                        // Build the prompt token: trigger or full tag list
+                        // Baseline = trigger + series; tags are appended only when useTags is on.
                         var promptsFrag = prepared.GetFragment(Fragments.Prompts);
                         if (promptsFrag != null)
                         {
-                            var token = useTags
-                                ? string.Join(", ", character.Tags.Select(t => t.EscapeParenthesis()))
-                                : character.Trigger.EscapeParenthesis();
+                            var trigger  = character.Trigger.EscapeParenthesis();
+                            var series   = !string.IsNullOrWhiteSpace(character.Copyright)
+                                               ? character.Copyright.EscapeParenthesis()
+                                               : null;
+                            var baseline = series != null ? $"{trigger}, {series}" : trigger;
+                            var token    = useTags && character.Tags.Count > 0
+                                               ? $"{baseline}, {string.Join(", ", character.Tags.Select(t => t.EscapeParenthesis()))}"
+                                               : baseline;
                             var current = promptsFrag.GetValueOrDefault<string>(Params.Positive, "") ?? "";
-                            promptsFrag.SetValue(Params.Positive,
-                                string.IsNullOrWhiteSpace(current)
-                                    ? token
-                                    : $"{token}, {current}");
+                            promptsFrag.SetValue(Params.Positive, current.InjectPreviewTag(token));
                         }
 
                         // Randomize seed if unset

@@ -44,11 +44,19 @@
     </None>
   </ItemGroup>
 
+  <!-- Ollama system-prompt text files used by OllamaService.GetDefaultTemplates -->
+  <ItemGroup>
+    <None Update="Data\*_system_prompt.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.6" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
     <PackageReference Include="Markdig" Version="0.40.0" />
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.9.1" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.13.1" />
     <PackageReference Include="MetadataExtractor" Version="2.9.0-rc3" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.11">
@@ -64,7 +72,7 @@
     <PackageReference Include="MudBlazor" Version="6.20.0" />
     <PackageReference Include="Sylvan.Data" Version="0.2.10" />
     <PackageReference Include="Sylvan.Data.Csv" Version="1.2.6-b0002" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0.3" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.1" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
     <PackageReference Include="TiktokenSharp" Version="1.2.0" />
   </ItemGroup>

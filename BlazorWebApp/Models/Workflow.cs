@@ -64,5 +64,6 @@ namespace BlazorWebApp.Models
         public string Parameter { get; set; } = "";
         public VideoSourceOptions? DefaultVideoOptions { get; set; }
         public AudioSourceOptions? DefaultAudioOptions { get; set; }
+        public bool ShowIncludeAudioToggle { get; set; }
     }
 }

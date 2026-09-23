@@ -39,6 +39,11 @@ namespace BlazorWebApp.Models
         public List<PromptStyle> Styles { get; set; } = new();
 
         /// <summary>
+        /// Controls how styles without a {prompt} placeholder are composed with the current prompt.
+        /// </summary>
+        public PromptApplicationMode StyleFallbackMode { get; set; } = PromptApplicationMode.Append;
+
+        /// <summary>
         /// LoRAs scoped to the Detailer enhancement pass 0. Independent of <see cref="Loras"/>;
         /// mutating one list does not affect the other. Used by workflow templates to emit
         /// <c>detailer_</c>-scoped LoRA loader nodes for the Detailer sub-pipeline.
@@ -93,6 +98,7 @@ namespace BlazorWebApp.Models
                     kvp => kvp.Value.Clone()
                 ),
                 Loras = Loras.Select(l => new Lora(l)).ToList(),
+                StyleFallbackMode = StyleFallbackMode,
                 Styles = Styles.Select(s => new PromptStyle
                 {
                     Name = s.Name,

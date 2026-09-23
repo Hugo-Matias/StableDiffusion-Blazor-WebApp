@@ -50,7 +50,7 @@ public partial class Generate : IDisposable
     #region Computed Properties
 
     private bool HasSources => _selectedWorkflow?.Sources?.Count > 0;
-    private bool IsVideoMode => _selectedWorkflow?.Mode is ModeType.Img2Vid or ModeType.Txt2Vid or ModeType.Vid2Vid;
+    private bool IsVideoMode => _selectedWorkflow?.Mode is ModeType.Img2Vid or ModeType.Txt2Vid or ModeType.Vid2Vid or ModeType.Ref2Vid;
     private bool IsAudioMode => _selectedWorkflow?.Mode is ModeType.Txt2Mus or ModeType.Voi2Voi;
 
     /// <summary>
@@ -98,6 +98,7 @@ public partial class Generate : IDisposable
             ModeType.Img2Vid,
             ModeType.Txt2Vid,
             ModeType.Vid2Vid,
+            ModeType.Ref2Vid,
             ModeType.Txt2Mus,
             ModeType.Voi2Voi
         })
@@ -468,19 +469,14 @@ public partial class Generate : IDisposable
 
     #region Prompt Handlers
 
-    private async Task HandlePromptChanged(string value)
+    private void HandlePromptChanged(string value)
     {
-        // notify: false - explicit StateHasChanged below handles the re-render;
-        // publishing the event would cause a second redundant render per keystroke.
         ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Positive, value, notify: false);
-        await InvokeAsync(StateHasChanged);
     }
 
-    private async Task HandleNegativePromptChanged(string value)
+    private void HandleNegativePromptChanged(string value)
     {
-        // notify: false - same reason as HandlePromptChanged.
         ParameterService.SetFragmentProperty(ParameterService.PromptsFragment, Params.Negative, value, notify: false);
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task HandlePromptTagAppended(AppendedTags tags)
@@ -699,6 +695,7 @@ public partial class Generate : IDisposable
                 case ModeType.Img2Vid:
                 case ModeType.Txt2Vid:
                 case ModeType.Vid2Vid:
+                case ModeType.Ref2Vid:
                     var videos = await ImageService.GenerateVideoAsync(Parameters, _selectedWorkflow);
                     break;
 

@@ -90,6 +90,11 @@ namespace BlazorWebApp.Services
         void ClearGeneratedImages();
 
         /// <summary>
+        /// Removes a deleted image from the session-wide generated results accumulator.
+        /// </summary>
+        bool RemoveGeneratedImage(int imageId, bool notify = true);
+
+        /// <summary>
         /// Downloads an image from a URL and saves it as PNG.
         /// </summary>
         /// <param name="url">URL of the image to download.</param>

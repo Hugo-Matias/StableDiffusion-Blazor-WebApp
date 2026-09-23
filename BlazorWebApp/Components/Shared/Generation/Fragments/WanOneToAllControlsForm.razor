@@ -10,7 +10,15 @@
     <ResolutionPanel Width="@_width"
                      WidthChanged="HandleWidthChanged"
                      Height="@_height"
-                     HeightChanged="HandleHeightChanged" />
+                     HeightChanged="HandleHeightChanged"
+                     Mode="@_resolutionMode"
+                     ModeChanged="HandleResolutionModeChanged"
+                     AspectRatio="@_aspectRatio"
+                     AspectRatioChanged="HandleAspectRatioChanged"
+                     Megapixels="@_megapixels"
+                     MegapixelsChanged="HandleMegapixelsChanged"
+                     MultipleOf="@_multipleOf"
+                     MultipleOfChanged="HandleMultipleOfChanged" />
 
     <MudItem xs="12">
         <MudText Typo="Typo.overline">Loop And Memory</MudText>
@@ -39,6 +47,10 @@
     private int _overlap = 5;
     private int _fps = 24;
     private int _blocksToSwap = 25;
+    private string _resolutionMode = "manual";
+    private string _aspectRatio = BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0];
+    private double _megapixels = 1.0;
+    private int _multipleOf = 8;
 
     protected override void OnParametersSet()
     {
@@ -50,9 +62,13 @@
         _overlap = ParameterService.GetFragmentProperty(Fragment, "overlap", 5);
         _fps = ParameterService.GetFragmentProperty(Fragment, "fps", 24);
         _blocksToSwap = ParameterService.GetFragmentProperty(Fragment, "blocks_to_swap", 25);
+        _resolutionMode = ParameterService.GetFragmentProperty(Fragment, FragmentKeys.Params.ResolutionMode, "manual");
+        _aspectRatio = ParameterService.GetFragmentProperty(Fragment, FragmentKeys.Params.AspectRatio, BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0]);
+        _megapixels = ParameterService.GetFragmentProperty(Fragment, FragmentKeys.Params.Megapixels, 1.0);
+        _multipleOf = ParameterService.GetFragmentProperty(Fragment, FragmentKeys.Params.MultipleOf, 8);
     }
 
-    private async Task SetValue(string key, int value)
+    private async Task SetValue<T>(string key, T value)
     {
         ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
         await OnChanged.InvokeAsync();
@@ -74,4 +90,28 @@
     private Task OnOverlapChanged() => SetValue("overlap", _overlap);
     private Task OnFpsChanged() => SetValue("fps", _fps);
     private Task OnBlocksToSwapChanged() => SetValue("blocks_to_swap", _blocksToSwap);
+
+    private async Task HandleResolutionModeChanged(string value)
+    {
+        _resolutionMode = value;
+        await SetValue(FragmentKeys.Params.ResolutionMode, value);
+    }
+
+    private async Task HandleAspectRatioChanged(string value)
+    {
+        _aspectRatio = value;
+        await SetValue(FragmentKeys.Params.AspectRatio, value);
+    }
+
+    private async Task HandleMegapixelsChanged(double value)
+    {
+        _megapixels = value;
+        await SetValue(FragmentKeys.Params.Megapixels, value);
+    }
+
+    private async Task HandleMultipleOfChanged(int value)
+    {
+        _multipleOf = value;
+        await SetValue(FragmentKeys.Params.MultipleOf, value);
+    }
 }

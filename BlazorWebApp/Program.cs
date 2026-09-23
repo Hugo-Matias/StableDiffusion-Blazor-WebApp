@@ -203,10 +203,17 @@ builder.Services.AddScoped<VLModelService>();
 // Wildcard service for prompt wildcard management
 builder.Services.AddSingleton<IWildcardService, WildcardService>();
 
+// Wildcard browser service for prompt utility cards and previews
+builder.Services.AddSingleton<IWildcardBrowserService, WildcardBrowserService>();
+
 // Phase 10 - Wildcard Forge (LLM x Wildcards) services
 builder.Services.AddSingleton<BlazorWebApp.Services.WildcardForge.WildcardForgeKnowledge>();
 builder.Services.AddScoped<BlazorWebApp.Services.WildcardForge.PromptComposer>();
 builder.Services.AddScoped<BlazorWebApp.Services.WildcardForge.IWildcardForgeService, BlazorWebApp.Services.WildcardForge.WildcardForgeService>();
+
+// Preset Forge (LLM x structured prompt presets)
+builder.Services.AddScoped<BlazorWebApp.Services.PresetForge.PresetForgePromptComposer>();
+builder.Services.AddScoped<BlazorWebApp.Services.PresetForge.IPresetForgeService, BlazorWebApp.Services.PresetForge.PresetForgeService>();
 
 // Info service for contextual help/shortcuts across the app
 builder.Services.AddSingleton<IInfoService, InfoService>();

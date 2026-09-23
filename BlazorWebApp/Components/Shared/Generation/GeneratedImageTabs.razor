@@ -34,7 +34,9 @@
         {
             <ImagesContainer Images="_resultsView" CanSelect="true" OnPageSelected="HandleResultsPageChanged"
                              ShowPageSizeField="true" PageSize="@State.State.Generation.ResultsPageSize"
-                             PageSizeChanged="HandleResultsPageSizeChanged" ShowClearButton="true" OnClear="HandleClearResults" />
+                             PageSizeChanged="HandleResultsPageSizeChanged" ShowClearButton="true" OnClear="HandleClearResults"
+                             ShowGenerateButton="true" IsGenerating="IsGenerating" CanGenerate="CanGenerate"
+                             OnGenerateRequested="OnGenerateRequested" />
         }
         else
         {
@@ -130,7 +132,7 @@
                             {
                                 <MudItem xs="12" sm="6" md="4" lg="3">
                                     <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@index"
-                                               OnSelectVideo="OpenSelectedViewer" OnDeleteVideo="video => { }"
+                                               OnSelectVideo="OpenSelectedViewer" OnDeleteVideo="ShowDeleteImageDialogFromVideo"
                                                OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" UseFixedSize="true" />
                                 </MudItem>
                             }
@@ -139,7 +141,7 @@
                                 <MudItem xs="12" sm="6" md="4" lg="3">
                                     <ImageCard Image="@image" Target="fullscreen-modal"
                                                OnSelectImage="img => OpenSelectedViewer(_selectedImages.Images.IndexOf(img))"
-                                               OnDeleteImage="img => { }" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                               OnDeleteImage="ShowDeleteImageDialog" ShowSelectionCheckbox="true" UseFixedSize="true" />
                                 </MudItem>
                             }
                         }
@@ -200,7 +202,7 @@
                             {
                                 <MudItem xs="12" sm="6" md="4" lg="3">
                                     <VideoCard Video="@ConvertToGeneratedVideo(image)" Index="@index"
-                                               OnSelectVideo="OpenRandomViewer" OnDeleteVideo="video => { }"
+                                               OnSelectVideo="OpenRandomViewer" OnDeleteVideo="ShowDeleteImageDialogFromVideo"
                                                OnVideoChanged="HandleVideoChanged" ShowSelectionCheckbox="true" UseFixedSize="true" />
                                 </MudItem>
                             }
@@ -209,7 +211,7 @@
                                 <MudItem xs="12" sm="6" md="4" lg="3">
                                     <ImageCard Image="@image" Target="fullscreen-modal"
                                                OnSelectImage="img => OpenRandomViewer(_randomImages.Images.IndexOf(img))"
-                                               OnDeleteImage="img => { }" ShowSelectionCheckbox="true" UseFixedSize="true" />
+                                               OnDeleteImage="ShowDeleteImageDialog" ShowSelectionCheckbox="true" UseFixedSize="true" />
                                 </MudItem>
                             }
                         }
@@ -248,6 +250,16 @@
              OnAssetChanged="HandleAssetChanged" OnClosed="StateHasChanged" />
 
 @code {
+    /// <summary>
+    /// Lets the Generate page wire a live "Generate New" trigger into the Results tab's
+    /// fullscreen viewer, so users can queue another generation without leaving the
+    /// AssetViewer. Newly generated images are prepended by <see cref="IImageService"/>,
+    /// so the Results view refreshes in place via the existing ImagesGenerated subscription.
+    /// </summary>
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
+    [Parameter] public bool IsGenerating { get; set; }
+    [Parameter] public bool CanGenerate { get; set; } = true;
+
     private ImagesDto _selectedImages;
     private ImagesDto _randomImages;
     private int _selectedImagesPage = 1;
@@ -272,7 +284,7 @@
         await LoadSelectedPage(1);
         RebuildResultsView();
         Events.Subscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
-        Events.Subscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
         Events.Subscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
 
@@ -490,8 +502,40 @@ parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small 
         }
     }
 
+    private async Task ShowDeleteImageDialog(Image image)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("OkButtonText", "Yes");
+        parameters.Add("CancelButtonText", "No");
+        parameters.Add("OkButtonColor", Color.Error);
+        parameters.Add("Content", new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this item?<br /></span><small>This action is irreversible!</small>"));
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Item", parameters, new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        });
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await DB.DeleteImage(image);
+            Snackbar.Add("Item deleted successfully.", Severity.Success);
+        }
+    }
+
+    private async Task ShowDeleteImageDialogFromVideo(GeneratedVideo video)
+    {
+        var image = _selectedImages?.Images?.FirstOrDefault(i => i.Id == video.Id)
+            ?? _randomImages?.Images?.FirstOrDefault(i => i.Id == video.Id)
+            ?? _resultsView?.Images?.FirstOrDefault(i => i.Id == video.Id);
+
+        if (image != null)
+        {
+            await ShowDeleteImageDialog(image);
+        }
+    }
+
     private void OnImagesGenerated(ImagesGeneratedEventArgs args) => Refresh();
-    private void OnSelectedImagesChanged(SelectedImagesChangedEventArgs args) => Refresh();
+    private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args) => Refresh();
     private void OnProgressChanged(ProgressChangedEventArgs args) => Refresh();
 
     private async void Refresh()
@@ -504,7 +548,7 @@ parameters, new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small 
     public void Dispose()
     {
         Events.Unsubscribe<ImagesGeneratedEventArgs>(OnImagesGenerated);
-        Events.Unsubscribe<SelectedImagesChangedEventArgs>(OnSelectedImagesChanged);
+        Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
         Events.Unsubscribe<ProgressChangedEventArgs>(OnProgressChanged);
     }
 }

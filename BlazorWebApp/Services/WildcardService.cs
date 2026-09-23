@@ -15,20 +15,21 @@ namespace BlazorWebApp.Services
 
         // Regex pattern to match __wildcard__ syntax
         // __ - literal double underscore start
-        // ([a-zA-Z0-9][a-zA-Z0-9_\-./]*[a-zA-Z0-9]) - capture group: 
+        // ([a-zA-Z0-9][a-zA-Z0-9_\-./ ]*[a-zA-Z0-9]) - capture group: 
         //    - starts with alphanumeric
-        //    - can contain alphanumeric, underscore, hyphen, dot, or slash in the middle
+        //    - can contain alphanumeric, underscore, hyphen, dot, slash, or space in the middle
+        //      (spaces support category names like "Artistic Styles/photography")
         //    - ends with alphanumeric
         // __ - literal double underscore end
         // This allows underscores in the middle but not at start/end, preventing issues with triple underscores
-        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
+        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./ ]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
 
         public WildcardService(IDatabaseService database, ILogger<WildcardService> logger)
         {
             _database = database;
             _logger = logger;
             _random = new Random();
-            
+
             // Seeding is now manual - users can click "Load Sample Data" button in the UI
         }
 
@@ -121,7 +122,7 @@ namespace BlazorWebApp.Services
 
                 // Get collections for the category and find by name (case-insensitive)
                 var collections = await _database.GetWildcardCollectionsByCategory(category);
-                return collections.FirstOrDefault(c => 
+                return collections.FirstOrDefault(c =>
                     c.Name.Equals(collectionName, StringComparison.OrdinalIgnoreCase));
             }
             else
@@ -523,12 +524,12 @@ namespace BlazorWebApp.Services
             try
             {
                 var allCollections = await _database.GetAllWildcardCollections();
-                
+
                 if (string.IsNullOrWhiteSpace(searchQuery))
                 {
                     return allCollections.Take(maxResults).ToList();
                 }
-                
+
                 return allCollections
                     .Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
                                c.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))

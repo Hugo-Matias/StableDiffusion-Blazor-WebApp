@@ -13,7 +13,8 @@ namespace BlazorWebApp.Extensions
     public static class Parser
     {
         // Regex pattern to match __wildcard__ syntax (same as WildcardService)
-        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
+        // Allows spaces in the middle for category names like "Artistic Styles/photography"
+        private static readonly Regex WildcardPattern = new Regex(@"__([a-zA-Z0-9](?:[a-zA-Z0-9_\-./ ]*[a-zA-Z0-9])?)__", RegexOptions.Compiled);
 
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
@@ -49,6 +50,19 @@ namespace BlazorWebApp.Extensions
             input = input.Replace("(", @"\(");
             input = input.Replace(")", @"\)");
             return input;
+        }
+
+        /// <summary>
+        /// Hydrates a prompt with the given tag token for preview generation.
+        /// If <paramref name="prompt"/> contains the placeholder <c>{tags}</c> the token
+        /// is substituted in-place; otherwise the token is prepended as a prefix.
+        /// </summary>
+        public static string InjectPreviewTag(this string prompt, string tagToken)
+        {
+            const string Placeholder = "{tags}";
+            if (prompt.Contains(Placeholder, StringComparison.OrdinalIgnoreCase))
+                return prompt.Replace(Placeholder, tagToken, StringComparison.OrdinalIgnoreCase);
+            return string.IsNullOrWhiteSpace(prompt) ? tagToken : $"{tagToken}, {prompt}";
         }
 
         /// <summary>
@@ -98,24 +112,37 @@ namespace BlazorWebApp.Extensions
             return (prompt, negative);
         }
 
-        public static string ParseStyles(this string prompt, List<PromptStyle> styles, bool isNegative)
+        public static string ParseStyles(this string? prompt, List<PromptStyle>? styles, bool isNegative, PromptApplicationMode fallbackMode = PromptApplicationMode.Append)
         {
-            if (styles == null || styles.Count == 0) return prompt;
+            if (styles == null || styles.Count == 0) return prompt ?? string.Empty;
             foreach (var style in styles)
             {
-                prompt = prompt.ParseStyle(isNegative ? style.NegativePrompt : style.Prompt);
+                prompt = prompt.ParseStyle(isNegative ? style.NegativePrompt : style.Prompt, fallbackMode);
             }
-            return prompt;
+            return prompt ?? string.Empty;
         }
 
-        public static string ParseStyle(this string prompt, string style)
+        public static string ParseStyle(this string? prompt, string? style, PromptApplicationMode fallbackMode = PromptApplicationMode.Append)
         {
-            if (string.IsNullOrWhiteSpace(style)) return prompt;
+            if (string.IsNullOrWhiteSpace(style)) return prompt ?? string.Empty;
             if (style.Contains("{prompt}"))
             {
                 return Regex.Replace(style, "{prompt}", prompt ?? "");
             }
-            return $"{prompt}{style}";
+            return fallbackMode == PromptApplicationMode.Prepend
+                ? CombineStyleWithPrompt(style, prompt)
+                : $"{prompt}{style}";
+        }
+
+        private static string CombineStyleWithPrompt(string style, string? prompt)
+        {
+            var cleanStyle = style.Trim().Trim(',').Trim();
+            var cleanPrompt = (prompt ?? string.Empty).Trim().Trim(',').Trim();
+
+            if (string.IsNullOrWhiteSpace(cleanStyle)) return cleanPrompt;
+            if (string.IsNullOrWhiteSpace(cleanPrompt)) return cleanStyle;
+
+            return $"{cleanStyle}, {cleanPrompt}";
         }
 
         /// <summary>

@@ -16,6 +16,8 @@ namespace BlazorWebApp.Services
         private readonly IStateService _state;
         private readonly IImageService _images;
         private readonly IDatabaseService _db;
+        private readonly IWorkflowService _workflows;
+        private readonly IWorkflowStateService _workflowStates;
         private readonly IEventService _events;
         private readonly ILogger<WorkshopService> _logger;
 
@@ -25,6 +27,8 @@ namespace BlazorWebApp.Services
             IStateService state,
             IImageService images,
             IDatabaseService db,
+            IWorkflowService workflows,
+            IWorkflowStateService workflowStates,
             IEventService events,
             ILogger<WorkshopService> logger)
         {
@@ -33,6 +37,8 @@ namespace BlazorWebApp.Services
             _state = state;
             _images = images;
             _db = db;
+            _workflows = workflows;
+            _workflowStates = workflowStates;
             _events = events;
             _logger = logger;
         }
@@ -153,7 +159,7 @@ namespace BlazorWebApp.Services
             await context.SaveChangesAsync();
         }
 
-        public async Task<int?> GeneratePreviewAsync(int nodeId, Guid workflowId, PreviewOrientation orientation, long seed, bool useEnhancements = false)
+        public async Task<int?> GeneratePreviewAsync(int nodeId, Guid workflowId, PreviewOrientation orientation, long seed, bool useEnhancements = false, WorkshopResolutionMode resolutionMode = WorkshopResolutionMode.Fast)
         {
             // Snapshot the live params at the very top, before any awaits, so the user can keep
             // tweaking the Generate page while this preview drains through the queue.
@@ -189,7 +195,7 @@ namespace BlazorWebApp.Services
             if (promptsFragment != null)
                 promptsFragment.SetValue(FragmentKeys.Params.Positive, node.PromptText ?? string.Empty);
 
-            var (width, height) = ResolvePreviewResolution(workflow, orientation);
+            var (width, height) = await ResolvePreviewResolutionAsync(workflow, orientation, resolutionMode);
             var latentFragment = prepared.GetFragment(FragmentKeys.Fragments.Latent)
                 ?? prepared.GetFragment(FragmentKeys.Fragments.EmptyLatent);
             if (latentFragment != null)
@@ -279,7 +285,7 @@ namespace BlazorWebApp.Services
         /// Picks a sane preview resolution per workflow base. Defaults to 1024 for SDXL/Flux/etc,
         /// 768 for SD1.5. Snapped to the nearest multiple of 64.
         /// </summary>
-        private static (int width, int height) ResolvePreviewResolution(Workflow workflow, PreviewOrientation orientation)
+        private static (int width, int height) ResolveFastPreviewResolution(Workflow workflow, PreviewOrientation orientation)
         {
             // Long edge in pixels
             var longEdge = workflow.Base switch
@@ -296,6 +302,78 @@ namespace BlazorWebApp.Services
             return orientation == PreviewOrientation.Portrait
                 ? (shortEdge, longEdge)
                 : (longEdge, shortEdge);
+        }
+
+        /// <inheritdoc />
+        public async Task<(int Width, int Height)> ResolvePreviewResolutionAsync(Workflow workflow, PreviewOrientation orientation, WorkshopResolutionMode mode)
+        {
+            if (mode == WorkshopResolutionMode.Workflow)
+            {
+                var (configuredWidth, configuredHeight) = await GetWorkflowConfiguredResolutionAsync(workflow);
+                var longEdge = Math.Max(configuredWidth, configuredHeight);
+                var shortEdge = Math.Min(configuredWidth, configuredHeight);
+                return orientation == PreviewOrientation.Portrait
+                    ? (shortEdge, longEdge)
+                    : (longEdge, shortEdge);
+            }
+
+            return ResolveFastPreviewResolution(workflow, orientation);
+        }
+
+        /// <summary>
+        /// Reads the workflow's currently configured latent width/height: the live in-memory
+        /// <see cref="IStateService.GenerationParameters"/> when this workflow is the active
+        /// Generate-page workflow (so unsaved ratio/megapixels edits are reflected immediately),
+        /// otherwise its last saved <see cref="Data.Entities.WorkflowState"/>. Falls back to the
+        /// Latent fragment's static schema default when nothing has been configured yet.
+        /// </summary>
+        private async Task<(int width, int height)> GetWorkflowConfiguredResolutionAsync(Workflow workflow)
+        {
+            var source = _state.GenerationParameters.WorkflowId == workflow.Id
+                ? _state.GenerationParameters
+                : await _workflowStates.LoadWorkflowStateAsync(workflow.Id);
+
+            var latentFragment = source?.GetFragment(FragmentKeys.Fragments.Latent)
+                ?? source?.GetFragment(FragmentKeys.Fragments.EmptyLatent);
+
+            var width = latentFragment.GetInt(FragmentKeys.Params.Width, 0);
+            var height = latentFragment.GetInt(FragmentKeys.Params.Height, 0);
+            if (width > 0 && height > 0)
+                return (width, height);
+
+            return GetWorkflowSchemaDefaultResolution(workflow);
+        }
+
+        /// <summary>
+        /// Reads the workflow's own Latent fragment's static schema default (its
+        /// <see cref="Workflows.Models.FragmentParameter.DefaultValue"/>), falling back to a
+        /// square 1024 (or 768 for SD1.5) when the workflow has no discoverable Latent fragment.
+        /// Used only when the workflow has never been configured/saved.
+        /// </summary>
+        private (int width, int height) GetWorkflowSchemaDefaultResolution(Workflow workflow)
+        {
+            var fallback = workflow.Base == ModelBase.StableDiffusion ? 768 : 1024;
+
+            var schemas = _workflows.GetWorkflowFragmentSchemas(workflow);
+            var latentSchema = schemas.Values.FirstOrDefault(s => s.Type == Workflows.Models.FragmentType.Latent);
+            if (latentSchema == null)
+                return (fallback, fallback);
+
+            var width = ToInt(latentSchema.GetConstraints("width").Default, fallback);
+            var height = ToInt(latentSchema.GetConstraints("height").Default, fallback);
+            return (width, height);
+        }
+
+        private static int ToInt(object? value, int defaultValue)
+        {
+            try
+            {
+                return value == null ? defaultValue : Convert.ToInt32(value);
+            }
+            catch
+            {
+                return defaultValue;
+            }
         }
 
         private static int SnapTo64(int v) => Math.Max(64, (v / 64) * 64);

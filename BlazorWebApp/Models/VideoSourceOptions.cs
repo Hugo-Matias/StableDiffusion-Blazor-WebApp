@@ -14,6 +14,13 @@ namespace BlazorWebApp.Models
         public string Format { get; set; } = "AnimateDiff";
         public int PreviewFrameOffset { get; set; }
 
+        /// <summary>
+        /// Whether the video's own soundtrack should be wired into workflows that accept a
+        /// paired reference audio input alongside this video (e.g. MiniMax H3 Reference-to-Video).
+        /// Explicit opt-in since not every video source has (or needs) audio.
+        /// </summary>
+        public bool IncludeAudio { get; set; }
+
         public VideoSourceOptions Clone()
         {
             return new VideoSourceOptions
@@ -25,7 +32,8 @@ namespace BlazorWebApp.Models
                 SkipFirstFrames = SkipFirstFrames,
                 SelectEveryNth = SelectEveryNth,
                 Format = Format,
-                PreviewFrameOffset = PreviewFrameOffset
+                PreviewFrameOffset = PreviewFrameOffset,
+                IncludeAudio = IncludeAudio
             };
         }
     }

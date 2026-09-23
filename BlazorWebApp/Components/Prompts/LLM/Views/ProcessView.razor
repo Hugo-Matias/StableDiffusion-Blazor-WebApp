@@ -31,7 +31,8 @@
 
         @* Template Selector *@
         <MudSelect Value="_selectedTemplateId" ValueChanged="OnTemplateChanged" Label="Template" Variant="Variant.Text"
-                   Dense AnchorOrigin="Origin.BottomLeft" Style="min-width: 250px;" Disabled="_isProcessing" T="int">
+                   Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" Style="min-width: 250px;"
+                   Disabled="_isProcessing" T="int">
             @if (_templates != null)
             {
                 foreach (var template in _templates)

@@ -1,18 +1,17 @@
 @inject IDatabaseService DB
+@inject IDialogService DialogService
 
 <div class="category-browser">
     <MudStack Spacing="3">
         <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
             <MudText Typo="Typo.h6">Categories</MudText>
             <MudTooltip Text="Refresh categories">
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
-                               Size="Size.Small" 
-                               OnClick="LoadCategories" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" OnClick="LoadCategories" />
             </MudTooltip>
         </MudStack>
-        
+
         <MudDivider />
-        
+
         @if (_isLoading)
         {
             <MudProgressLinear Indeterminate Color="Color.Primary" />
@@ -21,8 +20,7 @@
         {
             <MudList Clickable Dense>
                 @* All Prompts *@
-                <MudListItem OnClick="() => HandleCategorySelected(null)"
-                             Class="@GetCategoryItemClass(null)">
+                <MudListItem OnClick="() => HandleCategorySelected(null)" Class="@GetCategoryItemClass(null)">
                     <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
                             <MudIcon Icon="@Icons.Material.Filled.AllInclusive" Size="Size.Small" />
@@ -33,7 +31,7 @@
                         </MudChip>
                     </MudStack>
                 </MudListItem>
-                
+
                 @* Favorites *@
                 <MudListItem OnClick="() => HandleCategorySelected(FAVORITES_FILTER)"
                              Class="@GetCategoryItemClass(FAVORITES_FILTER)">
@@ -47,7 +45,7 @@
                         </MudChip>
                     </MudStack>
                 </MudListItem>
-                
+
                 @* Pinned *@
                 <MudListItem OnClick="() => HandleCategorySelected(PINNED_FILTER)"
                              Class="@GetCategoryItemClass(PINNED_FILTER)">
@@ -61,7 +59,7 @@
                         </MudChip>
                     </MudStack>
                 </MudListItem>
-                
+
                 @* Uncategorized *@
                 <MudListItem OnClick="() => HandleCategorySelected(UNCATEGORIZED_FILTER)"
                              Class="@GetCategoryItemClass(UNCATEGORIZED_FILTER)">
@@ -75,9 +73,9 @@
                         </MudChip>
                     </MudStack>
                 </MudListItem>
-                
+
                 <MudDivider Class="my-2" />
-                
+
                 @* Custom Categories *@
                 @if (_categories != null && _categories.Any())
                 {
@@ -90,9 +88,16 @@
                                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info" />
                                     <MudText Typo="Typo.body1">@category.Name</MudText>
                                 </MudStack>
-                                <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
-                                    @category.Count
-                                </MudChip>
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="0">
+                                    <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                        @category.Count
+                                    </MudChip>
+                                    <MudTooltip Text="Delete category and all its prompts">
+                                        <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Small"
+                                                       Color="Color.Error" OnClick="@(() => HandleDeleteCategory(category.Name))"
+                                                       OnClickStopPropagation="true" />
+                                    </MudTooltip>
+                                </MudStack>
                             </MudStack>
                         </MudListItem>
                     }
@@ -112,10 +117,13 @@
     private const string FAVORITES_FILTER = "__favorites__";
     private const string PINNED_FILTER = "__pinned__";
     private const string UNCATEGORIZED_FILTER = "__uncategorized__";
-    
+
     [Parameter]
     public EventCallback<string?> OnCategorySelected { get; set; }
-    
+
+    [Parameter]
+    public EventCallback<string> OnCategoryDeleted { get; set; }
+
     private bool _isLoading = true;
     private string? _selectedCategory = null;
     private List<CategoryInfo> _categories = new();
@@ -123,28 +131,28 @@
     private int _favoriteCount = 0;
     private int _pinnedCount = 0;
     private int _uncategorizedCount = 0;
-    
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCategories();
     }
-    
+
     private async Task LoadCategories()
     {
         _isLoading = true;
         StateHasChanged();
-        
+
         try
         {
             // Get all prompts to calculate counts
             var allPrompts = await DB.GetPrompts();
             _totalCount = allPrompts.Count;
-            
+
             // Calculate special category counts
             _favoriteCount = allPrompts.Count(p => p.IsFavorite);
             _pinnedCount = allPrompts.Count(p => p.IsPinned);
             _uncategorizedCount = allPrompts.Count(p => string.IsNullOrWhiteSpace(p.Category));
-            
+
             // Get custom categories with counts
             var categoryNames = await DB.GetAllPromptCategories();
             _categories = categoryNames.Select(name => new CategoryInfo
@@ -159,13 +167,13 @@
             StateHasChanged();
         }
     }
-    
+
     private async Task HandleCategorySelected(string? category)
     {
         _selectedCategory = category;
         await OnCategorySelected.InvokeAsync(category);
     }
-    
+
     private string GetCategoryItemClass(string? category)
     {
         var baseClass = "category-item";
@@ -175,12 +183,33 @@
         }
         return baseClass;
     }
-    
+
     public async Task RefreshCategories()
     {
         await LoadCategories();
     }
-    
+
+    private async Task HandleDeleteCategory(string categoryName)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Delete Category",
+            $"Delete '{categoryName}' and all {_categories.FirstOrDefault(c => c.Name == categoryName)?.Count ?? 0} prompt(s) in it? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        await DB.DeletePromptsByCategory(categoryName);
+
+        if (_selectedCategory == categoryName)
+        {
+            _selectedCategory = null;
+            await OnCategorySelected.InvokeAsync(null);
+        }
+
+        await LoadCategories();
+        await OnCategoryDeleted.InvokeAsync(categoryName);
+    }
+
     private class CategoryInfo
     {
         public string Name { get; set; } = string.Empty;

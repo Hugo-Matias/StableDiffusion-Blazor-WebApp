@@ -114,7 +114,8 @@
             }
             else
             {
-                <GeneratedImageTabs @key="ImageKey" />
+                <GeneratedImageTabs @key="ImageKey" OnGenerateRequested="GenerateAsync" IsGenerating="@_isGenerating"
+                                    CanGenerate="@CanGenerate()" />
             }
         </MudItem>
     </MudGrid>

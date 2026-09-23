@@ -170,7 +170,7 @@
     private HashSet<string> _collapsedGroups = new();
 
     // Helper type to avoid Razor parsing issues with nested generics containing <string>
-    private sealed class DictionaryCore : Dictionary<string?, List<string>> { }
+    private sealed class DictionaryCore : Dictionary<string, List<string>> { }
 
     private void ToggleGroup(string groupKey)
     {

@@ -18,6 +18,11 @@ namespace BlazorWebApp.Services
         Task<int> GetLocalTagUsageCount(string tagName);
 
         /// <summary>
+        /// Gets a snapshot of local tag usage counts keyed by normalized tag name.
+        /// </summary>
+        Task<IReadOnlyDictionary<string, int>> GetLocalTagUsageSnapshot();
+
+        /// <summary>
         /// Gets top N most used tags locally.
         /// </summary>
         /// <param name="count">Number of top tags to return</param>

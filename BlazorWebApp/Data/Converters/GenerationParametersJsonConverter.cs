@@ -289,6 +289,10 @@ namespace BlazorWebApp.Data.Converters
                         result.Styles = JsonSerializer.Deserialize<List<PromptStyle>>(ref reader, options) ?? new List<PromptStyle>();
                         break;
 
+                    case nameof(GenerationParameters.StyleFallbackMode):
+                        result.StyleFallbackMode = ReadPromptApplicationMode(ref reader, options);
+                        break;
+
                     case nameof(GenerationParameters.DetailerLoras):
                         // Legacy pass-0-only shape: stored as a flat List<Lora>. Hydrate into pass 0 of the dictionary.
                         result.DetailerLorasByPass[0] = JsonSerializer.Deserialize<List<Lora>>(ref reader, options) ?? new List<Lora>();
@@ -349,6 +353,8 @@ namespace BlazorWebApp.Data.Converters
             writer.WritePropertyName(nameof(GenerationParameters.Styles));
             JsonSerializer.Serialize(writer, value.Styles, options);
 
+            writer.WriteString(nameof(GenerationParameters.StyleFallbackMode), value.StyleFallbackMode.ToString());
+
             // DetailerLorasByPass - authoritative multi-pass store
             writer.WritePropertyName(nameof(GenerationParameters.DetailerLorasByPass));
             JsonSerializer.Serialize(
@@ -357,6 +363,24 @@ namespace BlazorWebApp.Data.Converters
                 options);
 
             writer.WriteEndObject();
+        }
+
+        private static PromptApplicationMode ReadPromptApplicationMode(ref Utf8JsonReader reader, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String && Enum.TryParse<PromptApplicationMode>(reader.GetString(), true, out var mode))
+                return mode;
+
+            if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var numericMode) && Enum.IsDefined(typeof(PromptApplicationMode), numericMode))
+                return (PromptApplicationMode)numericMode;
+
+            try
+            {
+                return JsonSerializer.Deserialize<PromptApplicationMode>(ref reader, options);
+            }
+            catch (JsonException)
+            {
+                return PromptApplicationMode.Append;
+            }
         }
 
         private static Dictionary<string, FragmentParameters> ReadFragmentsDictionary(ref Utf8JsonReader reader)

@@ -83,7 +83,7 @@
                     </MudItem>
                 }
             </MudGrid>
-            
+
             @if (Images.PageCount > 1)
             {
                 <div class="pagination-bottom">
@@ -107,7 +107,8 @@
 <AssetViewer @bind-IsVisible="_showViewer" Assets="@(Images.Images ?? new List<Image>())" StartIndex="_viewerStartIndex"
              CurrentPage="_currentPage" PageCount="Images.PageCount"
              TotalCount="@(Images.PageCount * (Images.Images?.Count ?? 0))" OnPageChange="HandleViewerPageChange"
-             OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" />
+             OnAssetChanged="HandleAssetChanged" OnClosed="HandleViewerClosed" ShowGenerateButton="ShowGenerateButton"
+             IsGenerating="IsGenerating" CanGenerate="CanGenerate" OnGenerateRequested="OnGenerateRequested" />
 
 @code {
     [Parameter] public ImagesDto Images { get; set; } = new();
@@ -137,6 +138,16 @@
     /// </summary>
     [Parameter] public bool ShowClearButton { get; set; }
     [Parameter] public EventCallback OnClear { get; set; }
+
+    /// <summary>
+    /// When true, surfaces an in-viewer "Generate New" trigger in the fullscreen
+    /// AssetViewer. Only meaningful for the Generate page's live results container -
+    /// other consumers (Gallery, Danbooru, etc.) leave this false (the default).
+    /// </summary>
+    [Parameter] public bool ShowGenerateButton { get; set; }
+    [Parameter] public bool IsGenerating { get; set; }
+    [Parameter] public bool CanGenerate { get; set; } = true;
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
 
     private int _currentPage = 1;
     private bool _showSelectionsDrawer;

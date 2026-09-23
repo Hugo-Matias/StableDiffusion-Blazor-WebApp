@@ -21,8 +21,9 @@
             @switch (_activeViewId)
             {
                 case "process":
-                    <ProcessView SelectedModel="@State.State.Generation.LLM.Model" Templates="@_templates" TemplatesVersion="@_templatesVersion"
-                                 PendingRestore="@_pendingRestore" RestoreVersion="@_restoreVersion" OnHistoryAdded="HandleHistoryAdded"
+                    <ProcessView SelectedModel="@State.State.Generation.LLM.Model" Templates="@_templates"
+                                 TemplatesVersion="@_templatesVersion" PendingRestore="@_pendingRestore"
+                                 RestoreVersion="@_restoreVersion" OnHistoryAdded="HandleHistoryAdded"
                                  OnHistoryMutated="HandleHistoryMutated" />
                     break;
                 case "system-prompts":
@@ -35,6 +36,9 @@
                 case "wildcard-forge":
                     <WildcardForgeView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess"
                                        OnSendToWorkshop="HandleSendToWorkshop" />
+                    break;
+                case "preset-forge":
+                    <PresetForgeView SelectedModel="@State.State.Generation.LLM.Model" />
                     break;
                 case "mixer":
                     <MixerView SelectedModel="@State.State.Generation.LLM.Model" OnSendToProcess="HandleSendToProcess" />
