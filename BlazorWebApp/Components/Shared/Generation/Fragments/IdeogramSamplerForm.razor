@@ -1,0 +1,270 @@
+@*
+    IdeogramSamplerForm - Sampler controls for Ideogram 4 workflows.
+
+    Exposes: sampler, steps, guidance (DualModelGuider cfg), mu, std (Ideogram4Scheduler
+    shape params), cfg override value/start/end, seed.
+*@
+@using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("IdeogramSamplerForm")]
+@inject IGenerationParameterService ParameterService
+@inject IBackendService Backend
+@inject IImageService ImageService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSelect T="string"
+                   Value="@_localSamplerName"
+                   ValueChanged="OnSamplerNameChanged"
+                   Label="Sampler"
+                   Variant="Variant.Text"
+                   Dense="true">
+            @foreach (var s in _samplerOptions)
+            {
+                <MudSelectItem Value="@s">@s</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   @bind-Value="_localSteps"
+                   @bind-Value:after="OnStepsChanged"
+                   Min="_stepsConstraints.GetMin(1)"
+                   Max="_stepsConstraints.GetMax(100)"
+                   Step="_stepsConstraints.GetStep(1)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localGuidance"
+                   @bind-Value:after="OnGuidanceChanged"
+                   Min="_guidanceConstraints.GetMin(0f)"
+                   Max="_guidanceConstraints.GetMax(30f)"
+                   Step="_guidanceConstraints.GetStep(0.1f)"
+                   Variant="Variant.Filled"
+                   ValueLabel
+                   TickMarks>
+            <small>Guidance:</small> @_localGuidance.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localCfg"
+                   @bind-Value:after="OnCfgChanged"
+                   Min="_cfgConstraints.GetMin(0f)"
+                   Max="_cfgConstraints.GetMax(20f)"
+                   Step="_cfgConstraints.GetStep(0.1f)"
+                   Variant="Variant.Filled"
+                   ValueLabel
+                   TickMarks>
+            <small>CFG Override:</small> @_localCfg.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localMu"
+                   @bind-Value:after="OnMuChanged"
+                   Min="_muConstraints.GetMin(-10f)"
+                   Max="_muConstraints.GetMax(10f)"
+                   Step="_muConstraints.GetStep(0.05f)"
+                   Variant="Variant.Filled"
+                   ValueLabel
+                   TickMarks>
+            <small>Mu:</small> @_localMu.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localStd"
+                   @bind-Value:after="OnStdChanged"
+                   Min="_stdConstraints.GetMin(0.1f)"
+                   Max="_stdConstraints.GetMax(5f)"
+                   Step="_stdConstraints.GetStep(0.05f)"
+                   Variant="Variant.Filled"
+                   ValueLabel
+                   TickMarks>
+            <small>Std:</small> @_localStd.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localCfgStart"
+                   @bind-Value:after="OnCfgStartChanged"
+                   Min="_cfgStartConstraints.GetMin(0f)"
+                   Max="_cfgStartConstraints.GetMax(1f)"
+                   Step="_cfgStartConstraints.GetStep(0.01f)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>CFG Start %:</small> @_localCfgStart.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float"
+                   @bind-Value="_localCfgEnd"
+                   @bind-Value:after="OnCfgEndChanged"
+                   Min="_cfgEndConstraints.GetMin(0f)"
+                   Max="_cfgEndConstraints.GetMax(1f)"
+                   Step="_cfgEndConstraints.GetStep(0.01f)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>CFG End %:</small> @_localCfgEnd.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long"
+                             @bind-Value="_localSeed"
+                             @bind-Value:after="OnSeedChanged"
+                             Label="Seed"
+                             Min="-1"
+                             Max="long.MaxValue"
+                             Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+            <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" Size="Size.Small" Title="Restore seed from last generation" />
+        </MudStack>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private static readonly string[] _samplerOptions = new[]
+    {
+        "euler", "euler_ancestral", "heun", "dpm_2", "dpm_2_ancestral",
+        "lms", "dpmpp_2s_ancestral", "dpmpp_sde", "dpmpp_2m", "dpmpp_2m_sde",
+        "ddim", "uni_pc"
+    };
+
+    private string _localSamplerName = "euler";
+    private int _localSteps;
+    private float _localGuidance;
+    private float _localMu;
+    private float _localStd;
+    private float _localCfg;
+    private float _localCfgStart;
+    private float _localCfgEnd;
+    private long _localSeed;
+
+    private ParameterConstraints _stepsConstraints = new();
+    private ParameterConstraints _guidanceConstraints = new();
+    private ParameterConstraints _muConstraints = new();
+    private ParameterConstraints _stdConstraints = new();
+    private ParameterConstraints _cfgConstraints = new();
+    private ParameterConstraints _cfgStartConstraints = new();
+    private ParameterConstraints _cfgEndConstraints = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _stepsConstraints = Fragment.Schema?.GetConstraints(Params.Steps) ?? new ParameterConstraints();
+        _guidanceConstraints = Fragment.Schema?.GetConstraints(Params.Guidance) ?? new ParameterConstraints();
+        _muConstraints = Fragment.Schema?.GetConstraints(Params.Mu) ?? new ParameterConstraints();
+        _stdConstraints = Fragment.Schema?.GetConstraints(Params.Std) ?? new ParameterConstraints();
+        _cfgConstraints = Fragment.Schema?.GetConstraints(Params.Cfg) ?? new ParameterConstraints();
+        _cfgStartConstraints = Fragment.Schema?.GetConstraints(Params.CfgStart) ?? new ParameterConstraints();
+        _cfgEndConstraints = Fragment.Schema?.GetConstraints(Params.CfgEnd) ?? new ParameterConstraints();
+
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, Params.SamplerName, "euler");
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, Params.Steps, 20);
+        _localGuidance = ParameterService.GetFragmentProperty(Fragment, Params.Guidance, 7.0f);
+        _localMu = ParameterService.GetFragmentProperty(Fragment, Params.Mu, 0.0f);
+        _localStd = ParameterService.GetFragmentProperty(Fragment, Params.Std, 1.75f);
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 3.0f);
+        _localCfgStart = ParameterService.GetFragmentProperty(Fragment, Params.CfgStart, 0.7f);
+        _localCfgEnd = ParameterService.GetFragmentProperty(Fragment, Params.CfgEnd, 1.0f);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, -1L);
+    }
+
+    private async Task OnSamplerNameChanged(string value)
+    {
+        _localSamplerName = value;
+        ParameterService.SetFragmentProperty(Fragment, Params.SamplerName, _localSamplerName, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStepsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Steps, _localSteps, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnGuidanceChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Guidance, _localGuidance, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnMuChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Mu, _localMu, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStdChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Std, _localStd, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localCfg, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgStartChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.CfgStart, _localCfgStart, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgEndChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.CfgEnd, _localCfgEnd, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private void SetRandomSeed()
+    {
+        _localSeed = Random.Shared.NextInt64(0, long.MaxValue);
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localSeed, notify: true);
+    }
+
+    private async Task RestoreSeed()
+    {
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(ImageService.Images.Info);
+                foreach (var nodeProperty in doc.RootElement.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs) &&
+                        (inputs.TryGetProperty("noise_seed", out var seedEl) || inputs.TryGetProperty("seed", out seedEl)))
+                    {
+                        if (seedEl.ValueKind == System.Text.Json.JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                        {
+                            _localSeed = seedValue;
+                            ParameterService.SetFragmentProperty(Fragment, Params.Seed, seedValue, notify: true);
+                            await OnChanged.InvokeAsync();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+}
