@@ -1,0 +1,144 @@
+@*
+    PresetConditioningForm - Controls for Conditioning Control.
+
+    Exposes:
+      - preset_text: Anchor instructions encoded as the base conditioning.
+            - preset_strength: How much the main prompt dominates over the anchor.
+            - timing_mode / timing_start / timing_end: optional sampling window for the blend.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@using BlazorWebApp.Workflows.Fragments.Flux
+@attribute [FragmentComponent("PresetConditioningForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSlider T="double" @bind-Value="_localStrength" @bind-Value:after="OnStrengthChanged" Min="@_strengthMin"
+                   Max="@_strengthMax" Step="@_strengthStep" Variant="Variant.Filled" ValueLabel>
+            <small>Prompt Strength:</small> @_localStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField T="string" Label="Anchor Instructions" @bind-Value="_localPresetText"
+                      @bind-Value:after="OnPresetTextChanged" Lines="4" AutoGrow="true" MaxLines="12"
+                      HelperText="Optional. Blends the main prompt toward this anchor below 1.0. Leave empty to control prompt influence without a text anchor."
+                      HelperTextOnFocus="true" Clearable="true" Variant="Variant.Text" />
+    </MudItem>
+    <MudItem xs="12">
+        <MudSelect T="string" Label="Timing" @bind-Value="_localTimingMode" @bind-Value:after="OnTimingModeChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _timingOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    @if (string.Equals(_localTimingMode, PresetConditioningFragment.TimingCustom, StringComparison.OrdinalIgnoreCase))
+    {
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_localTimingStart" @bind-Value:after="OnTimingStartChanged" Min="@_timingMin"
+                       Max="@_timingMax" Step="@_timingStep" Variant="Variant.Filled" ValueLabel>
+                <small>Start:</small> @_localTimingStart.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_localTimingEnd" @bind-Value:after="OnTimingEndChanged" Min="@_timingMin"
+                       Max="@_timingMax" Step="@_timingStep" Variant="Variant.Filled" ValueLabel>
+                <small>End:</small> @_localTimingEnd.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localStrength = 1.0;
+    private string _localPresetText = "";
+    private string _localTimingMode = PresetConditioningFragment.TimingFull;
+    private double _localTimingStart = 0.0;
+    private double _localTimingEnd = 1.0;
+    private List<string> _timingOptions = [];
+
+    private double _strengthMin = 0.0;
+    private double _strengthMax = 1.0;
+    private double _strengthStep = 0.01;
+    private double _timingMin = 0.0;
+    private double _timingMax = 1.0;
+    private double _timingStep = 0.01;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        if (Fragment.Schema?.Parameters.TryGetValue("preset_strength", out var sc) == true)
+        {
+            _strengthMin = sc.GetMin(0.0);
+            _strengthMax = sc.GetMax(1.0);
+            _strengthStep = sc.GetStep(0.01);
+        }
+
+        if (Fragment.Schema?.Parameters.TryGetValue("timing_mode", out var timingMode) == true)
+        {
+            _timingOptions = timingMode.Options?.ToList() ?? [];
+        }
+
+        if (_timingOptions.Count == 0)
+        {
+            _timingOptions =
+            [
+                PresetConditioningFragment.TimingFull,
+                PresetConditioningFragment.TimingEarly,
+                PresetConditioningFragment.TimingMiddle,
+                PresetConditioningFragment.TimingLate,
+                PresetConditioningFragment.TimingCustom
+            ];
+        }
+
+        if (Fragment.Schema?.Parameters.TryGetValue("timing_start", out var timingStart) == true)
+        {
+            _timingMin = timingStart.GetMin(0.0);
+            _timingMax = timingStart.GetMax(1.0);
+            _timingStep = timingStart.GetStep(0.01);
+        }
+
+        _localStrength = ParameterService.GetFragmentProperty(Fragment, "preset_strength", 1.0);
+        _localPresetText = ParameterService.GetFragmentProperty(Fragment, "preset_text", "") ?? "";
+        _localTimingMode = ParameterService.GetFragmentProperty(Fragment, "timing_mode", PresetConditioningFragment.TimingFull)
+            ?? PresetConditioningFragment.TimingFull;
+        _localTimingStart = ParameterService.GetFragmentProperty(Fragment, "timing_start", 0.0);
+        _localTimingEnd = ParameterService.GetFragmentProperty(Fragment, "timing_end", 1.0);
+    }
+
+    private async Task OnStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "preset_strength", _localStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnPresetTextChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "preset_text", _localPresetText, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTimingModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "timing_mode", _localTimingMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTimingStartChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "timing_start", _localTimingStart, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTimingEndChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "timing_end", _localTimingEnd, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}
