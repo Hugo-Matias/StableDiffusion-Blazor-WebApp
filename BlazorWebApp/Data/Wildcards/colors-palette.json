@@ -1,0 +1,34 @@
+{
+  "collection": {
+    "name": "colors-palette",
+    "category": "Colors & Palettes",
+    "description": "Color palettes and tone descriptors for garment randomization in wardrobe change prompts. Minimal verbosity for clean prompt injection.",
+    "entries": [
+      { "value": "crimson red", "weight": 1.2, "sortOrder": 0 },
+      { "value": "deep navy blue", "weight": 1.2, "sortOrder": 1 },
+      { "value": "emerald green", "weight": 1.0, "sortOrder": 2 },
+      { "value": "rich burgundy", "weight": 1.0, "sortOrder": 3 },
+      { "value": "soft pastel pink", "weight": 1.0, "sortOrder": 4 },
+      { "value": "warm golden yellow", "weight": 1.0, "sortOrder": 5 },
+      { "value": "charcoal grey", "weight": 1.2, "sortOrder": 6 },
+      { "value": "ivory white", "weight": 1.0, "sortOrder": 7 },
+      { "value": "jet black", "weight": 1.5, "sortOrder": 8 },
+      { "value": "lavender purple", "weight": 1.0, "sortOrder": 9 },
+      { "value": "coral orange", "weight": 1.0, "sortOrder": 10 },
+      { "value": "teal turquoise", "weight": 1.0, "sortOrder": 11 },
+      { "value": "rose gold metallic", "weight": 0.8, "sortOrder": 12 },
+      { "value": "silver chrome", "weight": 0.8, "sortOrder": 13 },
+      { "value": "copper bronze", "weight": 0.7, "sortOrder": 14 },
+      { "value": "mustard yellow", "weight": 0.8, "sortOrder": 15 },
+      { "value": "forest green", "weight": 1.0, "sortOrder": 16 },
+      { "value": "royal purple", "weight": 0.9, "sortOrder": 17 },
+      { "value": "sky blue", "weight": 1.0, "sortOrder": 18 },
+      { "value": "blush mauve", "weight": 0.9, "sortOrder": 19 },
+      { "value": "chocolate brown", "weight": 1.0, "sortOrder": 20 },
+      { "value": "burnt sienna", "weight": 0.8, "sortOrder": 21 },
+      { "value": "mint green", "weight": 0.9, "sortOrder": 22 },
+      { "value": "electric blue", "weight": 0.7, "sortOrder": 23 },
+      { "value": "hot magenta", "weight": 0.7, "sortOrder": 24 }
+    ]
+  }
+}

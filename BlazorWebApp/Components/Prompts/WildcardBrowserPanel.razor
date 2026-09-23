@@ -1,0 +1,433 @@
+@inject IDatabaseService Database
+@inject IWildcardBrowserService WildcardBrowser
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<div class="wildcard-browser-panel">
+    <div class="wildcard-toolbar">
+        <div class="wildcard-toolbar-row wildcard-toolbar-row-primary">
+            <MudTextField T="string" Value="_searchText" Placeholder="Search wildcard entries..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          DebounceInterval="300" Clearable="true" Variant="Variant.Text" Margin="Margin.Dense"
+                          Class="wildcard-search" ValueChanged="HandleSearchChanged" />
+
+            <MudSelect T="string" Value="_selectedCategory" Dense="true" Margin="Margin.Dense" Variant="Variant.Text"
+                       Class="wildcard-category-select" Placeholder="Category" Clearable="true"
+                       ValueChanged="HandleCategoryChanged">
+                @foreach (var category in _categories)
+                {
+                    <MudSelectItem Value="@category">@category</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudText Typo="Typo.caption" Class="wildcard-count-label">
+                @_filteredEntries.Count.ToString("N0") entries
+            </MudText>
+        </div>
+
+        <div class="wildcard-toolbar-row wildcard-toolbar-row-secondary">
+            <MudSelect T="WildcardEntrySortMode" Value="_sortMode" Dense="true" Margin="Margin.Dense"
+                       Variant="Variant.Text" Class="wildcard-sort-select" ValueChanged="HandleSortChanged">
+                <MudSelectItem Value="WildcardEntrySortMode.Value">Entry</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Group">Group</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Category">Category</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Weight">Weight</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Usage">Usage</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Updated">Updated</MudSelectItem>
+                <MudSelectItem Value="WildcardEntrySortMode.Random">Random</MudSelectItem>
+            </MudSelect>
+
+            <MudToggleIconButton Toggled="_sortDescending" Icon="@Icons.Material.Filled.ArrowUpward"
+                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward" Color="Color.Default" ToggledColor="Color.Info"
+                                 Size="Size.Small" Title="@(_sortDescending ? "Descending" : "Ascending")"
+                                 ToggledChanged="HandleSortDirectionChanged" />
+
+            @if (_sortMode == WildcardEntrySortMode.Random)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Shuffle" Size="Size.Small" Color="Color.Warning"
+                               Title="Re-randomize" OnClick="HandleReshuffle" />
+            }
+
+            <MudNumericField T="int" Value="_pageSize" ValueChanged="HandlePageSizeChanged" Label="Per page"
+                             Variant="Variant.Text" Margin="Margin.Dense" Min="12" Max="160" Step="12"
+                             Class="wildcard-perpage-field" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.GridView" Size="Size.Small"
+                           Color="@(_cardDensity == 0 ? Color.Info : Color.Default)" Title="Compact"
+                           OnClick="() => _cardDensity = 0" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small"
+                           Color="@(_cardDensity == 1 ? Color.Info : Color.Default)" Title="Normal"
+                           OnClick="() => _cardDensity = 1" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewComfy" Size="Size.Small"
+                           Color="@(_cardDensity == 2 ? Color.Info : Color.Default)" Title="Large"
+                           OnClick="() => _cardDensity = 2" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Title="Reload wildcards"
+                           Disabled="@_isLoading" OnClick="LoadCollections" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Small"
+                           Color="@(_showGenerator ? Color.Info : Color.Default)" Title="Generate preview images"
+                           OnClick="() => _showGenerator = !_showGenerator" />
+
+            @if (_showGenerator)
+            {
+                <MudNumericField T="int" Value="_genBatchSize" ValueChanged="value => _genBatchSize = value" Label="Batch"
+                                 Variant="Variant.Text" Margin="Margin.Dense" Min="0" Class="wildcard-batch-field" />
+
+                <MudCheckBox T="bool" @bind-Value="_genSkipExisting" Label="Skip existing" Dense="true" Size="Size.Small" />
+
+                @if (WildcardBrowser.PreviewProgress.IsRunning)
+                {
+                    <MudButton OnClick="StopGeneration" Variant="Variant.Filled" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Stop" Size="Size.Small">
+                        Stop
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton OnClick="StartGeneration" Variant="Variant.Filled" Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.PlayArrow" Size="Size.Small"
+                               Disabled="@(_filteredEntries.Count == 0)">
+                        Generate
+                    </MudButton>
+                }
+
+                @if (WildcardBrowser.PreviewProgress.IsRunning || WildcardBrowser.PreviewProgress.Current > 0)
+                {
+                    <div class="wildcard-progress">
+                        <MudProgressLinear Value="@WildcardBrowser.PreviewProgress.Current"
+                                           Max="@(WildcardBrowser.PreviewProgress.Total > 0 ? WildcardBrowser.PreviewProgress.Total : 1)"
+                                           Color="Color.Info" Rounded="true" Size="Size.Small" />
+                        <span>
+                            @WildcardBrowser.PreviewProgress.Current / @WildcardBrowser.PreviewProgress.Total
+                            @if (WildcardBrowser.PreviewProgress.Skipped > 0)
+                            {
+                                <text> (@WildcardBrowser.PreviewProgress.Skipped skipped)</text>
+                            }
+                            @if (WildcardBrowser.PreviewProgress.Failed > 0)
+                            {
+                                <text> (@WildcardBrowser.PreviewProgress.Failed failed)</text>
+                            }
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="wildcard-loading">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading wildcards...</MudText>
+        </div>
+    }
+    else
+    {
+        <div
+            class="wildcard-grid @(_cardDensity == 0 ? "wildcard-grid-sm" : _cardDensity == 2 ? "wildcard-grid-lg" : null)">
+            @if (_filteredEntries.Count == 0)
+            {
+                <div class="wildcard-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Dark" />
+                    <MudText Typo="Typo.body2" Color="Color.Dark">No wildcard entries found</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var entry in GetPagedEntries())
+                {
+                    <article class="wildcard-card" title="Prepend @entry.Value">
+                        <div class="wildcard-image-wrapper" @onclick="() => PrependEntry(entry)">
+                            @if (WildcardBrowser.HasPreviewImage(entry))
+                            {
+                                <img src="@WildcardBrowser.GetPreviewImageSource(entry, _generationVersion)" alt="@entry.Value"
+                                     class="wildcard-image" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="wildcard-placeholder">
+                                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesomeMosaic" Size="Size.Large" />
+                                </div>
+                            }
+
+                            @if (Math.Abs(entry.Weight - 1.0f) > 0.001f)
+                            {
+                                <span class="wildcard-weight-badge">x@entry.Weight.ToString("0.##")</span>
+                            }
+                        </div>
+
+                        <div class="wildcard-card-body">
+                            <div class="wildcard-title-block">
+                                <span class="wildcard-category">@FormatCategory(entry.Category)</span>
+                                <span class="wildcard-group" title="@entry.CollectionName">@entry.CollectionName</span>
+                                <span class="wildcard-name" title="@entry.Value">@entry.Value</span>
+                            </div>
+
+                            @if (_cardDensity > 0)
+                            {
+                                <div class="wildcard-trigger" title="@GetWildcardToken(entry)">@GetWildcardToken(entry)</div>
+                            }
+                        </div>
+
+                        <div class="wildcard-card-footer">
+                            <span class="wildcard-meta">Used @entry.UsageCount.ToString("N0")</span>
+                            <div class="send-to-buttons wildcard-actions">
+                                <button type="button" class="send-to-btn" @onclick="() => PrependEntry(entry)"
+                                        title="Prepend this entry">
+                                    <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" />
+                                    <span>Entry</span>
+                                </button>
+                                <button type="button" class="send-to-btn mode-txt2img" @onclick="() => PrependTrigger(entry)"
+                                        title="Prepend wildcard trigger">
+                                    <MudIcon Icon="@Icons.Material.Filled.DataObject" Size="Size.Small" />
+                                    <span>Trigger</span>
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+    }
+
+    @if (!_isLoading && _totalPages > 1)
+    {
+        <div class="wildcard-pagination">
+            <MudPagination Count="_totalPages" Selected="_currentPage" SelectedChanged="HandlePageChanged" Size="Size.Small"
+                           Variant="Variant.Outlined" Color="Color.Info" BoundaryCount="1" MiddleCount="3" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+
+    private List<WildcardCollection> _collections = new();
+    private List<WildcardBrowserEntry> _entries = new();
+    private List<WildcardBrowserEntry> _filteredEntries = new();
+    private List<string> _categories = new();
+    private string _searchText = string.Empty;
+    private string? _selectedCategory;
+    private WildcardEntrySortMode _sortMode = WildcardEntrySortMode.Value;
+    private bool _sortDescending;
+    private int _randomSeed = Random.Shared.Next();
+    private int _cardDensity = 1;
+    private int _currentPage = 1;
+    private int _pageSize = 36;
+    private bool _isLoading = true;
+
+    private bool _showGenerator;
+    private int _genBatchSize = 0;
+    private bool _genSkipExisting = true;
+    private CancellationTokenSource? _genCts;
+    private long _generationVersion;
+
+    private int _totalPages => Math.Max(1, (int)Math.Ceiling(_filteredEntries.Count / (double)_pageSize));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollections();
+    }
+
+    private async Task LoadCollections()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _collections = await Database.GetAllWildcardCollections();
+            _entries = _collections
+                .SelectMany(collection => collection.Entries
+                    .OrderBy(entry => entry.SortOrder)
+                    .ThenBy(entry => entry.Value)
+                    .Select(entry => new WildcardBrowserEntry { Collection = collection, Entry = entry }))
+                .ToList();
+            _categories = _collections
+                .Select(collection => collection.Category)
+                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(category => category)
+                .ToList();
+            RefreshEntries();
+        }
+        catch (Exception ex)
+        {
+            _collections = new();
+            _entries = new();
+            _filteredEntries = new();
+            _categories = new();
+            Snackbar.Add($"Error loading wildcards: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RefreshEntries()
+    {
+        IEnumerable<WildcardBrowserEntry> query = _entries;
+
+        if (!string.IsNullOrWhiteSpace(_selectedCategory))
+        {
+            query = query.Where(entry => string.Equals(entry.Category, _selectedCategory, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var search = _searchText.Trim();
+            query = query.Where(entry =>
+                entry.Value.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                entry.CollectionName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                entry.Category.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                entry.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        query = _sortMode switch
+        {
+            WildcardEntrySortMode.Group => _sortDescending
+                ? query.OrderByDescending(entry => entry.CollectionName).ThenByDescending(entry => entry.Value)
+                : query.OrderBy(entry => entry.CollectionName).ThenBy(entry => entry.Value),
+            WildcardEntrySortMode.Category => _sortDescending
+                ? query.OrderByDescending(entry => entry.Category).ThenByDescending(entry =>
+entry.CollectionName).ThenByDescending(entry => entry.Value)
+                : query.OrderBy(entry => entry.Category).ThenBy(entry => entry.CollectionName).ThenBy(entry => entry.Value),
+            WildcardEntrySortMode.Weight => _sortDescending
+                ? query.OrderByDescending(entry => entry.Weight).ThenBy(entry => entry.Value)
+                : query.OrderBy(entry => entry.Weight).ThenBy(entry => entry.Value),
+            WildcardEntrySortMode.Usage => _sortDescending
+                ? query.OrderByDescending(entry => entry.UsageCount).ThenBy(entry => entry.Value)
+                : query.OrderBy(entry => entry.UsageCount).ThenBy(entry => entry.Value),
+            WildcardEntrySortMode.Updated => _sortDescending
+                ? query.OrderByDescending(entry => entry.UpdatedAt).ThenBy(entry => entry.Value)
+                : query.OrderBy(entry => entry.UpdatedAt).ThenBy(entry => entry.Value),
+            WildcardEntrySortMode.Random => Shuffle(query),
+            _ => _sortDescending
+                ? query.OrderByDescending(entry => entry.Value)
+                : query.OrderBy(entry => entry.Value),
+        };
+
+        _filteredEntries = query.ToList();
+        if (_currentPage > _totalPages)
+        {
+            _currentPage = 1;
+        }
+    }
+
+    private IEnumerable<WildcardBrowserEntry> Shuffle(IEnumerable<WildcardBrowserEntry> source)
+    {
+        var random = new Random(_randomSeed);
+        return source.OrderBy(_ => random.Next());
+    }
+
+    private IEnumerable<WildcardBrowserEntry> GetPagedEntries() =>
+        _filteredEntries.Skip((_currentPage - 1) * _pageSize).Take(_pageSize);
+
+    private void HandleSearchChanged(string value)
+    {
+        _searchText = value ?? string.Empty;
+        _currentPage = 1;
+        RefreshEntries();
+    }
+
+    private void HandleCategoryChanged(string? value)
+    {
+        _selectedCategory = value;
+        _currentPage = 1;
+        RefreshEntries();
+    }
+
+    private void HandleSortChanged(WildcardEntrySortMode value)
+    {
+        _sortMode = value;
+        if (value == WildcardEntrySortMode.Random)
+        {
+            _randomSeed = Random.Shared.Next();
+        }
+        _currentPage = 1;
+        RefreshEntries();
+    }
+
+    private void HandleSortDirectionChanged(bool value)
+    {
+        _sortDescending = value;
+        _currentPage = 1;
+        RefreshEntries();
+    }
+
+    private void HandleReshuffle()
+    {
+        _randomSeed = Random.Shared.Next();
+        RefreshEntries();
+    }
+
+    private void HandlePageSizeChanged(int value)
+    {
+        _pageSize = value;
+        _currentPage = 1;
+        RefreshEntries();
+    }
+
+    private void HandlePageChanged(int page)
+    {
+        _currentPage = page;
+    }
+
+    private async Task PrependEntry(WildcardBrowserEntry entry)
+    {
+        await PrependText(entry.Value.EscapeParenthesis());
+    }
+
+    private async Task PrependTrigger(WildcardBrowserEntry entry)
+    {
+        await PrependText(GetWildcardToken(entry));
+    }
+
+    private async Task PrependText(string text)
+    {
+        await OnAppendTags.InvokeAsync(new AppendedTags
+        {
+            Tags = text,
+            IsPrefix = true
+        });
+    }
+
+    private async Task StartGeneration()
+    {
+        _genCts = new CancellationTokenSource();
+        await WildcardBrowser.GenerateBatchPreviewsAsync(
+            _filteredEntries,
+            _genBatchSize,
+            _genSkipExisting,
+            _genCts.Token,
+            async () =>
+            {
+                _generationVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                await InvokeAsync(StateHasChanged);
+            });
+    }
+
+    private void StopGeneration()
+    {
+        _genCts?.Cancel();
+    }
+
+    private static string GetWildcardPath(WildcardBrowserEntry entry) =>
+        string.IsNullOrWhiteSpace(entry.Category)
+            ? entry.CollectionName
+            : $"{entry.Category}/{entry.CollectionName}";
+
+    private static string GetWildcardToken(WildcardBrowserEntry entry) => $"__{GetWildcardPath(entry)}__";
+
+    private static string FormatCategory(string? category) =>
+        string.IsNullOrWhiteSpace(category) ? "Uncategorized" : category;
+
+    public void Dispose()
+    {
+        _genCts?.Cancel();
+        _genCts?.Dispose();
+    }
+}
