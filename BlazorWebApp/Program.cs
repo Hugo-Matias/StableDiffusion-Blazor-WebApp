@@ -220,6 +220,9 @@ builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
 // Character browser service for animadex.net character gallery
 builder.Services.AddSingleton<ICharacterBrowserService, CharacterBrowserService>();
 
+// Tag group browser service for Danbooru tag categories
+builder.Services.AddSingleton<ITagGroupService, TagGroupService>();
+
 // MagickService - transient, injected by concrete type where needed
 builder.Services.AddTransient<MagickService>();
 

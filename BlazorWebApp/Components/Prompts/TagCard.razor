@@ -1,0 +1,68 @@
+@inject ITagGroupService TagGroupService
+
+<div class="tag-card @(IsSelected ? "selected" : "") @(_isHovered ? "hovered" : "")" @onclick="HandleClick"
+     @onmouseenter="() => _isHovered = true" @onmouseleave="() => _isHovered = false"
+     title="@(IsSelected ? "Deselect" : "Select") @Tag.Label">
+
+    @* Image / Placeholder *@
+    <div class="tag-image-wrapper">
+        @{
+            var hasImage = TagGroupService.HasPreviewImage(Tag);
+            var imagePath = $"images/tags/{Tag.Group}/{Tag.Name}.webp";
+            if (CacheBust > 0) imagePath += $"?v={CacheBust}";
+        }
+        @if (hasImage)
+        {
+            <img src="@imagePath" alt="@Tag.Label" class="tag-image" loading="lazy" />
+        }
+        else
+        {
+            <div class="tag-placeholder">
+                <i class="fa-solid fa-tag"></i>
+            </div>
+        }
+
+        @* Selection indicator *@
+        @if (IsSelected)
+        {
+            <div class="tag-selected-overlay">
+                <i class="fa-solid fa-check"></i>
+            </div>
+        }
+
+        @* Quick-send button (hover only) *@
+        <button class="tag-send-btn @(_isHovered ? "visible" : "")" @onclick="HandleSendClick"
+                @onclick:stopPropagation="true" title="Send @Tag.Label to prompt">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+        </button>
+    </div>
+
+    @* Info footer *@
+    <div class="tag-info">
+        <span class="tag-label" title="@Tag.Name">@Tag.Label</span>
+        <span class="tag-count">@FormatCount(Tag.Count)</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DanbooruTag Tag { get; set; } = default!;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public int CacheBust { get; set; }
+    [Parameter] public EventCallback<DanbooruTag> OnToggleSelect { get; set; }
+    [Parameter] public EventCallback<DanbooruTag> OnSendTag { get; set; }
+
+    private bool _isHovered;
+
+    private async Task HandleClick() =>
+        await OnToggleSelect.InvokeAsync(Tag);
+
+    private async Task HandleSendClick() =>
+        await OnSendTag.InvokeAsync(Tag);
+
+    private static string FormatCount(int count) => count switch
+    {
+        >= 1_000_000 => $"{count / 1_000_000.0:0.#}M",
+        >= 1_000 => $"{count / 1_000.0:0.#}k",
+        _ => count.ToString()
+    };
+}

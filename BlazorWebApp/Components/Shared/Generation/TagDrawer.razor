@@ -84,6 +84,10 @@
                     <CharacterBrowserPanel OnAppendTags="OnAppendTags" />
                 </MudTabPanel>
 
+                <MudTabPanel Text="Tag Groups" Icon="@Icons.Material.Filled.Category">
+                    <TagGroupBrowserPanel OnAppendTags="OnAppendTags" />
+                </MudTabPanel>
+
                 <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
                     <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
                 </MudTabPanel>
