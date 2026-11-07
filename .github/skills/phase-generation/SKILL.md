@@ -1,16 +1,8 @@
 ---
-agent: agent
-description: >
-  Generate exhaustive PHASE_{#}.md documents for an approved MAIN_PLAN.md located
-  under Documentation/Plans/{plan-name}/. Each phase document must contain enough
-  self-contained context for another LLM session to pick up mid-plan and execute
-  autonomously, without having to re-derive architecture, conventions, or intent.
-tools:
-  - search
-  - read
-  - edit
+name: phase-generation
+description: Generate exhaustive PHASE_{#}.md documents for an approved MAIN_PLAN.md located under Documentation/Plans/{plan-name}/. Each phase document must contain enough self-contained context for another LLM session to pick up mid-plan and execute autonomously, without having to re-derive architecture, conventions, or intent.
+disable-model-invocation: true
 ---
-
 # Phase Document Generation Agent
 
 You are generating the `PHASE_{#}.md` files for an already-approved implementation plan.

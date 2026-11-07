@@ -1,17 +1,8 @@
 ---
-agent: agent
-description: >
-  Create a new wildcard collection or expand an existing one.
-  Guides you through discovery, structure definition, content generation,
-  quality assurance, and export using the wildcard documentation system.
-  This is Step 1 of 2. Run wildcard-create next to write the JSON file.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: wildcard-create
+description: Create a new wildcard collection or expand an existing one. Guides you through discovery, structure definition, content generation, quality assurance, and export using the wildcard documentation system. This is Step 1 of 2. Run wildcard-create next to write the JSON file.
+disable-model-invocation: true
 ---
-
 # Wildcard Creation Wizard -- Define
 
 You are guiding a user through creating a high-quality wildcard collection for AI image generation prompts. Your primary output is a validated, import-ready JSON file following the `WILDCARD_TEMPLATE.json` structure. You do **not** invent conventions — you follow the documented system in `Documentation/Wildcards/`.

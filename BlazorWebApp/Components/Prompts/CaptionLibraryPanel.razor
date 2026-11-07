@@ -1,0 +1,215 @@
+@*
+    CaptionLibraryPanel - Main panel for browsing caption wildcards from captions.csv.
+    Integrates filtering, random selection, and grid display with pagination.
+*@
+@using BlazorWebApp.Data.Dtos
+@using BlazorWebApp.Models
+@using BlazorWebApp.Services
+
+@if (_isLoading)
+{
+    <div class="caption-panel-loading">
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Typo="Typo.caption" Class="mt-2">Loading captions...</MudText>
+    </div>
+}
+else if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="caption-panel-alert">
+        @_error
+    </MudAlert>
+}
+else
+{
+    <CaptionFilterBar Filter="_filter" TotalCount="@_totalCount" AspectRatios="@_aspectRatios" NudityLevels="@_nudityLevels"
+                      ClothingItems="@_clothingItems" FilterChanged="OnFilterChanged" />
+
+    @if (_captions.Count == 0)
+    {
+        <div class="caption-panel-empty">
+            <MudText Typo="Typo.subtitle2" Class="text-center">No captions match your filters.</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="caption-grid caption-grid-@_columns">
+            @foreach (var record in _captions)
+            {
+                <CaptionCard Record="@record" OnInsert="OnInsertCaption" OnAppend="OnAppendCaption"
+                             AutoGenerateAfterInsert="_autoGenerateAfterInsert" OnGenerateRequested="OnGenerateRequested" />
+            }
+        </div>
+
+        <PaginationNav Pagination="@_pagination" OnPageSelected="OnPageChanged" />
+    }
+}
+
+@code {
+    [Inject] private ICaptionLibraryService CaptionService { get; set; } = default!;
+    [Inject] private IStateService State { get; set; } = default!;
+    [Parameter] public EventCallback<string> OnInsertCaption { get; set; }
+    [Parameter] public EventCallback<string> OnAppendCaption { get; set; }
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
+
+    private List<CaptionRecord> _captions = new();
+    private CaptionFilter _filter = new();
+    private int _totalCount;
+    private int _currentPage = 1;
+    private bool _isLoading;
+    private string? _error;
+    private List<string> _aspectRatios = new();
+    private List<string> _nudityLevels = new();
+    private List<string> _clothingItems = new();
+    private PaginatedDto _pagination = new();
+
+    // Read directly from state so the toggle in CaptionFilterBar is always reflected
+    private bool _autoGenerateAfterInsert => State.State.Prompts.Captions.AutoGenerateAfterInsert;
+
+    // Responsive column count (default to 2 columns)
+    private int _columns => 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDistinctValuesAsync();
+        // Restore filter state from AppState
+        RestoreFilterState();
+        await RefreshCaptionsAsync();
+    }
+
+    private void RestoreFilterState()
+    {
+        var captionsState = State.State.Prompts.Captions;
+        _filter = captionsState.ToCaptionFilter();
+    }
+
+    private async Task PersistFilterStateAsync()
+    {
+        var captionsState = State.State.Prompts.Captions;
+        captionsState.FromCaptionFilter(_filter);
+        await State.SaveState();
+    }
+
+    private async Task LoadDistinctValuesAsync()
+    {
+        try
+        {
+            _aspectRatios = await CaptionService.GetAspectRatiosAsync();
+            _nudityLevels = await CaptionService.GetNudityLevelsAsync();
+            _clothingItems = await CaptionService.GetClothingItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load filter values: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshCaptionsAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var pageSize = State.State.Prompts.Captions.PageSize;
+            (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize);
+
+            // Handle random sorting - re-shuffle the displayed items
+            if (_filter.SortBy == CaptionSortBy.Random)
+            {
+                var rng = new Random();
+                _captions = _captions.OrderBy(x => rng.Next()).ToList();
+            }
+
+            var pageCount = (int)Math.Ceiling((double)_totalCount / pageSize);
+            _pagination = new PaginatedDto
+            {
+                CurrentPage = _currentPage,
+                PageCount = Math.Max(1, pageCount),
+                HasNext = _currentPage < pageCount,
+                HasPrev = _currentPage > 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load captions: {ex.Message}";
+            _captions = new();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnFilterChanged(CaptionFilter filter)
+    {
+        _filter = filter;
+        _currentPage = 1;
+        await PersistFilterStateAsync();
+        await RefreshCaptionsAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        // If random sort, re-shuffle on page change
+        if (_filter.SortBy == CaptionSortBy.Random)
+        {
+            await RefreshCaptionsAsync();
+        }
+        else
+        {
+            _isLoading = true;
+            _error = null;
+            try
+            {
+                var pageSize = State.State.Prompts.Captions.PageSize;
+                (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize);
+
+                var pageCount = (int)Math.Ceiling((double)_totalCount / pageSize);
+                _pagination = new PaginatedDto
+                {
+                    CurrentPage = _currentPage,
+                    PageCount = Math.Max(1, pageCount),
+                    HasNext = _currentPage < pageCount,
+                    HasPrev = _currentPage > 1
+                };
+            }
+            catch (Exception ex)
+            {
+                _error = $"Failed to load captions: {ex.Message}";
+                _captions = new();
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    public async Task PickRandomAsync()
+    {
+        try
+        {
+            var randomCaption = await CaptionService.GetRandomCaptionAsync(_filter);
+            if (randomCaption != null && OnInsertCaption.HasDelegate)
+            {
+                await OnInsertCaption.InvokeAsync(randomCaption.Caption);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to pick random caption: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        await LoadDistinctValuesAsync();
+        RestoreFilterState();
+        await RefreshCaptionsAsync();
+    }
+}

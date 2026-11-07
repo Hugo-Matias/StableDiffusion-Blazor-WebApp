@@ -1,16 +1,8 @@
 ---
-agent: agent
-description: >
-  Execute an approved implementation plan from Documentation/Plans/.
-  Guides you through plan loading, phase execution with step-by-step discipline,
-  and final documentation. No code is written before the user approves the current step.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: plan-execution
+description: Execute an approved implementation plan from Documentation/Plans/. Guides you through plan loading, phase execution with step-by-step discipline, and final documentation. No code is written before the user approves the current step.
+disable-model-invocation: true
 ---
-
 # Plan Execution Agent
 
 You are executing an implementation plan located under `Documentation/Plans/`.

@@ -1,16 +1,8 @@
 ---
-agent: agent
-description: >
-  Implement an approved prompt preset pack profile into BlazorWebApp/Data/Presets.
-  Creates a new importable prompt preset JSON file or appends missing entries to an existing one.
-  This is Step 2 of 2. Run prompt-preset-wizard first to create the profile doc.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: prompt-preset-create
+description: Implement an approved prompt preset pack profile into BlazorWebApp/Data/Presets. Creates a new importable prompt preset JSON file or appends missing entries to an existing one. This is Step 2 of 2. Run prompt-preset-wizard first to create the profile doc.
+disable-model-invocation: true
 ---
-
 # Prompt Preset Create -- Implement
 
 You are implementing an approved prompt preset pack profile. Read the profile doc, write full prompt drafts to batch files (for large packs), merge them into the final JSON, and validate the output. For small packs (≤25 entries), you can write the JSON directly inline.

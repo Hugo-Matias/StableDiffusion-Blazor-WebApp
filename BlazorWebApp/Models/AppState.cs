@@ -388,6 +388,117 @@ namespace BlazorWebApp.Models
         public AppStatePromptsLLM LLM { get; set; } = new();
         public List<string> FavoriteArtists { get; set; } = new();
         public List<string> FavoriteCharacters { get; set; } = new();
+        public AppStatePromptsCaptionLibrary Captions { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Persisted filter state for the Caption Library panel in the TagDrawer.
+    /// </summary>
+    public class AppStatePromptsCaptionLibrary
+    {
+        /// <summary>
+        /// Full-text search term entered in the caption search field.
+        /// </summary>
+        public string SearchText { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Negative search term — captions containing these terms are excluded.
+        /// </summary>
+        public string NegativeSearchText { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Selected aspect ratio filter value (e.g., "2:3"). Empty means any.
+        /// </summary>
+        public string AspectRatio { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Selected nudity level filter value ("none", "partial", "full"). Empty means any.
+        /// </summary>
+        public string Nudity { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Minimum artistic quality threshold (0.0 – 1.0). Zero means no minimum.
+        /// </summary>
+        public double MinArtisticQuality { get; set; } = 0.0;
+
+        /// <summary>
+        /// Minimum erotic score threshold (0.0 – 1.0). Zero means no minimum.
+        /// </summary>
+        public double MinEroticScore { get; set; } = 0.0;
+
+        /// <summary>
+        /// Maximum pornographic score threshold (0.0 – 1.0). Negative/zero means no maximum.
+        /// </summary>
+        public double MaxPornographicScore { get; set; } = -1.0;
+
+        /// <summary>
+        /// Maximum male subject count filter. Zero means no maximum.
+        /// </summary>
+        public int Males { get; set; } = 0;
+
+        /// <summary>
+        /// Maximum female subject count filter. Zero means no maximum.
+        /// </summary>
+        public int Females { get; set; } = 0;
+
+        /// <summary>
+        /// Selected clothing tags for multi-select filtering. Empty means any.
+        /// </summary>
+        public List<string> ClothingTags { get; set; } = new();
+
+        /// <summary>
+        /// Sort option for the caption grid.
+        /// </summary>
+        public Data.Dtos.CaptionSortBy SortBy { get; set; } = Data.Dtos.CaptionSortBy.Default;
+
+        /// <summary>
+        /// Number of caption cards per page.
+        /// </summary>
+        public int PageSize { get; set; } = 24;
+
+        /// <summary>
+        /// When true, triggers generation automatically after Insert or Append is clicked on a caption card.
+        /// </summary>
+        public bool AutoGenerateAfterInsert { get; set; } = false;
+
+        /// <summary>
+        /// Converts this persisted state into a CaptionFilter DTO for querying the service.
+        /// </summary>
+        public Data.Dtos.CaptionFilter ToCaptionFilter()
+        {
+            return new Data.Dtos.CaptionFilter
+            {
+                SearchText = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText,
+                NegativeSearchText = string.IsNullOrWhiteSpace(NegativeSearchText) ? null : NegativeSearchText,
+                AspectRatio = string.IsNullOrWhiteSpace(AspectRatio) ? null : AspectRatio,
+                Nudity = string.IsNullOrWhiteSpace(Nudity) ? null : Nudity,
+                MinArtisticQuality = MinArtisticQuality > 0 ? MinArtisticQuality : null,
+                MinEroticScore = MinEroticScore > 0 ? MinEroticScore : null,
+                MaxPornographicScore = MaxPornographicScore >= 0 ? MaxPornographicScore : null,
+                Males = Males > 0 ? Males : null,
+                Females = Females > 0 ? Females : null,
+                ClothingTags = ClothingTags.Count > 0 ? ClothingTags : null,
+                SortBy = SortBy
+            };
+        }
+
+        /// <summary>
+        /// Updates this state from a CaptionFilter DTO (after the user changes filters).
+        /// </summary>
+        public void FromCaptionFilter(Data.Dtos.CaptionFilter filter)
+        {
+            SearchText = filter.SearchText ?? string.Empty;
+            NegativeSearchText = filter.NegativeSearchText ?? string.Empty;
+            AspectRatio = filter.AspectRatio ?? string.Empty;
+            Nudity = filter.Nudity ?? string.Empty;
+            MinArtisticQuality = filter.MinArtisticQuality ?? 0.0;
+            MinEroticScore = filter.MinEroticScore ?? 0.0;
+            MaxPornographicScore = filter.MaxPornographicScore ?? -1.0;
+            Males = filter.Males ?? 0;
+            Females = filter.Females ?? 0;
+            ClothingTags = filter.ClothingTags?.ToList() ?? new List<string>();
+            SortBy = filter.SortBy;
+        }
     }
 
     public class AppStatePromptsLLM

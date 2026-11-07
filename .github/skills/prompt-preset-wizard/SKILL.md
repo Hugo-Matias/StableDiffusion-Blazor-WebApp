@@ -1,17 +1,8 @@
 ---
-agent: agent
-description: >
-  Define a new prompt preset JSON pack or an expansion to an existing preset JSON.
-  Guides you through a wizard for T2I styles, I2I instruction styles, edit targets,
-  edit operations, camera controls, categories, tags, and interesting style coverage.
-  This is Step 1 of 2. Run prompt-preset-create next to write the JSON.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: prompt-preset-wizard
+description: Define a new prompt preset JSON pack or an expansion to an existing preset JSON. Guides you through a wizard for T2I styles, I2I instruction styles, edit targets, edit operations, camera controls, categories, tags, and interesting style coverage. This is Step 1 of 2. Run prompt-preset-create next to write the JSON.
+disable-model-invocation: true
 ---
-
 # Prompt Preset Wizard -- Define
 
 You are defining a prompt preset pack for the Prompts page. Your **only output is a profile document** at `Documentation/Prompts/PresetPacks/{slug}/PROFILE.md`. The wizard produces an entry plan with batch breakdown — it does **not** write prompt drafts, batch files, or JSON. Batch writing and merging is handled by `prompt-preset-create` in the next step.

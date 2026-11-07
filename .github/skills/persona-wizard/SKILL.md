@@ -1,17 +1,8 @@
 ---
-agent: agent
-description: >
-  Define a new Odditarium persona from scratch.
-  Guides you through all identity, voice, anchor, visual, and message fields,
-  then outputs a complete profile document to Documentation/Odditarium/Personas/.
-  This is Step 1 of 2. Run persona-create next to implement the code.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: persona-wizard
+description: Define a new Odditarium persona from scratch. Guides you through all identity, voice, anchor, visual, and message fields, then outputs a complete profile document to Documentation/Odditarium/Personas/. This is Step 1 of 2. Run persona-create next to implement the code.
+disable-model-invocation: true
 ---
-
 # Odditarium Persona Wizard -- Define
 
 You are defining a new Odditarium persona. Your only output is a profile document

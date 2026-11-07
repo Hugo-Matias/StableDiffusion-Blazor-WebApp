@@ -1,0 +1,309 @@
+@*
+    CaptionFilterBar - Compact filter controls for the caption library panel.
+*@
+@using MudBlazor
+@using BlazorWebApp.Data.Dtos
+@using BlazorWebApp.Models
+@inject IStateService State
+
+<div class="caption-filter-bar">
+    <!-- Row 1: Positive Search + Auto-Generate Toggle -->
+    <div class="filter-row-search">
+        <MudTextField T="string" Value="_searchText" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Placeholder="Search captions..." Variant="Variant.Text"
+                      Dense="true" Class="filter-search" DebounceInterval="300" ValueChanged="OnSearchChanged" />
+
+        <MudTooltip Text="Auto-generate after Insert/Append" Delay="600" Duration="600">
+            <MudIconButton Size="Size.Small" Variant="Variant.Text"
+                           Color="@(_autoGenerate ? Color.Primary : Color.Default)" OnClick="ToggleAutoGenerate"
+                           Icon="@Icons.Material.Filled.AutoAwesome" />
+        </MudTooltip>
+    </div>
+
+    <!-- Row 1b: Negative Search + Reset -->
+    <div class="filter-row-search">
+        <MudTextField T="string" Value="_negativeSearchText" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.DoNotDisturbOff" Placeholder="Exclude terms..." Variant="Variant.Text"
+                      Dense="true" Class="filter-search" DebounceInterval="300" ValueChanged="OnNegativeSearchChanged" />
+
+        <MudTooltip Text="Reset all filters" Delay="600" Duration="600">
+            <MudIconButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" OnClick="ResetFilters"
+                           Icon="@Icons.Material.Filled.ClearAll" />
+        </MudTooltip>
+    </div>
+
+    <!-- Row 2: Aspect Ratio + Nudity + Sort -->
+    <div class="filter-row-selects">
+        <MudSelect T="string?" Value="_aspectRatio" ValueChanged="OnAspectRatioChanged" Placeholder="Aspect Ratio"
+                   Variant="Variant.Text" Dense="true" Class="filter-select">
+            <MudSelectItem Value="@_nullString">Any</MudSelectItem>
+            @foreach (var ratio in _aspectRatios)
+            {
+                <MudSelectItem Value="@ratio">@ratio</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="string?" Value="_nudity" ValueChanged="OnNudityChanged" Placeholder="Nudity"
+                   Variant="Variant.Text" Dense="true" Class="filter-select">
+            <MudSelectItem Value="@_nullString">Any</MudSelectItem>
+            @foreach (var level in _nudityLevels)
+            {
+                <MudSelectItem Value="@level">@level</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="CaptionSortBy" Value="_sortBy" ValueChanged="OnSortChanged" Placeholder="Sort"
+                   Variant="Variant.Text" Dense="true" Class="filter-select">
+            @foreach (var option in _sortOptions)
+            {
+                <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    <!-- Clothing Multi-Select Dropdown -->
+    @if (_clothingItems.Count > 0)
+    {
+        <MudSelect T="string" MultiSelection SelectedValues="_selectedClothing" SelectedValuesChanged="OnClothingChanged"
+                   Label="Clothing" Dense Margin="Margin.Dense" Variant="Variant.Text"
+                   AdornmentIcon="@Icons.Material.Filled.Checkroom" Class="filter-select-clothing">
+            @foreach (var item in _clothingItems)
+            {
+                <MudSelectItem T="string" Value="item">@item</MudSelectItem>
+            }
+        </MudSelect>
+    }
+
+    <!-- Advanced Filters -->
+    @if (_showAdvanced)
+    {
+        <div class="filter-row-advanced">
+            <div class="slider-block">
+                <MudText Typo="Typo.subtitle2" Class="slider-label">Min Quality</MudText>
+                <div class="slider-value-row">
+                    <MudSlider T="double" Value="_minArtisticQuality" ValueChanged="OnMinArtisticQualityChanged"
+                               ThumbColor="Color.Primary" TrackColor="Color.Primary" Min="0.0" Max="1.0" Step="0.05" />
+                    <MudText Typo="Typo.caption" Class="slider-value">@_labelMinArtistic</MudText>
+                </div>
+            </div>
+
+            <div class="slider-block">
+                <MudText Typo="Typo.subtitle2" Class="slider-label slider-label-warning">Max Porn Score</MudText>
+                <div class="slider-value-row">
+                    <MudSlider T="double" Value="_maxPornScore" ValueChanged="OnMaxPornScoreChanged"
+                               ThumbColor="Color.Warning" TrackColor="Color.Warning" Min="0.0" Max="1.0" Step="0.05" />
+                    <MudText Typo="Typo.caption" Class="slider-value">@_labelMaxPorn</MudText>
+                </div>
+            </div>
+
+            <div class="slider-block">
+                <MudText Typo="Typo.subtitle2" Class="slider-label">Females</MudText>
+                <div class="slider-value-row">
+                    <MudSlider T="int" Value="_exactFemales" ValueChanged="OnExactFemalesChanged" ThumbColor="Color.Primary"
+                               TrackColor="Color.Primary" Min="0" Max="5" Step="1" />
+                    <MudText Typo="Typo.caption" Class="slider-value">@_exactFemales</MudText>
+                </div>
+            </div>
+
+            <div class="slider-block">
+                <MudText Typo="Typo.subtitle2" Class="slider-label">Males</MudText>
+                <div class="slider-value-row">
+                    <MudSlider T="int" Value="_exactMales" ValueChanged="OnExactMalesChanged" ThumbColor="Color.Primary"
+                               TrackColor="Color.Primary" Min="0" Max="5" Step="1" />
+                    <MudText Typo="Typo.caption" Class="slider-value">@_exactMales</MudText>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Toggle + Count -->
+    <div class="filter-toggle">
+        <MudText Typo="Typo.caption" Class="filter-count">@_totalCount captions</MudText>
+        <MudIconButton Size="Size.Small" Color="Color.Default" OnClick="ToggleAdvanced">
+            @if (_showAdvanced)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.ExpandLess" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.ExpandMore" />
+            }
+        </MudIconButton>
+    </div>
+</div>
+
+@code {
+    [Parameter] public CaptionFilter Filter { get; set; } = new();
+    [Parameter] public EventCallback<CaptionFilter> FilterChanged { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public List<string> AspectRatios { get; set; } = new();
+    [Parameter] public List<string> NudityLevels { get; set; } = new();
+    [Parameter] public List<string> ClothingItems { get; set; } = new();
+
+    private string _searchText = string.Empty;
+    private string _negativeSearchText = string.Empty;
+    private string? _aspectRatio;
+    private string? _nudity;
+    private double _minArtisticQuality = 0.0;
+    private double _maxPornScore = 1.0;
+    private int _exactFemales = 0;
+    private int _exactMales = 0;
+    private CaptionSortBy _sortBy = CaptionSortBy.Default;
+    private ICollection<string> _selectedClothing = new List<string>();
+    private bool _showAdvanced;
+    private bool _autoGenerate;
+
+    private List<string> _aspectRatios = new();
+    private List<string> _nudityLevels = new();
+    private List<string> _clothingItems = new();
+    private int _totalCount;
+
+    // Sort option display list
+    private (string Label, CaptionSortBy Value)[] _sortOptions = new (string, CaptionSortBy)[]
+    {
+        ("Default", CaptionSortBy.Default),
+        ("ID ↑", CaptionSortBy.Id),
+        ("Length ↓", CaptionSortBy.CaptionLength),
+        ("Quality ↓", CaptionSortBy.ArtisticQuality),
+        ("Erotic ↓", CaptionSortBy.EroticScore),
+        ("Porn ↓", CaptionSortBy.PornographicScore),
+        ("Males ↓", CaptionSortBy.Males),
+        ("Females ↓", CaptionSortBy.Females),
+        ("🎲 Random", CaptionSortBy.Random)
+    };
+
+    // Null-safe field for the "Any" select item value
+    private readonly string? _nullString = default!;
+
+    // Formatted label values for slider display
+    private string _labelMinArtistic => $"{_minArtisticQuality:F2}";
+    private string _labelMaxPorn => $"{_maxPornScore:F2}";
+
+    protected override void OnParametersSet()
+    {
+        _searchText = Filter.SearchText ?? string.Empty;
+        _negativeSearchText = Filter.NegativeSearchText ?? string.Empty;
+        _aspectRatio = Filter.AspectRatio;
+        _nudity = Filter.Nudity;
+        _minArtisticQuality = Filter.MinArtisticQuality ?? 0.0;
+        _maxPornScore = Filter.MaxPornographicScore.HasValue ? Filter.MaxPornographicScore.Value : 1.0;
+        _exactFemales = Filter.Females ?? 0;
+        _exactMales = Filter.Males ?? 0;
+        _sortBy = Filter.SortBy;
+        _selectedClothing = (Filter.ClothingTags ?? new List<string>()).ToList();
+
+        _aspectRatios = AspectRatios ?? new();
+        _nudityLevels = NudityLevels ?? new();
+        _clothingItems = ClothingItems ?? new();
+        _totalCount = TotalCount;
+        _autoGenerate = State.State.Prompts.Captions.AutoGenerateAfterInsert;
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value;
+        ApplyFilters();
+    }
+
+    private void OnNegativeSearchChanged(string value)
+    {
+        _negativeSearchText = value;
+        ApplyFilters();
+    }
+
+    private async Task ToggleAutoGenerate()
+    {
+        _autoGenerate = !_autoGenerate;
+        State.State.Prompts.Captions.AutoGenerateAfterInsert = _autoGenerate;
+        await State.SaveState();
+    }
+
+    private void OnAspectRatioChanged(string? value)
+    {
+        _aspectRatio = value;
+        ApplyFilters();
+    }
+
+    private void OnNudityChanged(string? value)
+    {
+        _nudity = value;
+        ApplyFilters();
+    }
+
+    private void OnSortChanged(CaptionSortBy value)
+    {
+        _sortBy = value;
+        ApplyFilters();
+    }
+
+    private void OnClothingChanged(IEnumerable<string> values)
+    {
+        _selectedClothing = values.ToList();
+        ApplyFilters();
+    }
+
+    private void OnMinArtisticQualityChanged(double value)
+    {
+        _minArtisticQuality = value;
+        ApplyFilters();
+    }
+
+    private void OnMaxPornScoreChanged(double value)
+    {
+        _maxPornScore = value;
+        ApplyFilters();
+    }
+
+    private void OnExactFemalesChanged(int value)
+    {
+        _exactFemales = value;
+        ApplyFilters();
+    }
+
+    private void OnExactMalesChanged(int value)
+    {
+        _exactMales = value;
+        ApplyFilters();
+    }
+
+    private void ToggleAdvanced()
+    {
+        _showAdvanced = !_showAdvanced;
+    }
+
+    private async Task ApplyFilters()
+    {
+        var filter = new CaptionFilter
+        {
+            SearchText = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText,
+            NegativeSearchText = string.IsNullOrWhiteSpace(_negativeSearchText) ? null : _negativeSearchText,
+            AspectRatio = _aspectRatio,
+            Nudity = _nudity,
+            MinArtisticQuality = _minArtisticQuality > 0 ? _minArtisticQuality : null,
+            MaxPornographicScore = _maxPornScore < 1.0 ? _maxPornScore : null,
+            Females = _exactFemales > 0 ? _exactFemales : null,
+            Males = _exactMales > 0 ? _exactMales : null,
+            ClothingTags = _selectedClothing.Count > 0 ? _selectedClothing.ToList() : null,
+            SortBy = _sortBy
+        };
+
+        if (FilterChanged.HasDelegate)
+            await FilterChanged.InvokeAsync(filter);
+    }
+
+    private async Task ResetFilters()
+    {
+        _searchText = string.Empty;
+        _negativeSearchText = string.Empty;
+        _aspectRatio = null;
+        _nudity = null;
+        _minArtisticQuality = 0.0;
+        _maxPornScore = 1.0;
+        _exactFemales = 0;
+        _exactMales = 0;
+        _sortBy = CaptionSortBy.Default;
+        _selectedClothing = new HashSet<string>();
+
+        await ApplyFilters();
+    }
+}

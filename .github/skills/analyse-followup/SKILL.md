@@ -1,17 +1,8 @@
 ---
-agent: agent
-description: >
-  Re-review a plan implementation after follow-up changes were made, compare the
-  current Git changes against the latest prior ANALYSIS_REPORT iteration, validate
-  which issues were fixed, detect regressions or missed items, and write the next
-  numbered ANALYSIS_REPORT_#.md as a documentation-only follow-up review.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: analyse-followup
+description: Re-review a plan implementation after follow-up changes were made, compare the current Git changes against the latest prior ANALYSIS_REPORT iteration, validate which issues were fixed, detect regressions or missed items, and write the next numbered ANALYSIS_REPORT_#.md as a documentation-only follow-up review.
+disable-model-invocation: true
 ---
-
 # Analysis Follow-up Agent
 
 You are performing an iterative follow-up QA validation after implementation changes

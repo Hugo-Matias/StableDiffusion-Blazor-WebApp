@@ -1,4 +1,6 @@
-﻿@inject CsvService CsvService
+﻿@using BlazorWebApp.Data.Dtos
+@using BlazorWebApp.Services
+@inject CsvService CsvService
 
 <div style="display:@(Visible ? "block" : "none");">
     <MudDrawer @bind-Open=Visible Elevation="2" Anchor="Anchor.End" Variant="DrawerVariant.Temporary" Color="Color.Dark"
@@ -9,10 +11,15 @@
             <MudIconButton OnClick="() => Visible = false" Icon="@Icons.Material.Filled.Close" Color="Color.Dark" />
         </MudDrawerHeader>
 
-        <MudTabs Elevation="4" Rounded ApplyEffectsToContainer PanelClass="pa-2 ma-4" ActivePanelIndex="_activeTab"
-                 ActivePanelIndexChanged="@((index) => _activeTab = index)">
+        <MudTabs Elevation="4" Rounded ApplyEffectsToContainer PanelClass="pa-2 ma-4"
+                 @bind-ActivePanelIndex="_activeTab">
             <MudTabPanel Text="LLM Enhancer" Icon="@Icons.Material.Filled.AutoAwesome">
                 <LLMPromptEnhancerForm OnPromptApplied="HandleLLMPromptApplied" IsNegativePrompt=IsNegativePrompt />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Captions" Icon="@Icons.Material.Filled.LibraryBooks">
+                <CaptionLibraryPanel OnInsertCaption="HandleCaptionInserted" OnAppendCaption="HandleCaptionAppended"
+                                     OnGenerateRequested="OnGenerateRequested" />
             </MudTabPanel>
 
             <MudTabPanel Text="Artists" Icon="@Icons.Material.Filled.Palette">
@@ -106,6 +113,7 @@
     [Parameter] public PromptButton ButtonTags { get; set; }
     [Parameter] public string HeaderBgColor { get; set; }
     [Parameter] public bool IsNegativePrompt { get; set; }
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
 
     public string SelectedText { get; set; }
 
@@ -114,6 +122,22 @@
     private MudAutocomplete<Tag>? _autocompleteRef;
     private string _autocompleteValue = string.Empty;
     private int _activeTab = 0;
+
+    private async Task HandleCaptionInserted(string caption)
+    {
+        if (!string.IsNullOrEmpty(caption))
+        {
+            await OnPromptReplaced.InvokeAsync(caption);
+        }
+    }
+
+    private async Task HandleCaptionAppended(string caption)
+    {
+        if (!string.IsNullOrEmpty(caption))
+        {
+            await OnAppendTags.InvokeAsync(new AppendedTags() { Tags = caption, IsPrefix = false });
+        }
+    }
 
     private async Task<IEnumerable<Tag>> SearchTags(string input)
     {

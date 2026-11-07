@@ -1,16 +1,8 @@
 ---
-agent: agent
-description: >
-  Implement an approved Odditarium persona profile document into the codebase.
-  Reads the profile doc, creates the JSON persona file and asset folder.
-  This is Step 2 of 2. Run persona-wizard first to create the profile doc.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: persona-create
+description: Implement an approved Odditarium persona profile document into the codebase. Reads the profile doc, creates the JSON persona file and asset folder. This is Step 2 of 2. Run persona-wizard first to create the profile doc.
+disable-model-invocation: true
 ---
-
 # Odditarium Persona Create -- Implement
 
 You are implementing a persona from an approved profile document.

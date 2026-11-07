@@ -294,10 +294,12 @@ Note: LoRA and Style selections are emitted via callbacks to parent component.
     </div>
 
 <TagDrawer @ref="PromptDrawer" OnAppendTags="HandlePromptTagAppended" HeaderBgColor="var(--mud-palette-success)"
-           ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false" />
+           ButtonTags="_buttonTags" OnPromptReplaced="@(p => HandleLLMPromptApplied(p, false))" IsNegativePrompt="false"
+           OnGenerateRequested="OnGenerate" />
 <TagDrawer @ref="NegativePromptDrawer" OnAppendTags="HandleNegativePromptTagAppended"
            HeaderBgColor="var(--mud-palette-error)" ButtonTags="_buttonTags"
-           OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true" />
+           OnPromptReplaced="@(p => HandleLLMPromptApplied(p, true))" IsNegativePrompt="true"
+           OnGenerateRequested="OnGenerate" />
 
 @code {
     #region Parameters

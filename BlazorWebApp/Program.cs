@@ -223,9 +223,12 @@ builder.Services.AddSingleton<ITokenizerService, TokenizerService>();
 
 // Artist browser service for Anima style gallery artist tags
 builder.Services.AddSingleton<IArtistBrowserService, ArtistBrowserService>();
-
 // Character browser service for animadex.net character gallery
 builder.Services.AddSingleton<ICharacterBrowserService, CharacterBrowserService>();
+
+// Caption library service for browsing captions.csv with filtering
+builder.Services.AddSingleton<ICaptionLibraryService, CaptionLibraryService>();
+
 
 // Tag group browser service for Danbooru tag categories
 builder.Services.AddSingleton<ITagGroupService, TagGroupService>();

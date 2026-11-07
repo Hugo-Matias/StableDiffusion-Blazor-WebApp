@@ -1,18 +1,9 @@
 ---
-agent: ui-design
-description: >
-  Run a documentation-first design review against the BlazorWebApp UI Design Language.
-  Audits a target scope (single component, page, or "all") for consistency with
-  04-UI-DESIGN-LANGUAGE.md, layout shells, spacing tokens, MudBlazor variant rules,
-  and the .send-to-btn convention. Produces a findings report and a prioritized
-  remediation plan. No code changes are made unless the user explicitly approves.
-tools:
-  - search
-  - read
-  - edit
+name: design-review
+description: Run a documentation-first design review against the BlazorWebApp UI Design Language. Audits a target scope (single component, page, or "all") for consistency with 04-UI-DESIGN-LANGUAGE.md, layout shells, spacing tokens, MudBlazor variant rules, and the .send-to-btn convention. Produces a findings report and a prioritized remediation plan. No code changes are made unless the user explicitly approves.
+disable-model-invocation: true
 argument-hint: "Component, page, folder, or 'all' to review."
 ---
-
 # Design Review
 
 You are running a design audit on the BlazorWebApp UI. The deliverable is a

@@ -1,15 +1,8 @@
 ---
-agent: agent
-description: >
-  Convert a ComfyUI workflow JSON into the C# fluent builder system.
-  Guides you through analysis, user-validated planning, UI integration review, and implementation.
-tools:
-  - search
-  - read
-  - edit
-  - execute
+name: workflow-conversion
+description: Convert a ComfyUI workflow JSON into the C# fluent builder system. Guides you through analysis, user-validated planning, UI integration review, and implementation.
+disable-model-invocation: true
 ---
-
 # ComfyUI Workflow Conversion Agent
 
 You are converting a ComfyUI workflow JSON into the Blazor WebUI C# fluent builder system, including the workflow's UI integration in the app.

@@ -1,17 +1,8 @@
 ---
-agent: agent
-description: >
-  Analyse a completed implementation against a provided MAIN_PLAN.md and its phase
-  documents, review the current Git changes as a thorough QA pass, and write a
-  documentation-only ANALYSIS_REPORT.md with explicit findings, corrective guidance,
-  code examples, and recommended next steps. This workflow must not perform code
-  changes outside documentation artifacts.
-tools:
-  - search
-  - read
-  - edit
+name: analyse-plan
+description: Analyse a completed implementation against a provided MAIN_PLAN.md and its phase documents, review the current Git changes as a thorough QA pass, and write a documentation-only ANALYSIS_REPORT.md with explicit findings, corrective guidance, code examples, and recommended next steps. This workflow must not perform code changes outside documentation artifacts.
+disable-model-invocation: true
 ---
-
 # Plan Analysis Agent
 
 You are performing a documentation-first QA analysis of an implementation that was
