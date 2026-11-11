@@ -462,6 +462,12 @@ namespace BlazorWebApp.Models
         public bool AutoGenerateAfterInsert { get; set; } = false;
 
         /// <summary>
+        /// Active caption source (filename without extension under Data/Captions/). Default "captions".
+        /// Validated against discovered sources at panel init; falls back to the default source when missing.
+        /// </summary>
+        public string SelectedSource { get; set; } = "captions";
+
+        /// <summary>
         /// Converts this persisted state into a CaptionFilter DTO for querying the service.
         /// </summary>
         public Data.Dtos.CaptionFilter ToCaptionFilter()

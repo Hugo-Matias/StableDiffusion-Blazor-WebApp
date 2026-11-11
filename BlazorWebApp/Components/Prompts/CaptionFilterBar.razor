@@ -32,8 +32,19 @@
         </MudTooltip>
     </div>
 
-    <!-- Row 2: Aspect Ratio + Nudity + Sort -->
+    <!-- Row 2: Source + Aspect Ratio + Nudity + Sort -->
     <div class="filter-row-selects">
+        @if (_sources.Count > 0)
+        {
+            <MudSelect T="string" Value="@_selectedSource" ValueChanged="OnSourceSelectChanged" Placeholder="Source"
+                       Variant="Variant.Text" Dense="true" Class="filter-select filter-select-source">
+                @foreach (var source in _sources)
+                {
+                    <MudSelectItem Value="@source.Name">@($"{source.DisplayName} ({source.RowCount:N0})")</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
         <MudSelect T="string?" Value="_aspectRatio" ValueChanged="OnAspectRatioChanged" Placeholder="Aspect Ratio"
                    Variant="Variant.Text" Dense="true" Class="filter-select">
             <MudSelectItem Value="@_nullString">Any</MudSelectItem>
@@ -139,6 +150,9 @@
     [Parameter] public List<string> AspectRatios { get; set; } = new();
     [Parameter] public List<string> NudityLevels { get; set; } = new();
     [Parameter] public List<string> ClothingItems { get; set; } = new();
+    [Parameter] public List<CaptionSource> Sources { get; set; } = new();
+    [Parameter] public string? SelectedSource { get; set; }
+    [Parameter] public EventCallback<string> SourceChanged { get; set; }
 
     private string _searchText = string.Empty;
     private string _negativeSearchText = string.Empty;
@@ -157,6 +171,8 @@
     private List<string> _nudityLevels = new();
     private List<string> _clothingItems = new();
     private int _totalCount;
+    private string _selectedSource = string.Empty;
+    private List<CaptionSource> _sources = new();
 
     // Sort option display list
     private (string Label, CaptionSortBy Value)[] _sortOptions = new (string, CaptionSortBy)[]
@@ -196,6 +212,8 @@
         _nudityLevels = NudityLevels ?? new();
         _clothingItems = ClothingItems ?? new();
         _totalCount = TotalCount;
+        _selectedSource = SelectedSource ?? string.Empty;
+        _sources = Sources ?? new();
         _autoGenerate = State.State.Prompts.Captions.AutoGenerateAfterInsert;
     }
 
@@ -234,6 +252,13 @@
     {
         _sortBy = value;
         ApplyFilters();
+    }
+
+    private async Task OnSourceSelectChanged(string value)
+    {
+        _selectedSource = value;
+        if (SourceChanged.HasDelegate)
+            await SourceChanged.InvokeAsync(value);
     }
 
     private void OnClothingChanged(IEnumerable<string> values)

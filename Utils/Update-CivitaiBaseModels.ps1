@@ -18,7 +18,9 @@
 [CmdletBinding()]
 param(
     [string]$OutputPath,
-    [string]$SourceUrl = "https://raw.githubusercontent.com/civitai/civitai/refs/heads/main/src/shared/constants/basemodel.constants.ts"
+    # civitai/civitai moved this file to the @civitai/shared package; the old
+    # src/shared/constants path is now just a re-export shim with no data.
+    [string]$SourceUrl = "https://raw.githubusercontent.com/civitai/civitai/refs/heads/main/packages/civitai-shared/src/basemodel.constants.ts"
 )
 
 $ErrorActionPreference = "Stop"

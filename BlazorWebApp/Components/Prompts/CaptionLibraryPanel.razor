@@ -22,7 +22,8 @@ else if (_error != null)
 else
 {
     <CaptionFilterBar Filter="_filter" TotalCount="@_totalCount" AspectRatios="@_aspectRatios" NudityLevels="@_nudityLevels"
-                      ClothingItems="@_clothingItems" FilterChanged="OnFilterChanged" />
+                      ClothingItems="@_clothingItems" FilterChanged="OnFilterChanged"
+                      Sources="@_sources" SelectedSource="@_selectedSource" SourceChanged="OnSourceChanged" />
 
     @if (_captions.Count == 0)
     {
@@ -61,6 +62,8 @@ else
     private List<string> _nudityLevels = new();
     private List<string> _clothingItems = new();
     private PaginatedDto _pagination = new();
+    private List<CaptionSource> _sources = new();
+    private string _selectedSource = "captions";
 
     // Read directly from state so the toggle in CaptionFilterBar is always reflected
     private bool _autoGenerateAfterInsert => State.State.Prompts.Captions.AutoGenerateAfterInsert;
@@ -70,10 +73,31 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadSourcesAsync();
         await LoadDistinctValuesAsync();
         // Restore filter state from AppState
         RestoreFilterState();
         await RefreshCaptionsAsync();
+    }
+
+    private async Task LoadSourcesAsync()
+    {
+        try
+        {
+            _sources = await CaptionService.GetSourcesAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load caption sources: {ex.Message}";
+            _sources = new List<CaptionSource>();
+        }
+
+        // Validate the persisted selection against discovered sources; fall back to the default source.
+        var persisted = State.State.Prompts.Captions.SelectedSource;
+        if (_sources.Any(s => string.Equals(s.Name, persisted, StringComparison.OrdinalIgnoreCase)))
+            _selectedSource = persisted;
+        else
+            _selectedSource = CaptionService.DefaultSource ?? "captions";
     }
 
     private void RestoreFilterState()
@@ -93,9 +117,9 @@ else
     {
         try
         {
-            _aspectRatios = await CaptionService.GetAspectRatiosAsync();
-            _nudityLevels = await CaptionService.GetNudityLevelsAsync();
-            _clothingItems = await CaptionService.GetClothingItemsAsync();
+            _aspectRatios = await CaptionService.GetAspectRatiosAsync(_selectedSource);
+            _nudityLevels = await CaptionService.GetNudityLevelsAsync(_selectedSource);
+            _clothingItems = await CaptionService.GetClothingItemsAsync(_selectedSource);
         }
         catch (Exception ex)
         {
@@ -110,7 +134,7 @@ else
         try
         {
             var pageSize = State.State.Prompts.Captions.PageSize;
-            (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize);
+            (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize, _selectedSource);
 
             // Handle random sorting - re-shuffle the displayed items
             if (_filter.SortBy == CaptionSortBy.Random)
@@ -149,6 +173,20 @@ else
         await RefreshCaptionsAsync();
     }
 
+    private async Task OnSourceChanged(string source)
+    {
+        if (string.Equals(source, _selectedSource, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _selectedSource = source;
+        State.State.Prompts.Captions.SelectedSource = source;
+        await State.SaveState();
+        _currentPage = 1;
+        // Distinct values are per-source — reload them for the active source before refreshing the grid.
+        await LoadDistinctValuesAsync();
+        await RefreshCaptionsAsync();
+    }
+
     private async Task OnPageChanged(int page)
     {
         _currentPage = page;
@@ -164,7 +202,7 @@ else
             try
             {
                 var pageSize = State.State.Prompts.Captions.PageSize;
-                (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize);
+                (_captions, _totalCount) = await CaptionService.SearchAsync(_filter, _currentPage, pageSize, _selectedSource);
 
                 var pageCount = (int)Math.Ceiling((double)_totalCount / pageSize);
                 _pagination = new PaginatedDto
@@ -193,7 +231,7 @@ else
     {
         try
         {
-            var randomCaption = await CaptionService.GetRandomCaptionAsync(_filter);
+            var randomCaption = await CaptionService.GetRandomCaptionAsync(_filter, _selectedSource);
             if (randomCaption != null && OnInsertCaption.HasDelegate)
             {
                 await OnInsertCaption.InvokeAsync(randomCaption.Caption);
@@ -208,6 +246,7 @@ else
 
     public async Task RefreshAsync()
     {
+        await LoadSourcesAsync();
         await LoadDistinctValuesAsync();
         RestoreFilterState();
         await RefreshCaptionsAsync();

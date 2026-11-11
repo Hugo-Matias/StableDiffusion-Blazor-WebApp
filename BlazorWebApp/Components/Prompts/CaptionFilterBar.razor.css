@@ -27,6 +27,11 @@
   min-width: 0;
 }
 
+/* Source selector shares the selects row with the filter selects; slightly smaller share (names are short) */
+.filter-select-source {
+  flex: 0.75 1 0;
+}
+
 /* Clothing multi-select dropdown */
 .filter-select-clothing {
   flex: 1 1 0;

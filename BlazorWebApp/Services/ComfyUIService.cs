@@ -49,7 +49,9 @@ namespace BlazorWebApp.Services
             _logger = logger;
             _comfyOutputsPath = ResolveComfyPath("ComfyUI:OutputsPath");
             _comfyInputsPath = ResolveComfyPath("ComfyUI:InputsPath");
-            _httpClient.BaseAddress = new Uri("http://localhost:8188/");
+            var comfyBaseUrl = _configuration["ComfyUI:BaseUrl"] ?? "http://localhost:8188";
+            _logger.LogInformation($"ComfyUI base URL: {comfyBaseUrl}");
+            _httpClient.BaseAddress = new Uri(comfyBaseUrl);
             _httpClient.Timeout = TimeSpan.FromDays(1);
             _jsonIgnoreNull = new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 

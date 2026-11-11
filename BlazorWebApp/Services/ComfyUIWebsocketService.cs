@@ -18,18 +18,26 @@ namespace BlazorWebApp.Services
         private readonly IImageService _imageService;
         private readonly IProgressService _progressService;
         private readonly ComfyUIEventBus _bus;
+        private readonly Uri _comfyWsBaseUri;
         private ClientWebSocket? _currentWs;
         private readonly object _lock = new();
         private Guid _promptId;
         private string _currentNodeId = string.Empty;
 
-        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, IImageService imageService, IProgressService progressService, ComfyUIEventBus bus)
+        public ComfyUIWebsocketService(ILogger<ComfyUIWebsocketService> logger, IBackendService backend, IImageService imageService, IProgressService progressService, ComfyUIEventBus bus, IConfiguration configuration)
         {
             _logger = logger;
             _backend = backend;
             _imageService = imageService;
             _progressService = progressService;
             _bus = bus;
+
+            // Derive the WebSocket endpoint from the same config key as ComfyUIService so both resolve identically.
+            var baseUri = new Uri(configuration["ComfyUI:BaseUrl"] ?? "http://localhost:8188");
+            var wsBuilder = new UriBuilder(baseUri);
+            wsBuilder.Scheme = baseUri.Scheme == Uri.UriSchemeHttps ? Uri.UriSchemeWss : Uri.UriSchemeWs;
+            wsBuilder.Path = "/ws";
+            _comfyWsBaseUri = wsBuilder.Uri;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -47,7 +55,7 @@ namespace BlazorWebApp.Services
                 {
                     _backend.ComfyWSClientId = Guid.NewGuid().ToString();
                     await ws.ConnectAsync(
-                        new Uri($"ws://localhost:8188/ws?clientId={_backend.ComfyWSClientId}"),
+                        new Uri(_comfyWsBaseUri, $"?clientId={_backend.ComfyWSClientId}"),
                         cancellationToken);
 
                     lock (_lock)

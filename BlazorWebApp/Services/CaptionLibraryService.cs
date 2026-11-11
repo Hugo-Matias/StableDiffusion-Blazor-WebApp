@@ -6,53 +6,104 @@ using Sylvan.Data.Csv;
 namespace BlazorWebApp.Services
 {
     /// <summary>
-    /// Loads, caches and filters caption records from captions.csv.
-    /// Mirrors the lazy-load + in-memory cache pattern used by CsvService.
+    /// Loads, caches and filters caption records from the CSV files under Data/Captions/.
+    /// Mirrors the lazy-load + in-memory cache pattern used by CsvService, with one cache per source.
     /// </summary>
     public class CaptionLibraryService : ICaptionLibraryService
     {
         private readonly ILogger<CaptionLibraryService> _logger;
-        private readonly string _csvPath;
+        private readonly string _captionsDir;
 
-        // Lazy in-memory cache of all caption records. Loaded on first access.
-        private List<CaptionRecord>? _cachedCaptions;
+        // Lazy in-memory caches of caption records, one per source (filename without extension).
+        // Loaded on first access. Keys are case-insensitive so lookups match discovered names.
+        private readonly Dictionary<string, List<CaptionRecord>> _sourceCaches = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _cacheLock = new();
         private readonly Random _random = new();
 
-        public int TotalCount => _cachedCaptions?.Count ?? 0;
+        public string? DefaultSource
+        {
+            get
+            {
+                var sources = DiscoverSources();
+                if (sources.Count == 0)
+                    return null;
+
+                // Prefer the original committed set when present, otherwise first alphabetically.
+                return sources.Contains("captions") ? "captions" : sources[0];
+            }
+        }
 
         public CaptionLibraryService(IWebHostEnvironment env, ILogger<CaptionLibraryService> logger)
         {
             _logger = logger;
-            // Resolve CSV path relative to the content root (where Data/ lives).
-            _csvPath = Path.Combine(env.ContentRootPath, "Data", "captions.csv");
+            // Resolve the captions folder relative to the content root (where Data/ lives).
+            _captionsDir = Path.Combine(env.ContentRootPath, "Data", "Captions");
         }
 
         #region Loading
 
-        private List<CaptionRecord> LoadCached()
+        private List<string> DiscoverSources()
         {
-            if (_cachedCaptions != null)
-                return _cachedCaptions;
+            try
+            {
+                if (!Directory.Exists(_captionsDir))
+                    return new List<string>();
+
+                return Directory.EnumerateFiles(_captionsDir, "*.csv")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Cast<string>()
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to enumerate caption sources in {Dir}", _captionsDir);
+                return new List<string>();
+            }
+        }
+
+        private string? ResolveSource(string? source)
+        {
+            if (!string.IsNullOrWhiteSpace(source))
+                return source;
+            return DefaultSource;
+        }
+
+        private List<CaptionRecord> LoadCached(string source)
+        {
+            if (_sourceCaches.TryGetValue(source, out var cached))
+                return cached;
 
             lock (_cacheLock)
             {
                 // Double-check after acquiring lock.
-                if (_cachedCaptions != null)
-                    return _cachedCaptions;
+                if (_sourceCaches.TryGetValue(source, out cached))
+                    return cached;
 
-                _cachedCaptions = LoadFromCsv();
-                return _cachedCaptions;
+                var captions = LoadFromCsv(Path.Combine(_captionsDir, source + ".csv"), source);
+                _sourceCaches[source] = captions;
+                return captions;
             }
         }
 
-        private List<CaptionRecord> LoadFromCsv()
+        private List<CaptionRecord> GetCaptions(string? source)
+        {
+            var resolved = ResolveSource(source);
+            if (resolved == null)
+                return new List<CaptionRecord>();
+
+            return LoadCached(resolved);
+        }
+
+        private List<CaptionRecord> LoadFromCsv(string csvPath, string sourceName)
         {
             try
             {
-                if (!File.Exists(_csvPath))
+                if (!File.Exists(csvPath))
                 {
-                    _logger.LogWarning("captions.csv not found at {Path}", _csvPath);
+                    _logger.LogWarning("{Source}.csv not found at {Path}", sourceName, csvPath);
                     return new List<CaptionRecord>();
                 }
 
@@ -61,7 +112,7 @@ namespace BlazorWebApp.Services
                 int rowId = 0;
                 int failures = 0;
 
-                using var reader = CsvDataReader.Create(_csvPath, options);
+                using var reader = CsvDataReader.Create(csvPath, options);
                 while (reader.Read())
                 {
                     rowId++;
@@ -86,21 +137,21 @@ namespace BlazorWebApp.Services
                         failures++;
                         if (failures <= 5)
                         {
-                            _logger.LogWarning(ex, "Failed to parse caption row {RowId}", rowId);
+                            _logger.LogWarning(ex, "[{Source}] Failed to parse caption row {RowId}", sourceName, rowId);
                         }
                         else if (failures == 6)
                         {
-                            _logger.LogWarning("Suppressing further row parsing warnings...");
+                            _logger.LogWarning("[{Source}] Suppressing further row parsing warnings...", sourceName);
                         }
                     }
                 }
 
-                _logger.LogInformation("Loaded {Count} captions from captions.csv", captions.Count);
+                _logger.LogInformation("Loaded {Count} captions from {Source}.csv", captions.Count, sourceName);
                 return captions;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading captions.csv from {Path}", _csvPath);
+                _logger.LogError(ex, "Error loading {Source}.csv from {Path}", sourceName, csvPath);
                 return new List<CaptionRecord>();
             }
         }
@@ -142,11 +193,36 @@ namespace BlazorWebApp.Services
 
         #endregion
 
+        #region Sources
+
+        public Task<List<CaptionSource>> GetSourcesAsync()
+        {
+            var sources = DiscoverSources().Select(name =>
+            {
+                var captions = LoadCached(name);
+                return new CaptionSource
+                {
+                    Name = name,
+                    DisplayName = string.IsNullOrEmpty(name) ? name : char.ToUpperInvariant(name[0]) + name.Substring(1),
+                    RowCount = captions.Count
+                };
+            }).ToList();
+
+            return Task.FromResult(sources);
+        }
+
+        public Task<int> GetTotalCountAsync(string? source = null)
+        {
+            return Task.FromResult(GetCaptions(source).Count);
+        }
+
+        #endregion
+
         #region Distinct Values
 
-        public Task<List<string>> GetAspectRatiosAsync()
+        public Task<List<string>> GetAspectRatiosAsync(string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             var ratios = captions
                 .Select(c => c.AspectRatio)
                 .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -156,9 +232,9 @@ namespace BlazorWebApp.Services
             return Task.FromResult(ratios);
         }
 
-        public Task<List<string>> GetNudityLevelsAsync()
+        public Task<List<string>> GetNudityLevelsAsync(string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             var levels = captions
                 .Select(c => c.Nudity)
                 .Where(n => !string.IsNullOrWhiteSpace(n))
@@ -168,9 +244,9 @@ namespace BlazorWebApp.Services
             return Task.FromResult(levels);
         }
 
-        public Task<List<string>> GetClothingItemsAsync()
+        public Task<List<string>> GetClothingItemsAsync(string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             var items = captions
                 .SelectMany(c => c.Clothing)
                 .Where(item => !string.IsNullOrWhiteSpace(item))
@@ -185,9 +261,9 @@ namespace BlazorWebApp.Services
         #region Filtering and Search
 
         public async Task<(List<CaptionRecord> Items, int TotalCount)> SearchAsync(
-            CaptionFilter filter, int page = 1, int pageSize = 24)
+            CaptionFilter filter, int page = 1, int pageSize = 24, string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             var query = ApplyFilters(captions.AsEnumerable(), filter);
 
             // Apply sorting
@@ -202,9 +278,9 @@ namespace BlazorWebApp.Services
             return (items, totalCount);
         }
 
-        public async Task<CaptionRecord?> GetRandomCaptionAsync(CaptionFilter? filter = null)
+        public async Task<CaptionRecord?> GetRandomCaptionAsync(CaptionFilter? filter = null, string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             var filtered = ApplyFilters(captions.AsEnumerable(), filter ?? new CaptionFilter());
             var count = filtered.Count();
             if (count == 0)
@@ -215,9 +291,9 @@ namespace BlazorWebApp.Services
             return filtered.Skip(index).FirstOrDefault();
         }
 
-        public async Task<CaptionRecord?> GetByIdAsync(int id)
+        public async Task<CaptionRecord?> GetByIdAsync(int id, string? source = null)
         {
-            var captions = LoadCached();
+            var captions = GetCaptions(source);
             return captions.FirstOrDefault(c => c.Id == id);
         }
 
