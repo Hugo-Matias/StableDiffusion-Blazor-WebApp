@@ -364,7 +364,11 @@ ResourcesPath/
   "ResourcesPath": "C:/StableDiffusion/models",
   "ResourcePreviewsPath": "C:/StableDiffusion/previews",
   "ComfyUIPath": "C:/ComfyUI",
-  
+
+  "ComfyUI": {
+    "BaseUrl": "http://localhost:8188"
+  },
+
   "CivitaiApiToken": "",
   
   "Kestrel": {
@@ -393,6 +397,22 @@ set CivitaiApiToken=your-token
 export OutputDir=/home/user/outputs
 export CivitaiApiToken=your-token
 ```
+
+**ComfyUI Base URL** (`ComfyUI:BaseUrl`):
+
+- Controls where the app reaches ComfyUI. Both the HTTP API client (`ComfyUIService`) and the WebSocket progress connection (`ComfyUIWebsocketService`) resolve from this single key — the WS endpoint is derived by swapping `http`→`ws` / `https`→`wss` and using the `/ws?clientId=...` path.
+- Defaults to `http://localhost:8188`, so local development needs no configuration.
+- To point at a ComfyUI on another machine (e.g. hosting this app in Docker while inference runs elsewhere), set it via env var — note the double underscore for section keys:
+
+```bash
+# Windows
+set ComfyUI__BaseUrl=http://192.168.1.50:8188
+
+# Linux/Mac (or container)
+export ComfyUI__BaseUrl=http://192.168.1.50:8188
+```
+
+- The remote ComfyUI must be started with `--listen` so port 8188 is reachable from the app's host, and its firewall must allow the connection. Verify reachability before starting the app: `curl http://<host>:8188/system_stats`.
 
 ---
 

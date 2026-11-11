@@ -31,7 +31,7 @@ builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddScoped<IHuggingFaceService>(sp => sp.GetRequiredService<HuggingFaceService>());
 builder.Services.Configure<BlazorWebApp.Models.DanbooruOptions>(builder.Configuration.GetSection(BlazorWebApp.Models.DanbooruOptions.SectionName));
 builder.Services.AddHttpClient<DanbooruService>();
-builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite("Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
+builder.Services.AddDbContextFactory<AppDbContext>(opt => { opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=BlazorWebApp.db"); opt.EnableSensitiveDataLogging(); });
 
 // Creates a singleton of the WS service to inject with DI and use it as the hosted service as well
 builder.Services.AddSingleton<ComfyUIWebsocketService>();
