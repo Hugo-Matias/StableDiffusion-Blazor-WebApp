@@ -75,7 +75,9 @@
     z-index: 10;
 }
 
-.hover-overlay.visible {
+.hover-overlay.visible,
+.gallery-card:hover .hover-overlay,
+.gallery-card:focus-within .hover-overlay {
     pointer-events: auto;
 }
 
@@ -91,7 +93,9 @@
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.hover-overlay.visible .overlay-top {
+.hover-overlay.visible .overlay-top,
+.gallery-card:hover .overlay-top,
+.gallery-card:focus-within .overlay-top {
     opacity: 1;
     transform: translateY(0);
 }
@@ -105,7 +109,9 @@
     transition: opacity 0.25s ease 0.05s;
 }
 
-.hover-overlay.visible .overlay-center {
+.hover-overlay.visible .overlay-center,
+.gallery-card:hover .overlay-center,
+.gallery-card:focus-within .overlay-center {
     opacity: 1;
 }
 
@@ -120,7 +126,9 @@
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.hover-overlay.visible .overlay-bottom {
+.hover-overlay.visible .overlay-bottom,
+.gallery-card:hover .overlay-bottom,
+.gallery-card:focus-within .overlay-bottom {
     opacity: 1;
     transform: translateY(0);
 }
@@ -139,7 +147,9 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.rating-container.visible {
+.rating-container.visible,
+.gallery-card:hover .rating-container,
+.gallery-card:focus-within .rating-container {
     opacity: 1;
     transform: scale(1);
 }
@@ -165,7 +175,9 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.selection-container.visible {
+.selection-container.visible,
+.gallery-card:hover .selection-container,
+.gallery-card:focus-within .selection-container {
     opacity: 1;
     transform: scale(1);
 }
@@ -393,7 +405,17 @@
     pointer-events: none;
 }
 
-.gallery-card:not(.hovered) .rating-container.visible {
+.gallery-card:hover .rating-container,
+.gallery-card:focus-within .rating-container {
+    pointer-events: auto;
+}
+
+.gallery-card:hover .favorite-indicator,
+.gallery-card.hovered .favorite-indicator {
+    display: none;
+}
+
+.gallery-card:not(.hovered):not(:hover) .rating-container.visible {
     opacity: 0.7;
     position: absolute;
     top: 10px;

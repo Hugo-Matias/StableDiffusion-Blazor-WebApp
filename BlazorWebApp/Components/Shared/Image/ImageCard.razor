@@ -14,31 +14,32 @@
 @inject IMediaSendToService SendTo
 @implements IDisposable
 
-<div class="@GetCardClasses()" @onmouseenter="HandleMouseEnter" @onmouseleave="HandleMouseLeave">
+<div class="@GetCardClasses()" @onmouseleave="MouseLeaveHandler">
+    @* Hover visuals are pure CSS (:hover) so they never wait on a SignalR round-trip. *@
     @* Image Container *@
     <div class="image-wrapper">
         <img src="@IO.GetImageStaticFile(Image.Path)" alt="Generated image" class="card-image" loading="lazy" />
         
         @* Hover Overlay *@
-        <div class="hover-overlay @(_isHovered || _isMenuOpen ? "visible" : "")">
+        <div class="hover-overlay @(_isMenuOpen ? "visible" : "")">
             @* Top Section - Score & Selection *@
             <div class="overlay-top">
-                <div class="rating-container @(_isHovered || _isMenuOpen || Image.Score > 0 ? "visible" : "")">
+                <div class="rating-container @(_isMenuOpen || Image.Score > 0 ? "visible" : "")">
                     <MudRating SelectedValue="Image.Score" SelectedValueChanged="SetScore" MaxValue="3"
                                Size="Size.Small" Color="Color.Warning" />
                 </div>
                 
                 @if (ShowSelectionCheckbox)
                 {
-                    <div class="selection-container @(_isHovered || _isMenuOpen || _isSelected ? "visible" : "")">
-                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="Color.Success"
-                                     UncheckedColor="Color.Default" Size="Size.Medium" />
+                    <div class="selection-container @(_isMenuOpen || _isSelected ? "visible" : "")">
+                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="@Color.Success"
+                                     UncheckedColor="@Color.Default" Size="Size.Medium" />
                     </div>
                 }
             </div>
             
             @* Center Section - Quick Actions *@
-            <div class="overlay-center @(_isHovered || _isMenuOpen ? "visible" : "")">
+            <div class="overlay-center @(_isMenuOpen ? "visible" : "")">
                 <div class="quick-actions">
                     <button class="action-btn primary" @onclick="@(() => OnSelectImage.InvokeAsync(Image))"
                             title="View Fullscreen">
@@ -56,7 +57,7 @@
             </div>
             
             @* Bottom Section - Info & More Actions *@
-            <div class="overlay-bottom @(_isHovered || _isMenuOpen ? "visible" : "")">
+            <div class="overlay-bottom @(_isMenuOpen ? "visible" : "")">
                 <div class="image-info">
                     @if (!_isMenuOpen && Image.ModeId != 3)
                     {
@@ -120,14 +121,11 @@
         </div>
         
         @* Persistent Indicators (visible when not hovered but has state) *@
-        @if (!_isHovered && !_isMenuOpen)
+        @if (Image.Favorite)
         {
-            @if (Image.Favorite)
-            {
-                <div class="favorite-indicator">
-                    <i class="fa-solid fa-heart"></i>
-                </div>
-            }
+            <div class="favorite-indicator">
+                <i class="fa-solid fa-heart"></i>
+            </div>
         }
     </div>
 </div>
@@ -145,7 +143,6 @@
     [Parameter] public bool UseFixedSize { get; set; } = false;
 
     private bool _isSelected;
-    private bool _isHovered;
     private bool _isMenuOpen;
     private bool _showInfoDrawer;
 
@@ -153,7 +150,6 @@
     {
         UpdateSelectionState();
         Events.Subscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
-        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
     }
 
     protected override void OnParametersSet()
@@ -171,13 +167,12 @@
 
     private void OnImageSelectionChanged(ImageSelectionChangedEventArgs args)
     {
+        var wasSelected = _isSelected;
         UpdateSelectionState();
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    private void OnStateChanged(StateChangedEventArgs args)
-    {
-        _ = InvokeAsync(StateHasChanged);
+        if (_isSelected != wasSelected)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
     }
 
     private string GetCardClasses()
@@ -185,19 +180,12 @@
         var classes = "gallery-card";
         if (UseFixedSize) classes += " fixed-size";
         if (_isSelected) classes += " selected";
-        if (_isHovered || _isMenuOpen) classes += " hovered";
+        if (_isMenuOpen) classes += " hovered";
         return classes;
     }
 
-    private void HandleMouseEnter()
-    {
-        _isHovered = true;
-    }
-
-    private void HandleMouseLeave()
-    {
-        CloseActionMenu();
-    }
+    // Null while the menu is closed so Blazor registers no mouseleave event (no server round-trip).
+    private Action? MouseLeaveHandler => _isMenuOpen ? CloseActionMenu : null;
 
     private async Task ToggleFavorite(bool isChecked)
     {
@@ -310,13 +298,11 @@
     private void ToggleActionMenu()
     {
         _isMenuOpen = !_isMenuOpen;
-        _isHovered = _isMenuOpen;
     }
 
     private void CloseActionMenu()
     {
         _isMenuOpen = false;
-        _isHovered = false;
     }
 
     private async Task RunActionAsync(Func<Task> action)
@@ -334,6 +320,5 @@
     public void Dispose()
     {
         Events.Unsubscribe<ImageSelectionChangedEventArgs>(OnImageSelectionChanged);
-        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
     }
 }

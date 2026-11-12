@@ -284,7 +284,10 @@ app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(builder.Configuration["OutputDir"]!),
-    RequestPath = "/image"
+    RequestPath = "/image",
+    // Output files are written once under unique names; let the browser reuse them instead of
+    // revalidating every thumbnail against the NAS-backed (rclone fuse) mount on each visit.
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "public,max-age=86400"
 });
 app.UseStaticFiles(new StaticFileOptions
 {

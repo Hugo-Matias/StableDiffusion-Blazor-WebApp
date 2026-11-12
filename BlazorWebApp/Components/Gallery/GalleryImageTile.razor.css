@@ -117,6 +117,7 @@
 }
 
 .gallery-tile-chrome.visible,
+.gallery-image-tile:hover .gallery-tile-chrome,
 .gallery-image-tile.selected .gallery-tile-chrome,
 .gallery-image-tile:focus-within .gallery-tile-chrome {
   opacity: 1;
@@ -137,6 +138,7 @@
 }
 
 .gallery-tile-selection-overlay.visible,
+.gallery-image-tile.selection-focused:hover .gallery-tile-selection-overlay,
 .gallery-image-tile.selection-focused:focus-within
   .gallery-tile-selection-overlay {
   opacity: 1;
@@ -200,6 +202,7 @@
 }
 
 .gallery-tile-chrome.visible .gallery-tile-actions,
+.gallery-image-tile:hover .gallery-tile-actions,
 .gallery-image-tile:focus-within .gallery-tile-actions {
   opacity: 1;
   transform: translateY(0);
