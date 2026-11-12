@@ -18,7 +18,7 @@ namespace BlazorWebApp.Extensions
 
         public static string SanitizePath(this string path) => string.Join("_", path.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.').Trim();
 
-        public static string NormalizePath(this string? path)
+        public static string NormalizePath(this string? path, bool preserveCase = false)
         {
             if (string.IsNullOrWhiteSpace(path)) return string.Empty;
 
@@ -34,9 +34,9 @@ namespace BlazorWebApp.Extensions
                     .ToLowerInvariant();
             }
 
-            return Path.GetFullPath(trimmedPath)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                .ToLowerInvariant();
+            var fullPath = Path.GetFullPath(trimmedPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return preserveCase ? fullPath : fullPath.ToLowerInvariant();
         }
 
         public static string RemoveBase64Header(this string data)

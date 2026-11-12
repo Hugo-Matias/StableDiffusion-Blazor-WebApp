@@ -28,8 +28,8 @@
                 @if (ShowSelectionCheckbox)
                 {
                     <div class="selection-container @(_isHovered || _isMenuOpen || _isSelected ? "visible" : "")">
-                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="Color.Success"
-                                     UncheckedColor="Color.Default" Size="Size.Medium" />
+                        <MudCheckBox Checked="_isSelected" T="bool" CheckedChanged="HandleSelected" Color="@Color.Success"
+                                     UncheckedColor="@Color.Default" Size="Size.Medium" />
                     </div>
                 }
             </div>

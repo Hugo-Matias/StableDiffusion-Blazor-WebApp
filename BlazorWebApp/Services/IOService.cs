@@ -165,19 +165,24 @@ namespace BlazorWebApp.Services
             var normalizedImagePath = Parser.NormalizePath(_configuration["OutputDir"]);
             if (string.IsNullOrWhiteSpace(normalizedImagePath)) return string.Empty;
 
-            string normalizedPath;
+            string normalizedPath;      // lowercased — used only for prefix detection
+            string casePreservedPath;   // same normalization keeping on-disk casing — used to build the URL
             try
             {
                 normalizedPath = Parser.NormalizePath(path);
+                casePreservedPath = Parser.NormalizePath(path, preserveCase: true);
             }
             catch
             {
                 return string.Empty;
             }
 
-            if (normalizedPath.Contains(normalizedImagePath))
+            var prefixIndex = normalizedPath.IndexOf(normalizedImagePath, StringComparison.Ordinal);
+            if (prefixIndex >= 0)
             {
-                var imageFile = normalizedPath.Replace(normalizedImagePath, "").Replace(@"\", "/");
+                // Slice from the case-preserving path so the URL keeps the on-disk casing:
+                // PhysicalFileProvider's lookup is case-sensitive on Linux.
+                var imageFile = "/" + casePreservedPath.Substring(prefixIndex + normalizedImagePath.Length).Replace(@"\", "/");
                 return "/image" + imageFile;
             }
             return string.Empty;
