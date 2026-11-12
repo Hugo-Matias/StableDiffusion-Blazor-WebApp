@@ -281,7 +281,16 @@ namespace BlazorWebApp.Services
                 foreach (var file in files)
                 {
                     var filepath = Path.Combine(_comfyOutputsPath, file);
-                    var base64 = await _io.GetBase64FromFileAsync(filepath);
+                    // The vault bind mount can lag a few seconds behind writes made through the WSL-side
+                    // mount (fuse.rclone dir/dentry cache), so retry briefly before treating as missing.
+                    var base64 = await GetBase64FromFileWithRetryAsync(filepath);
+
+                    if (base64 == null)
+                    {
+                        _logger.LogWarning("Image file not found on disk after retries: {FilePath}", filepath);
+                        continue;
+                    }
+
                     images.Images.Add(base64);
 
                     try
@@ -303,14 +312,42 @@ namespace BlazorWebApp.Services
 
                 images.Info = workflowInfo;
 
-                if (_pendingJobs.TryRemove(promptId, out var finalObj) && finalObj is TaskCompletionSource<GeneratedImages> tcs)
-                    tcs.SetResult(images);
+                if (_pendingJobs.TryRemove(promptId, out var finalObj))
+                {
+                    if (images.Images.Count == 0)
+                    {
+                        // Mirrors the video path: fail cleanly instead of delivering an empty/null result.
+                        if (finalObj is TaskCompletionSource<GeneratedImages> emptyTcs)
+                            emptyTcs.SetException(new Exception("No image files could be loaded"));
+                    }
+                    else if (finalObj is TaskCompletionSource<GeneratedImages> tcs)
+                    {
+                        tcs.SetResult(images);
+                    }
+                }
             }
             finally
             {
                 // Cleanup uploaded input images after job completion
                 await CleanupUploadedImagesAsync(promptId);
             }
+        }
+
+        /// <summary>
+        /// Reads a file as base64, retrying briefly while it is not yet visible on disk. The output dir is a
+        /// vault bind mount whose NAS-side fuse.rclone view can lag a few seconds behind writes made through
+        /// the WSL-side mount (observed ~1.6 s window; see PHASE_6.md Group F).
+        /// </summary>
+        private async Task<string?> GetBase64FromFileWithRetryAsync(string filepath, int attempts = 20, int delayMs = 500)
+        {
+            string? base64 = null;
+            for (var i = 0; i < attempts; i++)
+            {
+                base64 = await _io.GetBase64FromFileAsync(filepath);
+                if (base64 != null) return base64;
+                await Task.Delay(delayMs);
+            }
+            return base64;
         }
 
         private async Task HandleVideoJobCompletionAsync(Guid promptId, TaskCompletionSource<GeneratedVideos> tcs)

@@ -11,20 +11,24 @@ namespace BlazorWebApp.Models
         /// </summary>
         public const string SectionName = "OutputPaths";
 
+        // Forward slashes on purpose: these defaults are used on Linux, where a backslash is a literal
+        // character in the directory name (created a folder literally named "Text-2-Image\_samples").
+        // Forward slashes work on both platforms.
+
         /// <summary>
         /// Subfolder for Txt2Img samples (relative to OutputDir)
         /// </summary>
-        public string Txt2ImgSamples { get; set; } = "Text-2-Image\\_samples";
+        public string Txt2ImgSamples { get; set; } = "Text-2-Image/_samples";
 
         /// <summary>
         /// Subfolder for Img2Img samples (relative to OutputDir)
         /// </summary>
-        public string Img2ImgSamples { get; set; } = "Image-2-Image\\_samples";
+        public string Img2ImgSamples { get; set; } = "Image-2-Image/_samples";
 
         /// <summary>
         /// Subfolder for Img2Vid samples (relative to OutputDir)
         /// </summary>
-        public string Img2VidSamples { get; set; } = "Image-2-Video\\_samples";
+        public string Img2VidSamples { get; set; } = "Image-2-Video/_samples";
 
         /// <summary>
         /// Subfolder for Extras (upscale, etc.) samples (relative to OutputDir)
