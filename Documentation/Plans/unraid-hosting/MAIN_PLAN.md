@@ -1,7 +1,7 @@
 # Unraid Hosting (NAS Frontend / Desktop Inference) - Implementation Plan
 
 ## Status
-**Current Phase:** Phase 2 complete — awaiting user permission for Phase 3
+**Current Phase:** Phases 3–4 and 6 complete. Phase 4's deferred txt2img round-trip was completed as part of Phase 6 Step 3 (generation test passed 2026-11-12). Next: Phase 5 (docs, small).
 
 ---
 
@@ -125,48 +125,54 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 
 #### Success Criteria (all met — evidence in PHASE_2.md §4)
 - `docker compose config` validates cleanly. ✓ Validated with required vars set inline; resolved output confirms image pin, port mapping, env vars, and bind mounts.
-- Files follow infra repo layout conventions (LF endings, no secrets). ✓ All four assets LF per `.gitattributes`; committed files hold only paths, ports, and a placeholder hostname. Commit pending user request (two repos: infra + this one for `Program.cs`/plan docs).
+- Files follow infra repo layout conventions (LF endings, no secrets). ✓ All four assets LF per `.gitattributes`; committed files hold only paths, ports, and a placeholder hostname. Committed — infra `67f4773`, this repo `df4d1c9`.
 
 ---
 
 ### Phase 3: Build and push image to private registry
 **Objective:** A reproducible app image available at `10.0.0.11:5000`.
 **Complexity:** 2 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and tested — see [PHASE_3.md](./PHASE_3.md)
 
 #### Steps
-- [ ] Step 1 - Verify Docker Desktop has `insecureRegistries` for `10.0.0.11:5000` (known gotcha in infra repo; push fails with "server gave HTTP response to HTTPS client" otherwise).
-- [ ] Step 2 - Ensure the `DockerRegistry` container is running on the NAS (`restart=no` — it does not autostart after reboot; starting it is a state change, confirm first).
-- [ ] Step 3 - Build from this repo's publish output (or Dockerfile build context), tag `10.0.0.11:5000/blazorwebapp:<tag>`, push.
+- [x] Step 1 - Verify Docker Desktop has `insecureRegistries` for `10.0.0.11:5000` (known gotcha in infra repo; push fails with "server gave HTTP response to HTTPS client" otherwise). Done — already configured (`Secure:false` in RegistryConfig); no change needed.
+- [x] Step 2 - Ensure the `DockerRegistry` container is running on the NAS (`restart=no` — it does not autostart after reboot; starting it is a state change, confirm first). Done — verified Up read-only; no state change required.
+- [x] Step 3 - Build from this repo's publish output (or Dockerfile build context), tag `10.0.0.11:5000/blazorwebapp:<tag>`, push. Done — built with `-f` pointing at the infra Dockerfile, tagged `2026-11-11`, pushed.
 
-#### Success Criteria
-- Image visible in registry catalog (`curl http://10.0.0.11:5000/v2/_catalog`).
-- NAS can pull it (daemon already trusts the registry).
+#### Success Criteria (all met — evidence in PHASE_3.md §3)
+- Image visible in registry catalog (`curl http://10.0.0.11:5000/v2/_catalog`). ✓ Catalog lists `blazorwebapp`.
+- NAS can pull it (daemon already trusts the registry). ✓ Test-pull on the NAS succeeded with matching digest; image now cached there for Phase 4.
 
 ---
 
 ### Phase 4: Deploy to Unraid and end-to-end verification
 **Objective:** App live at `http://10.0.0.11:<port>` with a full generation round-trip through desktop ComfyUI.
 **Complexity:** 3 points
-**Status:** [ ] Not Started
+**Status:** [x] Complete and tested — see [PHASE_4.md](./PHASE_4.md) (txt2img generation deferred to user; all other criteria met, evidence in PHASE_4.md §3)
 
 #### Steps
-- [ ] Step 1 - Check published-port conflicts on NAS (`ss -tlnp`, `docker ps --format '{{.Names}}\t{{.Ports}}'`); create compose project directory and copy assets over (scp/rsync).
-- [ ] Step 2 - Start ComfyUI on the desktop with `--listen` so port 8188 is reachable from the NAS; verify reachability (`curl http://<desktop>:8188/system_stats`).
-- [ ] Step 3 - `docker compose up -d`; confirm container Up, logs clean.
-- [ ] Step 4 - Verify from PC and a second device (LAN or Tailscale): app loads, ComfyUI connection status healthy, run one txt2img generation and watch previews stream through the NAS-hosted app.
+- [x] Step 1 - Check published-port conflicts on NAS (`ss -tlnp`, `docker ps --format '{{.Names}}\t{{.Ports}}'`); create compose project directory and copy assets over (scp/rsync). Done — port 8189 free, kept; project at `/boot/config/plugins/compose.manager/projects/blazorwebapp/`; one O2 path guess corrected (`RESOURCES_DIR_HOST` needed the `array/` prefix).
+- [x] Step 2 - Start ComfyUI on the desktop with `--listen` so port 8188 is reachable from the NAS; verify reachability (`curl http://<desktop>:8188/system_stats`). Done — ComfyUI runs in WSL Ubuntu via Docker, already listening; verified from the NAS against the WSL mirrored-networking IP `10.0.0.2` (Tailscale was logged out on the PC).
+- [x] Step 3 - `docker compose up -d`; confirm container Up, logs clean. Done — image re-pinned to `2026-11-11c` after post-deploy fixes (D3/D4 in PHASE_4.md).
+- [~] Step 4 - Verify from PC and a second device (LAN or Tailscale): app loads, ComfyUI connection status healthy, run one txt2img generation and watch previews stream through the NAS-hosted app. Done except the txt2img itself — **deferred to user** (GPU busy with LM Studio); app load, in-app health status, resource previews, danbooru library, and DB persistence all verified.
 
 #### Success Criteria
-- Container `Up` with clean logs; survives NAS container restart policy.
-- Full generate → preview → result flow works via `http://10.0.0.11:<port>` from a device other than the desktop.
-- DB state persists across `docker compose pull && up -d`.
+- Container `Up` with clean logs; survives NAS container restart policy. ✓
+- Full generate → preview → result flow works via `http://10.0.0.11:8189` from a device other than the desktop. ~ Deferred to user (GPU busy); all preconditions verified (health check, WS path, outputs mount).
+- DB state persists across `docker compose pull && up -d`. ✓ Byte-identical 551,526,400 bytes after `--force-recreate`; app serves HTTP 200.
+
+#### Detours (discussed and approved — details in PHASE_4.md §4)
+- **DB porting** (user-requested scope change): the published project's DB was ported to the NAS with path remapping (D5).
+- **Reachability via WSL mirrored networking** instead of Tailscale, which was logged out on the PC at deploy time (D1/D2).
+- **Post-deploy fixes shipped as image `2026-11-11c`**: post-swap 500 fix + two-part case-sensitivity fix for `/image/...` URLs on Linux (D3/D4).
+- **Gallery performance / vault mount topology**: new `vault-local:` rclone remote (crypt over the local path, kills the SMB self-loopback) + persistent User Script with VFS cache flags mirroring the Windows service (D6).
 
 ---
 
 ### Phase 5: Documentation and knowledge base update
 **Objective:** Record the deployment so it can be resumed/rebuilt in a later session.
 **Complexity:** 1 point
-**Status:** [ ] Not Started
+**Status:** [ ] Not Started (independent of Phase 6 — either order works)
 
 #### Steps
 - [ ] Step 1 - Update `Documentation/Architecture/02-DEPLOYMENT-GUIDE.md` with the remote-backend section (config key, `--listen`, Tailscale addressing).
@@ -178,6 +184,21 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 
 ---
 
+### Phase 6: WSL ↔ Unraid connectivity and Comfy setup audit
+**Objective:** Broad investigation of the desktop Comfy/WSL setup end-to-end, establishing NAS↔WSL file access for ComfyUI input/output images, and adding WSL as a new device in the infra repo. See [PHASE_6.md](./PHASE_6.md).
+**Complexity:** 5 points
+**Status:** [x] Complete and tested — see [PHASE_6.md](./PHASE_6.md) (Steps 1–3 done; vault I/O verified end-to-end 2026-11-12)
+
+#### Steps
+- [x] Step 1 - Audit and document the current ComfyUI/WSL setup (Docker compose, networking mode, versions, workspace/model layout). Done — PHASE_6.md §2.
+- [x] Step 2 - Establish NAS↔WSL file access for ComfyUI inputs/outputs; set `COMFYUI_OUTPUTS_PATH` in the NAS `.env`; verify a generated image is readable by the app via `/image/...`. Done — both input and output migrated to vault folders (`Images/comfyui/{input,output}`, integrity-checked); race fix shipped as image `2026-11-12`; generation test passed 2026-11-12.
+- [x] Step 3 - Add WSL as a new device in the infra repo (`infra/wsl/` + CLAUDE.md) with verified facts. Done — infra `045a4c3`, expanded during execution with the fuse dir-cache knowledge base (PHASE_6.md D5/D6).
+
+#### Success Criteria
+- A fresh session can operate/troubleshoot ComfyUI from either machine using docs alone; final results flow through the NAS-hosted app without manual copying. ✓ (`infra/wsl/CLAUDE.md` + PHASE_6.md §5 evidence)
+
+---
+
 ## Stress Points & Risks
 | Risk | Mitigation | Complexity |
 |------|------------|------------|
@@ -185,7 +206,7 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 | ComfyUI not started with `--listen` → NAS can't reach 8188 | Documented prerequisite; Phase 4 step verifies with curl before deploy | 1 |
 | Desktop off / ComfyUI down while app is hosted on NAS | Acceptable: app shows "backend unavailable" (same as today); no auto-recovery needed for v1 | — |
 | Preview streaming latency over the extra hop (desktop → NAS → browser) | Fine on gigabit LAN; note Tailscale-from-outside caveat in docs; verify in Phase 4 | 2 |
-| Final result retrieval may depend on a local disk path that doesn't exist in the container (previews are WS base64, but final image persistence via ImageService is unverified) | **Resolved by PHASE_1.md D2 + user decision (PHASE_2.md O1)** — N:\ and \\NAS\ are NAS-accessible so bind mounts target vault paths directly; the desktop ComfyUI output dir must be pointed at a NAS-visible folder (WSL → rclone/UNC mount) and `COMFYUI_OUTPUTS_PATH` set to it, since WS previews alone aren't sufficient. Same approach for inputs if needed. WSL setup inspection + infra docs expansion is a recorded follow-up | 3 |
+| Final result retrieval may depend on a local disk path that doesn't exist in the container (previews are WS base64, but final image persistence via ImageService is unverified) | **Resolved by PHASE_1.md D2 + user decision (PHASE_2.md O1)** — N:\ and \\NAS\ are NAS-accessible so bind mounts target vault paths directly; the desktop ComfyUI output dir must be pointed at a NAS-visible folder (WSL → rclone/UNC mount) and `COMFYUI_OUTPUTS_PATH` set to it, since WS previews alone aren't sufficient. Same approach for inputs if needed. WSL setup inspection + infra docs expansion is now [Phase 6](./PHASE_6.md), complete and tested | 3 |
 | SQLite DB lost on image update (relative connection string) | **Resolved by PHASE_2.md D2** — one-line Program.cs change reads the connection string from configuration with fallback; compose sets an absolute path under the bind-mounted volume. Verify persistence across image update in Phase 4 | 1 |
 | Registry container not running after NAS reboot (`restart=no`) | Check before push/pull; optionally enable autostart with user confirmation | 1 |
 | Published port conflict on NAS | Conflict check is an explicit Phase 4 step before choosing the port | 1 |
@@ -198,6 +219,9 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 | Planning | Initial plan created: config key, container assets in infra repo, registry push, deploy + verification, docs |
 | Phase 1 | Complete and tested (see PHASE_1.md): `ComfyUI:BaseUrl` config key drives both HTTP and WS endpoints; naming amended from plan-literal `ComfyUi:` per user decision (D1); container paths can target N:\ / \\NAS\ directly (D2, resolves final-result-retrieval stress point); findings F1–F3 recorded for Phase 2 Dockerfile/compose work |
 | Phase 2 | Complete and tested (see PHASE_2.md): Dockerfile (+ BuildKit companion ignore file), docker-compose.yml, .env.example written to `infra/unraid/services/blazorwebapp/` — path amended from plan-literal `infra/services/` per user decision (D1); one-line Program.cs change makes the SQLite connection string configurable with fallback (D2); compose validated cleanly; open items recorded: WSL→NAS ComfyUI output dir is a Phase 4 prerequisite/follow-up (O1), vault subpaths to verify read-only in Phase 4 (O2, user-confirmed approach), Python.NET and ONNX services deprecated per user decision (O4/O5) |
+| Phase 3 | Complete and tested (see PHASE_3.md): image built from this repo's solution root with the infra Dockerfile (companion ignore file picked up automatically), tagged `2026-11-11`, pushed to `10.0.0.11:5000`; catalog visibility and NAS test-pull verified with matching digest — image now cached on the NAS |
+| Phase 4 | Complete and tested (see PHASE_4.md): app live at `http://10.0.0.11:8189` via compose project on the NAS; reachability via WSL mirrored networking instead of Tailscale, which was logged out on the PC (D1/D2); published-project DB ported to the NAS with path remapping — user-requested scope change (D5); post-swap 500 fix + two-part case-sensitivity fix shipped as image `2026-11-11c` (D3/D4); gallery-perf vault mount topology fixed with a new `vault-local:` rclone remote + persistent User Script VFS cache flags (D6). Verification evidence in PHASE_4.md §3: ComfyUI status healthy, resource previews and danbooru library verified (17/17 cards, all images 200), DB byte-identical across container recreation; txt2img generation deferred to user (GPU busy with LM Studio). Phase 6 skeleton added for the WSL↔Unraid / Comfy setup audit |
+| Phase 6 | Complete and tested (see PHASE_6.md): WSL audited and added as an infra device (`infra/wsl/`, `045a4c3`); ComfyUI input/output migrated to vault folders with integrity check; generation race root-caused to the fuse dir-cache — fixed app-side (bounded retry + null guard, image `2026-11-12`) and on the NAS mount (`--dir-cache-time 2s`, D5/D6); end-to-end generation test passed 2026-11-12, completing Phase 4's deferred txt2img round-trip |
 
 ---
 
