@@ -187,12 +187,13 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 ### Phase 6: WSL ↔ Unraid connectivity and Comfy setup audit
 **Objective:** Broad investigation of the desktop Comfy/WSL setup end-to-end, establishing NAS↔WSL file access for ComfyUI input/output images, and adding WSL as a new device in the infra repo. See [PHASE_6.md](./PHASE_6.md).
 **Complexity:** 5 points
-**Status:** [x] Complete and tested — see [PHASE_6.md](./PHASE_6.md) (Steps 1–3 done; vault I/O verified end-to-end 2026-11-12)
+**Status:** [x] Complete and tested — see [PHASE_6.md](./PHASE_6.md) (Steps 1–4 done; vault I/O verified end-to-end 2026-11-12; gallery responsiveness shipped as image `2026-11-12b`)
 
 #### Steps
 - [x] Step 1 - Audit and document the current ComfyUI/WSL setup (Docker compose, networking mode, versions, workspace/model layout). Done — PHASE_6.md §2.
 - [x] Step 2 - Establish NAS↔WSL file access for ComfyUI inputs/outputs; set `COMFYUI_OUTPUTS_PATH` in the NAS `.env`; verify a generated image is readable by the app via `/image/...`. Done — both input and output migrated to vault folders (`Images/comfyui/{input,output}`, integrity-checked); race fix shipped as image `2026-11-12`; generation test passed 2026-11-12.
 - [x] Step 3 - Add WSL as a new device in the infra repo (`infra/wsl/` + CLAUDE.md) with verified facts. Done — infra `045a4c3`, expanded during execution with the fuse dir-cache knowledge base (PHASE_6.md D5/D6).
+- [x] Step 4 - Gallery responsiveness on the NAS container (user report: hover panel 1–2 s lag). Done — CSS-driven hover, no per-tile state re-renders, `Cache-Control` on `/image` (image `2026-11-12b`, PHASE_6.md D7); a dead vault host mount found during the deploy was recovered (D8).
 
 #### Success Criteria
 - A fresh session can operate/troubleshoot ComfyUI from either machine using docs alone; final results flow through the NAS-hosted app without manual copying. ✓ (`infra/wsl/CLAUDE.md` + PHASE_6.md §5 evidence)
@@ -222,6 +223,7 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 | Phase 3 | Complete and tested (see PHASE_3.md): image built from this repo's solution root with the infra Dockerfile (companion ignore file picked up automatically), tagged `2026-11-11`, pushed to `10.0.0.11:5000`; catalog visibility and NAS test-pull verified with matching digest — image now cached on the NAS |
 | Phase 4 | Complete and tested (see PHASE_4.md): app live at `http://10.0.0.11:8189` via compose project on the NAS; reachability via WSL mirrored networking instead of Tailscale, which was logged out on the PC (D1/D2); published-project DB ported to the NAS with path remapping — user-requested scope change (D5); post-swap 500 fix + two-part case-sensitivity fix shipped as image `2026-11-11c` (D3/D4); gallery-perf vault mount topology fixed with a new `vault-local:` rclone remote + persistent User Script VFS cache flags (D6). Verification evidence in PHASE_4.md §3: ComfyUI status healthy, resource previews and danbooru library verified (17/17 cards, all images 200), DB byte-identical across container recreation; txt2img generation deferred to user (GPU busy with LM Studio). Phase 6 skeleton added for the WSL↔Unraid / Comfy setup audit |
 | Phase 6 | Complete and tested (see PHASE_6.md): WSL audited and added as an infra device (`infra/wsl/`, `045a4c3`); ComfyUI input/output migrated to vault folders with integrity check; generation race root-caused to the fuse dir-cache — fixed app-side (bounded retry + null guard, image `2026-11-12`) and on the NAS mount (`--dir-cache-time 2s`, D5/D6); end-to-end generation test passed 2026-11-12, completing Phase 4's deferred txt2img round-trip |
+| Phase 6 (Step 4) | Gallery responsiveness (see PHASE_6.md D7/D8): hover panels on `ImageCard`/`GalleryImageTile` moved from Blazor Server mouse events to pure CSS, tiles stop re-rendering on every `StateChangedEventArgs`, `/image` gets `Cache-Control: public,max-age=86400`; shipped as image `2026-11-12b` (app commits `5246e63` + `4429f85`, infra `.env.example` tag note). The previously uncommitted `2026-11-11c` fixes (case-preserving URLs, `@Color.*`) were committed. Deploy surfaced a dead NAS vault host mount (stale container references masked it); recovered and documented in `infra/wsl/CLAUDE.md`. Open follow-ups: boot-order guard for the vault mount, thumbnails, remaining hover cards, Phase 5 docs |
 
 ---
 
