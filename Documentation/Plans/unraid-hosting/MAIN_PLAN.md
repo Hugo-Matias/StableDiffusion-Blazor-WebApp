@@ -1,7 +1,7 @@
 # Unraid Hosting (NAS Frontend / Desktop Inference) - Implementation Plan
 
 ## Status
-**Current Phase:** Phases 3–4 and 6 complete. Phase 4's deferred txt2img round-trip was completed as part of Phase 6 Step 3 (generation test passed 2026-11-12). Next: Phase 5 (docs, small).
+**Current Phase:** All phases (1–6) complete as of 2026-11-12. Phase 4's deferred txt2img round-trip was completed as part of Phase 6 Step 3; Phase 6 Step 4 (gallery responsiveness, image `2026-11-12b`) and Phase 5 (docs) closed the plan. Open follow-ups are listed under "Lessons Learned".
 
 ---
 
@@ -172,15 +172,15 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 ### Phase 5: Documentation and knowledge base update
 **Objective:** Record the deployment so it can be resumed/rebuilt in a later session.
 **Complexity:** 1 point
-**Status:** [ ] Not Started (independent of Phase 6 — either order works)
+**Status:** [x] Complete (docs only; no validation required) — done 2026-11-12 after Phase 6
 
 #### Steps
-- [ ] Step 1 - Update `Documentation/Architecture/02-DEPLOYMENT-GUIDE.md` with the remote-backend section (config key, `--listen`, Tailscale addressing).
-- [ ] Step 2 - Record service facts in `infra/unraid/CLAUDE.md` (container name, port, compose location, registry tag scheme) per that repo's "keep this file updated as facts are confirmed" rule.
-- [ ] Step 3 - Finalize this MAIN_PLAN: mark phases complete, capture lessons learned.
+- [x] Step 1 - Update `Documentation/Architecture/02-DEPLOYMENT-GUIDE.md` with the remote-backend section (config key, `--listen`, Tailscale addressing). Done — new "Remote Backend Setup" subsection (listen/firewall, WSL mirrored networking, stable addressing, ComfyUI input/output path semantics, Linux path rules) and the Docker section now points at the real infra assets.
+- [x] Step 2 - Record service facts in `infra/unraid/CLAUDE.md` (container name, port, compose location, registry tag scheme) per that repo's "keep this file updated as facts are confirmed" rule. Done — new "BlazorWebApp" section: container/URL/compose project/tag scheme/data+vault binds, build-and-deploy commands, vault-dependency rules, boot-order risk, known quirks.
+- [x] Step 3 - Finalize this MAIN_PLAN: mark phases complete, capture lessons learned. Done — see "Lessons Learned" below.
 
 #### Success Criteria
-- A fresh session can redeploy or troubleshoot from the docs alone.
+- A fresh session can redeploy or troubleshoot from the docs alone. ✓ (deployment guide + `infra/unraid/CLAUDE.md` + `infra/wsl/CLAUDE.md` + phase docs)
 
 ---
 
@@ -197,6 +197,17 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 
 #### Success Criteria
 - A fresh session can operate/troubleshoot ComfyUI from either machine using docs alone; final results flow through the NAS-hosted app without manual copying. ✓ (`infra/wsl/CLAUDE.md` + PHASE_6.md §5 evidence)
+
+---
+
+## Lessons Learned
+
+- **Windows-first code breaks quietly on Linux.** Backslash defaults created literal `Text-2-Image\_samples` folders; lowercased path normalization 404'd on a case-sensitive `PhysicalFileProvider`. Grep for hard-coded separators/lowercasing before containerizing; prefer forward slashes and case-preserving paths.
+- **FUSE/rclone mounts are a first-class dependency.** Directory-cache TTL (default 5 min, negative lookups cached) causes "file not there yet" races; `--dir-cache-time 2s` + an app-side bounded retry is the balance (TTL 0 is O(N^2) with crypt names). Always verify `grep vault-local /proc/mounts`, not `ls`, after a remount; containers keep stale references that hide a dead host mount, and recreating one against a missing mount poisons the mountpoint.
+- **Blazor Server hover/visual state belongs in CSS.** Every `@onmouseenter` is a SignalR round-trip; on a NAS-hosted container that reads as lag. Also avoid per-tile subscriptions to global state events.
+- **Measure first, then fix:** oracle probes (`rclone lsf`), primed-cache timing, and byte-identical DB checks turned guesses into root causes (PHASE_6.md §5).
+- **Pin images by date tags and keep `.env` backups;** one-line rollbacks made every deploy safe. Commit code that is already shipped in an image before building the next one (the `2026-11-11c` fixes sat uncommitted for a day).
+- **Open items carried forward:** vault-mount boot-order guard (`infra/unraid/CLAUDE.md`), Tailscale re-login + re-pointing `COMFYUI_BASE_URL`, cached thumbnails, remaining server-driven hover cards (PHASE_6.md D8 follow-ups), DataProtection key persistence and the Danbooru Library lazy-load quirk (PHASE_4.md F1/F5).
 
 ---
 
@@ -224,6 +235,7 @@ Desktop: ComfyUI --listen :8188   ← all inference here
 | Phase 4 | Complete and tested (see PHASE_4.md): app live at `http://10.0.0.11:8189` via compose project on the NAS; reachability via WSL mirrored networking instead of Tailscale, which was logged out on the PC (D1/D2); published-project DB ported to the NAS with path remapping — user-requested scope change (D5); post-swap 500 fix + two-part case-sensitivity fix shipped as image `2026-11-11c` (D3/D4); gallery-perf vault mount topology fixed with a new `vault-local:` rclone remote + persistent User Script VFS cache flags (D6). Verification evidence in PHASE_4.md §3: ComfyUI status healthy, resource previews and danbooru library verified (17/17 cards, all images 200), DB byte-identical across container recreation; txt2img generation deferred to user (GPU busy with LM Studio). Phase 6 skeleton added for the WSL↔Unraid / Comfy setup audit |
 | Phase 6 | Complete and tested (see PHASE_6.md): WSL audited and added as an infra device (`infra/wsl/`, `045a4c3`); ComfyUI input/output migrated to vault folders with integrity check; generation race root-caused to the fuse dir-cache — fixed app-side (bounded retry + null guard, image `2026-11-12`) and on the NAS mount (`--dir-cache-time 2s`, D5/D6); end-to-end generation test passed 2026-11-12, completing Phase 4's deferred txt2img round-trip |
 | Phase 6 (Step 4) | Gallery responsiveness (see PHASE_6.md D7/D8): hover panels on `ImageCard`/`GalleryImageTile` moved from Blazor Server mouse events to pure CSS, tiles stop re-rendering on every `StateChangedEventArgs`, `/image` gets `Cache-Control: public,max-age=86400`; shipped as image `2026-11-12b` (app commits `5246e63` + `4429f85`, infra `.env.example` tag note). The previously uncommitted `2026-11-11c` fixes (case-preserving URLs, `@Color.*`) were committed. Deploy surfaced a dead NAS vault host mount (stale container references masked it); recovered and documented in `infra/wsl/CLAUDE.md`. Open follow-ups: boot-order guard for the vault mount, thumbnails, remaining hover cards, Phase 5 docs |
+| Phase 5 | Complete (docs): "Remote Backend Setup" added to `02-DEPLOYMENT-GUIDE.md`; BlazorWebApp service section (facts, build/deploy commands, vault dependency, boot-order risk) added to `infra/unraid/CLAUDE.md`; this plan finalized with Lessons Learned. Whole plan complete; open follow-ups listed under Lessons Learned |
 
 ---
 

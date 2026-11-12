@@ -414,6 +414,36 @@ export ComfyUI__BaseUrl=http://192.168.1.50:8188
 
 - The remote ComfyUI must be started with `--listen` so port 8188 is reachable from the app's host, and its firewall must allow the connection. Verify reachability before starting the app: `curl http://<host>:8188/system_stats`.
 
+### Remote Backend Setup (app and ComfyUI on different machines)
+
+Used by the Unraid deployment (app in a container on the NAS, inference on the desktop GPU). The container is a thin proxy: it never runs inference.
+
+**1. Start ComfyUI with `--listen`** on the machine that owns the GPU, and allow inbound TCP 8188 in that machine's firewall.
+   - ComfyUI inside WSL2 + Docker: use WSL **mirrored networking** (`networkingMode=mirrored` in `.wslconfig`) so the container's port is reachable at the PC's own LAN IP, plus a Windows firewall rule for 8188.
+   - Verify from the app host (not the desktop): `curl http://<desktop>:8188/system_stats` must return JSON.
+
+**2. Pick a stable address** for `ComfyUI__BaseUrl`:
+   - Preferred: the desktop's Tailscale address/hostname (survives DHCP changes).
+   - Fallback: the desktop's LAN IP (e.g. `http://10.0.0.2:8188`). It is DHCP-assigned, so re-point `ComfyUI__BaseUrl` if it changes and the app reports the backend unavailable.
+   - The app's health check polls the backend every 30 s; when ComfyUI is unreachable the Generate pages are disabled (same behaviour as local development).
+
+**3. Give the app disk access to ComfyUI's files.** Live previews stream over the WebSocket, but **final images are read from disk**, so the app container must see the same folders ComfyUI writes to:
+
+| Setting (env var) | Meaning |
+|---|---|
+| `ComfyUI__OutputsPath` | Path **inside the app's filesystem** that points directly at ComfyUI's `output` dir. Empty = degrade gracefully (previews only; disk reads fail silently). |
+| `ComfyUI__InputsPath` | The ComfyUI **workspace root** (not `.../input`); the app appends `/input/<filename>` itself when uploading. |
+
+Both machines must see the same files, e.g. both mount the same NAS share/vault folder (ComfyUI over SMB/rclone, the app via a bind mount). If the share is a FUSE/rclone mount, keep its directory cache TTL short (`--dir-cache-time 2s`) — with the default 5 min a freshly written image stays invisible to the other side for minutes (the app also retries image loads: 20 x 500 ms).
+
+**4. Linux/container path rules** (the code base was originally Windows-only):
+   - File lookups under `/image/...` are **case-sensitive** on Linux; the app builds URLs from the on-disk casing.
+   - Sample-folder settings must use forward slashes. Defaults already do (`OutputPaths:Txt2ImgSamples = Text-2-Image/_samples`, etc.); older builds created folders literally named `Text-2-Image\_samples`, so override via `OutputPaths__Txt2ImgSamples`, `OutputPaths__Img2ImgSamples`, `OutputPaths__Img2VidSamples` if you run an old image.
+   - Absolute container paths are required at startup for `OutputDir`, `ResourcesPath`, `ResourcePreviewsPath` (their `PhysicalFileProvider`s throw otherwise); `Danbooru__SavedMediaPath` only logs a warning when missing.
+   - Set `ConnectionStrings__DefaultConnection=Data Source=/app/data/BlazorWebApp.db` and bind-mount `/app/data` so the SQLite DB survives image updates.
+
+**Reference deployment:** the Unraid compose project lives in the infra repo (`infra/unraid/services/blazorwebapp/`: `Dockerfile`, `docker-compose.yml`, `.env.example`) and is documented in `infra/unraid/CLAUDE.md`. History and decisions: `Documentation/Plans/unraid-hosting/`.
+
 ---
 
 ## Troubleshooting
@@ -679,7 +709,7 @@ services:
       - ASPNETCORE_URLS=http://+:5000
 ```
 
-**Note**: Requires network access to WebUI/ComfyUI running on host.
+**Note**: Requires network access to WebUI/ComfyUI running on host. The example above is a generic sketch; the real, tested container assets (multi-stage Dockerfile, compose with vault bind mounts, `.env.example`) are in the infra repo under `unraid/services/blazorwebapp/`. See "Remote Backend Setup" above for the required environment variables.
 
 ---
 
