@@ -1,0 +1,162 @@
+@using System.Text.Json
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Variations
+@using BlazorWebApp.Components.Scheduler.Forms
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Edit Variation</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="8">
+                    <MudSelect T="string" Value="_kind" ValueChanged="OnKindChanged"
+                               Label="Type" Variant="Variant.Text" Dense="true"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var (key, label) in _kinds)
+                        {
+                            <MudSelectItem T="string" Value="@key">@label</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_label" Label="Label" Variant="Variant.Text"
+                                  HelperText="Optional display name for this variation." />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider />
+
+            @switch (_variation)
+            {
+                case ListVariation v:
+                    <ListVariationForm Variation="v" Job="Job" />
+                    break;
+                case RangeVariation v:
+                    <RangeVariationForm Variation="v" Job="Job" />
+                    break;
+                case RandomVariation v:
+                    <RandomVariationForm Variation="v" Job="Job" />
+                    break;
+                case WildcardVariation v:
+                    <WildcardVariationForm Variation="v" Job="Job" />
+                    break;
+                case LlmVariation v:
+                    <LlmVariationForm Variation="v" Job="Job" />
+                    break;
+                case SearchReplaceVariation v:
+                    <SearchReplaceVariationForm Variation="v" Job="Job" />
+                    break;
+                case ToggleVariation v:
+                    <ToggleVariationForm Variation="v" Job="Job" />
+                    break;
+                default:
+                    <MudAlert Severity="Severity.Warning" Dense>
+                        No form yet for this variation type. Use the "Edit JSON" option instead.
+                    </MudAlert>
+                    break;
+            }
+
+            <MudExpansionPanels Dense="true">
+                <MudExpansionPanel Text="View JSON (read-only)">
+                    <pre style="font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+                                font-size: 0.78rem; margin: 0; white-space: pre-wrap; word-break: break-word;">
+@SerializedJson()
+                    </pre>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Ok">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public Variation Initial { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private Variation _variation = default!;
+    private string _kind = string.Empty;
+    private string? _label;
+
+    private static readonly List<(string Key, string Label)> _kinds = new()
+    {
+        ("List", "List"),
+        ("Range", "Range"),
+        ("Random", "Random"),
+        ("Wildcard", "Wildcard"),
+        ("LLM", "LLM"),
+        ("SearchReplace", "Search / Replace"),
+        ("Toggle", "Toggle"),
+    };
+
+    protected override void OnInitialized()
+    {
+        _variation = DeepClone(Initial);
+        _kind = KindOf(_variation);
+        _label = _variation.Label;
+    }
+
+    private void OnKindChanged(string kind)
+    {
+        if (kind == _kind) return;
+        _kind = kind;
+        _variation = NewOfKind(kind);
+        _variation.Label = _label;
+    }
+
+    private static string KindOf(Variation v) => v switch
+    {
+        ListVariation => "List",
+        RangeVariation => "Range",
+        RandomVariation => "Random",
+        WildcardVariation => "Wildcard",
+        LlmVariation => "LLM",
+        SearchReplaceVariation => "SearchReplace",
+        ToggleVariation => "Toggle",
+        _ => "List",
+    };
+
+    private static Variation NewOfKind(string kind) => kind switch
+    {
+        "List" => new ListVariation { Values = new() },
+        "Range" => new RangeVariation(),
+        "Random" => new RandomVariation(),
+        "Wildcard" => new WildcardVariation { CollectionName = "" },
+        "LLM" => new LlmVariation { BasePrompt = "" },
+        "SearchReplace" => new SearchReplaceVariation { Search = "", Replacements = new() },
+        "Toggle" => new ToggleVariation(),
+        _ => new ListVariation { Values = new() },
+    };
+
+    private static Variation DeepClone(Variation v)
+    {
+        // Serialize against the polymorphic base so $type is emitted; serializing against the
+        // concrete runtime type omits the discriminator and round-trip fails.
+        var json = JsonSerializer.Serialize(v, typeof(Variation), SchedulerJsonOptions.Compact);
+        return JsonSerializer.Deserialize<Variation>(json, SchedulerJsonOptions.Compact)!;
+    }
+
+    private string SerializedJson()
+    {
+        _variation.Label = _label;
+        var opts = new JsonSerializerOptions(SchedulerJsonOptions.Compact) { WriteIndented = true };
+        // Serialize against the base so $type renders; keeps the read-only view matching what is actually persisted.
+        return JsonSerializer.Serialize(_variation, typeof(Variation), opts);
+    }
+
+    private void Ok()
+    {
+        _variation.Label = _label;
+        MudDialog.Close(DialogResult.Ok(_variation));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
+

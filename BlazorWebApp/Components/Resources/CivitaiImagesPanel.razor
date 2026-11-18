@@ -1,121 +1,251 @@
-﻿@inject ManagerService M
+﻿@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IStateService State
 @inject CivitaiService Api
+@inject ICivitaiResourceImageService ImageSaver
+@inject ISnackbar Snackbar
 
-<div>
-    <EditForm Model=Request OnSubmit="Search">
-        <MudGrid Class="px-4 mb-7 mt-7">
-            <MudItem xs="4">
-                <MudTextField @bind-Value=Request.Username Label="Username" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
-             </MudItem>
-             <MudItem xs="2">
-                 <MudNumericField @bind-Value=Request.PostId Label="Post ID" Variant="Variant.Text" Min=0 />
-             </MudItem>
-             <MudItem xs="2">
-                 <MudNumericField @bind-Value=Request.ModelId Label="Model ID" Variant="Variant.Text" Min=0 />
-             </MudItem>
-             <MudItem xs="2">
-                 <MudNumericField @bind-Value=Request.ModelVersionId Label="Model Version ID" Variant="Variant.Text" Min=0 />
-             </MudItem>
-             <MudItem xs="1">
-                 <MudNumericField @bind-Value=Request.Page Label="Page" Variant="Variant.Text" Min=1 />
-             </MudItem>
-             <MudItem xs="3">
-                 <MudSlider @bind-Value=Request.Limit Min=8 Max=200 Step=8>
-                     <small>Limit:</small> @Request.Limit
-                </MudSlider>
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Nsfw Label="NSFW" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
-                    @foreach (CivitaiNsfw? nsfw in Enum.GetValues(typeof(CivitaiNsfw)))
-                    {
-                        <MudSelectItem Value="@nsfw">@nsfw</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Sort Label="Sort" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="State.State.Civitai.SidebarCollapsed" SidebarTitle="Filters">
+    <Sidebar>
+        <EditForm Model="Request" OnSubmit="Search">
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="Request.Username" Label="Username" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" Clearable />
+
+                <MudDivider Class="my-1" />
+
+                <MudSelect @bind-Value="Request.Sort" Label="Sort" AnchorOrigin="Origin.BottomLeft"
+                           TransformOrigin="Origin.TopLeft" MaxHeight="400">
                     @foreach (CivitaiImageSort? sort in Enum.GetValues(typeof(CivitaiImageSort)))
                     {
-                        <MudSelectItem Value="@sort">@sort.ToString().Replace("_", " ")</MudSelectItem>
+                        <MudSelectItem Value="@sort">@sort?.ToString()?.Replace("_", " ")</MudSelectItem>
                     }
                 </MudSelect>
-            </MudItem>
-            <MudItem xs="2">
-                <MudSelect @bind-Value=Request.Period Label="Period" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                <MudSelect @bind-Value="Request.Period" Label="Period" AnchorOrigin="Origin.BottomLeft"
+                           TransformOrigin="Origin.TopLeft" MaxHeight="400">
                     @foreach (CivitaiPeriod? period in Enum.GetValues(typeof(CivitaiPeriod)))
                     {
                         <MudSelectItem Value="@period">@period</MudSelectItem>
                     }
                 </MudSelect>
-            </MudItem>
-            <MudItem xs="2">
-                <MudButton Class="w-100 h-100" ButtonType="ButtonType.Submit" Color="Color.Success" Variant="Variant.Text">Search</MudButton>
-            </MudItem>
-        </MudGrid>
-    </EditForm>
+                <MudSelect @bind-Value="Request.Nsfw" Label="NSFW" AnchorOrigin="Origin.BottomLeft"
+                           TransformOrigin="Origin.TopLeft" MaxHeight="400">
+                    @foreach (CivitaiNsfw? nsfw in Enum.GetValues(typeof(CivitaiNsfw)))
+                    {
+                        <MudSelectItem Value="@nsfw">@nsfw</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudDivider Class="my-1" />
+                <MudNumericField @bind-Value="Request.PostId" Label="Post ID" Variant="Variant.Text" Min="0" />
+                <MudNumericField @bind-Value="Request.ModelId" Label="Model ID" Variant="Variant.Text" Min="0" />
+                <MudNumericField @bind-Value="Request.ModelVersionId" Label="Model Version ID" Variant="Variant.Text"
+                                 Min="0" />
 
-    @if (M.CivitaiImages != null && M.CivitaiImages.Images != null && M.CivitaiImages.Images.Count > 0)
-    {
-        <MudGrid Class="images-container">
-            @foreach (var img in M.CivitaiImages.Images)
-            {
-                <CivitaiImageCard Image="img" OnSaveImage="SaveImage"/>
-            }
-        </MudGrid>
-    }
-    else if (_isSearching)
-    {
-        <LoadingSpinner />
-    }
-</div>
+                <MudDivider Class="my-1" />
+                
+                <MudNumericField @bind-Value="Request.Page" Label="Page" Variant="Variant.Text" Min="1" />
+
+                <MudSlider @bind-Value="Request.Limit" Min="8" Max="200" Step="8">
+                    <small>Limit:</small> @Request.Limit
+                </MudSlider>
+                <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                    <MudTooltip Text="@($"Card size: {State.State.Civitai.CardSize}")">
+                        <MudIconButton Icon="@GetCardSizeIcon()" Color="Color.Primary" OnClick="CycleCardSize"
+                                       Size="Size.Medium" />
+                    </MudTooltip>
+                </MudStack>
+
+                <MudDivider Class="my-1" />
+                
+                <MudButton ButtonType="ButtonType.Submit" Color="Color.Success" FullWidth="true" Class="mt-3">Search
+                </MudButton>
+
+            </MudStack>
+        </EditForm>
+    </Sidebar>
+    <Content>
+        @if (_isSearching)
+        {
+            <LoadingSpinner />
+        }
+        else if (_images != null && _images.Images != null && _images.Images.Count > 0)
+        {
+            <div class="civitai-scroll-container" style="@($"--civitai-card-width: {CardWidth};")">
+                <MudGrid Class="images-container">
+                    @foreach (var img in _images.Images)
+                    {
+                        <CivitaiImageCard Image="img" OnSaveImage="SaveImage" OnView="OpenViewer" />
+                    }
+                </MudGrid>
+            </div>
+        }
+    </Content>
+</TwoColumnLayout>
+
+<AssetViewer @bind-IsVisible="_showViewer" Assets="_viewerAssets" StartIndex="_viewerStartIndex" ShowFavorite="false"
+             ShowScore="false" ShowOpenInExplorer="false" ExternalSourceUrl="@_viewerExternalUrl"
+             ExternalImageHintText="Save this CivitAI image locally to enable workflow image send and Generate Prompt. Prompt parameters are available before saving."
+             ExternalImageActionText="Save local" ExternalImageActionIcon="fa-solid fa-download"
+             ImageToPromptSourceLabel="CivitAI image" OnRequestSaveLocal="SaveViewerAssetLocal"
+             OnAssetChanged="HandleViewerAssetChanged" />
 
 @code {
-    public CivitaiImagesRequest Request { get; set; }
+    public CivitaiImagesRequest Request { get; set; } = new();
     private bool _isSearching;
+    private CivitaiImagesDto? _images;
+
+    // AssetViewer host state. The panel owns a single AssetViewer instance and projects
+    // the current DTO list to transient ImageEntity objects via CivitaiAssetAdapter.
+    private bool _showViewer;
+    private int _viewerStartIndex;
+    private List<ImageEntity> _viewerAssets = new();
+    private string? _viewerExternalUrl;
+
+    private async Task OpenViewer(CivitaiImageDto dto)
+    {
+        if (_images?.Images == null || dto == null) return;
+        var list = _images.Images;
+        var index = list.IndexOf(dto);
+        if (index < 0) return;
+        _viewerAssets = CivitaiAssetAdapter.Project(list);
+        await HydrateSavedViewerAssets(list);
+        _viewerStartIndex = index;
+        _viewerExternalUrl = BuildExternalUrl(dto);
+        _showViewer = true;
+    }
+
+    private void HandleViewerAssetChanged(ImageEntity asset)
+    {
+        // Keep the "Open source" link in sync with the active asset as the user navigates.
+        if (asset == null || _images?.Images == null) return;
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= _images.Images.Count) return;
+        _viewerExternalUrl = BuildExternalUrl(_images.Images[index]);
+    }
+
+    private async Task<ImageEntity?> SaveViewerAssetLocal(ImageEntity asset)
+    {
+        if (asset == null || _images?.Images == null) return null;
+
+        var index = _viewerAssets.IndexOf(asset);
+        if (index < 0 || index >= _images.Images.Count) return null;
+
+        var dto = _images.Images[index];
+        var result = await ImageSaver.SaveImageAsync(new CivitaiResourceImageSaveRequest
+        {
+            Image = dto,
+            ModelId = Request.ModelId.GetValueOrDefault(),
+            ModelVersionId = Request.ModelVersionId.GetValueOrDefault() > 0
+                ? Request.ModelVersionId.GetValueOrDefault()
+                : dto.ModelVersionIds?.FirstOrDefault() ?? 0,
+            ModelName = dto.Meta?.Model,
+            ResourceType = "CivitAI",
+            EnrichFromModelVersion = Request.ModelVersionId > 0 || dto.ModelVersionIds?.Any() == true
+        });
+
+        if (!result.ImageAvailable)
+        {
+            Snackbar.Add("Unable to save CivitAI image.", Severity.Warning);
+            return null;
+        }
+
+        _images.Images[index] = result.Image!;
+        var localAsset = result.ResourceImage != null
+            ? CivitaiAssetAdapter.Project(result.Image!, result.ResourceImage)
+            : CivitaiAssetAdapter.Project(result.Image!);
+        localAsset.Path = result.LocalPath!;
+
+        _viewerAssets[index] = localAsset;
+        Snackbar.Add(result.FileAlreadyExisted ? "CivitAI image already saved locally." : "CivitAI image saved locally.",
+Severity.Success);
+        return localAsset;
+    }
+
+    private async Task HydrateSavedViewerAssets(IReadOnlyList<CivitaiImageDto> images)
+    {
+        var savedImages = await ImageSaver.GetSavedImagesAsync(images);
+        foreach (var saved in savedImages)
+        {
+            var index = saved.Key;
+            var result = saved.Value;
+            if (index < 0 || index >= _viewerAssets.Count || result.ResourceImage == null) continue;
+
+            _viewerAssets[index] = CivitaiAssetAdapter.Project(images[index], result.ResourceImage);
+        }
+    }
+
+    private static string? BuildExternalUrl(CivitaiImageDto dto)
+    {
+        return dto?.Id > 0 ? $"https://civitai.com/images/{dto.Id}" : null;
+    }
 
     protected override void OnInitialized()
     {
         LoadState();
     }
 
+    private string CardWidth => State.State.Civitai.CardSize switch
+    {
+        ResourceCardSize.Small => "10rem",
+        ResourceCardSize.Large => "20rem",
+        _ => "14rem"
+    };
+
+    private void CycleCardSize()
+    {
+        State.State.Civitai.CardSize = State.State.Civitai.CardSize switch
+        {
+            ResourceCardSize.Small => ResourceCardSize.Medium,
+            ResourceCardSize.Medium => ResourceCardSize.Large,
+            _ => ResourceCardSize.Small
+        };
+        StateHasChanged();
+    }
+
+    private string GetCardSizeIcon() => State.State.Civitai.CardSize switch
+    {
+        ResourceCardSize.Small => "fa-solid fa-grip",
+        ResourceCardSize.Large => "fa-solid fa-square",
+        _ => "fa-solid fa-table-cells-large"
+    };
+
     private async Task Search()
     {
         _isSearching = true;
         SetState();
-        M.CivitaiImages = await Api.GetImages(Request);
-        await M.SaveState();
+        _images = await Api.GetImages(Request);
+        await State.SaveState();
         _isSearching = false;
     }
 
     private void SaveImage()
     {
-        
+        // TODO
     }
 
     private void LoadState()
     {
         Request = new();
-        Request.Limit = M.State.Civitai.Images.Limit;
-        Request.PostId = M.State.Civitai.Images.PostId;
-        Request.ModelId = M.State.Civitai.Images.ModelId;
-        Request.ModelVersionId = M.State.Civitai.Images.ModelVersionId;
-        Request.Username = M.State.Civitai.Images.Username;
-        Request.Nsfw = M.State.Civitai.Images.Nsfw;
-        Request.Sort = M.State.Civitai.Images.Sort;
-        Request.Period = M.State.Civitai.Images.Period;
-        Request.Page = M.State.Civitai.Images.Page;
+        Request.Limit = State.State.Civitai.Images.Limit;
+        Request.PostId = State.State.Civitai.Images.PostId;
+        Request.ModelId = State.State.Civitai.Images.ModelId;
+        Request.ModelVersionId = State.State.Civitai.Images.ModelVersionId;
+        Request.Username = State.State.Civitai.Images.Username;
+        Request.Nsfw = State.State.Civitai.Images.Nsfw;
+        Request.Sort = State.State.Civitai.Images.Sort;
+        Request.Period = State.State.Civitai.Images.Period;
+        Request.Page = State.State.Civitai.Images.Page;
     }
 
     private void SetState()
     {
-        M.State.Civitai.Images.Limit = Request.Limit;
-        M.State.Civitai.Images.PostId = (int)Request.PostId;
-        M.State.Civitai.Images.ModelId = (int)Request.ModelId;
-        M.State.Civitai.Images.ModelVersionId = (int)Request.ModelVersionId;
-        M.State.Civitai.Images.Username = Request.Username;
-        M.State.Civitai.Images.Nsfw = (CivitaiNsfw)Request.Nsfw;
-        M.State.Civitai.Images.Sort = (CivitaiImageSort)Request.Sort;
-        M.State.Civitai.Images.Period = (CivitaiPeriod)Request.Period;
-        M.State.Civitai.Images.Page = Request.Page;
+        State.State.Civitai.Images.Limit = Request.Limit;
+        State.State.Civitai.Images.PostId = Request.PostId.GetValueOrDefault();
+        State.State.Civitai.Images.ModelId = Request.ModelId.GetValueOrDefault();
+        State.State.Civitai.Images.ModelVersionId = Request.ModelVersionId.GetValueOrDefault();
+        State.State.Civitai.Images.Username = Request.Username ?? string.Empty;
+        State.State.Civitai.Images.Nsfw = Request.Nsfw.GetValueOrDefault();
+        State.State.Civitai.Images.Sort = Request.Sort.GetValueOrDefault();
+        State.State.Civitai.Images.Period = Request.Period.GetValueOrDefault();
+        State.State.Civitai.Images.Page = Request.Page;
     }
 }

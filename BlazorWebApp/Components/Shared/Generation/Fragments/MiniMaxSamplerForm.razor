@@ -1,0 +1,142 @@
+@*
+    MiniMaxSamplerForm - Form for the minimax_sampler fragment.
+
+    Handles: sampler_name, scheduler, steps, denoise, seed.
+    No CFG/Guidance control - MiniMax H3's BasicGuider takes only model+conditioning (no
+    negative conditioning, no CFG scale), so this form intentionally omits that slider
+    rather than reusing SamplerForm (which always renders one).
+*@
+@using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("MiniMaxSamplerForm")]
+@inject ISettingsService Settings
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName" @bind-Value:after="OnSamplerChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var sampler in _samplerOptions)
+            {
+                <MudSelectItem Value="@sampler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var scheduler in _schedulerOptions)
+            {
+                <MudSelectItem Value="@scheduler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="_localSteps" @bind-Value:after="OnStepsChanged"
+                   Min="Settings.Settings.Generation.Shared.Steps.Min" Max="Settings.Settings.Generation.Shared.Steps.Max"
+                   Step="Settings.Settings.Generation.Shared.Steps.Step" Variant="Variant.Filled" ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1"
+                             Max="long.MaxValue" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localDenoise" @bind-Value:after="OnDenoiseChanged" Min="0" Max="1"
+                   Step="0.01" Variant="Variant.Filled" ValueLabel TickMarks>
+            <small>Denoise:</small> @_localDenoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string? _localSamplerName;
+    private string? _localScheduler;
+    private int _localSteps;
+    private long _localSeed;
+    private double _localDenoise;
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        var samplerDefault = Fragment.Schema?.GetConstraints("sampler_name").GetDefault<string>() ?? "res_multistep";
+        var schedulerDefault = Fragment.Schema?.GetConstraints("scheduler").GetDefault<string>() ?? "simple";
+
+        _localSamplerName = ParameterService.GetFragmentProperty(Fragment, "sampler_name", samplerDefault);
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, "scheduler", schedulerDefault);
+        _samplerOptions = GetOptions("sampler_name", _localSamplerName);
+        _schedulerOptions = GetOptions("scheduler", _localScheduler);
+
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, "steps", 20);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "seed", -1L);
+        _localDenoise = ParameterService.GetFragmentProperty(Fragment, "denoise", 1.0);
+    }
+
+    private async Task OnSamplerChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "sampler_name", _localSamplerName, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSchedulerChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "scheduler", _localScheduler, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStepsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "steps", _localSteps, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnDenoiseChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "denoise", _localDenoise, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetRandomSeed()
+    {
+        _localSeed = -1;
+        ParameterService.SetFragmentProperty(Fragment, "seed", -1L, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private List<string> GetOptions(string parameterName, string? currentValue)
+    {
+        if (Fragment == null)
+        {
+            return [];
+        }
+
+        var options = ParameterService.GetResolvedOptions(Fragment.Id, parameterName);
+        if (options.Count == 0)
+        {
+            options = Fragment.Schema?.GetConstraints(parameterName).Options ?? [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentValue) && !options.Contains(currentValue, StringComparer.OrdinalIgnoreCase))
+        {
+            options = [currentValue, .. options];
+        }
+
+        return options;
+    }
+}

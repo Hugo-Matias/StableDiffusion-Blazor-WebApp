@@ -1,0 +1,28 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+
+<MudStack Spacing="2">
+    <MudAlert Severity="Severity.Info" Dense>
+        ReplacePrompt rewrites the selected prompt directly; no Target picker is needed.
+    </MudAlert>
+
+    <MudTextField @bind-Value="Directive.Search" Label="Search" Variant="Variant.Text"
+                  HelperText="Literal text to find in the prompt." />
+    <MudTextField @bind-Value="Directive.Replace" Label="Replace" Variant="Variant.Text"
+                  HelperText="Substituted in place of every occurrence." />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudSwitch T="bool" @bind-Value="Directive.IsNegative" Color="Color.Primary" Label="Negative prompt" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudSwitch T="bool" @bind-Value="Directive.CaseSensitive" Color="Color.Primary" Label="Case sensitive" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public ReplacePromptDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+}
+

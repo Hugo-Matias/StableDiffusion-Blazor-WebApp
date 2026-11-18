@@ -1,0 +1,104 @@
+@*
+    MiniMaxH3ImageSettingsForm - Megapixel budget for the H3 Image Edit workflow.
+
+    Every source image is capped to this megapixel budget before conditioning; the multiple-of-32
+    snap and "area" scale method are implied by the source preset and not exposed. Shows a live
+    text preview of the final output size derived from the first uploaded image. Subscribes to
+    SourceChanged so uploading/clearing an image recomputes the preview live.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Events
+@using BlazorWebApp.Models
+@using BlazorWebApp.Workflows.Fragments.MiniMax
+@using BlazorWebApp.Workflows.Models
+@attribute [FragmentComponent("MiniMaxH3ImageSettingsForm")]
+@inject IGenerationParameterService ParameterService
+@inject IEventService EventService
+@implements IDisposable
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSlider T="double" @bind-Value="_localMegapixels" @bind-Value:after="OnMegapixelsChanged"
+                   Min="_megapixelsMin" Max="_megapixelsMax" Step="_megapixelsStep" Variant="Variant.Filled" ValueLabel>
+            <small>Megapixels:</small> @_localMegapixels.ToString("F1")
+        </MudSlider>
+    </MudItem>
+
+    @if (_previewSize.HasValue)
+    {
+        <MudItem xs="12">
+            <MudText Typo="Typo.body1" Align="Align.Center" Class="mt-2">Resolution: <strong>@(_previewSize.Value.Width) x @(_previewSize.Value.Height)</strong></MudText>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localMegapixels = 4.0;
+    private double _megapixelsMin = 0.1, _megapixelsMax = 8.0, _megapixelsStep = 0.1;
+    private WorkflowImageSize? _previewSize;
+
+    protected override void OnInitialized()
+    {
+        EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localMegapixels = ParameterService.GetFragmentProperty(Fragment, "megapixels", 4.0);
+        UpdatePreview();
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("megapixels", out var megapixelsConstraints))
+        {
+            _megapixelsMin = megapixelsConstraints.GetMin(0.1);
+            _megapixelsMax = megapixelsConstraints.GetMax(8.0);
+            _megapixelsStep = megapixelsConstraints.GetStep(0.1);
+        }
+    }
+
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        if (args.ChangeType == GenerationParameterChangeType.SourceChanged &&
+            args.FragmentId?.StartsWith("image") == true)
+        {
+            UpdatePreview();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void UpdatePreview()
+    {
+        var source = ParameterService.Current.Sources
+            .Where(kvp => kvp.Key.StartsWith("image") && kvp.Value.HasData)
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => kvp.Value)
+            .FirstOrDefault(source => source.Width is > 0 && source.Height is > 0);
+
+        _previewSize = source == null
+            ? null
+            : WorkflowSizing.ScaleToTotalPixels(source.Width, source.Height, _localMegapixels, MiniMaxH3ImagePrepFragment.MultipleOf);
+    }
+
+    private async Task OnMegapixelsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "megapixels", _localMegapixels, notify: true);
+        UpdatePreview();
+        await OnChanged.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        EventService.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+}

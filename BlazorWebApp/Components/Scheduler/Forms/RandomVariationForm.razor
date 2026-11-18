@@ -1,0 +1,76 @@
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds"
+                           FragmentValueFilter="ParameterTargetPicker.FragmentValueTypeFilter.Numeric" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            @if (Variation.IsInteger)
+            {
+                <MudNumericField T="long" Value="@((long)Variation.Min)"
+                                 ValueChanged="@(v => Variation.Min = v)"
+                                 Label="Min" Step="1" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudNumericField T="double" @bind-Value="Variation.Min" Label="Min" Step="0.1" Variant="Variant.Text" />
+            }
+        </MudItem>
+        <MudItem xs="12" md="4">
+            @if (Variation.IsInteger)
+            {
+                <MudNumericField T="long" Value="@((long)Variation.Max)"
+                                 ValueChanged="@(v => Variation.Max = v)"
+                                 Label="Max" Step="1" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudNumericField T="double" @bind-Value="Variation.Max" Label="Max" Step="0.1" Variant="Variant.Text" />
+            }
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudNumericField T="int" @bind-Value="Variation.Count" Label="Count" Min="1"
+                             Variant="Variant.Text" HelperText="Number of samples to draw." />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudNumericField T="int?" @bind-Value="Variation.Seed" Label="Seed (optional)" Clearable
+                             Variant="Variant.Text" HelperText="Set for reproducible sampling." />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center">
+            <MudSwitch T="bool" Value="Variation.IsInteger" ValueChanged="OnIsIntegerChanged" Color="Color.Primary"
+                       Label="@(Variation.IsInteger ? "Integer samples" : "Floating-point samples")" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public RandomVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // Random samples are numeric; restrict to numeric-compatible targets.
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Lora,
+    };
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+
+    private void OnIsIntegerChanged(bool value)
+    {
+        Variation.IsInteger = value;
+        if (value)
+        {
+            Variation.Min = Math.Truncate(Variation.Min);
+            Variation.Max = Math.Truncate(Variation.Max);
+        }
+    }
+}
+

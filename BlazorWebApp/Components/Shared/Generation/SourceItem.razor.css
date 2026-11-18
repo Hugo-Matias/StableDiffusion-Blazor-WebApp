@@ -1,0 +1,11 @@
+.audio-trim-panel {
+  margin-top: 8px;
+  padding: 12px;
+  background-color: var(--mud-palette-grey-lighten5);
+  border-radius: 4px;
+}
+
+.audio-trim-panel .slider-label-row {
+  font-size: 0.75rem;
+  color: var(--mud-text-default);
+}

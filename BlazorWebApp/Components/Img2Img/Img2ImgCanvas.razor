@@ -1,4 +1,7 @@
-﻿@inject ManagerService M
+﻿@using BlazorWebApp.Events
+@inject IStateService State
+@inject ISessionService Session
+@inject IEventService Events
 @inject MagickService Magick
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -74,12 +77,17 @@
             _ctxWork = await _canvasWork.GetContext2DAsync();
             _ctxPointer = await _canvasPointer.GetContext2DAsync();
 
-            M.State.Generation.Img2Img.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-            M.State.Generation.Img2Img.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-            M.OnCanvasImageDataChanged += Refresh;
+            State.State.Generation.Img2Img.OnBrushSizeChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            State.State.Generation.Img2Img.OnBrushColorChange += () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+            Events.Subscribe<CanvasImageDataChangedEventArgs>(OnCanvasImageDataChanged);
 
-            if (!string.IsNullOrEmpty(M.CanvasImageData)) { await LoadImage(); }
+            if (!string.IsNullOrEmpty(Session.CanvasImageData)) { await LoadImage(); }
         }
+    }
+    
+    private void OnCanvasImageDataChanged(CanvasImageDataChangedEventArgs args)
+    {
+        Refresh();
     }
 
     private async Task OnMouseDown(MouseEventArgs e)
@@ -95,7 +103,7 @@
         if (!_isDrawing) return;
         await _ctx.StrokeAsync();
         var image = await _ctx.GetImageDataAsync(0, 0, _canvasWidth, _canvasHeight);
-        M.CanvasStates.Add(image); // Add state to array for undoing
+        Session.CanvasStates.Add(image); // Add state to array for undoing
         _isDrawing = false;
     }
 
@@ -112,8 +120,8 @@
 
         await using (var cctx = _ctx.CreateBatch())
         {
-            await cctx.StrokeStyleAsync(M.State.Generation.Img2Img.BrushColor);
-            await cctx.LineWidthAsync(M.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
+            await cctx.StrokeStyleAsync(State.State.Generation.Img2Img.BrushColor);
+            await cctx.LineWidthAsync(State.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2);
             await cctx.LineCapAsync(LineCap.Round);
             await cctx.LineJoinAsync(LineJoin.Round);
             await cctx.LineToAsync(e.OffsetX * _canvasMultiplierX, e.OffsetY * _canvasMultiplierY);
@@ -129,8 +137,8 @@
         {
             await batch.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
             await batch.BeginPathAsync();
-            await batch.ArcAsync(x, y, M.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
-            await batch.FillStyleAsync(M.State.Generation.Img2Img.BrushColor);
+            await batch.ArcAsync(x, y, State.State.Generation.Img2Img.BrushSize * (_canvasMultiplierX + _canvasMultiplierY) / 2 / 2, 0, Math.PI * 2);
+            await batch.FillStyleAsync(State.State.Generation.Img2Img.BrushColor);
             await batch.FillAsync(FillRule.NonZero);
             await batch.StrokeStyleAsync("white");
             await batch.StrokeAsync();
@@ -139,21 +147,21 @@
 
     private async Task LoadImage()
     {
-        await _canvasInstance.InvokeVoidAsync("loadImage", M.CanvasImageData);
+        await _canvasInstance.InvokeVoidAsync("loadImage", Session.CanvasImageData);
         await OnImageChanged.InvokeAsync();
     }
 
     [JSInvokable]
     public void LoadImageData(string img, string? mask = null)
     {
-        if (!string.IsNullOrWhiteSpace(mask)) { M.CanvasMaskData = mask; }
-        M.CanvasImageData = img;
+        if (!string.IsNullOrWhiteSpace(mask)) { Session.CanvasMaskData = mask; }
+        Session.CanvasImageData = img;
         OnImageChanged.InvokeAsync();
     }
 
     private async Task LoadCanvasState()
     {
-        await _ctx.PutImageDataAsync(M.CanvasStates.LastOrDefault(), 0, 0);
+        await _ctx.PutImageDataAsync(Session.CanvasStates.LastOrDefault(), 0, 0);
     }
 
     private async Task LoadImage(string file)
@@ -171,7 +179,7 @@
 
     public async Task Generate()
     {
-        if (M.State.Generation.Img2Img.Mode == "Paint")
+        if (State.State.Generation.Img2Img.Mode == "Paint")
         {
             await _canvasInstance.InvokeAsync<string>("saveInpaint");
         }
@@ -187,25 +195,25 @@
 
     public async Task Undo()
     {
-        if (M.CanvasStates.Count <= 0) return;
+        if (Session.CanvasStates.Count <= 0) return;
 
-        if (M.CanvasStates.Count == 1)
+        if (Session.CanvasStates.Count == 1)
         {
             await Clear();
         }
         else
         {
-            M.CanvasStates.RemoveAt(M.CanvasStates.Count - 1);
-            await _ctx.PutImageDataAsync(M.CanvasStates.LastOrDefault(), 0, 0);
+            Session.CanvasStates.RemoveAt(Session.CanvasStates.Count - 1);
+            await _ctx.PutImageDataAsync(Session.CanvasStates.LastOrDefault(), 0, 0);
         }
     }
 
     public async Task Clear()
     {
-        M.CanvasStates.Clear();
+        Session.CanvasStates.Clear();
         await _ctx.ClearRectAsync(0, 0, _canvasWidth, _canvasHeight);
         await _canvasInstance.InvokeVoidAsync("clearData");
-        M.CanvasMaskData = null;
+        Session.CanvasMaskData = null;
     }
 
     [JSInvokable]
@@ -237,9 +245,9 @@
         using var stream = e.File.OpenReadStream(maxSize);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        var imageString = Magick.ResizeImage(ms.ToArray(), M.State.Generation.Img2Img.DownsizeInput);
+        var imageString = Magick.ResizeImage(ms.ToArray(), State.State.Generation.Img2Img.DownsizeInput);
         var data = $"data:{e.File.ContentType};base64,{imageString}";
-        M.CanvasImageData = data;
+        Session.CanvasImageData = data;
         await LoadImage();
     }
 
@@ -251,9 +259,9 @@
 
     public async ValueTask DisposeAsync()
     {
-        M.State.Generation.Img2Img.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-        M.State.Generation.Img2Img.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
-        M.OnCanvasImageDataChanged -= Refresh;
+        State.State.Generation.Img2Img.OnBrushSizeChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        State.State.Generation.Img2Img.OnBrushColorChange -= () => RenderPointer(_canvasWidth / 2, _canvasHeight / 2);
+        Events.Unsubscribe<CanvasImageDataChangedEventArgs>(OnCanvasImageDataChanged);
 
         if (_canvasInstance != null)
         {

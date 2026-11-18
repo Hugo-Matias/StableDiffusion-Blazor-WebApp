@@ -1,0 +1,61 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+
+<MudStack Spacing="3">
+    <ParameterTargetPicker Value="Directive.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds" />
+
+    <MudTextField T="string" Label="Value"
+                  Value="_valueText"
+                  ValueChanged="OnValueTextChanged"
+                  Variant="Variant.Text"
+                  HelperText="Typed automatically: numbers and true/false are parsed, everything else is stored as string." />
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public SetValueDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // Output routing is now exclusive to SetOutputDirective (Phase 16c); exclude it here.
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Lora,
+        ParameterTargetPicker.TargetKind.Asset,
+        ParameterTargetPicker.TargetKind.Prompt,
+    };
+
+    private string _valueText = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _valueText = Directive.Value switch
+        {
+            null => string.Empty,
+            bool b => b ? "true" : "false",
+            _ => Directive.Value.ToString() ?? string.Empty,
+        };
+    }
+
+    private void OnTargetChanged(ParameterTarget? target)
+    {
+        Directive.Target = target!;
+    }
+
+    private void OnValueTextChanged(string? text)
+    {
+        _valueText = text ?? string.Empty;
+        Directive.Value = ParseValue(_valueText);
+    }
+
+    private static object? ParseValue(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        if (bool.TryParse(text, out var b)) return b;
+        if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var i)) return i;
+        if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+        return text;
+    }
+}
+

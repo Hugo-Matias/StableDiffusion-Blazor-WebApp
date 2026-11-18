@@ -1,0 +1,274 @@
+/* OdditariumLoading - Reusable loading screen with persona thinking image. */
+
+.odditarium-loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 560px;
+}
+
+.odditarium-loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Art frame — larger to give the character room to breathe */
+.odditarium-loading-art {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--persona-accent) 18%, transparent) 0%,
+    color-mix(in srgb, var(--persona-accent) 6%, transparent) 45%,
+    transparent 70%
+  );
+}
+
+.odditarium-loading-img {
+  max-width: 400px;
+  max-height: 400px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  animation: odditarium-think-breathe 2.5s ease-in-out infinite;
+  filter: drop-shadow(
+    0 0 18px color-mix(in srgb, var(--persona-accent) 50%, transparent)
+  );
+}
+
+@keyframes odditarium-think-breathe {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 0.88;
+  }
+  50% {
+    transform: scale(1.04) translateY(-8px);
+    opacity: 1;
+  }
+}
+
+/* Orbiting shimmer dots */
+.odditarium-shimmer-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin: -3.5px 0 0 -3.5px;
+  background: color-mix(in srgb, var(--persona-accent) 90%, white);
+  box-shadow: 0 0 8px 3px
+    color-mix(in srgb, var(--persona-accent) 55%, transparent);
+}
+
+.odditarium-shimmer-dot.dot-1 {
+  animation: odd-orbit-a 5s linear infinite;
+  opacity: 0.8;
+}
+
+.odditarium-shimmer-dot.dot-2 {
+  animation: odd-orbit-b 8s linear infinite;
+  opacity: 0.55;
+}
+
+.odditarium-shimmer-dot.dot-3 {
+  animation: odd-orbit-c 12s linear infinite;
+  opacity: 0.4;
+}
+
+@keyframes odd-orbit-a {
+  from {
+    transform: rotate(0deg) translateX(175px);
+  }
+  to {
+    transform: rotate(360deg) translateX(175px);
+  }
+}
+
+@keyframes odd-orbit-b {
+  from {
+    transform: rotate(120deg) translateX(158px);
+  }
+  to {
+    transform: rotate(480deg) translateX(158px);
+  }
+}
+
+@keyframes odd-orbit-c {
+  from {
+    transform: rotate(240deg) translateX(190px);
+  }
+  to {
+    transform: rotate(600deg) translateX(190px);
+  }
+}
+
+/* Text group */
+.odditarium-loading-text-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.odditarium-loading-title {
+  margin: 0 !important;
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  color: var(--mud-palette-text-primary) !important;
+}
+
+/* Cycling sub-message with fade transition — tinted to persona accent */
+.odditarium-loading-persona {
+  font-size: 0.9rem;
+  color: color-mix(
+    in srgb,
+    var(--persona-accent) 80%,
+    var(--mud-palette-text-secondary)
+  );
+  font-style: italic;
+  min-height: 1.4em;
+  transition: opacity 0.35s ease;
+}
+
+.odditarium-loading-persona.msg-hidden {
+  opacity: 0;
+}
+
+/* Custom persona-accented progress bar */
+.odditarium-loading-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--persona-accent) 18%, transparent);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.odditarium-loading-bar-track {
+  height: 100%;
+  width: 35%;
+  border-radius: 2px;
+  background: var(--persona-accent);
+  animation: odd-bar-slide 1.6s ease-in-out infinite;
+}
+
+@keyframes odd-bar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+/* Image cycling wrapper */
+.odditarium-img-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+.odditarium-img-wrap.img-fading {
+  opacity: 0;
+}
+
+/* Prod easter egg — intensified glow after 5s signals the image is clickable */
+.odditarium-loading-img.prod-ready {
+  cursor: pointer;
+  filter: drop-shadow(
+    0 0 32px color-mix(in srgb, var(--persona-accent) 90%, transparent)
+  );
+}
+
+.odditarium-loading-img.prod-ready:hover {
+  filter: drop-shadow(
+    0 0 44px color-mix(in srgb, var(--persona-accent) 100%, white)
+  );
+}
+
+/* Thought bubble — prod retort shown above the persona image */
+.odditarium-thought-bubble {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 82%;
+  padding: 10px 16px 16px;
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-surface) 94%,
+    var(--persona-accent) 6%
+  );
+  border: 1.5px solid
+    color-mix(
+      in srgb,
+      var(--persona-accent) 45%,
+      var(--mud-palette-lines-default)
+    );
+  border-radius: 20px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.odditarium-thought-bubble.bubble-visible {
+  opacity: 1;
+}
+
+.bubble-text {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--persona-accent);
+  line-height: 1.4;
+  display: block;
+}
+
+/* Connecting pips — three circles below the bubble trailing toward the image */
+.bubble-pip {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  background: color-mix(
+    in srgb,
+    var(--persona-accent) 60%,
+    var(--mud-palette-surface)
+  );
+  border-radius: 50%;
+}
+
+.bubble-pip.pip-a {
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, 14px);
+}
+
+.bubble-pip.pip-b {
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, 25px);
+}
+
+.bubble-pip.pip-c {
+  width: 3px;
+  height: 3px;
+  transform: translate(-50%, 34px);
+}

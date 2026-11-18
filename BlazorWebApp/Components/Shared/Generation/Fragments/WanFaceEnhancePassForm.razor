@@ -1,0 +1,163 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanFaceEnhancePassForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudExpansionPanels MultiExpansion="true" Elevation="0">
+    <MudExpansionPanel Text="Core" IsInitiallyExpanded="true">
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudSlider T="int" @bind-Value="_maxOutputResolution" @bind-Value:after="OnParametersChanged" Min="256"
+                           Max="4096" Step="64" ValueLabel><small>Max Output:</small> @_maxOutputResolution</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider T="int" @bind-Value="_cropResolution" @bind-Value:after="OnParametersChanged" Min="256"
+                           Max="2048" Step="64" ValueLabel><small>Crop:</small> @_cropResolution</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Desired Steps" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_desiredSteps" @bind-Value:after="OnParametersChanged" Min="1" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_strengthPercent" @bind-Value:after="OnParametersChanged" Min="1"
+                           Max="100" Step="0.1" ValueLabel><small>Strength:</small> @_strengthPercent.ToString("F1")%
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="long" Label="Seed" Variant="Variant.Text" Dense="true" @bind-Value="_seed"
+                                 @bind-Value:after="OnParametersChanged" Min="-1" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSelect T="string" Label="Scheduler" Variant="Variant.Text" Dense="true" @bind-Value="_scheduler"
+                           @bind-Value:after="OnParametersChanged">@foreach (var option in _schedulerOptions) {
+                    <MudSelectItem Value="@option" />
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_cfg" @bind-Value:after="OnParametersChanged" Min="0" Max="20"
+                       Step="0.1" ValueLabel><small>CFG:</small> @_cfg.ToString("F1")</MudSlider>
+        </MudItem>
+        <MudItem xs="4">
+            <MudSlider T="double" @bind-Value="_shift" @bind-Value:after="OnParametersChanged" Min="0" Max="20"
+                       Step="0.1" ValueLabel><small>Shift:</small> @_shift.ToString("F1")</MudSlider>
+        </MudItem>
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_fetaWeight" @bind-Value:after="OnParametersChanged" Min="0" Max="10"
+                       Step="0.001" ValueLabel><small>Enhance Weight:</small> @_fetaWeight.ToString("F3")</MudSlider>
+        </MudItem>
+        <MudItem xs="6">
+            <MudCheckBox T="bool" Label="Force Offload" Dense="true" @bind-Value="_forceOffload"
+                         @bind-Value:after="OnParametersChanged" />
+        </MudItem>
+    </MudGrid>
+</MudExpansionPanel>
+
+<MudExpansionPanel Text="Mask And Crop">
+    <MudGrid Spacing="2">
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_primaryThreshold" @bind-Value:after="OnParametersChanged" Min="0"
+                       Max="1" Step="0.001" ValueLabel><small>Primary Threshold:</small> @_primaryThreshold.ToString("F3")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="6">
+            <MudSlider T="double" @bind-Value="_compositeThreshold" @bind-Value:after="OnParametersChanged" Min="0"
+                       Max="1" Step="0.001" ValueLabel><small>Composite Threshold:</small>
+                @_compositeThreshold.ToString("F3")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_maskBlurSigma" @bind-Value:after="OnParametersChanged" Min="0"
+                           Max="100" Step="0.1" ValueLabel><small>Mask Blur:</small> @_maskBlurSigma.ToString("F1")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Grow Expand" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_growExpand" @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_growBlurRadius" @bind-Value:after="OnParametersChanged" Min="0"
+                           Max="100" Step="0.1" ValueLabel><small>Grow Blur:</small> @_growBlurRadius.ToString("F1")
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Sharpen Iterations" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_sharpenIterations" @bind-Value:after="OnParametersChanged" Min="1" Max="12" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudNumericField T="int" Label="Sharpen Kernel" Variant="Variant.Text" Dense="true"
+                                 @bind-Value="_sharpenKernelSize" @bind-Value:after="OnParametersChanged" Min="1" Max="16" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_borderBlending" @bind-Value:after="OnParametersChanged" Min="0"
+                           Max="1" Step="0.01" ValueLabel><small>Border:</small> @_borderBlending.ToString("F2")</MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudSlider T="double" @bind-Value="_cropRescale" @bind-Value:after="OnParametersChanged" Min="0"
+                           Max="10" Step="0.01" ValueLabel><small>Crop Rescale:</small> @_cropRescale.ToString("F2")
+                </MudSlider>
+            </MudItem>
+            <MudItem xs="4">
+                <MudCheckBox T="bool" Label="Combined Mask" Dense="true" @bind-Value="_useCombinedMask"
+                             @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+            <MudItem xs="4">
+                <MudCheckBox T="bool" Label="Square Mask" Dense="true" @bind-Value="_useSquareMask"
+                             @bind-Value:after="OnParametersChanged" />
+            </MudItem>
+        </MudGrid>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _maxOutputResolution = 2048, _cropResolution = 768, _desiredSteps = 4, _growExpand = 55, _sharpenIterations
+= 2, _sharpenKernelSize = 3;
+    private long _seed;
+    private double _strengthPercent = 24.54541015625, _cfg = 1, _shift = 5, _fetaWeight = 2, _primaryThreshold = 0.25,
+_compositeThreshold = 0.2, _maskBlurSigma = 10, _growBlurRadius = 30, _borderBlending = 0.5, _cropRescale = 1;
+    private bool _forceOffload = true, _useCombinedMask, _useSquareMask = true;
+    private string _scheduler = "lcm";
+    private List<string> _schedulerOptions = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        _schedulerOptions = ParameterService.GetResolvedOptions(Fragment.Id, "scheduler");
+        if (_schedulerOptions.Count == 0) _schedulerOptions = ["unipc", "unipc/beta", "dpm++", "dpm++/beta", "dpm++_sde",
+"dpm++_sde/beta", "euler", "euler/beta", "lcm"];
+        SyncFromService();
+    }
+
+    private void SyncFromService()
+    {
+        _maxOutputResolution = Get("max_output_resolution", _maxOutputResolution); _cropResolution = Get("crop_resolution",
+_cropResolution); _desiredSteps = Get("desired_steps", _desiredSteps); _strengthPercent = Get("strength_percent",
+_strengthPercent); _seed = Get("seed", _seed); _forceOffload = Get("force_offload", _forceOffload); _scheduler =
+Get("scheduler", _scheduler); _cfg = Get("cfg", _cfg); _shift = Get("shift", _shift); _fetaWeight = Get("feta_weight",
+_fetaWeight);
+        _primaryThreshold = Get("primary_threshold", _primaryThreshold); _compositeThreshold = Get("composite_threshold",
+_compositeThreshold); _maskBlurSigma = Get("mask_blur_sigma", _maskBlurSigma); _growExpand = Get("grow_expand",
+_growExpand); _growBlurRadius = Get("grow_blur_radius", _growBlurRadius); _sharpenIterations = Get("sharpen_iterations",
+_sharpenIterations); _sharpenKernelSize = Get("sharpen_kernel_size", _sharpenKernelSize); _borderBlending =
+Get("border_blending", _borderBlending); _cropRescale = Get("crop_rescale", _cropRescale); _useCombinedMask =
+Get("use_combined_mask", _useCombinedMask); _useSquareMask = Get("use_square_mask", _useSquareMask);
+    }
+
+    private T Get<T>(string key, T fallback) => ParameterService.GetFragmentProperty(Fragment, key, fallback);
+
+    private async Task OnParametersChanged()
+    {
+        Set("max_output_resolution", _maxOutputResolution); Set("crop_resolution", _cropResolution); Set("desired_steps",
+_desiredSteps); Set("strength_percent", _strengthPercent); Set("seed", _seed); Set("force_offload", _forceOffload);
+        Set("scheduler", _scheduler); Set("cfg", _cfg); Set("shift", _shift); Set("feta_weight", _fetaWeight);
+        Set("primary_threshold", _primaryThreshold); Set("composite_threshold", _compositeThreshold); Set("mask_blur_sigma",
+_maskBlurSigma); Set("grow_expand", _growExpand); Set("grow_blur_radius", _growBlurRadius); Set("sharpen_iterations",
+_sharpenIterations); Set("sharpen_kernel_size", _sharpenKernelSize); Set("border_blending", _borderBlending);
+        Set("crop_rescale", _cropRescale); Set("use_combined_mask", _useCombinedMask); Set("use_square_mask", _useSquareMask);
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+
+    private void Set<T>(string key, T value) => ParameterService.SetFragmentProperty(Fragment, key, value, notify: false);
+}

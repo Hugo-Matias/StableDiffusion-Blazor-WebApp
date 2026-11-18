@@ -1,0 +1,16 @@
+<!-- Ernie: Shield badge representing authority and knowledge -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24">
+  <defs>
+    <linearGradient id="ernie-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Shield shape -->
+  <path d="M16,3 L27,8 L27,17 Q27,25 16,29 Q5,25 5,17 L5,8 Z" fill="url(#ernie-grad)" opacity="0.2" stroke="url(#ernie-grad)" stroke-width="1.5"/>
+  <!-- Inner shield -->
+  <path d="M16,7 L23,10.5 L23,17 Q23,23 16,26 Q9,23 9,17 L9,10.5 Z" fill="url(#ernie-grad)" opacity="0.4"/>
+  <!-- E letterform -->
+  <path d="M12,12 L20,12 M12,16 L18,16 M12,20 L20,20" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="10" x2="12" y2="22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

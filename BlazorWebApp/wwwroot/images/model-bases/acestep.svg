@@ -1,0 +1,20 @@
+<!-- AceStep: Musical notes and waveform representing music generation -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24">
+  <defs>
+    <linearGradient id="acestep-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Music note (stem and flag) -->
+  <ellipse cx="11" cy="23" rx="4" ry="3" fill="url(#acestep-grad)"/>
+  <rect x="14" y="8" width="2" height="15" fill="url(#acestep-grad)" rx="1"/>
+  <path d="M16,8 Q22,9 20,15 Q19,12 16,11" fill="url(#acestep-grad)"/>
+  <!-- Second note -->
+  <ellipse cx="23" cy="20" rx="3.5" ry="2.5" fill="url(#acestep-grad)" opacity="0.7"/>
+  <rect x="25.5" y="10" width="1.5" height="10" fill="url(#acestep-grad)" opacity="0.7" rx="0.75"/>
+  <path d="M27,10 Q31,11 29.5,16 Q28.5,14 27,13" fill="url(#acestep-grad)" opacity="0.7"/>
+  <!-- Sound wave accents -->
+  <path d="M4,14 Q3,16 4,18" fill="none" stroke="url(#acestep-grad)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+  <path d="M2,11 Q0,16 2,21" fill="none" stroke="url(#acestep-grad)" stroke-width="1" stroke-linecap="round" opacity="0.25"/>
+</svg>

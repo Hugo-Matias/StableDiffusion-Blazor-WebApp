@@ -1,14 +1,17 @@
 ﻿@page "/prompts"
-@inject ManagerService M
+@inject IStateService State
 
-<MudTabs @bind-ActivePanelIndex=M.State.Prompts.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded=true Centered=true>
+<TabbedPageShell @bind-ActivePanelIndex="State.State.Prompts.ActiveTabIndex">
+    <MudTabPanel Text="LLM Tools">
+        <LLMToolsTab />
+    </MudTabPanel>
     <MudTabPanel Text="Presets">
         <PromptsPanel />
     </MudTabPanel>
     <MudTabPanel Text="Wildcards">
-        <WildcardsPanel />
+        <WildcardsTab />
     </MudTabPanel>
-</MudTabs>
+</TabbedPageShell>
 
 @code {
 }

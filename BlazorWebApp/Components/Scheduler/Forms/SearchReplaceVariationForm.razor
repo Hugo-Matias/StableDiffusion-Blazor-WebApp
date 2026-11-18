@@ -1,0 +1,51 @@
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Variations
+
+<MudStack Spacing="2">
+    <MudAlert Severity="Severity.Info" Dense>
+        SearchReplace writes directly to the selected prompt; no Target picker is needed.
+    </MudAlert>
+
+    <MudTextField @bind-Value="Variation.Search" Label="Search" Variant="Variant.Text"
+                  HelperText="Literal text to find in the prompt." />
+
+    <MudText Typo="Typo.subtitle2" Class="mt-1">Replacements (one per line)</MudText>
+    <MudTextField T="string" Value="_replacementsText" ValueChanged="OnReplacementsChanged"
+                  Lines="6" Variant="Variant.Text"
+                  HelperText="Each non-empty line produces one iteration." />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudSwitch T="bool" @bind-Value="Variation.IsNegative" Color="Color.Primary" Label="Negative prompt" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudSwitch T="bool" @bind-Value="Variation.CaseSensitive" Color="Color.Primary" Label="Case sensitive" />
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.caption">Iterations: @Variation.Replacements.Count</MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public SearchReplaceVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private string _replacementsText = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _replacementsText = Variation.Replacements.Count == 0
+            ? string.Empty
+            : string.Join("\n", Variation.Replacements);
+    }
+
+    private void OnReplacementsChanged(string? text)
+    {
+        _replacementsText = text ?? string.Empty;
+        Variation.Replacements = _replacementsText
+            .Split('\n', StringSplitOptions.TrimEntries)
+            .Where(s => s.Length > 0)
+            .ToList();
+    }
+}
+

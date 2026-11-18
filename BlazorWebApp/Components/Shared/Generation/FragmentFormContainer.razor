@@ -1,0 +1,147 @@
+@using BlazorWebApp.Models
+
+@* Container wrapper for fragment forms with collapsible header and enable/disable toggle *@
+
+@if (Schema.Collapsible)
+{
+    <MudExpansionPanels Class="mb-2">
+        <MudExpansionPanel @bind-IsExpanded="_isExpanded">
+            <TitleContent>
+                <div class="d-flex align-center gap-2">
+                    @if (!string.IsNullOrEmpty(Schema.Icon))
+                    {
+                        <MudIcon Icon="@Schema.Icon" Size="Size.Small" />
+                    }
+                    <MudText Typo="Typo.subtitle1">@Schema.Title</MudText>
+                    @if (ShowEnableToggle)
+                    {
+                        <MudSpacer />
+                        <MudSwitch T="bool"
+                                   Checked="@Parameters.IsActive"
+                                   CheckedChanged="@HandleActiveChanged"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   @onclick:stopPropagation="true" />
+                    }
+                    @if (Schema.Chainable && ShowAddButton)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       Title="Add another instance"
+                                       OnClick="@(async () => await HandleAddInstance())" />
+                    }
+                </div>
+            </TitleContent>
+            <ChildContent>
+                @if (Parameters.IsActive)
+                {
+                    @ChildContent
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="pa-3">
+                        This section is disabled. Enable it to configure settings.
+                    </MudText>
+                }
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}
+else
+{
+    @* Non-collapsible - just render the content *@
+    <MudPaper Elevation="0" Class="pa-3 mb-2">
+        <div class="d-flex align-center gap-2 mb-2">
+            @if (!string.IsNullOrEmpty(Schema.Icon))
+            {
+                <MudIcon Icon="@Schema.Icon" Size="Size.Small" />
+            }
+            <MudText Typo="Typo.subtitle1">@Schema.Title</MudText>
+            @if (ShowEnableToggle)
+            {
+                <MudSpacer />
+                <MudSwitch T="bool"
+                           Checked="@Parameters.IsActive"
+                           CheckedChanged="@HandleActiveChanged"
+                           Color="Color.Primary"
+                           Size="Size.Small" />
+            }
+        </div>
+        @ChildContent
+    </MudPaper>
+}
+
+@code {
+    /// <summary>
+    /// The fragment schema with UI definition.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FragmentSchema Schema { get; set; } = new();
+
+    /// <summary>
+    /// The fragment parameters.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public FragmentParameters Parameters { get; set; } = new();
+
+    /// <summary>
+    /// The fragment instance ID.
+    /// </summary>
+    [Parameter]
+    public string FragmentId { get; set; } = "";
+
+    /// <summary>
+    /// Content to render inside the container.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Whether to show the enable/disable toggle.
+    /// </summary>
+    [Parameter]
+    public bool ShowEnableToggle { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show the add button for chainable fragments.
+    /// </summary>
+    [Parameter]
+    public bool ShowAddButton { get; set; } = true;
+
+    /// <summary>
+    /// Callback when the active state changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> OnActiveChanged { get; set; }
+
+    /// <summary>
+    /// Callback when add instance is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAddInstance { get; set; }
+
+    /// <summary>
+    /// Callback when remove instance is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRemoveInstance { get; set; }
+
+    private bool _isExpanded;
+
+    protected override void OnInitialized()
+    {
+        // Set initial expanded state based on schema
+        _isExpanded = !Schema.DefaultCollapsed;
+    }
+
+    private async Task HandleActiveChanged(bool isActive)
+    {
+        Parameters.IsActive = isActive;
+        await OnActiveChanged.InvokeAsync(isActive);
+    }
+
+    private async Task HandleAddInstance()
+    {
+        await OnAddInstance.InvokeAsync();
+    }
+}

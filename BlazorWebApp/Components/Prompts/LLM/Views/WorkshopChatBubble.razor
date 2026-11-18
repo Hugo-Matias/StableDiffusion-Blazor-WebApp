@@ -1,0 +1,236 @@
+@* Workshop chat bubble - single-node renderer (Phase 8.6 Step 3) *@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@implements IDisposable
+@inject IDatabaseService Db
+@inject IIOService IO
+@inject IEventService Events
+@inject IPromptSendToService PromptSendTo
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@inject IWorkshopService WorkshopService
+
+<div class="workshop-bubble-row @_alignClass">
+    <div class="workshop-bubble @_modeClass @(IsCurrent ? "is-active" : "")"
+         @onclick="@(() => OnSelect.InvokeAsync(Node))">
+
+        @* Meta line: mode icon + generation tag + timestamp *@
+        <div class="workshop-bubble-meta">
+            <MudIcon Icon="@GetIconFor(Node.Mode)" Size="Size.Small" />
+            <span class="text-capitalize">@Node.Mode</span>
+            <span>. Gen @Node.GenerationNumber</span>
+            <span>. @Node.CreatedAt.ToString("MMM d, HH:mm")</span>
+            @if (_hasChatSiblings)
+            {
+                <div class="workshop-bubble-chip" @onclick:stopPropagation="true">
+                    <button type="button" class="workshop-bubble-chip-btn" @onclick="SelectPrevSiblingAsync"
+                            disabled="@(_siblingIndex <= 0)" title="Previous edit">
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" />
+                    </button>
+                    <span class="workshop-bubble-chip-label">Edit @(_siblingIndex + 1) of @ChatSiblings!.Count</span>
+                    <button type="button" class="workshop-bubble-chip-btn" @onclick="SelectNextSiblingAsync"
+                            disabled="@(_siblingIndex >= ChatSiblings!.Count - 1)" title="Next edit">
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                    </button>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(Node.Instruction))
+        {
+            <div class="workshop-bubble-instruction">@Node.Instruction</div>
+        }
+
+        @* Body: text + thumb *@
+        <div class="workshop-bubble-body">
+            @if (IsCurrent)
+            {
+                <MudTextField @bind-Value="_promptDraft" Lines="3" AutoGrow="true" MaxLines="14" Variant="Variant.Text"
+                              Class="flex-grow-1" DebounceInterval="500" OnDebounceIntervalElapsed="OnPromptDebouncedAsync"
+                              Margin="Margin.Dense" @onclick:stopPropagation="true" />
+            }
+            else
+            {
+                <div class="workshop-bubble-text @(_isExpanded || !_isLong ? "" : "collapsed")">@(_promptDraft)</div>
+            }
+
+            <div class="workshop-bubble-thumb">
+                @if (!string.IsNullOrEmpty(_thumbSrc))
+                {
+                    <img src="@_thumbSrc" alt="preview" />
+                }
+                else if (_previewStatus == WorkshopPreviewStatus.Queued)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                }
+                else if (_previewStatus == WorkshopPreviewStatus.Failed)
+                {
+                    <MudTooltip Text="@(string.IsNullOrEmpty(_previewError) ? "Preview failed" : _previewError)">
+                        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" Color="Color.Error" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Outlined.ImageNotSupported" Size="Size.Small" Class="text-disabled" />
+                }
+            </div>
+        </div>
+
+        @if (!IsCurrent && _isLong)
+        {
+            <button type="button" class="workshop-bubble-toggle" @onclick="ToggleExpanded" @onclick:stopPropagation="true">
+                @(_isExpanded ? "Show less" : "Show more")
+            </button>
+        }
+
+        @* Action row only on the active bubble *@
+        @if (IsCurrent)
+        {
+            var sendWorkflows = PromptSendTo.GetParameterWorkflows();
+            if (sendWorkflows.Count > 0)
+            {
+                <div class="send-to-section workshop-bubble-actions" @onclick:stopPropagation="true">
+                    <div class="send-to-buttons">
+                        @foreach (var wf in sendWorkflows)
+                        {
+                            <button class="send-to-btn @PromptSendTo.GetWorkflowModeClass(wf.Mode)"
+                                    @onclick="() => PromptSendTo.SendPromptToWorkflow(_promptDraft, wf)" title="Send to @wf.Title">
+                                <MudIcon Icon="@PromptSendTo.GetWorkflowIcon(wf.Mode)" Size="Size.Small" />
+                                <span>@wf.Title</span>
+                            </button>
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Variant="Variant.Text"
+                                       OnClick="CopyPromptAsync" aria-label="Copy prompt" />
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public PromptWorkshopNode Node { get; set; } = null!;
+    [Parameter] public bool IsCurrent { get; set; }
+    [Parameter] public EventCallback<PromptWorkshopNode> OnSelect { get; set; }
+    [Parameter] public IReadOnlyList<PromptWorkshopNode>? ChatSiblings { get; set; }
+
+    private bool _hasChatSiblings => ChatSiblings is { Count: > 1 };
+    private int _siblingIndex => ChatSiblings is null
+        ? -1
+        : ChatSiblings.ToList().FindIndex(s => s.Id == Node.Id);
+
+    private Task SelectPrevSiblingAsync()
+    {
+        if (ChatSiblings is null) return Task.CompletedTask;
+        var idx = _siblingIndex;
+        if (idx <= 0) return Task.CompletedTask;
+        return OnSelect.InvokeAsync(ChatSiblings[idx - 1]);
+    }
+
+    private Task SelectNextSiblingAsync()
+    {
+        if (ChatSiblings is null) return Task.CompletedTask;
+        var idx = _siblingIndex;
+        if (idx < 0 || idx >= ChatSiblings.Count - 1) return Task.CompletedTask;
+        return OnSelect.InvokeAsync(ChatSiblings[idx + 1]);
+    }
+
+    private const int LongPromptThreshold = 280;
+
+    private string _promptDraft = string.Empty;
+    private int _loadedNodeId;
+    private int? _loadedPreviewImageId;
+    private string? _thumbSrc;
+    private bool _isExpanded;
+    private bool _isLong => (_promptDraft?.Length ?? 0) > LongPromptThreshold;
+
+    // Phase 8.6 Step 6 - lifecycle status from WorkshopPreviewGeneratedEventArgs.
+    private WorkshopPreviewStatus? _previewStatus;
+    private string? _previewError;
+
+    private string _alignClass => Node.Mode?.Equals("chat", StringComparison.OrdinalIgnoreCase) == true
+        ? "align-right"
+        : "align-left";
+
+    private string _modeClass => $"mode-{(Node.Mode ?? "root").ToLowerInvariant()}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Events.Subscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+        await SyncFromNodeAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Node.Id != _loadedNodeId || Node.PreviewImageId != _loadedPreviewImageId)
+            await SyncFromNodeAsync();
+    }
+
+    private async Task SyncFromNodeAsync()
+    {
+        _loadedNodeId = Node.Id;
+        _loadedPreviewImageId = Node.PreviewImageId;
+        _promptDraft = Node.PromptText ?? string.Empty;
+        await LoadThumbnailIfNeededAsync();
+    }
+
+    private async Task LoadThumbnailIfNeededAsync()
+    {
+        if (Node.PreviewImageId is int id && id > 0)
+        {
+            var image = await Db.GetImageById(id);
+            _thumbSrc = image == null || string.IsNullOrWhiteSpace(image.Path)
+                ? null
+                : IO.GetImageStaticFile(image.Path);
+        }
+        else
+        {
+            _thumbSrc = null;
+        }
+    }
+
+    private async Task OnPromptDebouncedAsync(string value)
+    {
+        var newText = value ?? string.Empty;
+        if (newText == (Node.PromptText ?? string.Empty)) return;
+
+        Node.PromptText = newText;
+        try { await WorkshopService.UpdateNodePromptAsync(Node.Id, newText); }
+        catch (Exception ex) { Snackbar.Add($"Failed to save prompt: {ex.Message}", Severity.Error); }
+    }
+
+    private void ToggleExpanded() => _isExpanded = !_isExpanded;
+
+    private async Task CopyPromptAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _promptDraft);
+        Snackbar.Add("Copied.", Severity.Info);
+    }
+
+    private async void OnPreviewGenerated(WorkshopPreviewGeneratedEventArgs args)
+    {
+        if (args.NodeId != Node.Id) return;
+        await InvokeAsync(async () =>
+        {
+            _previewStatus = args.Status;
+            _previewError = args.ErrorMessage;
+            if (args.Status == WorkshopPreviewStatus.Completed && args.ImageId > 0)
+                Node.PreviewImageId = args.ImageId;
+            await LoadThumbnailIfNeededAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<WorkshopPreviewGeneratedEventArgs>(OnPreviewGenerated);
+    }
+
+    private static string GetIconFor(string mode) => (mode ?? string.Empty).ToLowerInvariant() switch
+    {
+        "root" => Icons.Material.Filled.AutoAwesome,
+        "chat" => Icons.Material.Filled.Chat,
+        "evolve" => Icons.Material.Filled.Science,
+        _ => Icons.Material.Filled.HelpOutline,
+    };
+}

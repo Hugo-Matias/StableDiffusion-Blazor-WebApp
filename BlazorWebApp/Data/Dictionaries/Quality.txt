@@ -1,0 +1,17 @@
+# Quality and resolution descriptors
+masterpiece
+best quality
+high quality
+highest quality
+ultra detailed
+highly detailed
+extremely detailed
+detailed
+sharp focus
+professional
+cinematic
+photorealistic
+8k uhd
+4k
+absurdres
+highres

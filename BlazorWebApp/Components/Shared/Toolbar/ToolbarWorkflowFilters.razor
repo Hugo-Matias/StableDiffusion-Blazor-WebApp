@@ -1,0 +1,77 @@
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Data.Enums
+@inject IStateService State
+@inject IOrchestratorService Orchestrator
+@inject IEventService Events
+@implements IDisposable
+
+@if (_workflows.Count > 0)
+{
+    <MudText Typo="Typo.subtitle2" Class="mb-1">Workflows</MudText>
+    <div class="d-flex flex-wrap gap-1 align-center mb-2">
+        @foreach (var workflow in _workflows)
+        {
+            var item = workflow;
+            var isEnabled = !Orchestrator.IsWorkflowDisabled(item.Id);
+            <MudChip Size="Size.Small" Variant="@(isEnabled? Variant.Filled: Variant.Outlined)"
+                     Color="@(isEnabled ? Color.Secondary : Color.Default)"
+                     Style="@(!isEnabled ? "opacity:0.5; text-decoration:line-through;" : "")"
+                     OnClick="@(() => ToggleWorkflowAsync(item.Id, !isEnabled))">
+                @item.Title
+            </MudChip>
+        }
+    </div>
+}
+
+@code {
+    private List<Workflow> _workflows = new();
+
+    protected override void OnInitialized()
+    {
+        Events.Subscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Subscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Subscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+        RebuildWorkflowList();
+    }
+
+    private void RebuildWorkflowList()
+    {
+        var gen = State.State?.Generation;
+        if (gen?.Workflows == null || gen.Workflows.Count == 0)
+        {
+            _workflows = new List<Workflow>();
+            return;
+        }
+
+        var currentBase = gen.WorkflowBase;
+        _workflows = gen.Workflows
+            .Where(w => w.Base == currentBase)
+            .OrderBy(w => (int)w.Mode)
+            .ThenBy(w => w.Title)
+            .ToList();
+    }
+
+    private async Task ToggleWorkflowAsync(Guid workflowId, bool enabled)
+    {
+        await Orchestrator.SetWorkflowEnabledAsync(workflowId, enabled);
+        RebuildWorkflowList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnStateChanged(StateChangedEventArgs args) => Refresh();
+    private void OnWorkflowChanged(WorkflowChangedEventArgs args) => Refresh();
+    private void OnWorkflowAvailabilityChanged(WorkflowAvailabilityChangedEventArgs args) => Refresh();
+
+    private async void Refresh()
+    {
+        RebuildWorkflowList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<StateChangedEventArgs>(OnStateChanged);
+        Events.Unsubscribe<WorkflowChangedEventArgs>(OnWorkflowChanged);
+        Events.Unsubscribe<WorkflowAvailabilityChangedEventArgs>(OnWorkflowAvailabilityChanged);
+    }
+}

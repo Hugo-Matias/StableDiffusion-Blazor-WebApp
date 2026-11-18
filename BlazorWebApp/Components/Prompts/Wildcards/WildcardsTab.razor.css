@@ -1,0 +1,11 @@
+/* WildcardsTab - preserves the scrollable-column behavior that previously
+   came from inline "height: calc(100vh - 200px); overflow-y: auto;" on
+   the now-removed MudPaper wrappers. Constrained to a viewport-relative
+   max-height so long collections/entries lists scroll inside the surface
+   instead of pushing the page. */
+
+.wildcards-sidebar-body,
+.wildcards-content-body {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+}

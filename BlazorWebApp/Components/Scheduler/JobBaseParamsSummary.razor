@@ -1,0 +1,259 @@
+@using System.Text.Json
+@using BlazorWebApp.Models
+@using BlazorWebApp.Scheduler
+
+@if (Parameters is null)
+{
+    <MudText Typo="Typo.caption">No base parameters.</MudText>
+}
+else
+{
+    <MudPaper Class="pa-3" Elevation="0" Outlined>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle2">Base parameters</MudText>
+            <MudSpacer />
+            <MudSwitch T="bool" Value="_showAll" ValueChanged="OnShowAllChanged"
+                       Label="Show all" Color="Color.Primary" Size="Size.Small" />
+        </MudStack>
+
+        @if (!_showAll)
+        {
+            <MudStack Spacing="1" Class="pa-1">
+                @foreach (var row in _curated)
+                {
+                    <MudStack Row AlignItems="AlignItems.Start" Spacing="2">
+                        <div style="min-width: 110px;">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@row.Label</MudText>
+                        </div>
+                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; word-break: break-word; flex: 1;">
+                            @row.Value
+                        </MudText>
+                    </MudStack>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <div style="max-height: 360px; overflow-y: auto;" class="pa-1">
+                @if (_treeRoot is not null)
+                {
+                    <MudTreeView T="JsonTreeNode" Dense Hover>
+                        @foreach (var child in _treeRoot.Children)
+                        {
+                            <JsonTreeView Node="child" />
+                        }
+                    </MudTreeView>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption">No details available.</MudText>
+                }
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public GenerationParameters? Parameters { get; set; }
+
+    private bool _showAll;
+    private List<(string Label, string Value)> _curated = new();
+    private JsonTreeNode? _treeRoot;
+
+    protected override void OnParametersSet()
+    {
+        _curated = BuildCurated(Parameters);
+        if (_showAll) _treeRoot = BuildTree(Parameters);
+    }
+
+    private void OnShowAllChanged(bool value)
+    {
+        _showAll = value;
+        if (_showAll && _treeRoot is null) _treeRoot = BuildTree(Parameters);
+    }
+
+    // ---- Curated view ----------------------------------------------------
+
+    private static List<(string Label, string Value)> BuildCurated(GenerationParameters? p)
+    {
+        const string placeholder = "-";
+        if (p is null)
+        {
+            return new()
+            {
+                ("Prompt (+)", placeholder),
+                ("Prompt (-)", placeholder),
+                ("Seed", placeholder),
+                ("Sampler", placeholder),
+                ("Steps", placeholder),
+                ("CFG", placeholder),
+                ("Size", placeholder),
+                ("Batch size", placeholder),
+                ("LoRAs", placeholder),
+                ("Enhancements", placeholder),
+            };
+        }
+
+        var positive = FindFirst(p, FragmentKeys.Params.Positive) ?? placeholder;
+        var negative = FindFirst(p, FragmentKeys.Params.Negative) ?? placeholder;
+        var seed = FindFirst(p, FragmentKeys.Params.Seed) ?? placeholder;
+        var samplerName = FindFirst(p, FragmentKeys.Params.SamplerName);
+        var scheduler = FindFirst(p, FragmentKeys.Params.Scheduler);
+        var samplerLabel = samplerName is null && scheduler is null
+            ? placeholder
+            : $"{samplerName ?? placeholder} / {scheduler ?? placeholder}";
+        var steps = FindFirst(p, FragmentKeys.Params.Steps) ?? placeholder;
+        var cfg = FindFirst(p, FragmentKeys.Params.Cfg) ?? placeholder;
+        var width = FindFirst(p, FragmentKeys.Params.Width);
+        var height = FindFirst(p, FragmentKeys.Params.Height);
+        var size = width is null && height is null ? placeholder : $"{width ?? placeholder} x {height ?? placeholder}";
+        var batchSize = FindFirst(p, FragmentKeys.Params.BatchSize) ?? placeholder;
+
+        string loras;
+        if (p.Loras is { Count: > 0 })
+        {
+            loras = string.Join("\n", p.Loras.Select(l =>
+            {
+                var status = l.IsEnabled ? "" : " (disabled)";
+                var neg = l.IsNegative ? " [neg]" : string.Empty;
+                var name = string.IsNullOrWhiteSpace(l.Name) ? "(unnamed)" : l.Name;
+                return $"- {name} : {l.Strength:0.##}{neg}{status}";
+            }));
+        }
+        else
+        {
+            loras = placeholder;
+        }
+
+        return new()
+        {
+            ("Prompt (+)", positive),
+            ("Prompt (-)", negative),
+            ("Seed", seed),
+            ("Sampler", samplerLabel),
+            ("Steps", steps),
+            ("CFG", cfg),
+            ("Size", size),
+            ("Batch size", batchSize),
+            ("LoRAs", loras),
+            ("Enhancements", BuildEnhancements(p)),
+        };
+    }
+
+    private static readonly (string FragmentId, string Label)[] _enhancementFragments = new[]
+    {
+        (FragmentKeys.Fragments.Upscale, "Upscale"),
+        (FragmentKeys.Fragments.Detailer, "Detailer"),
+        (FragmentKeys.Fragments.RefinerSampler, "Refiner"),
+        (FragmentKeys.Fragments.SeedVR2, "SeedVR2"),
+        (FragmentKeys.Fragments.ConditioningVariation, "Conditioning Variation"),
+        (FragmentKeys.Fragments.SeedVarianceEnhancer, "Seed Variance"),
+        (FragmentKeys.Fragments.Llm, "LLM Prompt Enhancer"),
+        (FragmentKeys.Fragments.FrameInterpolation, "Frame Interpolation"),
+    };
+
+    private static string BuildEnhancements(GenerationParameters p)
+    {
+        var names = new List<string>();
+        foreach (var (id, label) in _enhancementFragments)
+        {
+            if (p.Fragments.TryGetValue(id, out var frag) && frag is { IsActive: true })
+                names.Add(label);
+        }
+        return names.Count == 0 ? "-" : string.Join(", ", names);
+    }
+
+    /// <summary>
+    /// Returns the first non-empty string value for the given param name across all fragments,
+    /// or null if not present. Keeps the summary resilient to workflow-family differences.
+    /// </summary>
+    private static string? FindFirst(GenerationParameters p, string paramName)
+    {
+        foreach (var frag in p.Fragments.Values)
+        {
+            if (frag?.Values is null) continue;
+            if (!frag.Values.TryGetValue(paramName, out var raw) || raw is null) continue;
+            var s = FormatValue(raw);
+            if (!string.IsNullOrWhiteSpace(s)) return s;
+        }
+        return null;
+    }
+
+    private static string FormatValue(object raw)
+    {
+        if (raw is JsonElement je)
+        {
+            return je.ValueKind switch
+            {
+                JsonValueKind.String => je.GetString() ?? string.Empty,
+                JsonValueKind.Number => je.ToString(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Null => string.Empty,
+                _ => je.ToString()
+            };
+        }
+        return raw.ToString() ?? string.Empty;
+    }
+
+    // ---- "Show all" tree -------------------------------------------------
+
+    private static JsonTreeNode? BuildTree(GenerationParameters? p)
+    {
+        if (p is null) return null;
+        try
+        {
+            var json = JsonSerializer.Serialize(p, SchedulerJsonOptions.Compact);
+            using var doc = JsonDocument.Parse(json);
+            var root = new JsonTreeNode { Name = "baseParameters" };
+            AppendElement(root, doc.RootElement);
+            return root;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void AppendElement(JsonTreeNode parent, JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var prop in element.EnumerateObject())
+                {
+                    var node = new JsonTreeNode { Name = prop.Name };
+                    if (prop.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                        AppendElement(node, prop.Value);
+                    else
+                        node.Value = FormatLeaf(prop.Value);
+                    parent.Children.Add(node);
+                }
+                break;
+            case JsonValueKind.Array:
+                var i = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    var node = new JsonTreeNode { Name = $"[{i}]" };
+                    if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                        AppendElement(node, item);
+                    else
+                        node.Value = FormatLeaf(item);
+                    parent.Children.Add(node);
+                    i++;
+                }
+                break;
+            default:
+                parent.Value = FormatLeaf(element);
+                break;
+        }
+    }
+
+    private static string FormatLeaf(JsonElement e) => e.ValueKind switch
+    {
+        JsonValueKind.String => e.GetString() ?? string.Empty,
+        JsonValueKind.Null => "null",
+        _ => e.ToString()
+    };
+}

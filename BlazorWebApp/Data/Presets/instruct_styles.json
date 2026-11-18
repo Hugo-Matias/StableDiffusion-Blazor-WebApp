@@ -1,0 +1,492 @@
+[
+  {
+    "name": "Style: Photorealism",
+    "prompt": "Keep pose. Keep angle. Keep viewing direction. Modify any subjects' appearance to show real details. Make the it look like a professional photograph. Keep subject position and their pose the same as the reference. Ensure image looks real. Make sure anatomy is accurately represented. Normal anatomy. Keep body color. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure that lighting is accurate for the scene. Ensure shadows are displayed correctly. Keep in focus. The result should be an accurate sharply focused photograph.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photorealism", "photography", "realistic"]
+  },
+  {
+    "name": "Style: 3D Render",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a high-quality 3D render. Make it look like CGI graphics. Keep subject position and their pose the same as the reference. Ensure materials look physically based. Make sure anatomy is accurately represented within the style. Make surface details look rendered. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure volumetric lighting is accurate. Ensure ambient occlusion and shadows are displayed correctly. Keep in focus. The result should be an accurate high definition 3D render.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["3d", "cgi", "render"]
+  },
+  {
+    "name": "Style: Anime",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an official anime illustration. Make it look like 2D animation key art. Keep subject position and their pose the same as the reference. Ensure image follows anime aesthetics. Make sure anatomy follows anime style conventions. Make coloring look like cel shading. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting fits the anime style. Ensure clean lines and flat colors. Keep in focus. The result should be an accurate high quality anime drawing.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "animation", "2d"]
+  },
+  {
+    "name": "Style: Digital Drawing",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a clean digital drawing. Make it look like crisp line art. Keep subject position and their pose the same as the reference. Ensure lines are smooth and defined. Make sure anatomy is stylized but recognizable. Make shading look digital. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the form. Ensure contrast is maintained. Keep in focus. The result should be an accurate clean digital illustration.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["digital", "drawing", "illustration"]
+  },
+  {
+    "name": "Style: Digital Painting",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a digital painting. Make it look like painterly art. Keep subject position and their pose the same as the reference. Ensure brushstrokes are visible and artistic. Make sure anatomy is artistically rendered. Make colors blend naturally. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure painterly lighting. Ensure soft shadows and rich textures. Keep in focus. The result should be an accurate detailed digital painting.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["digital", "painting", "art"]
+  },
+  {
+    "name": "Style: Fantasy Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like fantasy art. Make it look like an epic illustration. Keep subject position and their pose the same as the reference. Ensure mystical elements are integrated. Make sure anatomy fits the fantasy theme. Make details look ornate and magical. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic and atmospheric lighting. Ensure rich, deep colors. Keep in focus. The result should be epic fantasy artwork.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["fantasy", "art", "illustration"]
+  },
+  {
+    "name": "Style: Comic Book",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a comic book illustration. Make it look like graphic novel art. Keep subject position and their pose the same as the reference. Ensure bold ink lines and dynamic shading. Make sure anatomy is expressive. Make coloring look like comic book printing. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure high contrast lighting. Ensure flat colors are used. Keep in focus. The result should be in a western comic book style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["comic", "illustration", "ink"]
+  },
+  {
+    "name": "Style: Disney Animation",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the classic 2D animation style of Disney animated films, featuring clean ink lines and soft painted backgrounds. Make it look like a hand-drawn classic animation cel. Keep subject position and their pose the same as the reference. Ensure facial features follow the classic golden age 2D animation style with clean ink lines. Make sure anatomy is accurately represented within classic cartoon proportions. Make coloring look like flat ink-and-paint with soft painted highlights. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, painted lighting fits the 2D style. Ensure smooth line art and soft backgrounds. Keep in focus. The result should be in the classic golden age 2D animation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["disney", "animation", "2d", "cartoon"]
+  },
+  {
+    "name": "Style: Pixar 3D",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the modern 3D animation style of Pixar animated films, featuring soft subsurface scattering and cinematic lighting. Make it look like a high-end 3D animated feature film. Keep subject position and their pose the same as the reference. Ensure facial features follow the high-end 3D rendering style with large expressive eyes. Make sure anatomy is accurately represented within stylized 3D proportions. Make skin and surfaces look like soft subsurface scattering with PBR textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure cinematic volumetric lighting fits the 3D animation style. Ensure soft ray-traced shadows and detailed highlights are displayed correctly. Keep in focus. The result should be in the high-end 3D rendering style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["pixar", "3d", "animation", "cgi"]
+  },
+  {
+    "name": "Style: Gritty Comic",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a gritty comic book character. Make it look like noir graphic novel art. Keep subject position and their pose the same as the reference. Ensure heavy ink washes and cross-hatching follow gritty aesthetics. Make sure anatomy is accurately represented within a rugged, expressive style. Make textures look weathered and dirty. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure high-contrast chiaroscuro lighting fits the noir style. Ensure deep black shadows are displayed correctly. Keep in focus. The result should be in a dark and gritty comic style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["comic", "noir", "gritty", "ink"]
+  },
+  {
+    "name": "Style: Cyberpunk",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like cyberpunk art. Make it look like a high-tech futuristic scene. Keep subject position and their pose the same as the reference. Ensure glowing neon elements and cybernetic details follow cyberpunk aesthetics. Make sure anatomy is accurately represented with metallic panels. Make surfaces look rain-slicked and reflective. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic neon lighting fits the style. Ensure high contrast and vibrant glow. Keep in focus. The result should have a cyberpunk aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cyberpunk", "scifi", "neon"]
+  },
+  {
+    "name": "Style: Studio Ghibli",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the hand-painted watercolor style of Studio Ghibli animated films, featuring soft edges and a painterly, pastoral aesthetic. Make it look like a hand-painted anime background. Keep subject position and their pose the same as the reference. Ensure watercolor textures and soft edges follow the painterly anime style. Make sure anatomy is stylized but natural. Make greenery and clouds look painterly. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft pastoral lighting fits the style. Ensure warm, natural colors. Keep in focus. The result should be in the painterly anime style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["ghibli", "anime", "watercolor", "painterly"]
+  },
+  {
+    "name": "Style: Synthwave",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like synthwave art. Make it look like a retro-futuristic digital scene. Keep subject position and their pose the same as the reference. Ensure digital grids and chrome reflections follow synthwave aesthetics. Make sure anatomy is stylized with vibrant outlines. Make background look like a sunset grid. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure vibrant purple and pink lighting fits the style. Ensure scanline effects and high contrast. Keep in focus. The result should be in a 1980s synthwave style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["synthwave", "retro", "neon", "80s"]
+  },
+  {
+    "name": "Style: The Simpsons",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the satirical cartoon style of the animated series The Simpsons, featuring clean, bold lines and flat coloring. Make it look like a traditional 2D animation cel. Keep subject position and their pose the same as the reference. Ensure expressive features follow the traditional 2D animation style with clean, bold outlines. Make sure anatomy is simplified with thick, clean black outlines. Make coloring flat and consistent. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat, bright lighting fits the style. Ensure simple shading. Keep in focus. The result should be in the traditional 2D animation style with clean, bold outlines.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "simpsons", "2d", "animation"]
+  },
+  {
+    "name": "Style: Family Guy",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the modern sitcom animation style of the animated series Family Guy, featuring clean digital line work and flat colors. Make it look like a modern digital animation cel. Keep subject position and their pose the same as the reference. Ensure distinct facial features follow the flat digital sitcom animation style. Make sure anatomy is simplified with clean digital lines. Make coloring flat and consistent. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure standard sitcom animation lighting fits the style. Ensure minimal shading. Keep in focus. The result should be in the flat digital sitcom animation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "family-guy", "2d", "animation"]
+  },
+  {
+    "name": "Style: South Park",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the construction paper cutout style of the animated series South Park, featuring simple subjects and paper textures. Make it look like a construction paper cutout. Keep subject position and their pose the same as the reference. Ensure simple shapes and paper textures follow the crude construction paper cutout animation style. Make sure anatomy is simplified into cut-out segments. Make the features look like paper overlays. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat lighting fits the cutout style. Ensure the appearance of construction paper grain. Keep in focus. The result should be in the crude construction paper cutout animation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "south-park", "cutout", "animation"]
+  },
+  {
+    "name": "Style: Super Mario",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the 3D video game style of Super Mario video games, featuring smooth surfaces and rounded geometry. Make it look like a vibrant 3D platformer game asset. Keep subject position and their pose the same as the reference. Ensure rounded shapes and primary colors follow the vibrant 3D platformer video game style. Make sure anatomy is cartoonish and friendly. Make textures look smooth and plastic-like. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright, cheerful lighting fits the game style. Ensure soft shadows. Keep in focus. The result should be in the vibrant 3D platformer video game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "mario", "3d", "cartoon"]
+  },
+  {
+    "name": "Style: Minecraft",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the voxel-based video game style of the video game Minecraft, featuring blocky anatomy and low-res pixel textures. Make it look like a voxel model. Keep subject position and their pose the same as the reference. Ensure everything is composed of cubes following the blocky voxel-based game style. Make sure anatomy is blocky and pixelated. Make surfaces look like low-res pixel textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure blocky lighting fits the voxel style. Ensure no curves, only straight edges. Keep in focus. The result should be in the blocky voxel-based game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "minecraft", "voxel", "pixel"]
+  },
+  {
+    "name": "Style: Pokemon",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the anime style of the Pokemon animated series, featuring distinct creature designs and cel-shaded coloring. Make it look like official anime artwork. Keep subject position and their pose the same as the reference. Ensure clean outlines and vibrant colors follow the clean cel-shaded anime style. Make sure anatomy fits the stylized design language. Make shading look cel-shaded. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure anime-style lighting fits the series. Ensure stylized eyes and features. Keep in focus. The result should be in the clean cel-shaded anime style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "pokemon", "cel-shaded", "cartoon"]
+  },
+  {
+    "name": "Style: Retro Game Sprite",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a retro video game sprite. Make it look like 16-bit pixel art. Keep subject position and their pose the same as the reference. Ensure visible pixels and limited palette follow retro gaming aesthetics. Make sure anatomy is simplified for low resolution. Make shading use dithering techniques. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dithered lighting fits the sprite style. Ensure jagged edges. Keep in focus. The result should be in a retro video game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["retro", "game", "pixel-art", "16-bit"]
+  },
+  {
+    "name": "Style: RPG Fantasy",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an RPG video game character. Make it look like a fantasy game asset. Keep subject position and their pose the same as the reference. Ensure detailed armor and accessories follow RPG aesthetics. Make sure anatomy fits the heroic fantasy class style. Make textures look detailed and worn. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure atmospheric lighting fits the game style. Ensure isometric perspective hints if applicable. Keep in focus. The result should be in an RPG fantasy style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "rpg", "fantasy"]
+  },
+  {
+    "name": "Style: Zelda 16-bit",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the 16-bit video game style of the video game The Legend of Zelda: A Link to the Past, featuring vibrant pixel art and distinct outlines. Make it look like a 16-bit adventure game sprite. Keep subject position and their pose the same as the reference. Ensure top-down perspective and pixel art follow the classic 16-bit adventure game style. Make sure anatomy is simplified. Make colors vibrant and fantasy-themed. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright fantasy lighting fits the style. Ensure distinct outlines. Keep in focus. The result should be in the classic 16-bit adventure game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "zelda", "pixel-art", "16-bit"]
+  },
+  {
+    "name": "Style: Zelda 3D (BotW)",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the cel-shaded 3D video game style of the video game The Legend of Zelda: Breath of the Wild, featuring soft atmospheric lighting and cel-shaded rendering. Make it look like cel-shaded 3D graphics. Keep subject position and their pose the same as the reference. Ensure cel-shaded 3D rendering follows the cel-shaded 3D adventure game style. Make sure anatomy fits the stylized proportions. Make textures look painterly and soft. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, atmospheric lighting fits the style. Ensure gentle rim lighting. Keep in focus. The result should be in the cel-shaded 3D adventure game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "zelda", "cel-shaded", "3d"]
+  },
+  {
+    "name": "Style: Pixel Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like pixel art. Make it look like a low-resolution digital drawing. Keep subject position and their pose the same as the reference. Ensure jagged edges and visible pixels follow pixel art aesthetics. Make sure anatomy is defined by pixel clusters. Make shading use limited colors. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure digital lighting fits the medium. Ensure clear grid alignment. Keep in focus. The result should be in a pixel art style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["pixel-art", "retro", "digital"]
+  },
+  {
+    "name": "Style: Analog Film",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like it was shot on analog film. Make it look like a vintage photograph. Keep subject position and their pose the same as the reference. Ensure film grain and color shifts follow analog photography aesthetics. Make sure anatomy looks natural and candid. Make textures look organic and slightly soft. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure natural lighting fits the film style. Ensure minor light leaks. Keep in focus. The result should be in an analog film style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "analog", "vintage", "film"]
+  },
+  {
+    "name": "Style: Fairy Tale Illustration",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a fairy tale illustration. Make it look like storybook art. Keep subject position and their pose the same as the reference. Ensure whimsical details and soft lines follow fairy tale aesthetics. Make sure anatomy fits the storybook style. Make colors soft and magical. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dreamy lighting fits the enchanted theme. Ensure illustrative quality. Keep in focus. The result should be in a fairy tale style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["fantasy", "illustration", "storybook", "whimsical"]
+  },
+  {
+    "name": "Style: Gothic Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like gothic art. Make it look like a dark, ornate masterpiece. Keep subject position and their pose the same as the reference. Ensure sharp angles and dramatic details follow gothic aesthetics. Make sure anatomy is elegant and skin tone is pale. Make clothing and background look intricate and brooding. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure moody, low-key lighting fits the gothic style. Ensure deep shadows. Keep in focus. The result should be in a gothic art style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["gothic", "dark", "art"]
+  },
+  {
+    "name": "Style: Lovecraftian Horror",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like Lovecraftian horror. Make it look like an eldritch nightmare. Keep subject position and their pose the same as the reference. Ensure tentacles and non-Euclidean geometry follow cosmic horror aesthetics. Make sure anatomy is twisted and unnatural. Make textures look slimy and ancient. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dark, oppressive lighting fits the horror style. Ensure fear-inducing atmosphere. Keep in focus. The result should be in a Lovecraftian style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["horror", "lovecraftian", "dark"]
+  },
+  {
+    "name": "Style: Stained Glass",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a stained glass window. Make it look like glass art. Keep subject position and their pose the same as the reference. Ensure thick black lead lines and vibrant glass panes follow stained glass aesthetics. Make sure anatomy is stylized and fragmented. Make colors translucent and glowing. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure backlighting fits the glass style. Ensure geometric segmentation. Keep in focus. The result should be in a stained glass style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["art", "stained-glass", "geometric"]
+  },
+  {
+    "name": "Style: Film Noir",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a film noir scene. Make it look like a black and white crime movie. Keep subject position and their pose the same as the reference. Ensure high contrast and dramatic shadows follow noir aesthetics. Make sure anatomy fits the dramatic, moody style. Make everything black and white. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure hard lighting and deep blacks fit the genre. Ensure cinematic composition. Keep in focus. The result should be in a film noir style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["noir", "black-and-white", "cinematic"]
+  },
+  {
+    "name": "Style: Claymation",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a claymation figure. Make it look like stop-motion animation. Keep subject position and their pose the same as the reference. Ensure plasticine textures and visible fingerprints follow claymation aesthetics. Make sure anatomy is chunky and molded. Make clothing look like real life fabric and any body parts look like clay. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure studio lighting fits the miniature style. Ensure lack of motion blur. Keep in focus. The result should be in a claymation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["claymation", "stop-motion", "3d"]
+  },
+  {
+    "name": "Style: Origami",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like origami. Make it look like folded paper art. Keep subject position and their pose the same as the reference. Ensure sharp creases and geometric folds follow origami aesthetics. Make sure anatomy is abstract and angular. Make textures look like paper. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft studio lighting fits the papercraft style. Ensure no curves, only folds. Keep in focus. The result should be in an origami style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["origami", "paper", "geometric"]
+  },
+  {
+    "name": "Style: Neon Punk",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like neonpunk art. Make it look like a blacklight poster. Keep subject position and their pose the same as the reference. Ensure fluorescent colors and glowing lines follow neonpunk aesthetics. Make sure anatomy is highlighted by UV light. Make textures glow. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure UV and neon lighting fits the style. Ensure high contrast against black. Keep in focus. The result should be in a neonpunk style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["neon", "punk", "glow"]
+  },
+  {
+    "name": "Style: Graffiti",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a graffiti mural. Make it look like spray paint on a wall. Keep subject position and their pose the same as the reference. Ensure spray paint textures and drips follow graffiti aesthetics. Make sure anatomy is stylized and bold. Make the background look like an urban wall. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure outdoor lighting fits the street art style. Ensure vibrant colors. Keep in focus. The result should be in a graffiti style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["graffiti", "street-art", "urban"]
+  },
+  {
+    "name": "Style: Looney Tunes",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the classic cartoon style of Looney Tunes shorts, featuring elastic anatomy and dynamic ink lines. Make it look like a classic slapstick cartoon. Keep subject position and their pose the same as the reference. Ensure expressive features and elastic anatomy follow the classic slapstick cartoon animation style. Make sure anatomy is rubbery and expressive. Make colors flat and bright. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat cartoon lighting fits the style. Ensure dynamic outlines. Keep in focus. The result should be in the classic slapstick cartoon animation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "looney-tunes", "animation"]
+  },
+  {
+    "name": "Style: Nickelodeon 90s",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the 90s cartoon style of Nickelodeon shows, featuring vibrant colors and distinct shapes. Make it look like a 90s cable cartoon. Keep subject position and their pose the same as the reference. Ensure quirky shapes and bold lines follow the quirky 90s cartoon animation style. Make sure anatomy is stylized and slightly wacky. Make colors vibrant and saturated. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat animation lighting fits the style. Ensure thick ink lines. Keep in focus. The result should be in the quirky 90s cartoon animation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "nickelodeon", "90s", "animation"]
+  },
+  {
+    "name": "Style: Cartoon Network 2000s",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the stylized mid-2000s cartoon style of Cartoon Network shows, featuring sharp angles and thick outlines. Make it look like a mid-2000s cartoon show. Keep subject position and their pose the same as the reference. Ensure sharp shapes and thick outlines follow the stylized mid-2000s cartoon animation style with thick outlines and flat shading. Make sure anatomy is sharp and angular. Make colors flat and bold. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat animation lighting fits the style. Ensure distinct silhouettes. Keep in focus. The result should be in the stylized mid-2000s cartoon animation style with thick outlines and flat shading.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "cartoon-network", "animation"]
+  },
+  {
+    "name": "Style: Adventure Time",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the whimsical cartoon style of the animated series Adventure Time, featuring pastel colors and thin, consistent line work. Make it look like a character from the animated series Adventure Time. Keep subject position and their pose the same as the reference. Ensure thin, consistent line work and rubbery simplified anatomy follow the whimsical cartoon style of the animated series Adventure Time. Make sure anatomy is rubbery and simplified. Make colors pastel and happy. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat, bright lighting fits the style. Ensure thin, consistent outlines. Keep in focus. The result should be in the whimsical cartoon style of the animated series Adventure Time.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "adventure-time", "animation", "whimsical"]
+  },
+  {
+    "name": "Style: Dragon Ball Z",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the shonen anime style of the anime series Dragon Ball Z, featuring intense expressions and dramatic shading. Make it look like a Dragon Ball Z anime. Keep subject position and their pose the same as the reference. Ensure intense expressions and sharp angular linework follow the shonen anime style of the anime series Dragon Ball Z. Make sure anatomy is sharply drawn with high-contrast highlights. Make linework sharp and angular. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic anime lighting fits the style. Ensure hard shadows. Keep in focus. The result should be in the shonen anime style of the anime series Dragon Ball Z.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "dragon-ball", "shonen"]
+  },
+  {
+    "name": "Style: Cowboy Bebop",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the noir anime style of the anime series Cowboy Bebop, featuring high-contrast lighting and detailed mechanical designs. Make it look like a Cowboy Bebop anime. Keep subject position and their pose the same as the reference. Ensure realistic proportions and stylish designs follow the noir anime style of the anime series Cowboy Bebop. Make sure anatomy is tall and lean. Make clothing look detailed and worn. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure cinematic, moody lighting fits the style. Ensure high-quality cel shading. Keep in focus. The result should be in the noir anime style of the anime series Cowboy Bebop.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "cowboy-bebop", "noir"]
+  },
+  {
+    "name": "Style: Rick and Morty",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the sci-fi cartoon style of the animated series Rick and Morty, featuring flat colors and distinctively stylized pupils. Make it look like a character from the animated series Rick and Morty. Keep subject position and their pose the same as the reference. Ensure distinctively stylized pupils and relaxed anatomy follow the sci-fi cartoon style of the animated series Rick and Morty. Make sure anatomy is simplified and rounded. Make colors flat and consistent. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat lighting fits the style. Ensure standard line weights. Keep in focus. The result should be in the sci-fi cartoon style of the animated series Rick and Morty.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "rick-and-morty", "scifi", "animation"]
+  },
+  {
+    "name": "Style: Gravity Falls",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the mystery cartoon style of the animated series Gravity Falls, featuring smooth line art and appealing cartoon anatomy. Make it look like a character from the animated series Gravity Falls. Keep subject position and their pose the same as the reference. Ensure smooth line art and rounded features follow the mystery cartoon style of the animated series Gravity Falls. Make sure anatomy is appealing and consistent. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure atmospheric lighting fits the style. Ensure smooth line art. Keep in focus. The result should be in the mystery cartoon style of the animated series Gravity Falls.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "gravity-falls", "animation"]
+  },
+  {
+    "name": "Style: Sailor Moon",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the magical girl anime style of the anime series Sailor Moon, featuring soft romantic lighting and pastel colors. Make it look like a character from the anime series Sailor Moon. Keep subject position and their pose the same as the reference. Ensure large expressive eyes and long legs follow the magical girl anime style of the anime series Sailor Moon. Make sure anatomy is slender and elegant. Make hair flowing and detailed. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure a soft, romantic lighting that fits the style. Ensure pastel colors. Keep in focus. The result should be in the magical girl anime style of the anime series Sailor Moon.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "sailor-moon", "magical-girl"]
+  },
+  {
+    "name": "Style: CCTV (Edit)",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like it was recorded on a CCTV security camera. Make it look like surveillance footage. Keep subject position and their pose the same as the reference. Ensure the aesthetic follows security camera characteristics. Make sure anatomy looks real but reflects a low-quality recording. Make textures look grainy and somewhat degraded. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure harsh artificial lighting fits the surveillance style. Ensure a high-contrast monitoring perspective. Keep in focus. The result should be in a CCTV security camera style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "surveillance", "realistic", "cctv"]
+  },
+  {
+    "name": "Style: CCTV (Raw)",
+    "prompt": "Generate subjects and environment to look like they were recorded on a CCTV security camera. Make it look like surveillance footage. Ensure the aesthetic follows security camera characteristics. Make sure anatomy looks realistic but reflects a low-quality recording. Make textures look grainy and somewhat degraded. Ensure harsh artificial lighting fits the surveillance style. Ensure a high-contrast monitoring perspective. Keep in focus. The result should be in a CCTV security camera style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "surveillance", "realistic", "cctv"]
+  },
+  {
+    "name": "Style: Polaroid",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Polaroid instant film photograph. Make it look like a vintage instant camera capture. Keep subject position and their pose the same as the reference. Ensure subjects and environments have warm, slightly faded tones characteristic of Polaroid film. Make sure forms appear soft and slightly out of focus with natural imperfections. Make colors look desaturated with a warm color cast. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, natural lighting with minimal shadows. Ensure faded edges and vignetting are visible. Keep in focus. Vintage Polaroid instant film aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "polaroid", "vintage", "analog"]
+  },
+  {
+    "name": "Style: Glitch Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like glitch art. Make it look like intentional digital corruption and pixel displacement. Keep subject position and their pose the same as the reference. Ensure focal elements have color channel separation and digital artifacts. Make sure forms show displaced pixels and data corruption effects. Make textures look fragmented with visible digital errors. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure RGB channel misalignment is visible. Ensure scanlines and pixelation artifacts are prominently displayed. Keep in focus. High-quality glitch art aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["digital", "glitch", "art"]
+  },
+  {
+    "name": "Style: Watercolor",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a watercolor painting. Make it look like wet paint on paper with organic color bleeding. Keep subject position and their pose the same as the reference. Ensure subjects and environments have soft, translucent color washes with natural color diffusion. Make sure forms appear fluid and organic with visible paper texture. Make colors blend and bleed naturally into each other. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft edges and transparent layers are characteristic. Ensure paper texture and watermark patterns are visible. Keep in focus. Detailed watercolor painting aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["watercolor", "painting", "art"]
+  },
+  {
+    "name": "Style: Kodachrome Film",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like Kodachrome film photography. Make it look like 1950s-70s color slide film with distinctive color rendering. Keep subject position and their pose the same as the reference. Ensure subjects and environments have rich, saturated Kodachrome color tones. Make sure forms display the warm, distinctive color palette of Kodachrome stock. Make colors look vibrant with slightly exaggerated saturation characteristic of the film. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm, golden lighting with rich highlights. Ensure deep, saturated shadows are displayed correctly. Keep in focus. Classic Kodachrome color film aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "kodachrome", "vintage", "film"]
+  },
+  {
+    "name": "Style: Graphic Novel",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a graphic novel illustration. Make it look like professional comic book panel art. Keep subject position and their pose the same as the reference. Ensure subjects and environments follow graphic novel aesthetics with bold, expressive line work. Make sure forms are dramatically stylized with dynamic compositions and exaggerated proportions. Make coloring look like professional comic book printing with limited but vibrant color ranges. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic, cinematic lighting that enhances mood and storytelling. Ensure bold ink lines and dynamic shadows are prominently featured. Keep in focus. High-quality graphic novel aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["comic", "graphic-novel", "illustration", "ink"]
+  },
+  {
+    "name": "Style: Cel-Shaded",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like cel-shaded video game art. Make it look like hand-drawn illustration rendered in 3D. Keep subject position and their pose the same as the reference. Ensure subjects and environments have thick black outlines and flat color blocks. Make sure forms are stylized with bold edge definition. Make shading look like simplified color areas rather than gradients. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure solid colors with clear boundaries define all forms. Ensure thick black ink lines outline all edges prominently. Keep in focus. High-quality cel-shaded video game aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "cel-shaded", "cartoon", "3d"]
+  },
+  {
+    "name": "Style: Video Game",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like standard 3D video game graphics. Make it look like standard 3D video game rendering. Keep subject position and their pose the same as the reference. Ensure subjects and environments have game engine rendering with realistic proportions. Make sure forms show typical game modeling with clean geometry. Make textures look like video game materials with moderate detail. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure video game lighting with clear light sources. Ensure game engine rendering quality with balanced shaders. Keep in focus. High-quality video game aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "3d", "render"]
+  },
+  {
+    "name": "Style: Skyrim / Elder Scrolls",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the medieval fantasy RPG style of The Elder Scrolls video games, featuring classic fantasy textures. Make it look like fantasy medieval RPG game graphics. Keep subject position and their pose the same as the reference. Ensure subjects and environments display the gritty medieval fantasy RPG engine graphics. Make sure forms show medieval fantasy game proportions with a clean but aged appearance. Make colors look like natural fantasy game color grading with warm tones. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm, natural fantasy lighting fitting the medieval Nordic setting. Ensure detailed game textures with a polished but classic game quality are displayed throughout. Keep in focus. High-quality fantasy RPG aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "skyrim", "rpg", "fantasy"]
+  },
+  {
+    "name": "Style: The Sims",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the vibrant 3D life simulation style of The Sims video games, featuring cheerful saturated colors. Make it look like a life simulation game render. Keep subject position and their pose the same as the reference. Ensure subjects and environments follow the stylized 3D life simulation game graphics with smooth poreless surfaces. Make sure forms are stylized with soft, rounded geometry. Make surfaces look smooth and slightly plasticky with subtle shading. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright global illumination lighting. Ensure vibrant, saturated colors throughout. Keep in focus. High-quality life simulation game render.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "sims", "3d", "cartoon"]
+  },
+  {
+    "name": "Style: Steampunk",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a steampunk render. Make it look like a Victorian industrial aesthetic render. Keep subject position and their pose the same as the reference. Ensure subjects and environments follow steampunk aesthetics with brass accents and mechanical integration. Make sure forms feature mechanical elements and gear details. Make textures look like weathered brass, copper, and industrial metal. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm, industrial lighting with sepia tones. Ensure mechanical details and gears are prominently featured. Keep in focus. High-quality steampunk aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["steampunk", "fantasy", "mechanical"]
+  },
+  {
+    "name": "Style: Horror Movie",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the scene to match the cinematic horror movie style, featuring desaturated colors, dramatic shadows, and ominous atmosphere. Make it look like a scene from a psychological or supernatural horror film. Keep subject position and their pose the same as the reference. Ensure the environment conveys dread and unease following horror cinema aesthetics. Make sure lighting creates stark contrasts with deep shadows and unsettling highlights. Make textures look grimy, decayed, and foreboding. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dim, shadowy lighting fits the horror mood. Ensure an atmosphere of suspense and supernatural dread is conveyed. Keep in focus. The result should be in a cinematic horror movie style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["horror", "cinematic", "dark"]
+  },
+  {
+    "name": "Style: PS1 Low-Poly",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the low-polygon 3D video game style of early PlayStation video games, featuring blocky geometry and pixelated textures. Make it look like a scene from a retro 3D video game. Keep subject position and their pose the same as the reference. Ensure the environment displays retro 32-bit low-polygon 3D graphics with visible polygon edges and flat-shaded surfaces. Make sure forms are simplified with chunky, angular geometry characteristic of early 3D models. Make textures look pixelated and limited in color palette. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat, angular lighting fits the low-polygon aesthetic. Ensure prominent polygon edges and low-resolution textures are displayed. Keep in focus. The result should be in the classic low-polygon 3D video game style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["game", "ps1", "retro", "low-poly"]
+  },
+  {
+    "name": "Style: 1970s Sci-Fi",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the scene to match the retro-futuristic style of 1970s science fiction cinema, featuring film grain, practical effects aesthetic, and vintage color grading. Make it look like a scene from a 1970s sci-fi film. Keep subject position and their pose the same as the reference. Ensure the environment displays practical set design and early optical effects characteristic of 70s sci-fi movies. Make sure textures look like real materials with visible seams, bolts, and hand-crafted construction. Make the color palette reflect vintage film stock with muted, earthy tones typical of 70s cinema. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, diffused lighting fits the vintage film aesthetic. Ensure visible film grain and practical lighting setups are displayed. Keep in focus. The result should be in the classic 1970s science fiction movie style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["scifi", "70s", "retro", "cinematic"]
+  },
+  {
+    "name": "Style: Inflated Balloon",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an inflated balloon version of themselves. Make it look like the subject is made of taut, stretched elastic vinyl. Keep subject position and their pose the same as the reference. Ensure subjects and environments follow inflatable aesthetics with shiny plastic surfaces and subtle, well-placed seams. Make sure forms retain their relative proportions but look like fully pressurized, air-filled volumes without looking deflated. Make textures look like glossy balloon material with real looking stretching at the joints. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure studio lighting highlights the glossy specular reflections. Ensure plastic material looks smooth and fully inflated. Keep in focus. High-quality inflated balloon aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["balloon", "inflated", "whimsical"]
+  },
+  {
+    "name": "Style: Vector Art (Edit)",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a vector graphics illustration. Make it look like a clean, scalable vector design. Keep subject position and their pose the same as the reference. Ensure subjects and environments follow vector art aesthetics with mathematically precise curves and shapes. Make sure forms are simplified into clean geometric areas. Make coloring look flat and vibrant without gradients or texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even, flat lighting fits the vector style. Ensure sharp, crisp edges define all elements. Keep in focus. High-quality scalar vector graphics aesthetic.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["vector", "digital", "flat"]
+  },
+  {
+    "name": "Style: Vector Art (Raw)",
+    "prompt": "Generate subjects and environment to look like a vector graphics illustration. Make it look like a clean, scalable vector design. Ensure the aesthetic follows vector art characteristics with mathematically precise curves and shapes. Make sure forms are simplified into clean geometric areas. Make coloring look flat and vibrant without gradients or texture. Ensure even, flat lighting fits the vector style. Ensure sharp, crisp edges define all elements. Keep in focus. The result should be in a high-quality scalar vector graphics style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["vector", "digital", "flat"]
+  },
+  {
+    "name": "Style: Follow Instructions",
+    "prompt": "Follow the editing instructions precisely. Modify the subject's appearance, pose, position, or composition as requested. Allow changes to the image structure if required by the instruction. Ensure the changes are integrated seamlessly. Make sure the edit respects the visual logic of the scene. Do not arbitrarily keep the pose or position if the instruction implies a change. prioritized the user's request over preserving the original structure. Keep unedited areas in focus. The result should be an accurate faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["instruction", "editing"]
+  },
+  {
+    "name": "Style: Preserve Original Style",
+    "prompt": "Keep original style. Keep original aesthetic. Keep original textures and lighting. Modify the subject's position, composition, or pose as requested. Make it look like a seamless edit within the original style. Keep the visual identity the same as the reference. Ensure the changes are integrated seamlessly without altering the overarching visual style. Make sure the edit respects the visual logic of the scene. Do not arbitrarily change the visual medium or image qualities. Keep unedited areas in focus. The result should be an accurate execution of the compositional request while strictly preserving the original style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["preserve", "style"]
+  },
+  {
+    "name": "Style: Early 2000s Analog",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the early 2000s film style of the point-and-shoot franchise, featuring heavy film grain, warm color tints, high contrast, and slightly faded colors. Make it look like a film from the point-and-shoot franchise. Keep subject position and their pose the same as the reference. Ensure the color grading follows the early 2000s film style of the point-and-shoot franchise. Make sure anatomy is realistic and unpolished. Make the overall texture look grainy and raw. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the contrast and color temperature fits the style. Ensure the film grain and imperfections are displayed correctly. Keep in focus. The result should be in the early 2000s film style of the point-and-shoot franchise.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["photography", "analog", "vintage", "2000s"]
+  },
+  {
+    "name": "Style: Adult Swim",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the alternative animation style of Adult Swim shows, featuring unique visual aesthetics and surreal scenes. Make it look like a still from an alternative late-night animated show. Keep subject position and their pose the same as the reference. Ensure surreal elements and unconventional visual styles follow the alternative surreal animation aesthetic. Make sure anatomy is stylized and intentionally unconventional. Make colors and shapes look deliberately alternative and off-beat. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat, minimal lighting fits the style. Ensure distinctive alternative animation textures are displayed correctly. Keep in focus. The result should be in the alternative surreal animation style of Adult Swim shows.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "adult-swim", "animation", "surreal"]
+  },
+  {
+    "name": "Style: Bob's Burgers",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to match the animated sitcom style of the animated series Bob's Burgers, featuring thick outlines and distinct tubular anatomy. Make it look like a character from the animated series Bob's Burgers. Keep subject position and their pose the same as the reference. Ensure thick outlines and tubular body shapes follow the animated sitcom style of the animated series Bob's Burgers. Make sure anatomy is simplified with rounded tubular limbs and a distinct blocky look. Make colors flat and warm. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat, consistent lighting fits the sitcom animation style. Ensure thick outlines and distinctive tubular character proportions are displayed correctly. Keep in focus. The result should be in the animated sitcom style of the animated series Bob's Burgers.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "bobs-burgers", "animation"]
+  },
+  {
+    "name": "Style: Claymation (Detailed)",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a detailed claymation figure. Make it look like a professional stop-motion animation. Keep subject position and their pose the same as the reference. Ensure tactile clay textures, visible fingerprints, and fine surface detail follow professional claymation aesthetics. Make sure anatomy is chunky and molded with rich tactile quality. Make surfaces look like detailed, textured clay with visible seams and handcrafted construction. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure studio lighting highlights the detailed clay textures and surface imperfections. Ensure visible joint articulations and handcrafted details are displayed correctly. Keep in focus. The result should be in a detailed, professional claymation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["claymation", "stop-motion", "3d"]
+  },
+  {
+    "name": "Style: Claymation (Simplified)",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a simplified claymation figure. Make it look like a basic stop-motion animation. Keep subject position and their pose the same as the reference. Ensure smooth, featureless clay surfaces and simple shapes follow simplified stop-motion animation aesthetics. Make sure anatomy is reduced to smooth, unmarked clay forms. Make surfaces look like clean, minimal clay with almost no texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, even studio lighting fits the minimal claymation style. Ensure smooth clay forms and basic joint articulations are displayed without surface detail. Keep in focus. The result should be in a simplified, minimal claymation style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["claymation", "stop-motion", "minimal"]
+  },
+  {
+    "name": "Style: Johnny Bravo (Raw)",
+    "prompt": "Generate subjects and environment to look like a stylized retro cartoon scene from the animated series Johnny Bravo, featuring thick line art, flat colors, and an exaggerated 90s cartoon aesthetic. Make it look like a still from the animated series Johnny Bravo. Ensure the aesthetic follows the retro 90s cartoon characteristics with sharp angles and distinct silhouettes. Make sure forms are bold and exaggerated with stylized proportions. Make colors flat and vibrant. Ensure flat animation lighting fits the retro 90s cartoon style. Ensure sharp angles and distinct silhouettes are prominently displayed. Keep in focus. The result should be in the stylized retro cartoon style of the animated series Johnny Bravo.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["cartoon", "johnny-bravo", "90s", "animation"]
+  },
+  {
+    "name": "Style: Lewd Anime",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an explicit anime illustration. Make it look like high-quality erotic art. Keep subject position and their pose the same as the reference. Ensure image follows lewd anime aesthetics with blush and moisture. Make sure anatomy is emphasized and accurately represented within the genre's style. Make skin look soft with detailed highlights and shading. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure atmospheric lighting fits the mood. Ensure detailed shading and textures. Keep in focus. The result should be in a high quality erotic anime style.",
+    "negative_prompt": null,
+    "category": "Instruct Styles",
+    "tags": ["anime", "lewd", "erotic", "nsfw"]
+  }
+]

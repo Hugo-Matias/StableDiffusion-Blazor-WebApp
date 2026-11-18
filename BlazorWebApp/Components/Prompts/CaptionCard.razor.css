@@ -1,0 +1,77 @@
+.caption-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-small, 4px);
+  padding: var(--app-gutter-inner, 8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.caption-card:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.caption-preview {
+  flex: 1;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--mud-palette-text-secondary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.caption-preview:hover {
+  color: var(--mud-palette-text);
+}
+
+.caption-full {
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--mud-palette-text-secondary);
+  padding: var(--app-gutter-small, 4px) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.caption-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.caption-badge {
+  font-size: 0.6rem !important;
+  height: 20px !important;
+  line-height: 20px !important;
+}
+
+.caption-actions {
+  display: flex;
+  gap: var(--app-gutter-small, 4px);
+  margin-top: 2px;
+}
+
+.caption-actions ::deep .caption-insert-button {
+  flex: 1;
+  min-height: 28px !important;
+  font-size: 0.65rem !important;
+  padding: 0 8px !important;
+}
+
+.caption-actions ::deep .mud-icon-button {
+  flex: 0 0 auto;
+  min-width: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+}

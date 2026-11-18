@@ -1,0 +1,205 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Models
+@inject IDatabaseService DB
+
+<MudCard Class="prompt-style-card" Elevation="2">
+    <MudCardHeader Class="py-2">
+        <CardHeaderContent>
+            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    @if (Prompt.IsPinned)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Primary" />
+                    }
+                    <MudText Typo="Typo.subtitle1"><strong>@Prompt.Title</strong></MudText>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    @if (!string.IsNullOrWhiteSpace(Prompt.Category))
+                    {
+                        <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">@Prompt.Category</MudChip>
+                    }
+                    @if (Prompt.IsFavorite)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                    }
+                </MudStack>
+            </MudStack>
+        </CardHeaderContent>
+    </MudCardHeader>
+    
+    <MudCardContent Class="py-2">
+        <MudStack Spacing="2">
+            @* Preview Text *@
+            @if (!string.IsNullOrWhiteSpace(Prompt.Positive))
+            {
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Success"><strong>Positive:</strong></MudText>
+                    <MudText Typo="Typo.body2" Class="prompt-preview">@TruncateText(Prompt.Positive, 100)</MudText>
+                </MudStack>
+            }
+            
+            @if (!string.IsNullOrWhiteSpace(Prompt.Negative))
+            {
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.caption" Color="Color.Error"><strong>Negative:</strong></MudText>
+                    <MudText Typo="Typo.body2" Class="prompt-preview">@TruncateText(Prompt.Negative, 100)</MudText>
+                </MudStack>
+            }
+            
+            @* Tags *@
+            @if (Prompt.Tags != null && Prompt.Tags.Any())
+            {
+                <MudChipSet Class="mt-2">
+                    @foreach (var tag in Prompt.Tags.Take(5))
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">@tag</MudChip>
+                    }
+                    @if (Prompt.Tags.Count > 5)
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Default">+@(Prompt.Tags.Count - 5) more</MudChip>
+                    }
+                </MudChipSet>
+            }
+            
+            @* Usage Stats *@
+            @if (Prompt.UsageCount > 0 || Prompt.LastUsedAt != null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-2">
+                    @if (Prompt.UsageCount > 0)
+                    {
+                        <span>Used @Prompt.UsageCount time@(Prompt.UsageCount != 1 ? "s" : "")</span>
+                    }
+                    @if (Prompt.LastUsedAt != null)
+                    {
+                        <span> · Last used @FormatLastUsed(Prompt.LastUsedAt.Value)</span>
+                    }
+                </MudText>
+            }
+        </MudStack>
+    </MudCardContent>
+    
+    <MudCardActions>
+        <MudStack Row Justify="Justify.SpaceBetween" Class="w-100 px-2">
+            <MudStack Row Spacing="1">
+                <MudTooltip Text="Edit prompt" ShowOnFocus="false">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Size="Size.Small" 
+                                   Color="Color.Primary" 
+                                   OnClick="HandleEdit" />
+                </MudTooltip>
+                
+                <MudTooltip Text="@(Prompt.IsFavorite ? "Remove from favorites" : "Add to favorites")">
+                    <MudIconButton Icon="@(Prompt.IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" 
+                                   Size="Size.Small" 
+                                   Color="Color.Error" 
+                                   OnClick="HandleToggleFavorite" />
+                </MudTooltip>
+                
+                <MudTooltip Text="@(Prompt.IsPinned ? "Unpin" : "Pin to top")">
+                    <MudIconButton Icon="@(Prompt.IsPinned ? Icons.Material.Filled.PushPin : Icons.Material.Outlined.PushPin)" 
+                                   Size="Size.Small" 
+                                   Color="@(Prompt.IsPinned ? Color.Primary : Color.Default)" 
+                                   OnClick="HandleTogglePin" />
+                </MudTooltip>
+            </MudStack>
+            
+            <MudStack Row Spacing="1">
+                <MudTooltip Text="Apply to Txt2Img">
+                    <MudIconButton Icon="@Icons.Material.Filled.Image" 
+                                   Size="Size.Small" 
+                                   Color="Color.Info" 
+                                   OnClick="() => HandleApply(false)" />
+                </MudTooltip>
+                
+                <MudTooltip Text="Apply to Img2Img">
+                    <MudIconButton Icon="@Icons.Material.Filled.BurstMode" 
+                                   Size="Size.Small" 
+                                   Color="Color.Secondary" 
+                                   OnClick="() => HandleApply(true)" />
+                </MudTooltip>
+                
+                <MudTooltip Text="Delete prompt" ShowOnFocus="false">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Size="Size.Small" 
+                                   Color="Color.Error" 
+                                   OnClick="HandleDelete" />
+                </MudTooltip>
+            </MudStack>
+        </MudStack>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public Prompt Prompt { get; set; } = null!;
+    
+    [Parameter]
+    public EventCallback<Prompt> OnEdit { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnDelete { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnToggleFavorite { get; set; }
+    
+    [Parameter]
+    public EventCallback<Prompt> OnTogglePin { get; set; }
+    
+    [Parameter]
+    public EventCallback<(Prompt prompt, bool isImg2Img)> OnApply { get; set; }
+    
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        if (text.Length <= maxLength) return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+    
+    private string FormatLastUsed(DateTime lastUsed)
+    {
+        var timeSpan = DateTime.Now - lastUsed;
+        
+        if (timeSpan.TotalMinutes < 1)
+            return "just now";
+        if (timeSpan.TotalHours < 1)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalDays < 1)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+        
+        return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+    }
+    
+    private async Task HandleEdit()
+    {
+        await OnEdit.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleDelete()
+    {
+        await OnDelete.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleToggleFavorite()
+    {
+        Prompt.IsFavorite = !Prompt.IsFavorite;
+        await OnToggleFavorite.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleTogglePin()
+    {
+        Prompt.IsPinned = !Prompt.IsPinned;
+        await OnTogglePin.InvokeAsync(Prompt);
+    }
+    
+    private async Task HandleApply(bool isImg2Img)
+    {
+        await OnApply.InvokeAsync((Prompt, isImg2Img));
+        await DB.UpdatePromptUsage(Prompt.Id);
+    }
+}

@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "character-regions",
+  "displayName": "Character Regions",
+  "items": [
+    {
+      "id": "body",
+      "label": "Body",
+      "group": "identity",
+      "sortOrder": 10,
+      "promptPriority": 10
+    },
+    {
+      "id": "head",
+      "label": "Head",
+      "group": "identity",
+      "sortOrder": 20,
+      "inputMode": "zoom",
+      "promptPriority": 20
+    },
+    {
+      "id": "face_shape",
+      "label": "Face Shape",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 21,
+      "promptPriority": 21
+    },
+    {
+      "id": "eyes",
+      "label": "Eyes",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 22,
+      "supportsAsymmetry": true,
+      "promptPriority": 22
+    },
+    {
+      "id": "brows",
+      "label": "Brows",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 23,
+      "supportsAsymmetry": true,
+      "promptPriority": 23
+    },
+    {
+      "id": "nose",
+      "label": "Nose",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 24,
+      "promptPriority": 24
+    },
+    {
+      "id": "mouth",
+      "label": "Mouth",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 25,
+      "promptPriority": 25
+    },
+    {
+      "id": "ears",
+      "label": "Ears",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 26,
+      "supportsAsymmetry": true,
+      "promptPriority": 26
+    },
+    {
+      "id": "hair",
+      "label": "Hair",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 27,
+      "supportsAsymmetry": true,
+      "promptPriority": 15
+    },
+    {
+      "id": "makeup",
+      "label": "Makeup",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 28,
+      "promptPriority": 28
+    },
+    {
+      "id": "head_marks",
+      "label": "Marks",
+      "parentId": "head",
+      "group": "identity",
+      "sortOrder": 29,
+      "supportsAsymmetry": true,
+      "promptPriority": 29
+    },
+    {
+      "id": "torso",
+      "label": "Torso",
+      "group": "identity",
+      "sortOrder": 30,
+      "promptPriority": 30
+    },
+    {
+      "id": "arms",
+      "label": "Arms",
+      "group": "identity",
+      "sortOrder": 40,
+      "supportsAsymmetry": true,
+      "promptPriority": 40
+    },
+    {
+      "id": "hands",
+      "label": "Hands",
+      "group": "identity",
+      "sortOrder": 50,
+      "supportsAsymmetry": true,
+      "promptPriority": 50
+    },
+    {
+      "id": "legs",
+      "label": "Legs",
+      "group": "identity",
+      "sortOrder": 60,
+      "supportsAsymmetry": true,
+      "promptPriority": 60
+    },
+    {
+      "id": "feet",
+      "label": "Feet",
+      "group": "identity",
+      "sortOrder": 70,
+      "supportsAsymmetry": true,
+      "promptPriority": 70
+    },
+    {
+      "id": "clothing",
+      "label": "Clothing",
+      "group": "wardrobe",
+      "sortOrder": 80,
+      "promptPriority": 80
+    },
+    {
+      "id": "marks",
+      "label": "Marks",
+      "group": "identity",
+      "sortOrder": 90,
+      "supportsAsymmetry": true,
+      "promptPriority": 90
+    },
+    {
+      "id": "expression",
+      "label": "Expression",
+      "group": "expression",
+      "sortOrder": 100,
+      "promptPriority": 100
+    }
+  ]
+}

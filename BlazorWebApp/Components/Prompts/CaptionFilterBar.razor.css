@@ -1,0 +1,87 @@
+.caption-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-small, 4px);
+  flex-shrink: 0;
+}
+
+.filter-row-search {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-small, 4px);
+}
+
+.filter-row-selects {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-small, 4px);
+}
+
+.filter-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.filter-select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Source selector shares the selects row with the filter selects; slightly smaller share (names are short) */
+.filter-select-source {
+  flex: 0.75 1 0;
+}
+
+/* Clothing multi-select dropdown */
+.filter-select-clothing {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Advanced sliders - label on own line, slider below for breathing room */
+.filter-row-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gutter-medium, 12px);
+  padding-top: var(--app-gutter-small, 4px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.slider-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slider-label {
+  opacity: 0.85;
+}
+
+.slider-label-warning {
+  color: var(--mud-palette-warning-darken, #ff9800);
+}
+
+.slider-value-row {
+  display: flex;
+  align-items: center;
+  gap: var(--app-gutter-small, 4px);
+}
+
+.slider-value {
+  opacity: 0.6;
+  white-space: nowrap;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.filter-count {
+  opacity: 0.6;
+  white-space: nowrap;
+}

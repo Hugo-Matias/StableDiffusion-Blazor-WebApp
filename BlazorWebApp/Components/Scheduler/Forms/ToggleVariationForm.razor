@@ -1,0 +1,69 @@
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" Label="On value"
+                          Value="_onText" ValueChanged="OnOnChanged"
+                          Variant="Variant.Text"
+                          HelperText="Typed automatically: numbers and true/false parse, everything else is stored as string." />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" Label="Off value"
+                          Value="_offText" ValueChanged="OnOffChanged"
+                          Variant="Variant.Text"
+                          HelperText="Alternates with On each iteration (exactly 2 total)." />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public ToggleVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // Toggle alternates two concrete values on a single target; exclude Output / Asset (those
+    // use dedicated directive types) and Prompt (full text swapping is SearchReplace territory).
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Lora,
+    };
+
+    private string _onText = string.Empty;
+    private string _offText = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _onText = Variation.OnValue?.ToString() ?? string.Empty;
+        _offText = Variation.OffValue?.ToString() ?? string.Empty;
+    }
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+
+    private void OnOnChanged(string? text)
+    {
+        _onText = text ?? string.Empty;
+        Variation.OnValue = ParseValue(_onText);
+    }
+
+    private void OnOffChanged(string? text)
+    {
+        _offText = text ?? string.Empty;
+        Variation.OffValue = ParseValue(_offText);
+    }
+
+    private static object? ParseValue(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        if (bool.TryParse(text, out var b)) return b;
+        if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var i)) return i;
+        if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+        return text;
+    }
+}
+

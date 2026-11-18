@@ -1,0 +1,30 @@
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+
+<div class="asset-info-drawer-overlay @(IsVisible ? "visible" : "")" @onclick="HandleOverlayClick">
+    <div class="asset-info-drawer @(IsVisible ? "open" : "")" @onclick:stopPropagation="true">
+        <AssetInfoPanel Asset="Image"
+                        IsVideo="IsVideo"
+                        ShowKeyboardShortcuts="false"
+                        OnClose="Close" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public ImageEntity? Image { get; set; }
+    [Parameter] public bool IsVideo { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        await Close();
+    }
+}

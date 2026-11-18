@@ -1,0 +1,127 @@
+@*
+    LtxRefinementPassForm - Form for the ltx_refinement_pass enhancement.
+
+    Drives pass-2 (refinement) settings: sampler, cfg, seed, sigmas mode,
+    and manual-sigmas curve when sigmas mode = "manual".
+*@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("LtxRefinementPassForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Sampler" @bind-Value="_localSampler" @bind-Value:after="OnSamplerChanged"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var name in _samplerOptions)
+            {
+                <MudSelectItem Value="@name" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="double" @bind-Value="_localCfg" @bind-Value:after="OnCfgChanged"
+                         Label="CFG" Min="1" Max="10" Step="0.1" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged"
+                         Label="Seed" Min="-1" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Sigmas" @bind-Value="_localSigmasMode" @bind-Value:after="OnSigmasModeChanged"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value="@("auto")">Auto (LTXVScheduler)</MudSelectItem>
+            <MudSelectItem Value="@("manual")">Manual</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    @if (_localSigmasMode == "manual")
+    {
+        <MudItem xs="12">
+            <MudTextField T="string" @bind-Value="_localManualSigmas" @bind-Value:after="OnManualSigmasChanged"
+                          Label="Manual Sigmas (CSV)" Lines="2" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localSampler = "euler_cfg_pp";
+    private double _localCfg = 1.0;
+    private long _localSeed = 42L;
+    private string _localSigmasMode = "auto";
+    private string _localManualSigmas = "0.85, 0.7250, 0.4219, 0.0";
+
+    private Dictionary<string, ParameterConstraints> _constraints = new();
+    private List<string> _samplerOptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Fragment == null) return;
+        if (Fragment.Schema?.Parameters != null)
+        {
+            _constraints = Fragment.Schema.Parameters;
+        }
+        await LoadSamplerOptionsAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        InitializeFromFragment();
+    }
+
+    private async Task LoadSamplerOptionsAsync()
+    {
+        var samplerConstraint = _constraints.GetValueOrDefault("sampler_name");
+        if (samplerConstraint?.HasDynamicSource == true)
+        {
+            _samplerOptions = await ParameterService.ResolveSourceOptionsAsync(samplerConstraint);
+        }
+        if (_samplerOptions.Count == 0)
+        {
+            _samplerOptions = new List<string> { "euler", "euler_cfg_pp", "euler_ancestral", "euler_ancestral_cfg_pp", "dpmpp_2m", "dpmpp_2m_cfg_pp" };
+        }
+    }
+
+    private void InitializeFromFragment()
+    {
+        if (Fragment == null) return;
+        _localSampler = ParameterService.GetFragmentProperty(Fragment, "sampler_name", "euler_cfg_pp") ?? "euler_cfg_pp";
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, "cfg", 1.0);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "seed", 42L);
+        _localSigmasMode = ParameterService.GetFragmentProperty(Fragment, "sigmas_mode", "auto") ?? "auto";
+        _localManualSigmas = ParameterService.GetFragmentProperty(Fragment, "manual_sigmas", "0.85, 0.7250, 0.4219, 0.0")
+            ?? "0.85, 0.7250, 0.4219, 0.0";
+    }
+
+    private async Task OnSamplerChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "sampler_name", _localSampler, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "cfg", _localCfg, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSigmasModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "sigmas_mode", _localSigmasMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnManualSigmasChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "manual_sigmas", _localManualSigmas, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

@@ -1,0 +1,417 @@
+@* Odditarium Round Panel — displays question, 6 options, action buttons, and layer collection *@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Services
+
+<div class="odditarium-round-panel">
+    @if (_loading && _persona != null)
+    {
+        <OdditariumLoading Persona="_persona" LoadingMessage="@_loadingMessage" />
+    }
+    else if (_session?.Body != null)
+    {
+        var body = _session.Body;
+
+        @* Two-column layout: round panel (left) + layer collection (right) *@
+        <MudGrid Class="odditarium-round-grid">
+            @* Main Round Area *@
+            <MudItem xs="12" md="8">
+                <div class="odditarium-round-card">
+                    @if (!string.IsNullOrWhiteSpace(body.PendingQuestion))
+                    {
+                        @* Question Display *@
+                        <div class="odditarium-question-area">
+                            <div class="odditarium-question-badges">
+                                <span class="odditarium-round-badge">Round @(body.RoundCount + 1)</span>
+                                @if (!string.IsNullOrWhiteSpace(body.PendingAnchor))
+                                {
+                                    var (_, modeCss) = GetModeBadge(body.PendingMode);
+                                    var chipText = string.IsNullOrWhiteSpace(body.PendingFacet)
+                                        ? body.PendingAnchor
+                                        : $"{body.PendingAnchor} \u203a {body.PendingFacet}";
+                                    <span class="odditarium-mode-badge odditarium-mode-badge--@modeCss">@chipText</span>
+                                }
+                            </div>
+                            <h3 class="odditarium-question">@GetRevealedQuestion(body.PendingQuestion)</h3>
+                        </div>
+
+                        <div class="odditarium-reveal-footer @(_revealComplete ? "opts-visible" : "")">
+                            @* Options Grid — show skeletons while More... is loading *@
+                            @if (_loadingMore)
+                            {
+                                <MudGrid Class="odditarium-options-grid" Spacing="2">
+                                    @for (int s = 0; s < 6; s++)
+                                    {
+                                        <MudItem xs="12" sm="6">
+                                            <OdditariumOptionSkeleton />
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            }
+                            else if (body.PendingOptions.Count > 0)
+                            {
+                                <MudGrid Class="odditarium-options-grid" Spacing="2">
+                                    @for (int i = 0; i < body.PendingOptions.Count; i++)
+                                    {
+                                        var opt = body.PendingOptions[i];
+                                        <MudItem xs="12" sm="6">
+                                            <button type="button" class="odditarium-option-btn"
+                                                    @onclick="() => HandleOptionSelected(opt)">
+                                                <span class="odditarium-option-label">@opt.Label</span>
+                                                @if (!string.IsNullOrWhiteSpace(opt.Hint))
+                                                {
+                                                    <span class="odditarium-option-hint">@opt.Hint</span>
+                                                }
+                                            </button>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            }
+
+                            @* Action Bar *@
+                            <div class="odditarium-actions">
+                                <MudButton StartIcon="@Icons.Material.Filled.Undo" Variant="Variant.Text"
+                                           Color="Color.Secondary" Size="Size.Small" Disabled="@_undoDisabled"
+                                           OnClick="HandleUndoAsync">Undo</MudButton>
+
+                                <MudButton StartIcon="@Icons.Material.Filled.Refresh" Variant="Variant.Text"
+                                           Color="Color.Secondary" Size="Size.Small" Disabled="@_moreDisabled"
+                                           OnClick="HandleRequestMoreAsync">More...</MudButton>
+
+                                <MudButton StartIcon="@Icons.Material.Filled.SkipNext" Variant="Variant.Text"
+                                           Color="Color.Secondary" Size="Size.Small"
+                                           Disabled="@(_modelInvalid || _loading || _loadingMore)" OnClick="HandleSkipAxisAsync">Skip
+                                </MudButton>
+
+                                <MudSpacer />
+
+                                <MudButton StartIcon="@Icons.Material.Filled.CheckCircle" Variant="Variant.Filled"
+                                           Color="Color.Primary" Size="Size.Small" Disabled="@_commitDisabled"
+                                           OnClick="HandleCommitAsync">
+                                    Commit</MudButton>
+                                </div>
+                            </div>
+                        }
+                    else
+                        {
+                            @* No pending question — game not started or committed *@
+                            <div class="odditarium-empty-state">
+                                @if (body.IsCommitted && !string.IsNullOrWhiteSpace(body.CommittedDraft))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large"
+                                             Class="odditarium-empty-icon" />
+                                    <p class="odditarium-empty-text">Prompt committed!</p>
+                                }
+                                else if (body.IsActive)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Size="Size.Large"
+                                             Class="odditarium-empty-icon" />
+                                    <p class="odditarium-empty-text">Waiting for the next question...</p>
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Large" Class="odditarium-empty-icon" />
+                                    <p class="odditarium-empty-text">Start a new game to begin.</p>
+                                }
+                            </div>
+                        }
+                    </div>
+                </MudItem>
+
+                @* Layer Collection Sidebar *@
+                <MudItem xs="12" md="4">
+                    <div class="odditarium-layers-panel">
+                        <h4 class="odditarium-layers-title">Collected Layers</h4>
+                        <p class="odditarium-layers-count">@body.CollectedLayers.Count layer@(body.CollectedLayers.Count != 1 ?
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "s" : string.Empty)</p>
+
+                            @if (body.CollectedLayers.Count > 0)
+                            {
+                                <div class="odditarium-layers-list">
+                                    @foreach (var layer in body.CollectedLayers)
+                                    {
+                                        <div class="odditarium-layer-chip">
+                                            <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
+                                            <span>
+                                                @if (!string.IsNullOrWhiteSpace(layer.Anchor))
+                                                {
+                                                    <span class="odditarium-layer-anchor">@layer.Anchor</span>
+                                                    <span class="odditarium-layer-sep"> › </span>
+                                                }
+                                                @layer.Label
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="odditarium-layers-empty">No layers collected yet. Pick an option to start building your
+                                    prompt.</p>
+                                }
+
+                                @* Vibe Display *@
+                                @if (!string.IsNullOrWhiteSpace(body.Vibe))
+                                {
+                                    <div class="odditarium-vibe-badge">
+                                        <MudIcon Icon="@Icons.Material.Filled.WbSunny" Size="Size.Small" />
+                                        <span>Vibe: @body.Vibe</span>
+                                    </div>
+                                }
+
+                                @* Committed Draft Display *@
+                                @if (body.IsCommitted && !string.IsNullOrWhiteSpace(body.CommittedDraft))
+                                {
+                                    <div class="odditarium-draft-area">
+                                        <h4 class="odditarium-draft-title">Assembled Prompt</h4>
+                                        <MudTextField @bind-Value="_draftText" Lines="3" AutoGrow="true" MaxLines="12"
+                                                      Variant="Variant.Text" FullWidth="true" />
+                                        @if (_sendWorkflows.Count > 0)
+                                        {
+                                            <div class="send-to-section">
+                                                <span class="send-to-label">Send to workflow:</span>
+                                                <div class="send-to-buttons">
+                                                    @foreach (var wf in _sendWorkflows)
+                                                    {
+                                                        <button type="button" class="send-to-btn @PromptSendTo.GetWorkflowModeClass(wf.Mode)"
+                                                                disabled="@(string.IsNullOrWhiteSpace(_draftText))"
+                                                                @onclick="() => PromptSendTo.SendPromptToWorkflow(_draftText, wf)"
+                                                                title="Send to @wf.Title">
+                                                            <MudIcon Icon="@PromptSendTo.GetWorkflowIcon(wf.Mode)" Size="Size.Small" />
+                                                            <span>@wf.Title</span>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </div>
+
+@code {
+    [Parameter] public OdditariumSession? Session { get; set; }
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<OdditariumSession?> SessionChanged { get; set; }
+    [Parameter] public EventCallback<string> DraftCommitted { get; set; }
+
+    private async Task PushSessionAsync(OdditariumSession session)
+    {
+        // Push to parent first, then update local reference after parent confirms.
+        if (SessionChanged.HasDelegate)
+        {
+            await SessionChanged.InvokeAsync(session);
+        }
+        _session = session;
+    }
+
+    [Inject] private IOdditariumService OdditariumService { get; set; } = default!;
+    [Inject] private IPromptSendToService PromptSendTo { get; set; } = default!;
+
+    private OdditariumSession? _session;
+    private List<Workflow> _sendWorkflows = new();
+    private bool _loading;
+    private bool _loadingMore; // true while More... is fetching — options show skeletons; question stays
+    private string _loadingMessage = string.Empty;
+    private string _draftText = string.Empty;
+
+    // Word-by-word question reveal
+    private string[] _revealWords = Array.Empty<string>();
+    private int _revealIndex = 0;
+    private bool _revealComplete = true;
+
+    private OdditariumPersona? _persona => _session?.Body?.PersonaId != null ?
+OdditariumPersonaRoster.FindById(_session.Body.PersonaId) : null;
+
+    private bool _undoDisabled => _session?.Body?.History?.Count == 0 || _loading || _loadingMore;
+    private bool _commitDisabled => _session?.Body?.CollectedLayers?.Count == 0 || _loading || _loadingMore;
+    private bool _moreDisabled => _loading || _loadingMore || _modelInvalid;
+    private bool _modelInvalid => string.IsNullOrWhiteSpace(SelectedModel);
+
+    protected override void OnParametersSet()
+    {
+        var prevQuestion = _session?.Body?.PendingQuestion;
+        _session = Session;
+        _sendWorkflows = PromptSendTo.GetParameterWorkflows();
+
+        if (Session?.Body?.IsCommitted == true)
+        {
+            _draftText = Session.Body.CommittedDraft ?? string.Empty;
+        }
+
+        // Reveal on initial load: question arrives from parent without going through our _loading path
+        var newQuestion = _session?.Body?.PendingQuestion;
+        if (!string.IsNullOrWhiteSpace(newQuestion) && newQuestion != prevQuestion && !_loading)
+        {
+            StartReveal();
+        }
+    }
+
+    private async Task AfterServiceCallAsync(OdditariumSession session, bool hasNewQuestion = true)
+    {
+        await PushSessionAsync(session);
+        _loading = false;
+        _loadingMore = false;
+        _loadingMessage = string.Empty;
+
+        // Force re-render after parent callback returns so Blazor picks up the new session state.
+        await InvokeAsync(StateHasChanged);
+
+        if (hasNewQuestion)
+        {
+            StartReveal();
+        }
+    }
+
+    private void StartReveal()
+    {
+        var q = _session?.Body?.PendingQuestion;
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            _revealComplete = true;
+            return;
+        }
+        _revealWords = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        _revealIndex = 1; // show first word immediately on next render
+        _revealComplete = false;
+        _ = RunRevealAsync();
+    }
+
+    private async Task RunRevealAsync()
+    {
+        while (_revealIndex < _revealWords.Length)
+        {
+            await Task.Delay(65);
+            _revealIndex++;
+            await InvokeAsync(StateHasChanged);
+        }
+        _revealComplete = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string GetRevealedQuestion(string full)
+    {
+        if (_revealComplete || _revealWords.Length == 0) return full;
+        return string.Join(" ", _revealWords[.._revealIndex]);
+    }
+
+    private async Task HandleOptionSelected(OdditariumOption option)
+    {
+        if (_loading || _session == null || _modelInvalid) return;
+
+        _loading = true;
+        _loadingMessage = "Asking the next question...";
+        StateHasChanged();
+
+        try
+        {
+            var updated = await OdditariumService.NextRoundAsync(_session.SessionId, option, SelectedModel);
+            await AfterServiceCallAsync(updated);
+        }
+        catch (Exception ex)
+        {
+            _loading = false;
+            _loadingMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleUndoAsync()
+    {
+        if (_loading || _session == null || _undoDisabled) return;
+
+        _loading = true;
+        _loadingMessage = "Reverting last choice...";
+        StateHasChanged();
+
+        try
+        {
+            var updated = await OdditariumService.UndoAsync(_session.SessionId);
+            await AfterServiceCallAsync(updated);
+        }
+        catch (Exception ex)
+        {
+            _loading = false;
+            _loadingMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleRequestMoreAsync()
+    {
+        if (_moreDisabled || _session == null) return;
+
+        // Don't hide the panel; just swap options for skeletons
+        _loadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var updated = await OdditariumService.RequestMoreAsync(_session.SessionId, SelectedModel);
+            await PushSessionAsync(updated);
+            _loadingMore = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _loadingMore = false;
+            _loadingMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSkipAxisAsync()
+    {
+        if (_loading || _session == null || _modelInvalid) return;
+
+        _loading = true;
+        _loadingMessage = "Skipping to next question...";
+        StateHasChanged();
+
+        try
+        {
+            var updated = await OdditariumService.SkipAxisAsync(_session.SessionId, SelectedModel);
+            await AfterServiceCallAsync(updated);
+        }
+        catch (Exception ex)
+        {
+            _loading = false;
+            _loadingMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task HandleCommitAsync()
+    {
+        if (_loading || _session == null || _commitDisabled || _modelInvalid) return;
+
+        _loading = true;
+        _loadingMessage = "Assembling your prompt...";
+        StateHasChanged();
+
+        try
+        {
+            var updated = await OdditariumService.CommitAsync(_session.SessionId, SelectedModel);
+            await PushSessionAsync(updated);
+            _draftText = updated.Body.CommittedDraft ?? string.Empty;
+            _loading = false;
+            _loadingMessage = string.Empty;
+
+            if (DraftCommitted.HasDelegate)
+            {
+                await DraftCommitted.InvokeAsync(_draftText);
+            }
+        }
+        catch (Exception ex)
+        {
+            _loading = false;
+            _loadingMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private static (string Label, string Css) GetModeBadge(string? mode) => mode switch
+    {
+        "expand" => ("New angle", "expand"),
+        "deepen" => ("Going deeper", "deepen"),
+        "pivot" => ("Pivoting", "pivot"),
+        _ => (mode ?? "", "default"),
+    };
+}

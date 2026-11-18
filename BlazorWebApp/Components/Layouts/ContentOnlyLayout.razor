@@ -1,0 +1,21 @@
+@namespace BlazorWebApp.Components.Layouts
+
+@*
+    Content-only layout variant for tabbed pages.
+
+    Use when a tab is self-contained and does not benefit from a sidebar or topbar
+    (e.g. Scheduler Runs). Renders a single surface paper consuming the full width
+    inside the tab panel. Gutters come from the enclosing TabbedPageShell.
+
+    See Documentation/Architecture/04-UI-DESIGN-LANGUAGE.md (Layout section).
+*@
+
+<div class="app-content-only">
+    <MudPaper Elevation="@LayoutDefaults.SurfaceElevation" Class="app-content-surface" Square="false">
+        @ChildContent
+    </MudPaper>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

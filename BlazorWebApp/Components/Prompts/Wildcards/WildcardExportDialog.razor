@@ -1,0 +1,206 @@
+@using BlazorWebApp.Data.Entities
+@using System.Text.Json
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FileDownload" Class="mr-2" />
+            Export Collection
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                Export "<strong>@Collection.Name</strong>" with @Collection.Entries.Count entries.
+            </MudText>
+
+            <MudRadioGroup @bind-SelectedOption="_selectedFormat">
+                <MudRadio Option="@ExportFormat.Json" Color="Color.Primary">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body1"><strong>JSON Format</strong></MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Full collection data with metadata, weights, and sort order
+                        </MudText>
+                    </MudStack>
+                </MudRadio>
+                <MudRadio Option="@ExportFormat.Text" Color="Color.Primary">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body1"><strong>Text Format</strong></MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Simple text file with one entry per line (values only)
+                        </MudText>
+                    </MudStack>
+                </MudRadio>
+            </MudRadioGroup>
+
+            <MudDivider />
+
+            <MudPaper Elevation="0" Class="pa-3" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body2"><strong>Preview:</strong></MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family: monospace; white-space: pre-wrap;">@GetPreviewText()</MudText>
+                </MudStack>
+            </MudPaper>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense Variant="Variant.Outlined">@_errorMessage</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Export"
+                   StartIcon="@Icons.Material.Filled.FileDownload">
+            Download
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public WildcardCollection Collection { get; set; } = null!;
+
+    private ExportFormat _selectedFormat = ExportFormat.Json;
+    private string _errorMessage = string.Empty;
+
+    private enum ExportFormat
+    {
+        Json,
+        Text
+    }
+
+    private string GetPreviewText()
+    {
+        if (_selectedFormat == ExportFormat.Json)
+        {
+            return GetJsonPreview();
+        }
+        else
+        {
+            return GetTextPreview();
+        }
+    }
+
+    private string GetJsonPreview()
+    {
+        var preview = new
+        {
+            name = Collection.Name,
+            category = Collection.Category,
+            description = Collection.Description,
+            entries = Collection.Entries
+                .OrderBy(e => e.SortOrder)
+                .Take(3)
+                .Select(e => new
+                {
+                    value = e.Value,
+                    weight = e.Weight,
+                    sortOrder = e.SortOrder
+                })
+        };
+
+        var json = JsonSerializer.Serialize(preview, new JsonSerializerOptions 
+        { 
+            WriteIndented = true 
+        });
+
+        if (Collection.Entries.Count > 3)
+        {
+            json += $"\n  ... and {Collection.Entries.Count - 3} more entries";
+        }
+
+        return json;
+    }
+
+    private string GetTextPreview()
+    {
+        var entries = Collection.Entries
+            .OrderBy(e => e.SortOrder)
+            .Take(5)
+            .Select(e => e.Value);
+
+        var preview = string.Join("\n", entries);
+
+        if (Collection.Entries.Count > 5)
+        {
+            preview += $"\n... and {Collection.Entries.Count - 5} more entries";
+        }
+
+        return preview;
+    }
+
+    private string GenerateJsonContent()
+    {
+        var exportData = new
+        {
+            name = Collection.Name,
+            category = Collection.Category ?? string.Empty,
+            description = Collection.Description ?? string.Empty,
+            entries = Collection.Entries
+                .OrderBy(e => e.SortOrder)
+                .Select(e => new
+                {
+                    value = e.Value,
+                    weight = e.Weight,
+                    sortOrder = e.SortOrder
+                })
+                .ToList()
+        };
+
+        return JsonSerializer.Serialize(exportData, new JsonSerializerOptions 
+        { 
+            WriteIndented = true 
+        });
+    }
+
+    private string GenerateTextContent()
+    {
+        return string.Join("\n", Collection.Entries
+            .OrderBy(e => e.SortOrder)
+            .Select(e => e.Value));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Export()
+    {
+        try
+        {
+            string content;
+            string filename;
+            string mimeType;
+
+            if (_selectedFormat == ExportFormat.Json)
+            {
+                content = GenerateJsonContent();
+                filename = $"{Collection.Name}.json";
+                mimeType = "application/json";
+            }
+            else
+            {
+                content = GenerateTextContent();
+                filename = $"{Collection.Name}.txt";
+                mimeType = "text/plain";
+            }
+
+            // Trigger browser download using JavaScript interop
+            await JS.InvokeVoidAsync("downloadFile", filename, content, mimeType);
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error exporting: {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,220 @@
+@*
+    MiniMaxRefVideoSettingsForm - Resolution (Manual or Aspect Ratio + Megapixels), Duration, and
+    Reference Image Size for the MiniMax H3 Reference-to-Video workflow.
+
+    When a reference image source is present (ref_image, ref_image_1, ref_image_2, ...; first
+    uploaded wins), the Aspect Ratio dropdown inside ResolutionPanel is replaced with a read-only
+    label and the output resolution is derived from that image's aspect ratio instead - megapixels/
+    multiple-of still control the output size. Subscribes to SourceChanged so uploading/clearing a
+    reference image recomputes the resolution live.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("MiniMaxRefVideoSettingsForm")]
+@inject IGenerationParameterService ParameterService
+@inject IEventService EventService
+@implements IDisposable
+
+<MudGrid Spacing="2">
+    <ResolutionPanel Width="@_localWidth" WidthChanged="HandleWidthChanged" Height="@_localHeight"
+                     HeightChanged="HandleHeightChanged" Mode="@_localResolutionMode" ModeChanged="HandleResolutionModeChanged"
+                     AspectRatio="@_localAspectRatio" AspectRatioChanged="HandleAspectRatioChanged" Megapixels="@_localMegapixels"
+                     MegapixelsChanged="HandleMegapixelsChanged" MegapixelsMax="@_megapixelsMax" MultipleOf="@_localMultipleOf"
+                     MultipleOfChanged="HandleMultipleOfChanged" SourceImageWidth="@_sourceImageWidth"
+                     SourceImageHeight="@_sourceImageHeight" SourceImageLabel="@_sourceImageLabel" />
+
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localDuration" @bind-Value:after="OnDurationChanged" Min="_durationMin"
+                   Max="_durationMax" Step="_durationStep" Variant="Variant.Filled" ValueLabel>
+            <small>Duration:</small> @(_localDuration.ToString("0.0"))<small>s</small>
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string" @bind-Value="_localRefImageSize" @bind-Value:after="OnRefImageSizeChanged"
+                   Label="Reference Image Size" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _refImageSizeOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private const int MaxRefImageSlots = 9;
+
+    private int _localWidth;
+    private int _localHeight;
+    private string _localResolutionMode = "calculated";
+    private string _localAspectRatio = BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0];
+    private double _localMegapixels = 0.4;
+    private int _localMultipleOf = 32;
+    private double _localDuration = 5;
+    private string _localRefImageSize = "match";
+    private List<string> _refImageSizeOptions = new();
+
+    private double _durationMin = 0.5, _durationMax = 15, _durationStep = 0.5;
+    private double _megapixelsMax = 5.0;
+
+    private int? _sourceImageWidth;
+    private int? _sourceImageHeight;
+    private string? _sourceImageLabel;
+
+    protected override void OnInitialized()
+    {
+        EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        ResolveSourceImage();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localWidth = ParameterService.GetFragmentProperty(Fragment, "width", 1344);
+        _localHeight = ParameterService.GetFragmentProperty(Fragment, "height", 768);
+        _localResolutionMode = ParameterService.GetFragmentProperty(Fragment, "resolution_mode", "calculated");
+        _localAspectRatio = ParameterService.GetFragmentProperty(Fragment, "aspect_ratio",
+            BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0]);
+        _localMegapixels = ParameterService.GetFragmentProperty(Fragment, "megapixels", 0.4);
+        _localMultipleOf = ParameterService.GetFragmentProperty(Fragment, "multiple_of", 32);
+        _localDuration = ParameterService.GetFragmentProperty(Fragment, "duration", 5.0);
+        _localRefImageSize = ParameterService.GetFragmentProperty(Fragment, "ref_image_size", "match");
+        _refImageSizeOptions = GetOptions("ref_image_size", _localRefImageSize);
+
+        ResolveSourceImage();
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("duration", out var durationConstraints))
+        {
+            _durationMin = durationConstraints.GetMin(0.5);
+            _durationMax = durationConstraints.GetMax(15);
+            _durationStep = durationConstraints.GetStep(0.5);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("megapixels", out var megapixelsConstraints))
+        {
+            _megapixelsMax = megapixelsConstraints.GetMax(5.0);
+        }
+    }
+
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        if (args.ChangeType == GenerationParameterChangeType.SourceChanged &&
+            args.FragmentId?.StartsWith("ref_image", StringComparison.Ordinal) == true)
+        {
+            ResolveSourceImage();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ResolveSourceImage()
+    {
+        for (var i = 0; i < MaxRefImageSlots; i++)
+        {
+            var key = i == 0 ? "ref_image" : $"ref_image_{i}";
+            var source = ParameterService.GetSource(key);
+            if (source is { Width: > 0, Height: > 0 })
+            {
+                _sourceImageWidth = source.Width;
+                _sourceImageHeight = source.Height;
+                _sourceImageLabel = $"Reference Image {i + 1}";
+                return;
+            }
+        }
+
+        _sourceImageWidth = null;
+        _sourceImageHeight = null;
+        _sourceImageLabel = null;
+    }
+
+    private async Task HandleWidthChanged(int value)
+    {
+        _localWidth = value;
+        ParameterService.SetFragmentProperty(Fragment, "width", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleHeightChanged(int value)
+    {
+        _localHeight = value;
+        ParameterService.SetFragmentProperty(Fragment, "height", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleResolutionModeChanged(string value)
+    {
+        _localResolutionMode = value;
+        ParameterService.SetFragmentProperty(Fragment, "resolution_mode", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleAspectRatioChanged(string value)
+    {
+        _localAspectRatio = value;
+        ParameterService.SetFragmentProperty(Fragment, "aspect_ratio", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleMegapixelsChanged(double value)
+    {
+        _localMegapixels = value;
+        ParameterService.SetFragmentProperty(Fragment, "megapixels", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleMultipleOfChanged(int value)
+    {
+        _localMultipleOf = value;
+        ParameterService.SetFragmentProperty(Fragment, "multiple_of", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnDurationChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "duration", _localDuration, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnRefImageSizeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "ref_image_size", _localRefImageSize, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private List<string> GetOptions(string parameterName, string? currentValue)
+    {
+        if (Fragment == null)
+        {
+            return [];
+        }
+
+        var options = ParameterService.GetResolvedOptions(Fragment.Id, parameterName);
+        if (options.Count == 0)
+        {
+            options = Fragment.Schema?.GetConstraints(parameterName).Options ?? [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentValue) && !options.Contains(currentValue, StringComparer.OrdinalIgnoreCase))
+        {
+            options = [currentValue, .. options];
+        }
+
+        return options;
+    }
+
+    public void Dispose()
+    {
+        EventService.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+}

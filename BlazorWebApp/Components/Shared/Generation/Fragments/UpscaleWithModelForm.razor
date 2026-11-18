@@ -1,0 +1,101 @@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("UpscaleWithModelForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect T="string" Label="Upscale Model" @bind-Value="_localUpscaleModel"
+                   @bind-Value:after="OnUpscaleModelChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var model in _upscaleModelOptions)
+            {
+                <MudSelectItem Value="@model" />
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudSwitch T="bool" @bind-Value="_localBlendWithInput" @bind-Value:after="OnBlendWithInputChanged"
+                   Color="Color.Primary" Size="Size.Small" Label="Blend With Input" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double" @bind-Value="_localBlendFactor" @bind-Value:after="OnBlendFactorChanged"
+                   Min="@_blendFactorConstraints.GetMin(0.0)" Max="@_blendFactorConstraints.GetMax(1.0)"
+                   Step="@_blendFactorConstraints.GetStep(0.01)" Variant="Variant.Filled" ValueLabel
+                   Disabled="@(!_localBlendWithInput)">
+            <small>Blend Strength:</small> @_localBlendFactor.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="string" Label="Blend Mode" @bind-Value="_localBlendMode"
+                   @bind-Value:after="OnBlendModeChanged" Variant="Variant.Text" Dense="true"
+                   Disabled="@(!_localBlendWithInput)" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var mode in _blendModeOptions)
+            {
+                <MudSelectItem Value="@mode" />
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string? _localUpscaleModel = "1xSkinContrast-High-SuperUltraCompact.pth";
+    private bool _localBlendWithInput = true;
+    private double _localBlendFactor = 0.4;
+    private string? _localBlendMode = "normal";
+    private ParameterConstraints _blendFactorConstraints = new();
+    private List<string> _upscaleModelOptions = new();
+    private List<string> _blendModeOptions = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null)
+        {
+            return;
+        }
+
+        _blendFactorConstraints = Fragment.Schema?.GetConstraints("blend_factor") ?? new ParameterConstraints();
+        _localUpscaleModel = ParameterService.GetFragmentProperty(Fragment, "upscale_model", "1xSkinContrast-High-SuperUltraCompact.pth") ?? "1xSkinContrast-High-SuperUltraCompact.pth";
+        _localBlendWithInput = ParameterService.GetFragmentProperty(Fragment, "blend_with_input", true);
+        _localBlendFactor = ParameterService.GetFragmentProperty(Fragment, "blend_factor", 0.4);
+        _localBlendMode = ParameterService.GetFragmentProperty(Fragment, "blend_mode", "normal") ?? "normal";
+
+        _upscaleModelOptions = GetOptions("upscale_model", _localUpscaleModel);
+        _blendModeOptions = GetOptions("blend_mode", _localBlendMode);
+    }
+
+    private Task OnUpscaleModelChanged() => SetValue("upscale_model", _localUpscaleModel);
+    private Task OnBlendWithInputChanged() => SetValue("blend_with_input", _localBlendWithInput);
+    private Task OnBlendFactorChanged() => SetValue("blend_factor", _localBlendFactor);
+    private Task OnBlendModeChanged() => SetValue("blend_mode", _localBlendMode);
+
+    private async Task SetValue<T>(string key, T value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private List<string> GetOptions(string parameterName, string? currentValue)
+    {
+        if (Fragment == null)
+        {
+            return [];
+        }
+
+        var options = ParameterService.GetResolvedOptions(Fragment.Id, parameterName);
+        if (options.Count == 0)
+        {
+            options = Fragment.Schema?.GetConstraints(parameterName).Options ?? [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentValue) && !options.Contains(currentValue, StringComparer.OrdinalIgnoreCase))
+        {
+            options = [currentValue, .. options];
+        }
+
+        return options;
+    }
+}

@@ -1,0 +1,411 @@
+@using BlazorWebApp.Services.Cleanup
+@using System.Globalization
+@inject ISettingsService Settings
+@inject ICleanupEmbeddingModelMetadataService EmbeddingMetadata
+@inject ICleanupScoringModelMetadataService ScoringMetadata
+@inject ICleanupEmbeddingRuntime Runtime
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.subtitle2" Class="mb-1">Cleanup Indexing</MudText>
+
+<MudGrid Spacing="2" Class="mb-2">
+    <MudItem xs="12" sm="4">
+        <MudSwitch T="bool" Value="@Cleanup.IndexingQueue.IndexSavedImages" ValueChanged="HandleIndexSavedImagesChanged"
+                   Color="Color.Primary" Size="Size.Small" Label="Index saved images" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="CleanupEmbeddingRuntimeProvider" Value="@Cleanup.Embeddings.RuntimeProvider"
+                   ValueChanged="HandleEmbeddingRuntimeChanged" Label="Embedding runtime" Variant="Variant.Text" Dense="true"
+                   Margin="Margin.Dense" AdornmentIcon="@Icons.Material.Filled.Memory" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.CPU">CPU</MudSelectItem>
+            <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.CUDA">CUDA</MudSelectItem>
+            <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.ComfyUI">ComfyUI</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    @if (Cleanup.Embeddings.RuntimeProvider == CleanupEmbeddingRuntimeProvider.CUDA)
+    {
+        <MudItem xs="12" sm="4">
+            <MudNumericField T="int" Value="@Cleanup.Embeddings.CudaDeviceId"
+                             ValueChanged="HandleEmbeddingCudaDeviceChanged" Label="CUDA device" Variant="Variant.Text" Dense="true"
+                             Margin="Margin.Dense" Min="0" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="mb-2">
+    <MudItem xs="12" sm="4">
+        <MudSwitch T="bool" Value="@Cleanup.Embeddings.Enabled" ValueChanged="HandleEmbeddingsEnabledChanged"
+                   Color="Color.Primary" Size="Size.Small" Label="Embeddings" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudTextField T="string" Value="@Cleanup.Embeddings.Model.ModelKey"
+                      ValueChanged="HandleEmbeddingModelKeyChanged" Label="Embedding model key" Variant="Variant.Text"
+                      Dense="true" Margin="Margin.Dense" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="int" Value="@Cleanup.Embeddings.Model.Dimensions"
+                         ValueChanged="HandleEmbeddingDimensionsChanged" Label="Dimensions" Variant="Variant.Text" Dense="true"
+                         Margin="Margin.Dense" Min="@GetEmbeddingDimensionsMin()" />
+    </MudItem>
+    @if (Cleanup.Embeddings.RuntimeProvider != CleanupEmbeddingRuntimeProvider.ComfyUI)
+    {
+        <MudItem xs="12">
+            <MudTextField T="string" Value="@Cleanup.Embeddings.Model.ModelPath"
+                          ValueChanged="HandleEmbeddingModelPathChanged" Label="Embedding model path" Variant="Variant.Text"
+                          Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Folder" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField T="string" Value="@Cleanup.Embeddings.Model.InputName"
+                          ValueChanged="HandleEmbeddingInputNameChanged" Label="Input" Variant="Variant.Text" Dense="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField T="string" Value="@Cleanup.Embeddings.Model.OutputName"
+                          ValueChanged="HandleEmbeddingOutputNameChanged" Label="Output" Variant="Variant.Text" Dense="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudNumericField T="int" Value="@Cleanup.Embeddings.Model.InputWidth" ValueChanged="HandleEmbeddingWidthChanged"
+                             Label="Width" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Min="1" />
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudNumericField T="int" Value="@Cleanup.Embeddings.Model.InputHeight"
+                             ValueChanged="HandleEmbeddingHeightChanged" Label="Height" Variant="Variant.Text" Dense="true"
+                             Margin="Margin.Dense" Min="1" />
+        </MudItem>
+        <MudItem xs="12" sm="2">
+            <MudSelect T="string" Value="@Cleanup.Embeddings.Model.InputLayout" ValueChanged="HandleEmbeddingLayoutChanged"
+                       Label="Layout" Variant="Variant.Text" Dense="true" Margin="Margin.Dense">
+                <MudSelectItem Value='"NCHW"'>NCHW</MudSelectItem>
+                <MudSelectItem Value='"NHWC"'>NHWC</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string" Value="@FormatFloatList(Cleanup.Embeddings.Model.Mean)"
+                          ValueChanged="HandleEmbeddingMeanChanged" Label="Mean" Variant="Variant.Text" Dense="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string" Value="@FormatFloatList(Cleanup.Embeddings.Model.StandardDeviation)"
+                          ValueChanged="HandleEmbeddingStandardDeviationChanged" Label="Std dev" Variant="Variant.Text" Dense="true"
+                          Margin="Margin.Dense" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+           StartIcon="@(_showScoring ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+           OnClick="ToggleScoring">
+    Scoring
+</MudButton>
+
+@if (_showScoring)
+{
+    <MudGrid Spacing="2" Class="mb-2">
+        <MudItem xs="12" sm="4">
+            <MudSwitch T="bool" Value="@Cleanup.Scoring.Enabled" ValueChanged="HandleScoringEnabledChanged"
+                       Color="Color.Primary" Size="Size.Small" Label="Scores" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="CleanupEmbeddingRuntimeProvider" Value="@Cleanup.Scoring.RuntimeProvider"
+                       ValueChanged="HandleScoringRuntimeChanged" Label="Score runtime" Variant="Variant.Text" Dense="true"
+                       Margin="Margin.Dense" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.CPU">CPU</MudSelectItem>
+                <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.CUDA">CUDA</MudSelectItem>
+                <MudSelectItem Value="CleanupEmbeddingRuntimeProvider.ComfyUI">ComfyUI</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        @if (Cleanup.Scoring.RuntimeProvider == CleanupEmbeddingRuntimeProvider.CUDA)
+        {
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int" Value="@Cleanup.Scoring.CudaDeviceId" ValueChanged="HandleScoringCudaDeviceChanged"
+                                 Label="CUDA device" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Min="0" />
+            </MudItem>
+        }
+        <MudItem xs="12" sm="4">
+            <MudTextField T="string" Value="@Cleanup.Scoring.Model.ModelKey" ValueChanged="HandleScoringModelKeyChanged"
+                          Label="Score model key" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField T="string" Value="@Cleanup.Scoring.Model.ScoreName" ValueChanged="HandleScoreNameChanged"
+                          Label="Score name" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudNumericField T="double" Value="@Cleanup.Scoring.Model.MinScore" ValueChanged="HandleMinScoreChanged"
+                             Label="Min" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Step="0.05" />
+        </MudItem>
+        <MudItem xs="6" sm="2">
+            <MudNumericField T="double" Value="@Cleanup.Scoring.Model.MaxScore" ValueChanged="HandleMaxScoreChanged"
+                             Label="Max" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Step="0.05" />
+        </MudItem>
+        @if (Cleanup.Scoring.RuntimeProvider != CleanupEmbeddingRuntimeProvider.ComfyUI)
+        {
+            <MudItem xs="12">
+                <MudTextField T="string" Value="@Cleanup.Scoring.Model.ModelPath" ValueChanged="HandleScoringModelPathChanged"
+                              Label="Score model path" Variant="Variant.Text" Dense="true" Margin="Margin.Dense"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Folder" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField T="string" Value="@Cleanup.Scoring.Model.InputName" ValueChanged="HandleScoringInputNameChanged"
+                              Label="Input" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField T="string" Value="@Cleanup.Scoring.Model.OutputName" ValueChanged="HandleScoringOutputNameChanged"
+                              Label="Output" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudNumericField T="int" Value="@Cleanup.Scoring.Model.InputWidth" ValueChanged="HandleScoringWidthChanged"
+                                 Label="Width" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Min="1" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudNumericField T="int" Value="@Cleanup.Scoring.Model.InputHeight" ValueChanged="HandleScoringHeightChanged"
+                                 Label="Height" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Min="1" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudSelect T="string" Value="@Cleanup.Scoring.Model.InputLayout" ValueChanged="HandleScoringLayoutChanged"
+                           Label="Layout" Variant="Variant.Text" Dense="true" Margin="Margin.Dense">
+                    <MudSelectItem Value='"NCHW"'>NCHW</MudSelectItem>
+                    <MudSelectItem Value='"NHWC"'>NHWC</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Value="@FormatFloatList(Cleanup.Scoring.Model.Mean)"
+                              ValueChanged="HandleScoringMeanChanged" Label="Mean" Variant="Variant.Text" Dense="true"
+                              Margin="Margin.Dense" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Value="@FormatFloatList(Cleanup.Scoring.Model.StandardDeviation)"
+                              ValueChanged="HandleScoringStandardDeviationChanged" Label="Std dev" Variant="Variant.Text" Dense="true"
+                              Margin="Margin.Dense" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<div class="send-to-section">
+    <div class="send-to-buttons">
+        <button type="button" class="send-to-btn" @onclick="ProbeEmbeddingRuntime">
+            <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" />
+            <span>Probe runtime</span>
+        </button>
+        <button type="button" class="send-to-btn" @onclick="ValidateCleanupSettings">
+            <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
+            <span>Validate</span>
+        </button>
+    </div>
+</div>
+
+@code {
+    private bool _showScoring;
+
+    private CleanupSettingsModel Cleanup => Settings.Settings.Cleanup;
+
+    protected override void OnInitialized()
+    {
+        if (ApplyEmbeddingRuntimeDefaults(Cleanup.Embeddings.RuntimeProvider) ||
+ApplyScoringRuntimeDefaults(Cleanup.Scoring.RuntimeProvider))
+        {
+            Save();
+        }
+    }
+
+    private void Save() => Settings.SaveSettings();
+
+    private void ToggleScoring() => _showScoring = !_showScoring;
+
+    private void HandleIndexSavedImagesChanged(bool value) { Cleanup.IndexingQueue.IndexSavedImages = value; Save(); }
+    private void HandleEmbeddingsEnabledChanged(bool value) { Cleanup.Embeddings.Enabled = value; Save(); }
+    private void HandleEmbeddingRuntimeChanged(CleanupEmbeddingRuntimeProvider value)
+    {
+        Cleanup.Embeddings.RuntimeProvider =
+value; ApplyEmbeddingRuntimeDefaults(value); Save();
+    }
+    private void HandleEmbeddingCudaDeviceChanged(int value) { Cleanup.Embeddings.CudaDeviceId = value; Save(); }
+    private void HandleEmbeddingModelKeyChanged(string value)
+    {
+        Cleanup.Embeddings.Model.ModelKey = value ?? string.Empty;
+        Save();
+    }
+    private void HandleEmbeddingModelPathChanged(string value)
+    {
+        Cleanup.Embeddings.Model.ModelPath = value ?? string.Empty;
+        Save();
+    }
+    private void HandleEmbeddingInputNameChanged(string value)
+    {
+        Cleanup.Embeddings.Model.InputName = value ?? string.Empty;
+        Save();
+    }
+    private void HandleEmbeddingOutputNameChanged(string value)
+    {
+        Cleanup.Embeddings.Model.OutputName = value ??
+string.Empty; Save();
+    }
+    private void HandleEmbeddingWidthChanged(int value) { Cleanup.Embeddings.Model.InputWidth = value; Save(); }
+    private void HandleEmbeddingHeightChanged(int value) { Cleanup.Embeddings.Model.InputHeight = value; Save(); }
+    private void HandleEmbeddingLayoutChanged(string value)
+    {
+        Cleanup.Embeddings.Model.InputLayout = value ?? "NCHW";
+        Save();
+    }
+    private void HandleEmbeddingDimensionsChanged(int value)
+    {
+        Cleanup.Embeddings.Model.Dimensions = Cleanup.Embeddings.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI
+            ? Math.Max(16, value)
+            : value;
+        Save();
+    }
+    private void HandleEmbeddingMeanChanged(string value) => UpdateFloatList(value, Cleanup.Embeddings.Model.Mean);
+    private void HandleEmbeddingStandardDeviationChanged(string value) => UpdateFloatList(value,
+Cleanup.Embeddings.Model.StandardDeviation);
+
+    private void HandleScoringEnabledChanged(bool value) { Cleanup.Scoring.Enabled = value; Save(); }
+    private void HandleScoringRuntimeChanged(CleanupEmbeddingRuntimeProvider value)
+    {
+        Cleanup.Scoring.RuntimeProvider =
+value; ApplyScoringRuntimeDefaults(value); Save();
+    }
+    private void HandleScoringCudaDeviceChanged(int value) { Cleanup.Scoring.CudaDeviceId = value; Save(); }
+    private void HandleScoringModelKeyChanged(string value)
+    {
+        Cleanup.Scoring.Model.ModelKey = value ?? string.Empty;
+        Save();
+    }
+    private void HandleScoreNameChanged(string value) { Cleanup.Scoring.Model.ScoreName = value ?? string.Empty; Save(); }
+    private void HandleScoringModelPathChanged(string value)
+    {
+        Cleanup.Scoring.Model.ModelPath = value ?? string.Empty;
+        Save();
+    }
+    private void HandleScoringInputNameChanged(string value)
+    {
+        Cleanup.Scoring.Model.InputName = value ?? string.Empty;
+        Save();
+    }
+    private void HandleScoringOutputNameChanged(string value)
+    {
+        Cleanup.Scoring.Model.OutputName = value ?? string.Empty;
+        Save();
+    }
+    private void HandleScoringWidthChanged(int value) { Cleanup.Scoring.Model.InputWidth = value; Save(); }
+    private void HandleScoringHeightChanged(int value) { Cleanup.Scoring.Model.InputHeight = value; Save(); }
+    private void HandleScoringLayoutChanged(string value) { Cleanup.Scoring.Model.InputLayout = value ?? "NCHW"; Save(); }
+    private void HandleMinScoreChanged(double value) { Cleanup.Scoring.Model.MinScore = value; Save(); }
+    private void HandleMaxScoreChanged(double value) { Cleanup.Scoring.Model.MaxScore = value; Save(); }
+    private void HandleScoringMeanChanged(string value) => UpdateFloatList(value, Cleanup.Scoring.Model.Mean);
+    private void HandleScoringStandardDeviationChanged(string value) => UpdateFloatList(value,
+Cleanup.Scoring.Model.StandardDeviation);
+
+    private static string FormatFloatList(IEnumerable<float> values)
+    {
+        return string.Join(", ", values.Select(value => value.ToString("G9", CultureInfo.InvariantCulture)));
+    }
+
+    private void UpdateFloatList(string value, List<float> target)
+    {
+        var parsed = new List<float>();
+        foreach (var part in (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries |
+StringSplitOptions.TrimEntries))
+        {
+            if (!float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue))
+            {
+                Snackbar.Add("Mean and std dev values must be comma-separated numbers.", Severity.Warning);
+                return;
+            }
+
+            parsed.Add(parsedValue);
+        }
+
+        if (parsed.Count == 0)
+        {
+            Snackbar.Add("Mean and std dev values cannot be empty.", Severity.Warning);
+            return;
+        }
+
+        target.Clear();
+        target.AddRange(parsed);
+        Save();
+    }
+
+    private void ProbeEmbeddingRuntime()
+    {
+        var result = Runtime.Probe(Cleanup.Embeddings);
+        Snackbar.Add(
+            result.IsAvailable
+                ? $"{result.RequestedProvider} runtime is available."
+                : $"{result.RequestedProvider} runtime is unavailable: {result.ErrorMessage}",
+            result.IsAvailable ? Severity.Success : Severity.Warning);
+    }
+
+    private void ValidateCleanupSettings()
+    {
+        var embeddingValidation = EmbeddingMetadata.Validate(Cleanup.Embeddings);
+        var scoringValidation = ScoringMetadata.Validate(Cleanup.Scoring);
+        var errors = embeddingValidation.Errors.Concat(scoringValidation.Errors).ToList();
+        Snackbar.Add(
+            errors.Count == 0 ? "Cleanup settings are valid." : string.Join(" ", errors),
+            errors.Count == 0 ? Severity.Success : Severity.Warning);
+    }
+
+    private int GetEmbeddingDimensionsMin()
+    {
+        return Cleanup.Embeddings.RuntimeProvider == CleanupEmbeddingRuntimeProvider.ComfyUI ? 16 : 1;
+    }
+
+    private bool ApplyEmbeddingRuntimeDefaults(CleanupEmbeddingRuntimeProvider value)
+    {
+        if (value != CleanupEmbeddingRuntimeProvider.ComfyUI)
+        {
+            return false;
+        }
+
+        var changed = false;
+
+        if (string.IsNullOrWhiteSpace(Cleanup.Embeddings.Model.ModelKey))
+        {
+            Cleanup.Embeddings.Model.ModelKey = "blazor_stats_v1_512";
+            changed = true;
+        }
+
+        if (Cleanup.Embeddings.Model.Dimensions < 16)
+        {
+            Cleanup.Embeddings.Model.Dimensions = 512;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private bool ApplyScoringRuntimeDefaults(CleanupEmbeddingRuntimeProvider value)
+    {
+        if (value != CleanupEmbeddingRuntimeProvider.ComfyUI)
+        {
+            return false;
+        }
+
+        var changed = false;
+
+        if (string.IsNullOrWhiteSpace(Cleanup.Scoring.Model.ModelKey))
+        {
+            Cleanup.Scoring.Model.ModelKey = "blazor_quality_v1";
+            changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(Cleanup.Scoring.Model.ScoreName))
+        {
+            Cleanup.Scoring.Model.ScoreName = "quality";
+            changed = true;
+        }
+
+        if (Cleanup.Scoring.Model.MaxScore <= Cleanup.Scoring.Model.MinScore)
+        {
+            Cleanup.Scoring.Model.MinScore = 0;
+            Cleanup.Scoring.Model.MaxScore = 1;
+            changed = true;
+        }
+
+        return changed;
+    }
+}

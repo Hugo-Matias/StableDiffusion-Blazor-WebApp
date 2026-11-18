@@ -6,8 +6,6 @@ namespace BlazorWebApp.Data.Entities
     {
         public int Id { get; set; }
         public string Path { get; set; }
-        public string? Info { get; set; }
-        public string? InfoPath { get; set; }
         public string? Prompt { get; set; }
         public string? NegativePrompt { get; set; }
         public int SamplerId { get; set; } = 0;
@@ -22,6 +20,23 @@ namespace BlazorWebApp.Data.Entities
         public double? DenoisingStrength { get; set; }
         public DateTime DateCreated { get; set; } = DateTime.Now;
         public int Score { get; set; } = 0;
+        public List<Selection> Selections { get; set; } = new();
+        public string Scheduler { get; set; }
+        public Resource? Model { get; set; }
+        public int? ResourceId { get; set; }
+
+        /// <summary>
+        /// Excludes the image from gallery / browser views when true. Used by Workshop previews
+        /// and other internal-only generations. By-id lookups and direct references still work.
+        /// </summary>
+        public bool IsHidden { get; set; }
+
+        /// <summary>
+        /// Guid string of the workflow (IWorkflowBuilder.Id) that produced this image.
+        /// Null for images created before this field was introduced or via legacy flows.
+        /// </summary>
+        public string? WorkflowId { get; set; }
+
 
         public Image() { }
         public Image(ResourceImage resourceImage)

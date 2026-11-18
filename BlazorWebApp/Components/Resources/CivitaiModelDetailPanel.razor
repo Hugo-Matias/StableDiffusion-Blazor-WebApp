@@ -1,0 +1,115 @@
+@inject IStateService State
+@inject IDatabaseService DB
+@using BlazorWebApp.Data.Dtos
+
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="_metadataCollapsed" SidebarTitle="Model">
+    <Sidebar>
+        <div class="civitai-model-detail__sidebar">
+            <button type="button" class="send-to-btn civitai-model-detail__back" @onclick="HandleBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+                <span>Back to results</span>
+            </button>
+
+            @if (_activeVersion != null)
+            {
+                <CivitaiModelSpecCard Model="Model" Version="_activeVersion" Tags="Model.Tags" />
+            }
+        </div>
+    </Sidebar>
+    <Content>
+        <div class="civitai-model-detail">
+            <CivitaiModelHeader Model="Model" ShowClose="false" />
+
+            @if (Model.ModelVersions != null && Model.ModelVersions.Count > 1)
+            {
+                <CivitaiVersionSelector Versions="Model.ModelVersions" ActiveVersion="_activeVersion"
+                                        ActiveVersionChanged="HandleVersionChanged" />
+            }
+
+            @if (_activeVersion != null)
+            {
+                <div class="civitai-model-detail__media">
+                    <CivitaiModelHero Model="Model" Version="_activeVersion" />
+                </div>
+
+                <div class="civitai-model-detail__description-grid">
+                    <section class="civitai-model-detail__section">
+                        <MudText Typo="Typo.h6">Description</MudText>
+                        <div class="civitai-model-detail__prose">
+                            @if (!string.IsNullOrWhiteSpace(Model.Description))
+                            {
+                                @((MarkupString)Model.Description)
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No description provided.</MudText>
+                            }
+                        </div>
+                    </section>
+
+                    @if (!string.IsNullOrWhiteSpace(_activeVersion.Description))
+                    {
+                        <section class="civitai-model-detail__section">
+                            <MudText Typo="Typo.h6">@($"Version notes - {_activeVersion.Name}")</MudText>
+                            <div class="civitai-model-detail__prose">
+                                @((MarkupString)_activeVersion.Description)
+                            </div>
+                        </section>
+                    }
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No versions available.</MudText>
+            }
+        </div>
+    </Content>
+</TwoColumnLayout>
+
+@code {
+    [Parameter, EditorRequired] public CivitaiModelDto Model { get; set; } = default!;
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private bool _metadataCollapsed;
+    private int? _loadedModelId;
+    private CivitaiModelVersionDto? _activeVersion;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model == null) return;
+
+        if (_loadedModelId != Model.Id)
+        {
+            _loadedModelId = Model.Id;
+            _activeVersion = Model.ModelVersions?.FirstOrDefault();
+            await ApplyExistingSubtype();
+            return;
+        }
+
+        if (_activeVersion == null && Model.ModelVersions?.Count > 0)
+        {
+            _activeVersion = Model.ModelVersions[0];
+        }
+        else if (_activeVersion != null && Model.ModelVersions?.All(v => v.Id != _activeVersion.Id) == true)
+        {
+            _activeVersion = Model.ModelVersions.FirstOrDefault();
+        }
+    }
+
+    private async Task ApplyExistingSubtype()
+    {
+        var entity = await DB.GetResourceByCivitaiModelId(Model.Id);
+        if (entity != null)
+        {
+            State.State.Civitai.ResourceSubtype = entity.SubType?.Name ?? string.Empty;
+        }
+    }
+
+    private void HandleVersionChanged(CivitaiModelVersionDto version)
+    {
+        if (version == null) return;
+        _activeVersion = version;
+    }
+
+    private Task HandleBack() => OnBack.InvokeAsync();
+}

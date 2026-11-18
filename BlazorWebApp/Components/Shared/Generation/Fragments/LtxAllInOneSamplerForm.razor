@@ -1,0 +1,427 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@using BlazorWebApp.Workflows.Fragments.Ltx
+@attribute [FragmentComponent("LtxAllInOneSamplerForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <div class="send-to-section">
+            <div class="send-to-buttons">
+                <button type="button" class="send-to-btn" title="Load text-to-video setup" @onclick="ApplyTextToVideoSetup">
+                    <MudIcon Icon="@Icons.Material.Filled.Movie" Size="Size.Small" />
+                    <span>T2V Setup</span>
+                </button>
+                <button type="button" class="send-to-btn" title="Load image-to-video setup" @onclick="ApplyImageToVideoSetup">
+                    <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                    <span>I2V Setup</span>
+                </button>
+            </div>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double"
+                   @bind-Value="_localCfg"
+                   @bind-Value:after="OnCfgChanged"
+                   Min="0" Max="10" Step="0.1" ValueLabel>
+            <small>CFG:</small> @_localCfg.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="long"
+                         Label="Stage 1 Seed"
+                         Variant="Variant.Text"
+                         Dense="true"
+                         Min="-1"
+                         @bind-Value="_localStage1Seed"
+                         @bind-Value:after="OnStage1SeedChanged" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="long"
+                         Label="Stage 2 Seed"
+                         Variant="Variant.Text"
+                         Dense="true"
+                         Min="-1"
+                         @bind-Value="_localStage2Seed"
+                         @bind-Value:after="OnStage2SeedChanged" />
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="Stage 1 Sampler"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localStage1Sampler"
+                   @bind-Value:after="OnStage1SamplerChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _samplerOptions)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="Stage 2 Sampler"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localStage2Sampler"
+                   @bind-Value:after="OnStage2SamplerChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _samplerOptions)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudSelect T="string"
+                   Label="Sigma Mode"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localSigmaMode"
+                   @bind-Value:after="OnSigmaModeChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _sigmaModeOptions)
+            {
+                <MudSelectItem Value="@option">@GetSigmaModeLabel(option)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="8">
+        <MudSelect T="string"
+                   Label="Scheduler"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   Disabled="!IsBasicSigmaMode"
+                   @bind-Value="_localScheduler"
+                   @bind-Value:after="OnSchedulerChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _schedulerOptions)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+
+    @if (IsBasicSigmaMode)
+    {
+        <MudItem xs="12" sm="3">
+            <MudSlider T="int"
+                       @bind-Value="_localStage1BasicSteps"
+                       @bind-Value:after="OnStage1BasicStepsChanged"
+                       Min="1" Max="50" Step="1" ValueLabel>
+                <small>Stage 1 Basic Steps:</small> @_localStage1BasicSteps
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSlider T="double"
+                       @bind-Value="_localStage1Denoise"
+                       @bind-Value:after="OnStage1DenoiseChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Stage 1 Denoise:</small> @_localStage1Denoise.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSlider T="int"
+                       @bind-Value="_localStage2BasicSteps"
+                       @bind-Value:after="OnStage2BasicStepsChanged"
+                       Min="1" Max="50" Step="1" ValueLabel>
+                <small>Stage 2 Basic Steps:</small> @_localStage2BasicSteps
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSlider T="double"
+                       @bind-Value="_localStage2Denoise"
+                       @bind-Value:after="OnStage2DenoiseChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Stage 2 Denoise:</small> @_localStage2Denoise.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+
+    @if (IsVideoFlowSigmaMode)
+    {
+        <MudItem xs="12" sm="6">
+            <MudSlider T="int"
+                       @bind-Value="_localStage1Steps"
+                       @bind-Value:after="OnStage1StepsChanged"
+                       Min="1" Max="50" Step="1" ValueLabel>
+                <small>Stage 1 Steps:</small> @_localStage1Steps
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSlider T="int"
+                       @bind-Value="_localStage2Steps"
+                       @bind-Value:after="OnStage2StepsChanged"
+                       Min="1" Max="50" Step="1" ValueLabel>
+                <small>Stage 2 Steps:</small> @_localStage2Steps
+            </MudSlider>
+        </MudItem>
+    }
+
+    @if (IsVideoFlowSigmaMode)
+    {
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localStage1VideoFlowTerminal"
+                       @bind-Value:after="OnStage1VideoFlowTerminalChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Stage 1 Terminal:</small> @_localStage1VideoFlowTerminal.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localStage2VideoFlowStart"
+                       @bind-Value:after="OnStage2VideoFlowStartChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Stage 2 Start:</small> @_localStage2VideoFlowStart.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localStage2VideoFlowTerminal"
+                       @bind-Value:after="OnStage2VideoFlowTerminalChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>Stage 2 Terminal:</small> @_localStage2VideoFlowTerminal.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localVideoFlowMidpoint"
+                       @bind-Value:after="OnVideoFlowMidpointChanged"
+                       Min="0" Max="1" Step="0.01" ValueLabel>
+                <small>VideoFlow Midpoint:</small> @_localVideoFlowMidpoint.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localStage1VideoFlowShift"
+                       @bind-Value:after="OnStage1VideoFlowShiftChanged"
+                       Min="0" Max="2" Step="0.01" ValueLabel>
+                <small>Stage 1 Shift:</small> @_localStage1VideoFlowShift.ToString("F2")
+            </MudSlider>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSlider T="double"
+                       @bind-Value="_localStage2VideoFlowShift"
+                       @bind-Value:after="OnStage2VideoFlowShiftChanged"
+                       Min="0" Max="2" Step="0.01" ValueLabel>
+                <small>Stage 2 Shift:</small> @_localStage2VideoFlowShift.ToString("F2")
+            </MudSlider>
+        </MudItem>
+    }
+
+    @if (IsManualSigmaMode)
+    {
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string"
+                          Label="Stage 1 Manual Sigmas"
+                          Variant="Variant.Text"
+                          Dense="true"
+                          Lines="2"
+                          @bind-Value="_localStage1Sigmas"
+                          @bind-Value:after="OnStage1SigmasChanged" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudTextField T="string"
+                          Label="Stage 2 Manual Sigmas"
+                          Variant="Variant.Text"
+                          Dense="true"
+                          Lines="2"
+                          @bind-Value="_localStage2Sigmas"
+                          @bind-Value:after="OnStage2SigmasChanged" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localCfg = 1.0;
+    private long _localStage1Seed = 1;
+    private long _localStage2Seed = 100000;
+    private string _localStage1Sampler = "dpm_2_ancestral";
+    private string _localStage2Sampler = "dpm_2";
+    private string _localSigmaMode = SigmaModeVideoFlow;
+    private string _localScheduler = "linear_quadratic";
+    private int _localStage1BasicSteps = 8;
+    private int _localStage2BasicSteps = 2;
+    private int _localStage1Steps = 8;
+    private int _localStage2Steps = 8;
+    private double _localStage1Denoise = 1.0;
+    private double _localStage2Denoise = 0.15;
+    private double _localStage1VideoFlowTerminal = 0.15;
+    private double _localStage2VideoFlowStart = 0.80;
+    private double _localStage2VideoFlowTerminal = 0.0;
+    private double _localVideoFlowMidpoint = 0.54;
+    private double _localStage1VideoFlowShift = 1.0;
+    private double _localStage2VideoFlowShift = 0.5;
+    private string _localStage1Sigmas = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0";
+    private string _localStage2Sigmas = "0.8, 0.68, 0.54, 0.1, 0.0";
+
+    private const string SigmaModeBasic = "basic";
+    private const string SigmaModeVideoFlow = "videoflow";
+    private const string SigmaModeManual = "manual";
+
+    private string[] _samplerOptions = [];
+    private string[] _schedulerOptions = [];
+    private string[] _sigmaModeOptions = [];
+
+    private bool IsBasicSigmaMode => string.Equals(_localSigmaMode, SigmaModeBasic, StringComparison.OrdinalIgnoreCase);
+    private bool IsVideoFlowSigmaMode => string.Equals(_localSigmaMode, SigmaModeVideoFlow, StringComparison.OrdinalIgnoreCase);
+    private bool IsManualSigmaMode => string.Equals(_localSigmaMode, SigmaModeManual, StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _samplerOptions = GetOptions("stage1_sampler");
+        _schedulerOptions = GetOptions("scheduler");
+        _sigmaModeOptions = GetOptions("sigma_mode");
+
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, "cfg", GetDefault("cfg", 1.0));
+        _localStage1Seed = ParameterService.GetFragmentProperty(Fragment, "stage1_seed", GetDefault("stage1_seed", 1L));
+        _localStage2Seed = ParameterService.GetFragmentProperty(Fragment, "stage2_seed", GetDefault("stage2_seed", 100000L));
+        _localStage1Sampler = ParameterService.GetFragmentProperty(Fragment, "stage1_sampler", GetDefault("stage1_sampler", "dpm_2_ancestral")) ?? "dpm_2_ancestral";
+        _localStage2Sampler = ParameterService.GetFragmentProperty(Fragment, "stage2_sampler", GetDefault("stage2_sampler", "dpm_2")) ?? "dpm_2";
+        var legacyManualSigmas = ParameterService.GetFragmentProperty(Fragment, "use_manual_sigmas", GetDefault("use_manual_sigmas", false));
+        var defaultSigmaMode = legacyManualSigmas ? SigmaModeManual : GetDefault("sigma_mode", SigmaModeVideoFlow);
+        _localSigmaMode = ParameterService.GetFragmentProperty(Fragment, "sigma_mode", defaultSigmaMode) ?? defaultSigmaMode;
+
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, "scheduler", GetDefault("scheduler", "linear_quadratic")) ?? "linear_quadratic";
+    _localStage1BasicSteps = ParameterService.GetFragmentProperty(Fragment, "stage1_basic_steps", GetDefault("stage1_basic_steps", 8));
+    _localStage2BasicSteps = ParameterService.GetFragmentProperty(Fragment, "stage2_basic_steps", GetDefault("stage2_basic_steps", 2));
+        _localStage1Steps = ParameterService.GetFragmentProperty(Fragment, "stage1_steps", GetDefault("stage1_steps", 8));
+    _localStage2Steps = ParameterService.GetFragmentProperty(Fragment, "stage2_steps", GetDefault("stage2_steps", 8));
+        _localStage1Denoise = ParameterService.GetFragmentProperty(Fragment, "stage1_denoise", GetDefault("stage1_denoise", 1.0));
+        _localStage2Denoise = ParameterService.GetFragmentProperty(Fragment, "stage2_denoise", GetDefault("stage2_denoise", 0.15));
+        var stage1VideoFlowTerminalDefault = GetDefault("stage1_videoflow_terminal", 0.15);
+        _localStage1VideoFlowTerminal = Fragment.Parameters.Values.ContainsKey("stage1_videoflow_terminal")
+            ? ParameterService.GetFragmentProperty(Fragment, "stage1_videoflow_terminal", stage1VideoFlowTerminalDefault)
+            : ParameterService.GetFragmentProperty(Fragment, "videoflow_terminal", stage1VideoFlowTerminalDefault);
+        _localStage2VideoFlowStart = ParameterService.GetFragmentProperty(Fragment, "stage2_videoflow_start", GetDefault("stage2_videoflow_start", 0.80));
+        _localStage2VideoFlowTerminal = ParameterService.GetFragmentProperty(Fragment, "stage2_videoflow_terminal", GetDefault("stage2_videoflow_terminal", 0.0));
+        _localVideoFlowMidpoint = ParameterService.GetFragmentProperty(Fragment, "videoflow_midpoint", GetDefault("videoflow_midpoint", 0.54));
+        var legacyVideoFlowShift = ParameterService.GetFragmentProperty(Fragment, "videoflow_flatness", GetDefault("stage1_videoflow_shift", 1.0));
+        _localStage1VideoFlowShift = Fragment.Parameters.Values.ContainsKey("stage1_videoflow_shift")
+            ? ParameterService.GetFragmentProperty(Fragment, "stage1_videoflow_shift", GetDefault("stage1_videoflow_shift", 1.0))
+            : legacyVideoFlowShift;
+        _localStage2VideoFlowShift = ParameterService.GetFragmentProperty(Fragment, "stage2_videoflow_shift", GetDefault("stage2_videoflow_shift", 0.5));
+        _localStage1Sigmas = ParameterService.GetFragmentProperty(Fragment, "stage1_sigmas", _localStage1Sigmas) ?? _localStage1Sigmas;
+        _localStage2Sigmas = ParameterService.GetFragmentProperty(Fragment, "stage2_sigmas", _localStage2Sigmas) ?? _localStage2Sigmas;
+    }
+
+    private string[] GetOptions(string parameterName)
+        => Fragment?.Schema?.GetConstraints(parameterName).Options?.ToArray() ?? [];
+
+    private T GetDefault<T>(string parameterName, T fallback)
+    {
+        var constraints = Fragment?.Schema?.GetConstraints(parameterName);
+        if (constraints?.Default == null)
+        {
+            return fallback;
+        }
+
+        var value = constraints.GetDefault<T>();
+        return value == null ? fallback : value;
+    }
+
+    private static string GetSigmaModeLabel(string mode) => mode switch
+    {
+        SigmaModeBasic => "Basic Scheduler",
+        SigmaModeVideoFlow => "VideoFlow Shaping",
+        SigmaModeManual => "Manual Sigmas",
+        _ => mode
+    };
+
+    private async Task SetValue<T>(string key, T value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnCfgChanged() => SetValue("cfg", _localCfg);
+    private Task OnStage1SeedChanged() => SetValue("stage1_seed", _localStage1Seed);
+    private Task OnStage2SeedChanged() => SetValue("stage2_seed", _localStage2Seed);
+    private Task OnStage1SamplerChanged() => SetValue("stage1_sampler", _localStage1Sampler);
+    private Task OnStage2SamplerChanged() => SetValue("stage2_sampler", _localStage2Sampler);
+    private async Task OnSigmaModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "sigma_mode", _localSigmaMode, notify: true);
+        ParameterService.SetFragmentProperty(Fragment, "use_manual_sigmas", IsManualSigmaMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnSchedulerChanged() => SetValue("scheduler", _localScheduler);
+    private Task OnStage1BasicStepsChanged() => SetValue("stage1_basic_steps", _localStage1BasicSteps);
+    private Task OnStage2BasicStepsChanged() => SetValue("stage2_basic_steps", _localStage2BasicSteps);
+    private Task OnStage1StepsChanged() => SetValue("stage1_steps", _localStage1Steps);
+    private Task OnStage2StepsChanged() => SetValue("stage2_steps", _localStage2Steps);
+    private Task OnStage1DenoiseChanged() => SetValue("stage1_denoise", _localStage1Denoise);
+    private Task OnStage2DenoiseChanged() => SetValue("stage2_denoise", _localStage2Denoise);
+    private Task OnStage1VideoFlowTerminalChanged() => SetValue("stage1_videoflow_terminal", _localStage1VideoFlowTerminal);
+    private Task OnStage2VideoFlowStartChanged() => SetValue("stage2_videoflow_start", _localStage2VideoFlowStart);
+    private Task OnStage2VideoFlowTerminalChanged() => SetValue("stage2_videoflow_terminal", _localStage2VideoFlowTerminal);
+    private Task OnVideoFlowMidpointChanged() => SetValue("videoflow_midpoint", _localVideoFlowMidpoint);
+    private Task OnStage1VideoFlowShiftChanged() => SetValue("stage1_videoflow_shift", _localStage1VideoFlowShift);
+    private Task OnStage2VideoFlowShiftChanged() => SetValue("stage2_videoflow_shift", _localStage2VideoFlowShift);
+    private Task OnStage1SigmasChanged() => SetValue("stage1_sigmas", _localStage1Sigmas);
+    private Task OnStage2SigmasChanged() => SetValue("stage2_sigmas", _localStage2Sigmas);
+
+    private Task ApplyTextToVideoSetup()
+        => ApplySetup(LtxAllInOneSamplerFragment.CreateTextToVideoDefaults());
+
+    private Task ApplyImageToVideoSetup()
+        => ApplySetup(LtxAllInOneSamplerFragment.CreateImageToVideoDefaults());
+
+    private async Task ApplySetup(LtxAllInOneSamplerFragment.Parameters setup)
+    {
+        _localCfg = setup.Cfg;
+        _localStage1Sampler = setup.Stage1Sampler;
+        _localStage2Sampler = setup.Stage2Sampler;
+        _localSigmaMode = setup.SigmaMode;
+        _localScheduler = setup.Scheduler;
+        _localStage1BasicSteps = setup.Stage1BasicSteps;
+        _localStage2BasicSteps = setup.Stage2BasicSteps;
+        _localStage1Steps = setup.Stage1Steps;
+        _localStage2Steps = setup.Stage2Steps;
+        _localStage1Denoise = setup.Stage1Denoise;
+        _localStage2Denoise = setup.Stage2Denoise;
+        _localStage1VideoFlowTerminal = setup.Stage1VideoFlowTerminal;
+        _localStage2VideoFlowStart = setup.Stage2VideoFlowStart;
+        _localStage2VideoFlowTerminal = setup.Stage2VideoFlowTerminal;
+        _localVideoFlowMidpoint = setup.VideoFlowMidpoint;
+        _localStage1VideoFlowShift = setup.Stage1VideoFlowShift;
+        _localStage2VideoFlowShift = setup.Stage2VideoFlowShift;
+
+        ParameterService.SetFragmentProperty(Fragment, "cfg", _localCfg, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_sampler", _localStage1Sampler, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_sampler", _localStage2Sampler, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "sigma_mode", _localSigmaMode, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "use_manual_sigmas", false, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "scheduler", _localScheduler, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_basic_steps", _localStage1BasicSteps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_basic_steps", _localStage2BasicSteps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_steps", _localStage1Steps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_steps", _localStage2Steps, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_denoise", _localStage1Denoise, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_denoise", _localStage2Denoise, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_videoflow_terminal", _localStage1VideoFlowTerminal, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_videoflow_start", _localStage2VideoFlowStart, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_videoflow_terminal", _localStage2VideoFlowTerminal, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "videoflow_midpoint", _localVideoFlowMidpoint, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage1_videoflow_shift", _localStage1VideoFlowShift, notify: false);
+        ParameterService.SetFragmentProperty(Fragment, "stage2_videoflow_shift", _localStage2VideoFlowShift, notify: false);
+
+        ParameterService.NotifyChanged();
+        await OnChanged.InvokeAsync();
+    }
+}

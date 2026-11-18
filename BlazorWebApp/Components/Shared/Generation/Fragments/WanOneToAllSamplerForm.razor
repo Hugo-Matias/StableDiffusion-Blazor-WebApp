@@ -1,0 +1,104 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanOneToAllSamplerForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Scheduler</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_scheduler" @bind-Value:after="OnSchedulerChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _schedulerOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="_schedulerSteps" @bind-Value:after="OnSchedulerStepsChanged" Min="1" Max="100" Step="1" Variant="Variant.Text" ValueLabel>
+            <small>Scheduler Steps:</small> @_schedulerSteps
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Sampler</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="_samplerSteps" @bind-Value:after="OnSamplerStepsChanged" Min="1" Max="100" Step="1" Variant="Variant.Text" ValueLabel>
+            <small>Sampler Steps:</small> @_samplerSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_cfg" @bind-Value:after="OnCfgChanged" Min="0" Max="30" Step="0.01" Variant="Variant.Text" ValueLabel>
+            <small>CFG:</small> @_cfg.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_shift" @bind-Value:after="OnShiftChanged" Min="0" Max="1000" Step="0.01" Variant="Variant.Text" ValueLabel>
+            <small>Shift:</small> @_shift.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_seed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" Variant="Variant.Text" Dense="true" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Variant="Variant.Text" Title="Random seed" />
+        </MudStack>
+    </MudItem>
+    <MudItem xs="12">
+        <MudCheckBox @bind-Value="_forceOffload" @bind-Value:after="OnForceOffloadChanged" Label="Force Offload" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _scheduler = "unipc";
+    private int _schedulerSteps = 2;
+    private int _samplerSteps = 8;
+    private double _cfg = 1.0;
+    private double _shift = 7.0;
+    private long _seed;
+    private bool _forceOffload = true;
+
+    private readonly List<string> _schedulerOptions = new()
+    {
+        "unipc", "unipc/beta", "dpm++", "dpm++/beta", "dpm++_sde", "dpm++_sde/beta", "euler", "euler/beta",
+        "longcat_distill_euler", "deis", "lcm", "lcm/beta", "res_multistep", "er_sde", "flowmatch_causvid",
+        "flowmatch_distill", "flowmatch_pusa", "multitalk", "sa_ode_stable", "rcm", "vibt_unipc"
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _scheduler = ParameterService.GetFragmentProperty(Fragment, "scheduler", "unipc");
+        _schedulerSteps = ParameterService.GetFragmentProperty(Fragment, "scheduler_steps", 2);
+        _samplerSteps = ParameterService.GetFragmentProperty(Fragment, "sampler_steps", 8);
+        _cfg = ParameterService.GetFragmentProperty(Fragment, "cfg", 1.0);
+        _shift = ParameterService.GetFragmentProperty(Fragment, "shift", 7.0);
+        _seed = ParameterService.GetFragmentProperty(Fragment, "seed", 0L);
+        _forceOffload = ParameterService.GetFragmentProperty(Fragment, "force_offload", true);
+    }
+
+    private async Task SetValue<TValue>(string key, TValue value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnSchedulerChanged() => SetValue("scheduler", _scheduler);
+    private Task OnSchedulerStepsChanged() => SetValue("scheduler_steps", _schedulerSteps);
+    private Task OnSamplerStepsChanged() => SetValue("sampler_steps", _samplerSteps);
+    private Task OnCfgChanged() => SetValue("cfg", _cfg);
+    private Task OnShiftChanged() => SetValue("shift", _shift);
+    private Task OnSeedChanged() => SetValue("seed", _seed);
+    private Task OnForceOffloadChanged() => SetValue("force_offload", _forceOffload);
+
+    private async Task SetRandomSeed()
+    {
+        _seed = -1;
+        await SetValue("seed", _seed);
+    }
+}

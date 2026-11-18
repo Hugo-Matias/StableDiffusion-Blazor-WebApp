@@ -1,0 +1,23 @@
+# Animals and creatures
+cat
+dog
+horse
+wolf
+lion
+tiger
+bear
+eagle
+hawk
+owl
+dragon
+phoenix
+unicorn
+deer
+rabbit
+fox
+snake
+fish
+whale
+dolphin
+butterfly
+bird

@@ -1,0 +1,34 @@
+{
+  "collection": {
+    "name": "materials-textures",
+    "category": "Fashion & Clothing",
+    "description": "Material and texture descriptors for garment randomization in wardrobe change prompts. Balanced verbosity with tactile visual qualities.",
+    "entries": [
+      { "value": "soft cotton jersey", "weight": 1.3, "sortOrder": 0 },
+      { "value": "smooth silk satin", "weight": 1.2, "sortOrder": 1 },
+      { "value": "heavy wool tweed", "weight": 1.0, "sortOrder": 2 },
+      { "value": "stretchy spandex blend", "weight": 1.0, "sortOrder": 3 },
+      { "value": "crisp linen fabric", "weight": 1.0, "sortOrder": 4 },
+      { "value": "thick denim canvas", "weight": 1.2, "sortOrder": 5 },
+      { "value": "plush velvet material", "weight": 1.0, "sortOrder": 6 },
+      { "value": "glossy leather finish", "weight": 1.1, "sortOrder": 7 },
+      { "value": "matte suede texture", "weight": 0.9, "sortOrder": 8 },
+      { "value": "sheer chiffon overlay", "weight": 0.8, "sortOrder": 9 },
+      { "value": "ribbed knit cotton", "weight": 1.0, "sortOrder": 10 },
+      { "value": "mesh netting fabric", "weight": 0.7, "sortOrder": 11 },
+      { "value": "corduroy ribbed texture", "weight": 0.8, "sortOrder": 12 },
+      { "value": "shimmering sequin surface", "weight": 0.7, "sortOrder": 13 },
+      { "value": "quilted padded material", "weight": 0.9, "sortOrder": 14 },
+      { "value": "raw silk crinkle texture", "weight": 0.8, "sortOrder": 15 },
+      { "value": "fleece brushed interior", "weight": 1.0, "sortOrder": 16 },
+      { "value": "nylon technical fabric", "weight": 0.9, "sortOrder": 17 },
+      { "value": "lace delicate overlay", "weight": 1.0, "sortOrder": 18 },
+      { "value": "faux fur plush texture", "weight": 0.7, "sortOrder": 19 },
+      { "value": "neoprene wetsuit material", "weight": 0.6, "sortOrder": 20 },
+      { "value": "organza stiff tulle", "weight": 0.6, "sortOrder": 21 },
+      { "value": "cashmere soft blend", "weight": 0.9, "sortOrder": 22 },
+      { "value": "hammock crochet knit", "weight": 0.7, "sortOrder": 23 },
+      { "value": "metallic foil finish", "weight": 0.6, "sortOrder": 24 }
+    ]
+  }
+}

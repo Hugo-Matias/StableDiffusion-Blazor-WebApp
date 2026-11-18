@@ -1,0 +1,157 @@
+@* Odditarium - Persona Selection Screen.
+   Vertical layout: cards on top, detail panel below (hidden until hover/select).
+   Each card has 3 image states: idle, hover, active (selected). *@
+@using BlazorWebApp.Models
+
+<div class="odd-persona-screen">
+    @* Header section *@
+    <div class="odd-persona-header">
+        <button type="button" class="odd-back-btn" @onclick="OnBackClicked">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+            Back
+        </button>
+        <h2 class="odd-persona-title">Choose Your Guide</h2>
+        <p class="odd-persona-subtitle">Each persona sees the world differently. Pick one to lead your journey.</p>
+    </div>
+
+    @* Card grid *@
+    <div class="odd-card-grid">
+        @foreach (var persona in _roster)
+        {
+            bool isSelected = _selectedId == persona.Id;
+            bool isHovered = _hoveredId == persona.Id && !isSelected;
+            string? imageSrc = GetImage(persona, isSelected, isHovered);
+
+            <div class="odd-card @(isSelected ? "odd-card--active" : "") @(isHovered ? "odd-card--hovered" : "")"
+                 style="--card-accent: @(persona.AccentColor);" @onclick="() => SelectPersona(persona.Id)"
+                 @onmouseenter="() => _hoveredId = persona.Id" @onmouseleave="() => _hoveredId = null">
+                @* Card inner frame *@
+                <div class="odd-card-frame">
+                    @* Corner ornaments *@
+                    <span class="odd-corner odd-corner--tl"></span>
+                    <span class="odd-corner odd-corner--tr"></span>
+                    <span class="odd-corner odd-corner--bl"></span>
+                    <span class="odd-corner odd-corner--br"></span>
+
+                    @* Card art area *@
+                    <div class="odd-card-art">
+                        <img src="@imageSrc" alt="@persona.Name" loading="lazy" class="odd-card-img" />
+                        <div class="odd-card-overlay"></div>
+                    </div>
+
+                    @* Card info panel *@
+                    <div class="odd-card-info">
+                        <h3 class="odd-card-name">@persona.Name</h3>
+                        <span class="odd-card-tagline">@persona.Tagline</span>
+
+                        @* Thematic tags as chips *@
+                        <div class="odd-card-tags">
+                            @foreach (var tag in persona.ThematicTags)
+                            {
+                                <span class="odd-tag">@tag</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Selection indicator *@
+                @if (isSelected)
+                {
+                    <div class="odd-card-check">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* Detail panel - below cards, only visible when hovering or selected *@
+    @if (_focusedPersona != null)
+    {
+        var p = _focusedPersona;
+        <div class="odd-detail-panel" style="--detail-accent: @(p.AccentColor);">
+            <div class="odd-detail-inner">
+                <div class="odd-detail-text">
+                    <h3 class="odd-detail-name">@p.Name</h3>
+                    <span class="odd-detail-tagline">@p.Tagline</span>
+
+                    <div class="odd-detail-tags">
+                        @foreach (var tag in p.ThematicTags)
+                        {
+                            <span class="odd-detail-tag">@tag</span>
+                        }
+                    </div>
+
+                    <p class="odd-detail-desc">@p.Description</p>
+
+                    @* Tone preview *@
+                    <div class="odd-detail-tone">
+                        <span class="odd-detail-tone-label">Tone Bias</span>
+                        <span class="odd-detail-tone-value">"@p.ToneBias"</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Confirm bar *@
+    <div class="odd-confirm-bar">
+        @if (_selectedPersona != null)
+        {
+            <span class="odd-confirm-text">
+                <strong>@_selectedPersona.Name</strong> will guide your journey.
+            </span>
+        }
+        else
+        {
+            <span class="odd-confirm-text odd-confirm-text--muted">Select a persona to continue.</span>
+        }
+        <button type="button" class="odd-confirm-btn" @onclick="OnConfirmAsync" disabled="@(_selectedPersona == null)">
+            Continue
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> PersonaSelected { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private readonly IReadOnlyList<OdditariumPersona> _roster = OdditariumPersonaRoster.All;
+    private string? _selectedId;
+    private string? _hoveredId;
+
+    // Selected takes priority over hovered for the detail panel
+    private OdditariumPersona? _focusedPersona => GetPersona(_selectedId) ?? GetPersona(_hoveredId);
+    private OdditariumPersona? _selectedPersona => _selectedId is null ? null :
+OdditariumPersonaRoster.FindById(_selectedId!);
+
+    private OdditariumPersona? GetPersona(string? id) => id is null ? null : OdditariumPersonaRoster.FindById(id);
+
+    /// <summary>Return the correct image for the card state: active > hover > idle.</summary>
+    private string? GetImage(OdditariumPersona persona, bool isActive, bool isHovered)
+    {
+        if (isActive && !string.IsNullOrWhiteSpace(persona.ImageAssetActive))
+            return persona.ImageAssetActive;
+        if (isHovered && !string.IsNullOrWhiteSpace(persona.ImageAssetHover))
+            return persona.ImageAssetHover;
+        return persona.ImageAssetIdle;
+    }
+
+    private void SelectPersona(string id)
+    {
+        _selectedId = (_selectedId == id) ? null : id;
+    }
+
+    private async Task OnConfirmAsync()
+    {
+        if (_selectedId is not null)
+        {
+            await PersonaSelected.InvokeAsync(_selectedId);
+        }
+    }
+
+    private async Task OnBackClicked()
+    {
+        await OnBack.InvokeAsync();
+    }
+}

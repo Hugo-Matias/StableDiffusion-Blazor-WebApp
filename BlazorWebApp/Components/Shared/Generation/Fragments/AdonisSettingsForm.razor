@@ -1,0 +1,193 @@
+@*
+    AdonisSettingsForm - Form for the adonis_settings UI fragment.
+
+    Exposes:
+      - Output megapixels and multiple-of for the input image scaler.
+      - Per-LoRA strength + sampler-target toggle (base / refine / both)
+        for the two hardcoded Adonis LoRAs (adonis_base, adonis_refine).
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("AdonisSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudSlider T="double"
+                   @bind-Value="_localMegapixels"
+                   @bind-Value:after="OnMegapixelsChanged"
+                   Min="@_megapixelsMin"
+                   Max="@_megapixelsMax"
+                   Step="@_megapixelsStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Megapixels:</small> @_localMegapixels.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int"
+                   @bind-Value="_localMultipleOf"
+                   @bind-Value:after="OnMultipleOfChanged"
+                   Min="@_multipleOfMin"
+                   Max="@_multipleOfMax"
+                   Step="@_multipleOfStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Multiple Of:</small> @_localMultipleOf
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudDivider Class="my-1" />
+    </MudItem>
+
+    <MudItem xs="8">
+        <MudSlider T="double"
+                   @bind-Value="_localBaseStrength"
+                   @bind-Value:after="OnBaseStrengthChanged"
+                   Min="@_strengthMin"
+                   Max="@_strengthMax"
+                   Step="@_strengthStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Adonis Base Strength:</small> @_localBaseStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSelect T="string" Label="Apply To"
+                   @bind-Value="_localBaseTarget"
+                   @bind-Value:after="OnBaseTargetChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var t in _targets)
+            {
+                <MudSelectItem Value="@t">@FormatTarget(t)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="8">
+        <MudSlider T="double"
+                   @bind-Value="_localRefineStrength"
+                   @bind-Value:after="OnRefineStrengthChanged"
+                   Min="@_strengthMin"
+                   Max="@_strengthMax"
+                   Step="@_strengthStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Adonis Refine Strength:</small> @_localRefineStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="4">
+        <MudSelect T="string" Label="Apply To"
+                   @bind-Value="_localRefineTarget"
+                   @bind-Value:after="OnRefineTargetChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var t in _targets)
+            {
+                <MudSelectItem Value="@t">@FormatTarget(t)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localMegapixels = 1.7;
+    private int _localMultipleOf = 16;
+    private double _localBaseStrength = 1.0;
+    private string _localBaseTarget = "base";
+    private double _localRefineStrength = 1.0;
+    private string _localRefineTarget = "refine";
+
+    private double _megapixelsMin = 0.1, _megapixelsMax = 8.0, _megapixelsStep = 0.1;
+    private int _multipleOfMin = 1, _multipleOfMax = 64, _multipleOfStep = 1;
+    private double _strengthMin = 0, _strengthMax = 2, _strengthStep = 0.05;
+
+    private static readonly string[] _targets = new[] { "base", "refine", "both" };
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localMegapixels = ParameterService.GetFragmentProperty(Fragment, "megapixels", 1.7);
+        _localMultipleOf = ParameterService.GetFragmentProperty(Fragment, "multiple_of", 16);
+        _localBaseStrength = ParameterService.GetFragmentProperty(Fragment, "adonis_base_strength", 1.0);
+        _localBaseTarget = ParameterService.GetFragmentProperty(Fragment, "adonis_base_target", "base") ?? "base";
+        _localRefineStrength = ParameterService.GetFragmentProperty(Fragment, "adonis_refine_strength", 1.0);
+        _localRefineTarget = ParameterService.GetFragmentProperty(Fragment, "adonis_refine_target", "refine") ?? "refine";
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("megapixels", out var mp))
+        {
+            _megapixelsMin = mp.GetMin(0.1);
+            _megapixelsMax = mp.GetMax(8.0);
+            _megapixelsStep = mp.GetStep(0.1);
+        }
+        if (Fragment.Schema.Parameters.TryGetValue("multiple_of", out var mo))
+        {
+            _multipleOfMin = mo.GetMin(1);
+            _multipleOfMax = mo.GetMax(64);
+            _multipleOfStep = mo.GetStep(1);
+        }
+        if (Fragment.Schema.Parameters.TryGetValue("adonis_base_strength", out var bs))
+        {
+            _strengthMin = bs.GetMin(0);
+            _strengthMax = bs.GetMax(2);
+            _strengthStep = bs.GetStep(0.05);
+        }
+    }
+
+    private static string FormatTarget(string t) => t switch
+    {
+        "base" => "Base sampler",
+        "refine" => "Refine sampler",
+        "both" => "Both samplers",
+        _ => t
+    };
+
+    private async Task OnMegapixelsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "megapixels", _localMegapixels, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnMultipleOfChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "multiple_of", _localMultipleOf, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnBaseStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "adonis_base_strength", _localBaseStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnBaseTargetChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "adonis_base_target", _localBaseTarget, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnRefineStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "adonis_refine_strength", _localRefineStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnRefineTargetChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "adonis_refine_target", _localRefineTarget, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

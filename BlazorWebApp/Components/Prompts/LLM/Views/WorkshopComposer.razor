@@ -1,0 +1,99 @@
+@* Workshop inline composer (Phase 8.6 Step 4).
+   Renders at the bottom of the chat thread. Handles:
+   - Multiline text entry with Enter-to-send (Shift+Enter for newline).
+   - Send button -> emits OnSend(text).
+   - Spawn Variations button -> emits OnSpawnVariations() (parent opens evolve dialog).
+   - Gear button -> emits OnAdvanced() (parent opens slim chat dialog for depth/model overrides). *@
+@using BlazorWebApp.Data.Entities
+@inject IJSRuntime JS
+
+<div class="workshop-composer" @ref="_rootEl">
+    <MudTextField @bind-Value="_text" Placeholder="@Placeholder" Lines="1" AutoGrow="true" MaxLines="6"
+                  Variant="Variant.Text" Margin="Margin.Dense" Immediate="true" Disabled="@Disabled" Class="flex-grow-1"
+                  OnKeyDown="OnKeyDownAsync" />
+
+    <div class="workshop-composer-actions">
+        <MudIconButton Icon="@Icons.Material.Filled.Tune" Size="Size.Small" Variant="Variant.Text" Title="Chat options"
+                       Disabled="@Disabled" OnClick="OnAdvancedClickAsync" />
+
+        <button class="send-to-btn" @onclick="OnSpawnClickAsync" disabled="@Disabled"
+                title="Spawn variations from the active node">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+            <span>Variations</span>
+        </button>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Send" Disabled="@(Disabled || !_canSend)" OnClick="OnSendClickAsync">
+            Send
+        </MudButton>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Type to refine the prompt - Enter to send, Shift+Enter for newline";
+
+    /// <summary>Fired when the user submits text (Enter or Send button).</summary>
+    [Parameter] public EventCallback<string> OnSend { get; set; }
+
+    /// <summary>Fired when the user clicks the Variations button.</summary>
+    [Parameter] public EventCallback OnSpawnVariations { get; set; }
+
+    /// <summary>Fired when the user clicks the gear icon (advanced chat options).</summary>
+    [Parameter] public EventCallback OnAdvanced { get; set; }
+
+    private string _text = string.Empty;
+    private bool _canSend => !string.IsNullOrWhiteSpace(_text);
+    private ElementReference _rootEl;
+
+    /// <summary>Allows the parent to push the composer's text (e.g. after dialog confirm).</summary>
+    public void SetText(string value)
+    {
+        _text = value ?? string.Empty;
+        StateHasChanged();
+    }
+
+    public string CurrentText => _text;
+
+    public void Clear()
+    {
+        _text = string.Empty;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Attach the JS Enter-preventDefault handler. Re-attach is idempotent (the
+        // JS guards via dataset) so it's safe to call on every render - this also
+        // handles the textarea being recreated when the parent toggles between
+        // empty state and populated state.
+        try
+        {
+            await JS.InvokeVoidAsync("workshopComposer.attach", _rootEl);
+        }
+        catch
+        {
+            // Non-fatal: Enter-to-send still works, but a stray newline may appear.
+        }
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        // JS layer prevents the default newline; we only need to detect the intent.
+        if (e.Key == "Enter" && !e.ShiftKey && !e.CtrlKey && !e.AltKey)
+        {
+            await OnSendClickAsync();
+        }
+    }
+
+    private async Task OnSendClickAsync()
+    {
+        if (Disabled || !_canSend) return;
+        var payload = _text.Trim();
+        if (string.IsNullOrWhiteSpace(payload)) return;
+        await OnSend.InvokeAsync(payload);
+    }
+
+    private Task OnSpawnClickAsync() => OnSpawnVariations.InvokeAsync();
+    private Task OnAdvancedClickAsync() => OnAdvanced.InvokeAsync();
+}

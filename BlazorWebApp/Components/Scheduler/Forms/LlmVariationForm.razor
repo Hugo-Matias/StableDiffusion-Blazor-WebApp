@@ -1,0 +1,95 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+@using BlazorWebApp.Services
+@inject OllamaService Ollama
+@inject IDatabaseService DB
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_promptOnly" />
+
+    <MudSelect T="string" @bind-Value="Variation.ModelName" Label="Ollama model"
+               Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomCenter">
+        @foreach (var name in _models)
+        {
+            <MudSelectItem T="string" Value="@name">@name</MudSelectItem>
+        }
+    </MudSelect>
+    @if (_loadError)
+    {
+        <MudAlert Severity="Severity.Warning" Dense>
+            Could not reach Ollama. Enter the model name manually below.
+        </MudAlert>
+        <MudTextField @bind-Value="Variation.ModelName" Label="Model name" Variant="Variant.Text" />
+    }
+
+    <MudTextField @bind-Value="Variation.BasePrompt" Label="Base prompt" Lines="3" Variant="Variant.Text"
+                  HelperText="Seed prompt the LLM will vary each iteration. Substituted into the template's {prompt} placeholder." />
+
+    <MudSelect T="int?" Value="Variation.SystemPromptTemplateId" ValueChanged="OnSystemPromptTemplateChanged"
+               Label="System prompt template" Variant="Variant.Text" Dense="true"
+               AnchorOrigin="Origin.BottomCenter" Clearable
+               HelperText="Managed on the Prompts page (LLM tab). When empty, the default expand-prompt behavior is used.">
+        <MudSelectItem T="int?" Value="@((int?)null)">(default)</MudSelectItem>
+        @foreach (var t in _templates)
+        {
+            <MudSelectItem T="int?" Value="@((int?)t.Id)">
+                <div class="d-flex justify-space-between align-center" style="width: 100%;">
+                    <span>@t.Name</span>
+                    @if (t.IsDefault)
+                    {
+                        <MudChip Size="Size.Small" Color="Color.Info">Default</MudChip>
+                    }
+                </div>
+            </MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudNumericField T="int" @bind-Value="Variation.Count" Label="Count" Min="1" Variant="Variant.Text" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center">
+            <MudSwitch T="bool" @bind-Value="Variation.IsNegative" Color="Color.Primary" Label="Negative prompt" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public LlmVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    private static readonly ParameterTargetPicker.TargetKind[] _promptOnly = new[] { ParameterTargetPicker.TargetKind.Prompt };
+
+    private List<string> _models = new();
+    private List<SystemPromptTemplate> _templates = new();
+    private bool _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var models = await Ollama.GetModels();
+            _models = models.Select(m => m.Name).Where(n => !string.IsNullOrEmpty(n)).OrderBy(n => n).ToList();
+        }
+        catch
+        {
+            _loadError = true;
+        }
+
+        try
+        {
+            _templates = await DB.GetSystemPromptTemplates();
+        }
+        catch
+        {
+            _templates = new();
+        }
+    }
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+    private void OnSystemPromptTemplateChanged(int? value) => Variation.SystemPromptTemplateId = value;
+}
+

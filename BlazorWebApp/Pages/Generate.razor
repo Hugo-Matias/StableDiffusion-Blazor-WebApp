@@ -1,0 +1,131 @@
+@page "/generate"
+@page "/generate/{WorkflowId}"
+@using BlazorWebApp.Components.Img2Vid
+@using BlazorWebApp.Events
+@using BlazorWebApp.Components.Shared.Generation
+@using BlazorWebApp.Components.Shared.Generation.Fragments
+@using BlazorWebApp.Components.ImageEditor
+@using static BlazorWebApp.Data.Enums
+@using static BlazorWebApp.Models.FragmentKeys
+@inject IComfyUIService API
+@inject IOrchestratorService Orchestrator
+@inject IStateService State
+@inject ISessionService Session
+@inject IEventService Events
+@inject IWorkflowService WorkflowService
+@inject IImageService ImageService
+@inject IGenerationParameterService ParameterService
+@inject IComponentRegistry ComponentRegistry
+@inject IBackendService Backend
+@inject NavigationManager NavManager
+@inject ILogger<Generate> Logger
+@inject IInfoService InfoService
+@implements IDisposable
+
+@if (_selectedWorkflow != null)
+{
+    @* Workflow Assets Panel - Full width before prompts *@
+    <WorkflowAssetsPanel Mode="@_selectedWorkflow.Mode" Workflow="@_selectedWorkflow" Columns="3"
+                         IsInitiallyExpanded="false" />
+
+    @if (!IsAudioMode)
+    {
+        @* Prompts + Generate Button (full width) *@
+        <PromptsForm Prompt="@GetPromptValue()" PromptChanged="HandlePromptChanged" NegativePrompt="@GetNegativePromptValue()"
+                     NegativePromptChanged="HandleNegativePromptChanged" OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync"
+                     OnInterrupt="InterruptAsync" OnLoraSelected="HandleLoraAdded" OnStylesChanged="HandleStylesChanged"
+                     OnPromptTagAppended="HandlePromptTagAppended" OnNegativePromptTagAppended="HandleNegativePromptTagAppended"
+                     ButtonDisabled="@_isGenerating" />
+    }
+    else
+    {
+        @* Audio Prompts + Generate Button (matching image/video design) *@
+        <AudioPromptsForm OnGenerate="GenerateAsync" OnClearQueue="ClearQueueAsync" OnInterrupt="InterruptAsync"
+                          ButtonDisabled="@_isGenerating" />
+    }
+
+    @* Two-column layout *@
+    <MudGrid Spacing="8">
+        @* Left Column - Parameters *@
+        <MudItem xs="6">
+            @* LoRAs *@
+            @if (!IsAudioMode)
+            {
+                <LoraForm Loras="Parameters.Loras" Backend="Data.Enums.Backend.ComfyUI"
+                          IsDualModel="@(_selectedWorkflow?.UsesDualModelLoras == true)"
+                          HighTargetLabel="@(_selectedWorkflow?.DualModelLoraHighLabel ?? "H")"
+                          LowTargetLabel="@(_selectedWorkflow?.DualModelLoraLowLabel ?? "L")"
+                          BothTargetLabel="@(_selectedWorkflow?.DualModelLoraBothLabel ?? "Both")"
+                          OnLorasUpdated="HandleLorasUpdated" />
+            }
+
+            @* Sources (if workflow has sources) *@
+            @if (HasSources)
+            {
+                <SourcesPanel Sources="@Parameters.Sources" SourceDefinitions="@_selectedWorkflow?.Sources"
+                              SupportsInpaintMode="@SupportsSourceInpaintMode" IsInpaintMode="@IsInpaintMode"
+                              IsInpaintModeChanged="HandleInpaintModeChanged" OnSourceChanged="HandleSourceChanged"
+                              OnSourceAdded="HandleSourceAdded" OnSourceRemoved="HandleSourceRemoved" OnEditClicked="HandleEditClicked"
+                              OnBlankCanvasClicked="HandleBlankCanvasClicked" />
+            }
+
+            @* Latent/Resolution (if present in pipeline) *@
+            @if (ParameterService.PrimaryLatentFragment != null)
+            {
+                <FragmentRenderer Fragment="@ParameterService.PrimaryLatentFragment" OnChanged="HandleFragmentValueChanged" />
+            }
+
+            @* Sampler (if present in pipeline) *@
+            @if (ParameterService.PrimarySamplerFragment != null)
+            {
+                <FragmentRenderer Fragment="@ParameterService.PrimarySamplerFragment" OnChanged="HandleFragmentValueChanged" />
+            }
+
+            @* Optional Features (wrapped in CollapsibleFeatureSection) *@
+            @foreach (var fragmentRef in ParameterService.OptionalFragments)
+            {
+                @if (fragmentRef.Schema?.Collapsible ?? true)
+                {
+                    @* Collapsible features (enhancements, optional settings) *@
+                    <CollapsibleFeatureSection Title="@fragmentRef.Title" Icon="@fragmentRef.Icon"
+                                               IsActive="@fragmentRef.Parameters.IsActive"
+                                               IsActiveChanged="@((active) => HandleFragmentActiveChanged(fragmentRef.Id, active))"
+                                               DefaultExpanded="false">
+                        <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
+                    </CollapsibleFeatureSection>
+                }
+                else
+                {
+                    @* Non-collapsible features (required settings, always visible) *@
+                    <FragmentRenderer Fragment="@fragmentRef" OnChanged="HandleFragmentValueChanged" />
+                }
+            }
+        </MudItem>
+
+        @* Right Column - Output *@
+        <MudItem xs="6">
+            @if (IsVideoMode)
+            {
+                <GeneratedVideoTabs @key="VideoKey" GeneratedVideos="@ImageService.GeneratedVideos" />
+            }
+            else if (IsAudioMode)
+            {
+                <GeneratedAudioTabs @key="AudioKey" GeneratedAudios="@ImageService.GeneratedAudios" />
+            }
+            else
+            {
+                <GeneratedImageTabs @key="ImageKey" OnGenerateRequested="GenerateAsync" IsGenerating="@_isGenerating"
+                                    CanGenerate="@CanGenerate()" />
+            }
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudAlert Severity="Severity.Info" Class="mt-4">
+        Select a workflow from the navigation bar to begin generating.
+    </MudAlert>
+}
+
+@* Image Editor Modal *@
+<ImageEditorModal @ref="_editorModal" OnApply="HandleEditorApply" OnCancel="HandleEditorCancel" />

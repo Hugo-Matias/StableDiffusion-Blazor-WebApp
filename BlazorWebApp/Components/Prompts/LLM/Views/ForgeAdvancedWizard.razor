@@ -1,0 +1,140 @@
+@* Phase 10 - Advanced 4-step wizard for Wildcard Forge Generate.
+   Returns a populated ForgeRequest via BuildRequest() to the parent. *@
+@using BlazorWebApp.Services.WildcardForge
+@using BlazorWebApp.Services.WildcardForge.Models
+
+<MudExpansionPanels MultiExpansion="false">
+    <MudExpansionPanel Text="1. Theme & Category" IsInitiallyExpanded="true">
+        <MudStack Spacing="3">
+            <MudTextField T="string" @bind-Value="_theme" Label="Purpose / theme" Lines="2" Variant="Variant.Text"
+                          HelperText="Describe what this collection is for." />
+            <MudStack Row Spacing="3">
+                <MudSelect T="int?" @bind-Value="_categoryId" Label="Category" Variant="Variant.Text"
+                           Style="min-width: 220px;" HelperText="Pick the closest theme.">
+                    <MudSelectItem T="int?" Value="@((int?)null)">(auto)</MudSelectItem>
+                    @foreach (var c in Knowledge.Categories)
+                    {
+                        <MudSelectItem T="int?" Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_subcategory" Label="Subcategory" Variant="Variant.Text"
+                           Style="min-width: 220px;">
+                    <MudSelectItem T="string" Value="@string.Empty">(none)</MudSelectItem>
+                    @foreach (var s in CurrentSubcategories())
+                    {
+                        <MudSelectItem T="string" Value="@s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+        </MudStack>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="2. Scope & Count">
+        <MudStack Spacing="3">
+            <MudToggleGroup T="string" @bind-Value="_scope" SelectionMode="SelectionMode.SingleSelection"
+                            Color="Color.Primary">
+                <MudToggleItem Value="@("focused")">Focused</MudToggleItem>
+                <MudToggleItem Value="@("moderate")">Moderate</MudToggleItem>
+                <MudToggleItem Value="@("broad")">Broad</MudToggleItem>
+            </MudToggleGroup>
+            <MudSlider T="int" @bind-Value="_count" Min="5" Max="50" Step="5" ValueLabel="true">Count: @_count
+            </MudSlider>
+            <MudTooltip Placement="Placement.Right"
+                        Text="Maximize variety: each entry explores a distinct sub-aspect; reduces stylistic clustering. Best for broad scopes.">
+                <MudSwitch T="bool" @bind-Value="_diversity" Label="Diversity mode" Color="Color.Primary" />
+            </MudTooltip>
+        </MudStack>
+    </MudExpansionPanel>
+
+    <MudExpansionPanel Text="3. Verbosity & Style">
+        <MudRadioGroup T="string" @bind-Value="_verbosity">
+            <MudStack Spacing="2">
+                @foreach (var v in Knowledge.VerbosityLevels)
+                {
+                    <MudPaper Outlined="true" Class="pa-3"
+                              Style="@($"cursor: pointer;{(v.Key == _verbosity ? " border: 2px solid var(--mud-palette-primary);" : string.Empty)}")"
+                              @onclick="@(() => _verbosity = v.Key)">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+                            <MudRadio T="string" Value="@v.Key" Color="Color.Primary" />
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.subtitle2">@v.Label - @v.WordRange</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@v.BestFor</MudText>
+                                @{
+                                    var examples = ExamplesFor(v.Key);
+                                }
+                                @if (examples.Count > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Style="font-style: italic;">e.g. @string.Join(" / ",
+                                                                                                            examples.Take(2))</MudText>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudRadioGroup>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="4. Examples (optional)">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.caption">Provide up to 5 seed examples to anchor the style.</MudText>
+                @for (var i = 0; i < _seeds.Count; i++)
+                {
+                    var idx = i;
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudTextField T="string" Value="@_seeds[idx]" ValueChanged="@((string v) => _seeds[idx] = v)"
+                                      Variant="Variant.Text" Class="flex-grow-1" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       OnClick="@(() => _seeds.RemoveAt(idx))" />
+                    </MudStack>
+                }
+                @if (_seeds.Count < 5)
+                {
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _seeds.Add(string.Empty))"
+                               Size="Size.Small">Add example</MudButton>
+                }
+            </MudStack>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+@code {
+    [Parameter, EditorRequired] public WildcardForgeKnowledge Knowledge { get; set; } = default!;
+
+    private string _theme = string.Empty;
+    private int? _categoryId;
+    private string _subcategory = string.Empty;
+    private string _scope = "focused";
+    private int _count = 20;
+    private bool _diversity;
+    private string _verbosity = "balanced";
+    private List<string> _seeds = new();
+
+    public ForgeRequest BuildRequest() => new()
+    {
+        Operation = ForgeOperation.Generate,
+        Theme = _theme,
+        Count = _count,
+        Verbosity = _verbosity,
+        CategoryId = _categoryId?.ToString(),
+        Subcategory = string.IsNullOrWhiteSpace(_subcategory) ? null : _subcategory,
+        Scope = _scope,
+        DiversityMode = _diversity,
+        SeedExamples = _seeds.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList(),
+        ResolvedCategory = _categoryId.HasValue ? Knowledge.FindCategory(_categoryId.Value.ToString()) : null,
+    };
+
+    private IEnumerable<string> CurrentSubcategories()
+    {
+        if (_categoryId == null) return Array.Empty<string>();
+        var card = Knowledge.FindCategory(_categoryId.Value.ToString());
+        return card?.Subcategories ?? Enumerable.Empty<string>();
+    }
+
+    private List<string> ExamplesFor(string verbosityKey)
+    {
+        if (_categoryId == null) return new();
+        var card = Knowledge.FindCategory(_categoryId.Value.ToString());
+        if (card == null) return new();
+        return card.VerbosityExamples.TryGetValue(verbosityKey, out var list) ? list : new();
+    }
+}

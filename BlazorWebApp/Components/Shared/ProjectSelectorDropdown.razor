@@ -1,0 +1,173 @@
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IGalleryService Gallery
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject IEventService Events
+@implements IDisposable
+
+@* Transparent fixed backdrop — sits just below the AppBar (z-index 1399) so clicks
+   on page content close the dropdown, while AppBar items stay fully interactive. *@
+@if (_isOpen)
+{
+    <div class="psd-backdrop" @onclick="Close"></div>
+}
+
+<div class="psd-root">
+    <button class="psd-trigger" @onclick="Toggle" title="@State.State.Gallery.ProjectName">
+        <img src="@_thumbUrl" alt="" class="psd-thumb" />
+        <span class="psd-label">@(string.IsNullOrWhiteSpace(State.State.Gallery.ProjectName) ? "No project" : State.State.Gallery.ProjectName)</span>
+        <i class="fa-solid fa-chevron-down psd-chevron @(_isOpen ? "open" : "")"></i>
+    </button>
+
+    @if (_isOpen)
+    {
+        <div class="psd-card" @onclick:stopPropagation="true">
+            <MudSelect T="string"
+                       Value="@_folderName"
+                       ValueChanged="HandleFolderChanged"
+                       Label="Folder"
+                       Variant="Variant.Text"
+                       Dense="true"
+                       Margin="Margin.Dense"
+                       AdornmentIcon="fa-solid fa-folder"
+                       AdornmentColor="Color.Secondary"
+                       AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft">
+                <MudSelectItem Value="@("")">All</MudSelectItem>
+                @if (Gallery.Folders != null)
+                {
+                    @foreach (var folder in Gallery.Folders)
+                    {
+                        <MudSelectItem Value="@folder.Name">@folder.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+
+            <div class="psd-project-list">
+                @if (Gallery.Projects != null && Gallery.Projects.Count > 0)
+                {
+                    @foreach (var project in Gallery.Projects)
+                    {
+                        var isActive = project.Id == State.State.Gallery.ProjectId;
+                        <button class="psd-project-item @(isActive ? "active" : "")"
+                                @onclick="() => SelectProject(project)">
+                            <img src="@GetProjectThumb(project)" alt="" class="psd-project-thumb" />
+                            <span class="psd-project-name">@project.Name</span>
+                            @if (isActive)
+                            {
+                                <i class="fa-solid fa-check psd-check"></i>
+                            }
+                        </button>
+                    }
+                }
+                else
+                {
+                    <div class="psd-empty">No projects found</div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isOpen;
+    private string _thumbUrl = "./no_image.png";
+    private string _folderName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Gallery.Folders == null) await Gallery.GetFolders();
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
+
+        if (Gallery.Projects != null && Gallery.Projects.Count > 0)
+        {
+            if (State.State.Gallery.ProjectId == 0)
+            {
+                var latestProject = await DB.GetLatestProject();
+                if (latestProject != null)
+                    await Gallery.SetCurrentProject(latestProject.Id);
+            }
+            else
+            {
+                await Gallery.SetCurrentProject(State.State.Gallery.ProjectId);
+            }
+        }
+
+        _folderName = ResolveDisplayFolderName();
+        _thumbUrl = GetCurrentThumb();
+
+        Events.Subscribe<FolderChangedEventArgs>(OnFolderChanged);
+        Events.Subscribe<ProjectChangedEventArgs>(OnProjectChanged);
+    }
+
+    private string ResolveDisplayFolderName()
+    {
+        var name = State.State.Gallery.FolderName;
+        return string.IsNullOrWhiteSpace(name) || name == "All" ? "" : name;
+    }
+
+    private string GetCurrentThumb()
+    {
+        var project = Gallery.Projects?.FirstOrDefault(p => p.Id == State.State.Gallery.ProjectId);
+        return GetProjectThumb(project);
+    }
+
+    private string GetProjectThumb(Data.Entities.Project? project)
+    {
+        if (project != null && !string.IsNullOrWhiteSpace(project.SampleImagePath))
+            return IO.GetImageStaticFile(project.SampleImagePath);
+        return "./no_image.png";
+    }
+
+    private void Toggle() => _isOpen = !_isOpen;
+
+    private void Close() => _isOpen = false;
+
+    private async Task HandleFolderChanged(string selected)
+    {
+        _folderName = selected;
+
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            await Gallery.SetCurrentFolder(0);
+        }
+        else
+        {
+            var folder = Gallery.Folders?.FirstOrDefault(f => f.Name == selected);
+            if (folder != null)
+                await Gallery.SetCurrentFolder(folder.Id);
+        }
+
+        await Gallery.GetProjects(State.State.Gallery.FolderId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectProject(Data.Entities.Project project)
+    {
+        await Gallery.SetCurrentProject(project.Id);
+        _thumbUrl = GetProjectThumb(project);
+        _isOpen = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFolderChanged(FolderChangedEventArgs args)
+    {
+        _folderName = string.IsNullOrWhiteSpace(args.FolderName) || args.FolderName == "All"
+            ? ""
+            : args.FolderName;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnProjectChanged(ProjectChangedEventArgs args)
+    {
+        _thumbUrl = GetCurrentThumb();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Events.Unsubscribe<FolderChangedEventArgs>(OnFolderChanged);
+        Events.Unsubscribe<ProjectChangedEventArgs>(OnProjectChanged);
+    }
+}

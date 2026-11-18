@@ -1,0 +1,18 @@
+.civitai-version-selector {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 4);
+  min-width: 0;
+}
+
+.civitai-version-selector__tabs {
+  width: 100%;
+}
+
+::deep .civitai-version-selector__tabs .mud-tabs-panels {
+  display: none;
+}
+
+::deep .civitai-version-selector__tabs .mud-tab {
+  text-transform: none;
+}

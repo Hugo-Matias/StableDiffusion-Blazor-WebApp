@@ -1,0 +1,130 @@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<div class="char-card @(_isHovered ? "hovered" : "")" @onmouseenter="() => _isHovered = true"
+     @onmouseleave="() => _isHovered = false" @onclick="HandleClick">
+
+    @* Thumbnail *@
+    <div class="char-image-wrapper">
+        @if (_hasLocalImage)
+        {
+            <img src="@_localImageSrc" alt="@Character.Name" class="char-image" loading="lazy" />
+        }
+        else
+        {
+            <div class="char-placeholder">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        }
+
+        @* Favorite button *@
+        <button class="char-fav-btn @(_isHovered || IsFav ? "visible" : "") @(IsFav ? "active" : "")"
+                @onclick:stopPropagation="true" @onclick="HandleFavoriteClick"
+                title="@(IsFav ? "Remove from favorites" : "Add to favorites")">
+            <i class="@(IsFav ? "fa-solid" : "fa-regular") fa-heart"></i>
+        </button>
+
+        @* Hover overlay *@
+        <div class="char-overlay @(_isHovered ? "visible" : "")">
+            <div class="char-overlay-content" @onclick:stopPropagation="true">
+                <div class="char-overlay-name">@Character.Name</div>
+                <div class="char-overlay-copyright">@Character.CopyrightName</div>
+                <div class="char-overlay-trigger">@Character.Trigger</div>
+
+                @if (!string.IsNullOrEmpty(Character.HairColor) || !string.IsNullOrEmpty(Character.EyeColor))
+                {
+                    <div class="char-overlay-tags">
+                        @if (!string.IsNullOrEmpty(Character.Gender) &&
+                    CharacterBrowserService.GenderTagMap.TryGetValue(Character.Gender, out var genderLabel))
+                        {
+                            <span class="char-tag gender">@genderLabel</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Character.HairColor))
+                        {
+                            <span class="char-tag hair">@Character.HairColor</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Character.EyeColor))
+                        {
+                            <span class="char-tag eye">@Character.EyeColor</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Character.HairLength))
+                        {
+                            <span class="char-tag length">@Character.HairLength</span>
+                        }
+                    </div>
+                }
+
+                <div class="char-overlay-actions">
+                    <button class="char-action-btn" @onclick="HandleCopyTags" title="Copy all tags">
+                        <i class="fa-regular fa-copy"></i>
+                        <span>Copy Tags</span>
+                    </button>
+                    <button class="char-action-btn send" @onclick="HandleSendTags" title="Send tags to prompt">
+                        <i class="fa-solid fa-circle-chevron-right"></i>
+                        <span>Send Tags</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Footer *@
+    <div class="char-footer">
+        <span class="char-name" title="@Character.Name">@Character.Name</span>
+        <span class="char-copyright" title="@Character.CopyrightName">@Character.CopyrightName</span>
+        <span class="char-count">@FormatCount(Character.Count)</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public AnimaCharacter Character { get; set; } = null!;
+    [Parameter] public EventCallback<AnimaCharacter> OnSelected { get; set; }
+    [Parameter] public EventCallback<string> OnTagsSelected { get; set; }
+    [Parameter] public EventCallback OnFavoriteChanged { get; set; }
+    [Parameter] public long CacheBust { get; set; }
+
+    [Inject] private ICharacterBrowserService CharService { get; set; } = null!;
+
+    private bool _isHovered;
+    private bool _hasLocalImage;
+    private string _localImageSrc = string.Empty;
+
+    private bool IsFav => CharService.IsFavorite(Character.Slug);
+
+    protected override void OnParametersSet()
+    {
+        _hasLocalImage = CharService.HasPreviewImage(Character);
+        if (_hasLocalImage)
+        {
+            var v = CacheBust > 0 ? $"?v={CacheBust}" : string.Empty;
+            _localImageSrc = $"images/characters/{Character.Slug}.webp{v}";
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        await OnSelected.InvokeAsync(Character);
+    }
+
+    private async Task HandleFavoriteClick()
+    {
+        CharService.ToggleFavorite(Character.Slug);
+        await OnFavoriteChanged.InvokeAsync();
+    }
+
+    private async Task HandleCopyTags()
+    {
+        var full = (Character.Trigger + ", " + string.Join(", ", Character.Tags)).EscapeParenthesis();
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", full);
+        Snackbar.Add($"Copied tags for {Character.Name}", Severity.Success, c => c.VisibleStateDuration = 1500);
+    }
+
+    private async Task HandleSendTags()
+    {
+        var full = (Character.Trigger + ", " + string.Join(", ", Character.Tags)).EscapeParenthesis();
+        await OnTagsSelected.InvokeAsync(full);
+    }
+
+    private static string FormatCount(int count) =>
+        count >= 1000 ? $"{count / 1000}k" : count.ToString();
+}

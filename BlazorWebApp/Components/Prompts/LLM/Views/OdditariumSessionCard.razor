@@ -1,0 +1,88 @@
+@* Odditarium - Session Card for the Continue section on the intro screen.
+   Compact horizontal card: persona thumbnail | session info | actions *@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Data.Entities
+
+<div class="odd-session-card" style="--card-accent: @(_persona?.AccentColor ?? "#888");">
+    @* Persona thumbnail *@
+    <div class="odd-session-thumb">
+        @if (_persona != null && !string.IsNullOrWhiteSpace(_persona.ImageAssetIdle))
+        {
+            <img src="@_persona.ImageAssetIdle" alt="@_persona.Name" class="odd-session-thumb-img" />
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="odd-session-thumb-icon" />
+        }
+    </div>
+
+    @* Session info *@
+    <div class="odd-session-info">
+        <span class="odd-session-persona">@(_persona?.Name ?? "Unknown")</span>
+        <div class="odd-session-meta">
+            <span class="odd-session-layers">
+                <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" />
+                @Session.Body.CollectedLayers.Count layer@(Session.Body.CollectedLayers.Count != 1 ? "s" : "")
+            </span>
+            <span class="odd-session-time">@TimeAgo(Session.UpdatedAt)</span>
+        </div>
+    </div>
+
+    @* Actions *@
+    <div class="odd-session-actions">
+        <button type="button" class="odd-session-resume-btn" @onclick="HandleResume">
+            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+            Resume
+        </button>
+        @if (_confirmDiscard)
+        {
+            <button type="button" class="odd-session-discard-confirm-btn" @onclick="HandleDiscardConfirm">
+                Discard?
+            </button>
+            <button type="button" class="odd-session-cancel-btn" @onclick="() => _confirmDiscard = false">
+                Cancel
+            </button>
+        }
+        else
+        {
+            <button type="button" class="odd-session-discard-btn" @onclick="() => _confirmDiscard = true">
+                <MudIcon Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" />
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public OdditariumSession Session { get; set; } = default!;
+    [Parameter] public EventCallback<int> OnResume { get; set; }
+    [Parameter] public EventCallback<int> OnDiscard { get; set; }
+
+    private bool _confirmDiscard;
+
+    private OdditariumPersona? _persona => Session.Body.PersonaId is not null
+        ? OdditariumPersonaRoster.FindById(Session.Body.PersonaId)
+        : null;
+
+    private async Task HandleResume()
+    {
+        if (OnResume.HasDelegate)
+            await OnResume.InvokeAsync(Session.Id);
+    }
+
+    private async Task HandleDiscardConfirm()
+    {
+        _confirmDiscard = false;
+        if (OnDiscard.HasDelegate)
+            await OnDiscard.InvokeAsync(Session.Id);
+    }
+
+    private static string TimeAgo(DateTime utc)
+    {
+        var diff = DateTime.UtcNow - utc;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return utc.ToLocalTime().ToString("MMM d");
+    }
+}

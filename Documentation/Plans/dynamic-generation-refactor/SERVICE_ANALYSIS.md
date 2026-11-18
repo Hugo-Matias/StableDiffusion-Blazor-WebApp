@@ -1,0 +1,567 @@
+# WorkflowService &amp; GenerationParameterService - Comprehensive Analysis
+
+**Created:** 2025-01-13  
+**Purpose:** Deep analysis of how these services work together, their responsibilities, data flow, and optimization opportunities.
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Service Responsibilities](#service-responsibilities)
+3. [Data Models](#data-models)
+4. [Method Breakdown - WorkflowService](#method-breakdown---workflowservice)
+5. [Method Breakdown - GenerationParameterService](#method-breakdown---generationparameterservice)
+6. [Data Flow Diagram](#data-flow-diagram)
+7. [Where Methods Are Called](#where-methods-are-called)
+8. [Identified Issues &amp; Redundancies](#identified-issues--redundancies)
+9. [Optimization Recommendations](#optimization-recommendations)
+
+---
+
+## Executive Summary
+
+### What These Services Do
+
+| Service | Primary Purpose |
+|---------|-----------------|
+| **WorkflowService** | Loads, parses, and renders workflow templates (`.sbn` files). Handles Scriban template rendering and fragment composition. |
+| **GenerationParameterService** | Manages runtime parameter state. Bridges UI components with workflow templates. Initializes fragments from workflows. |
+
+### How They Relate
+
+```
+???????????????????????????????????????????????????????????????????????????????
+?                          APPLICATION FLOW                                    ?
+???????????????????????????????????????????????????????????????????????????????
+?                                                                              ?
+?  [User selects workflow]                                                     ?
+?          ?                                                                   ?
+?          ?                                                                   ?
+?  ?????????????????????????         ??????????????????????????????           ?
+?  ?   WorkflowService     ??????????? GenerationParameterService ?           ?
+?  ?                       ?         ?                            ?           ?
+?  ? • Load workflow .sbn  ?         ? • InitializeFromWorkflow() ?           ?
+?  ? • Parse metadata      ?         ? • Create fragment instances?           ?
+?  ? • Parse pipeline      ?         ? • Set default values       ?           ?
+?  ? • Parse fragment      ?         ? • Manage parameter state   ?           ?
+?  ?   schemas &amp; defaults  ?         ?                            ?           ?
+?  ?????????????????????????         ??????????????????????????????           ?
+?                                                   ?                          ?
+?                                                   ?                          ?
+?                                    ????????????????????????????             ?
+?                                    ?   UI Components          ?             ?
+?                                    ?                          ?             ?
+?                                    ? • Generate.razor         ?             ?
+?                                    ? • SamplerForm.razor      ?             ?
+?                                    ? • SeedVR2Form.razor      ?             ?
+?                                    ? • etc.                   ?             ?
+?                                    ????????????????????????????             ?
+?                                                   ?                          ?
+?  [User clicks Generate]                          ?                          ?
+?          ?                                        ?                          ?
+?          ?                                                                   ?
+?  ?????????????????????????         ??????????????????????????????           ?
+?  ?   ImageService        ???????????     WorkflowService        ?           ?
+?  ?                       ?         ?                            ?           ?
+?  ? • GenerateImagesAsync ?         ? • ComposeWorkflowFromTemp..?           ?
+?  ? • Build legacy params ?         ? • RenderFragment()         ?           ?
+?  ?                       ?         ? • Build final JSON         ?           ?
+?  ?????????????????????????         ??????????????????????????????           ?
+?                                                   ?                          ?
+?                                                   ?                          ?
+?                                    ????????????????????????????             ?
+?                                    ?   ComfyUIService         ?             ?
+?                                    ?                          ?             ?
+?                                    ? • PostTxt2Img()          ?             ?
+?                                    ? • Send to ComfyUI API    ?             ?
+?                                    ????????????????????????????             ?
+?                                                                              ?
+???????????????????????????????????????????????????????????????????????????????
+```
+
+---
+
+## Service Responsibilities
+
+### WorkflowService
+
+**Domain:** Template parsing, schema extraction, workflow composition
+
+| Category | Responsibilities |
+|----------|------------------|
+| **Loading** | Load `.sbn` workflow templates from disk |
+| **Parsing** | Extract Title, Base, Mode, Assets, Sources, Pipeline from templates |
+| **Schema** | Parse `#meta` blocks from fragments for UI configuration |
+| **Defaults** | Parse default values from Scriban expressions (`{{ param ?? "default" \| json }}`) |
+| **Rendering** | Compose fragments into final ComfyUI workflow JSON using Scriban |
+| **Caching** | Cache parsed fragment schemas |
+
+### GenerationParameterService
+
+**Domain:** Runtime parameter state management
+
+| Category | Responsibilities |
+|----------|------------------|
+| **Initialization** | Convert workflow template into runtime `FragmentParameters` |
+| **CRUD** | Get/Set fragment values, assets, sources, LoRAs |
+| **Activation** | Manage which fragments are active (included in generation) |
+| **Dynamic Options** | Resolve ComfyUI node input options (via IComfyUIService) |
+| **Events** | Publish change notifications for UI reactivity |
+| **Snapshot** | Create parameter snapshots for state persistence |
+
+---
+
+## Data Models
+
+### Core Models
+
+```
+???????????????????????????????????????????????????????????????????????????????
+?                              DATA MODELS                                     ?
+???????????????????????????????????????????????????????????????????????????????
+?                                                                              ?
+?  ????????????????????????      ???????????????????????????????????????????? ?
+?  ?      Workflow        ?      ?          GenerationParameters            ? ?
+?  ?                      ?      ?                                          ? ?
+?  ? • Id: Guid           ?      ? • WorkflowId: Guid?                      ? ?
+?  ? • Title: string      ?      ? • Fragments: Dict&lt;string, FragmentParams&gt;? ?
+?  ? • Base: ModelBase    ?      ? • Assets: Dict&lt;string, string&gt;           ? ?
+?  ? • Mode: ModeType     ?      ? • Sources: Dict&lt;string, SourceAsset&gt;     ? ?
+?  ? • Assets: List&lt;...&gt;  ?      ? • Loras: List&lt;Lora&gt;                       ? ?
+?  ? • Sources: List&lt;...&gt; ?      ?                                          ? ?
+?  ? • Pipeline: List&lt;..&gt; ?      ?                                          ? ?
+?  ? • RawJson: string    ?      ?                                          ? ?
+?  ????????????????????????      ???????????????????????????????????????????? ?
+?           ?                                 ?                                ?
+?           ? (template)                      ? (runtime state)                ?
+?           ?                                 ?                                ?
+?  ????????????????????????      ???????????????????????????????????????????? ?
+?  ?   WorkflowStep       ?      ?          FragmentParameters              ? ?
+?  ?                      ?      ?                                          ? ?
+?  ? • Id: string         ???????? • FragmentFile: string                   ? ?
+?  ? • Fragment: string   ?      ? • IsActive: bool                         ? ?
+?  ?                      ?      ? • Order: int                             ? ?
+?  ????????????????????????      ? • Values: Dict&lt;string, object?&gt;          ? ?
+?                                 ???????????????????????????????????????????? ?
+?                                              ?                               ?
+?  ????????????????????????                    ?                               ?
+?  ?   FragmentSchema     ?&lt;????????????????????                               ?
+?  ?   (from #meta block) ?                                                    ?
+?  ?                      ?                                                    ?
+?  ? • Component: string? ?  Used by UI to know how to render                  ?
+?  ? • Title: string      ?                                                    ?
+?  ? • Icon: string?      ?                                                    ?
+?  ? • Collapsible: bool  ?                                                    ?
+?  ? • DefaultCollapsed   ?  Determines if fragment starts as "optional"       ?
+?  ? • Chainable: bool    ?                                                    ?
+?  ? • Order: int         ?                                                    ?
+?  ? • Parameters: Dict   ?  ParameterConstraints (min/max/step/source)        ?
+?  ? • Fields: List?      ?  For dynamic field rendering                       ?
+?  ????????????????????????                                                    ?
+?                                                                              ?
+???????????????????????????????????????????????????????????????????????????????
+```
+
+---
+
+## Method Breakdown - WorkflowService
+
+### Loading &amp; Parsing Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `GetWorkflows()` | Loads all workflow templates from `Workflows/Templates/` | OrchestratorService, StateService initialization | `List&lt;Workflow&gt;` |
+| `RefreshWorkflows()` | Reloads workflows, attempts to preserve current selection | Potentially after template file changes | `(List&lt;Workflow&gt;, ModelBase?, Guid?)` |
+| `LoadWorkflowTemplate(path)` | Loads a single workflow from path | Not currently used | `Workflow` |
+| `ParseWorkflowTemplate(text)` | *Private* - Parses template text into Workflow object using regex | `GetWorkflows()` | `Workflow` |
+| `ParseAssetsFromTemplate(text)` | *Private* - Extracts Assets array from template | `ParseWorkflowTemplate()` | `List&lt;WorkflowAsset&gt;?` |
+| `ParseSourcesFromTemplate(text)` | *Private* - Extracts Sources array from template | `ParseWorkflowTemplate()` | `List&lt;WorkflowSource&gt;?` |
+| `ParsePipelineFromTemplate(text)` | *Private* - Extracts Pipeline array | `ParseWorkflowTemplate()` | `List&lt;WorkflowStep&gt;?` |
+
+### Schema &amp; Defaults Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `GetFragmentSchema(fragmentFile)` | Gets UI schema from fragment's `#meta` block | Generate.razor, Fragment forms | `FragmentSchema?` |
+| `ParseFragmentSchema(fragmentText)` | Parses the `#meta` block into FragmentSchema | `GetFragmentSchema()` | `FragmentSchema?` |
+| `GetWorkflowFragmentSchemas(workflow)` | Gets all fragment schemas for a workflow | Not currently used directly | `Dict&lt;string, FragmentSchema&gt;` |
+| `ParseFragmentDefaults(fragmentFile)` | Extracts default values from fragment's Scriban expressions | `GenerationParameterService.InitializeFragmentsFromPipeline()` | `Dict&lt;string, object?&gt;` |
+| `ClearSchemaCache()` | Clears cached schemas | Not currently called | `void` |
+
+### Rendering &amp; Composition Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `ComposeWorkflowFromTemplate(workflow, Txt2ImgComfyUI)` | Builds final ComfyUI JSON from workflow + parameters | RouterService.PostTxt2Img() | `string` (JSON) |
+| `ComposeWorkflowFromTemplate(workflow, Img2ImgComfyUI)` | Same for Img2Img | RouterService.PostImg2Img() | `string` (JSON) |
+| `ComposeWorkflowFromTemplate(workflow, Img2VidComfyUI)` | Same for Img2Vid | RouterService.PostImg2Vid() | `string` (JSON) |
+| `RenderFragment(fragmentText, context, globalParams)` | Renders a single fragment with Scriban | `ComposeWorkflowFromTemplateInternal()` | `(string, Dict&lt;outputs&gt;)` |
+| `RenderTemplate(text, context, preserveFormatting)` | *Private* - Core Scriban rendering | `RenderFragment()` | `string` |
+
+### Utility Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `SaveAssetDefaults(workflow, assetValues)` | Writes current asset values back to template file | WorkflowAssetsPanel (save defaults) | `bool` |
+| `InjectWorkflowAssets(param, workflow, globalParams)` | *Private* - Injects asset values into rendering context | `ComposeWorkflowFromTemplateInternal()` | `void` |
+
+---
+
+## Method Breakdown - GenerationParameterService
+
+### Initialization Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `InitializeFromWorkflow(workflow)` | Main initialization - creates fragments from workflow pipeline | Generate.razor.OnWorkflowSelected() | `void` |
+| `InitializeFromWorkflowAsync(workflow)` | Async wrapper for above | Generate.razor | `Task&lt;GenerationParameters&gt;` |
+| `InitializeFragmentsFromPipeline()` | *Private* - Creates FragmentParameters for each pipeline step | `InitializeFromWorkflow()` | `void` |
+| `InitializeSourcesFromWorkflow()` | *Private* - Creates SourceAsset entries | `InitializeFromWorkflow()` | `void` |
+| `ParsePipelineStepsWithRegex(rawJson)` | *Private* - Extracts pipeline steps using regex | `InitializeFragmentsFromPipeline()` | `List&lt;(Id, Fragment, Parameters)&gt;` |
+| `ParseStepParameterDefaults(stepContent)` | *Private* - Extracts defaults from step's parameters block | `ParsePipelineStepsWithRegex()` | `Dict&lt;string, object?&gt;` |
+
+### Fragment CRUD Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `SetFragmentValue(fragmentId, param, value)` | Sets a fragment parameter value (no event) | UI components, Generate.razor | `void` |
+| `SetFragmentValueAndNotify(...)` | Sets value + publishes change event | UI components | `void` |
+| `GetFragmentValue&lt;T&gt;(fragmentId, param)` | Gets typed value from fragment | UI components | `T?` |
+| `SetFragmentActive(fragmentId, isActive)` | Enables/disables a fragment | Generate.razor (CollapsibleFeatureSection) | `void` |
+| `IsFragmentActive(fragmentId)` | Checks if fragment is active | UI components | `bool` |
+
+### Chainable Fragment Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `AddFragmentInstance(fragmentFile, baseId)` | Creates new instance of a chainable fragment | Not currently used | `(string, FragmentParameters)` |
+| `RemoveFragmentInstance(fragmentId)` | Removes a fragment instance | Not currently used | `bool` |
+| `ReorderFragments(fragmentIds)` | Updates fragment order | Not currently used | `void` |
+
+### Asset Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `SetAsset(assetName, value)` | Sets asset value (no event) | WorkflowAssetsPanel | `void` |
+| `SetAssetAndNotify(...)` | Sets asset + publishes event | WorkflowAssetsPanel | `void` |
+| `GetAsset(assetName)` | Gets asset value | WorkflowAssetsPanel | `string?` |
+
+### Source Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `SetSource(sourceId, source)` | Sets source asset (no event) | SourcesPanel | `void` |
+| `SetSourceAndNotify(...)` | Sets source + publishes event | SourcesPanel | `void` |
+| `GetSource(sourceId)` | Gets source asset | SourcesPanel | `SourceAsset?` |
+| `ClearSource(sourceId)` | Clears source data | SourcesPanel | `void` |
+
+### State Management Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `LoadParameters(parameters)` | Replaces current parameters (for state restore) | StateService | `void` |
+| `CreateSnapshot()` | Creates deep copy of parameters | StateService (for saving) | `GenerationParameters` |
+| `NotifyChanged()` | Manually publishes change event | After batch updates | `void` |
+
+### Dynamic Options Methods
+
+| Method | Purpose | Called From | Returns |
+|--------|---------|-------------|---------|
+| `ResolveSourceOptionsAsync(constraints)` | Gets options for a parameter from ComfyUI | Fragment form components | `Task&lt;List&lt;string&gt;&gt;` |
+| `ResolveNodeSourceAsync(classType, inputName)` | *Private* - Queries ComfyUI object_info API | `ResolveSourceOptionsAsync()` | `Task&lt;List&lt;string&gt;&gt;` |
+| `ClearSourceCache()` | Clears cached options | `InitializeFromWorkflow()` | `void` |
+
+---
+
+## Data Flow Diagram
+
+### Workflow Selection Flow
+
+```
+???????????????????????????????????????????????????????????????????????????????
+?                    WORKFLOW SELECTION DATA FLOW                              ?
+???????????????????????????????????????????????????????????????????????????????
+?                                                                              ?
+?  1. User selects workflow in NavBar                                          ?
+?          ?                                                                   ?
+?          ?                                                                   ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  Generate.razor: OnWorkflowSelected(workflow)          ?                 ?
+?  ?                                                        ?                 ?
+?  ?  • _selectedWorkflow = workflow                        ?                 ?
+?  ?  • Update State.Generation.CurrentWorkflowId           ?                 ?
+?  ?  • Update State.Generation.WorkflowBase                ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  ParameterService.InitializeFromWorkflowAsync(workflow)?                 ?
+?  ?                                                        ?                 ?
+?  ?  a) Clear existing Fragments, Assets, Sources          ?                 ?
+?  ?  b) Initialize Assets from workflow.Assets defaults    ?                 ?
+?  ?  c) Initialize Sources from workflow.Sources           ?                 ?
+?  ?  d) Call InitializeFragmentsFromPipeline()             ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  InitializeFragmentsFromPipeline() [PRIVATE]           ?                 ?
+?  ?                                                        ?                 ?
+?  ?  a) ParsePipelineStepsWithRegex(workflow.RawJson)      ?                 ?
+?  ?     ??? Extracts (Id, Fragment, Parameters) tuples     ?                 ?
+?  ?     ??? Parameters = defaults from {{ X ?? "def" }}    ?                 ?
+?  ?                                                        ?                 ?
+?  ?  b) For each step:                                     ?                 ?
+?  ?     • Get FragmentSchema via WorkflowService           ?                 ?
+?  ?     • Determine IsActive (inverse of DefaultCollapsed) ?                 ?
+?  ?     • Create FragmentParameters with step.Parameters   ?                 ?
+?  ?     • Fill missing with ParseFragmentDefaults()        ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  Generate.razor continues:                             ?                 ?
+?  ?                                                        ?                 ?
+?  ?  • DiscoverFragments() - find sampler/latent IDs       ?                 ?
+?  ?  • InitializeLocalStateFromFragments() - sync UI state ?                 ?
+?  ?  • StateHasChanged()                                   ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                                                                              ?
+???????????????????????????????????????????????????????????????????????????????
+```
+
+### Generation Flow
+
+```
+???????????????????????????????????????????????????????????????????????????????
+?                       GENERATION DATA FLOW                                   ?
+???????????????????????????????????????????????????????????????????????????????
+?                                                                              ?
+?  1. User clicks Generate                                                     ?
+?          ?                                                                   ?
+?          ?                                                                   ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  Generate.razor: GenerateAsync()                       ?                 ?
+?  ?                                                        ?                 ?
+?  ?  • Validate CanGenerate() (required sources filled)    ?                 ?
+?  ?  • Call ImageService.GenerateImagesAsync(Params, WF)   ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  ImageService.GenerateImagesAsync()                    ?                 ?
+?  ?                                                        ?                 ?
+?  ?  a) BuildLegacyParametersFromGenerationParams()        ?                 ?
+?  ?     ??? Convert GenerationParameters to SharedParams   ?                 ?
+?  ?     ??? Extract from fragments: prompts, sampler, etc. ?                 ?
+?  ?     ??? Apply wildcards, styles                        ?                 ?
+?  ?                                                        ?                 ?
+?  ?  b) BuildTxt2ImgFromGenerationParams()                 ?                 ?
+?  ?     ??? Create Txt2ImgParameters with workflow         ?                 ?
+?  ?     ??? Check for optional fragments (SeedVR2, etc.)   ?                 ?
+?  ?                                                        ?                 ?
+?  ?  c) Call RouterService.PostTxt2Img(params)             ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  RouterService.PostTxt2Img()                           ?                 ?
+?  ?                                                        ?                 ?
+?  ?  • Extract workflow from params.Comfy.Workflow         ?                 ?
+?  ?  • Build Txt2ImgComfyUI DTO                            ?                 ?
+?  ?  • Call ComfyUIService.PostTxt2Img()                   ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                           ?                                                  ?
+?                           ?                                                  ?
+?  ??????????????????????????????????????????????????????????                 ?
+?  ?  ComfyUIService.PostTxt2Img()                          ?                 ?
+?  ?                                                        ?                 ?
+?  ?  a) WorkflowService.ComposeWorkflowFromTemplate()      ?                 ?
+?  ?     ??? ComposeWorkflowFromTemplateInternal()          ?                 ?
+?  ?     ??? Render workflow template with Scriban          ?                 ?
+?  ?     ??? Iterate Pipeline, RenderFragment() each        ?                 ?
+?  ?     ??? Merge all fragments into final JSON            ?                 ?
+?  ?                                                        ?                 ?
+?  ?  b) POST to ComfyUI /prompt endpoint                   ?                 ?
+?  ?  c) Wait for WebSocket completion                      ?                 ?
+?  ?  d) Return GeneratedImages                             ?                 ?
+?  ??????????????????????????????????????????????????????????                 ?
+?                                                                              ?
+???????????????????????????????????????????????????????????????????????????????
+```
+
+---
+
+## Where Methods Are Called
+
+### WorkflowService Usage
+
+| Method | Callers |
+|--------|---------|
+| `GetWorkflows()` | `OrchestratorService` (initialization), `StateService` |
+| `GetFragmentSchema()` | `Generate.razor` (GetOptionalFragments), `SeedVR2Form.razor`, other fragment forms |
+| `ParseFragmentDefaults()` | `GenerationParameterService.InitializeFragmentsFromPipeline()` |
+| `ComposeWorkflowFromTemplate()` | `ComfyUIService.PostTxt2Img/Img2Img/Img2Vid()` |
+| `SaveAssetDefaults()` | `WorkflowAssetsPanel.razor` (save button) |
+
+### GenerationParameterService Usage
+
+| Method | Callers |
+|--------|---------|
+| `InitializeFromWorkflowAsync()` | `Generate.razor.OnWorkflowSelected()` |
+| `SetFragmentValue()` | `SeedVR2Form.razor`, other fragment form components |
+| `SetFragmentActive()` | `Generate.razor` (CollapsibleFeatureSection IsActiveChanged) |
+| `ResolveSourceOptionsAsync()` | Fragment forms with dynamic dropdowns (SeedVR2Form) |
+| `GetAsset()` | `WorkflowAssetsPanel.razor` |
+| `SetAsset()` | `WorkflowAssetsPanel.razor` |
+
+---
+
+## Identified Issues &amp; Redundancies
+
+### 1. **Duplicate Default Value Parsing**
+
+**Problem:** Default values are parsed in THREE places:
+1. `WorkflowService.ParseFragmentDefaults()` - parses fragment template expressions
+2. `GenerationParameterService.ParseStepParameterDefaults()` - parses workflow pipeline step parameters
+3. `GenerationParameterService.ParseScribanDefaultValue()` - utility for value conversion
+
+**Impact:** Confusing code, potential inconsistency in which default takes precedence.
+
+**Recommendation:** Consolidate into a single source. The workflow template pipeline parameters should be the authoritative source for defaults.
+
+---
+
+### 2. **Regex-Based Pipeline Parsing in Multiple Places**
+
+**Problem:** Both `WorkflowService` and `GenerationParameterService` parse the workflow pipeline using regex:
+- `WorkflowService.ParsePipelineStepsFromRawJson()`
+- `GenerationParameterService.ParsePipelineStepsWithRegex()`
+
+These are nearly identical but return different data structures.
+
+**Impact:** Code duplication, maintenance burden.
+
+**Recommendation:** Consolidate into a single method in `WorkflowService` that returns all needed data.
+
+---
+
+### 3. **Legacy Parameter Bridge Complexity**
+
+**Problem:** `ImageService` has complex methods to convert between the new `GenerationParameters` model and legacy `SharedParameters`/`Txt2ImgParameters`:
+- `BuildLegacyParametersFromGenerationParams()`
+- `BuildTxt2ImgFromGenerationParams()`
+- `BuildImg2ImgFromGenerationParams()`
+- `BuildImg2VidFromGenerationParams()`
+
+**Impact:** Fragile bridge code that must know about fragment IDs and parameter names.
+
+**Recommendation:** Long-term, the router/ComfyUI service should work directly with `GenerationParameters`. Short-term, consider moving bridge logic closer to `WorkflowService`.
+
+---
+
+### 4. **UI State Duplication in Generate.razor**
+
+**Problem:** `Generate.razor` maintains local state copies (`_prompt`, `_width`, `_steps`, etc.) that must be manually synced with `FragmentParameters.Values`.
+
+**Impact:** Two sources of truth, potential sync issues, verbose code.
+
+**Recommendation:** Consider direct binding to fragment values with computed properties, or a ViewModel pattern.
+
+---
+
+### 5. **Schema vs Parameters Confusion**
+
+**Problem:** `FragmentSchema` (UI definition) and `ParameterConstraints` overlap in purpose:
+- Both have `Min`, `Max`, `Step`
+- Both have `Source`, `InputName` for dynamic options
+- `ParameterConstraints` is nested inside `FragmentSchema.Parameters`
+
+**Impact:** Confusing which to use where.
+
+**Recommendation:** Clarify that `FragmentSchema` is the UI definition, `ParameterConstraints` is a subset for individual parameter validation. Consider merging or better documenting.
+
+---
+
+### 6. **Fragment Discovery is Heuristic**
+
+**Problem:** `Generate.razor.DiscoverFragments()` uses string matching to find sampler/latent fragments:
+```csharp
+if (fragmentFile == "sampler.sbn" || fragmentId.Contains("sampler"))
+```
+
+**Impact:** Brittle, won't work with renamed fragments.
+
+**Recommendation:** Use fragment schema metadata (e.g., a `FragmentType` enum in schema) to identify fragment purpose.
+
+---
+
+### 7. **Unused Methods**
+
+Several methods appear to have no current callers:
+- `AddFragmentInstance()` / `RemoveFragmentInstance()` - for chainable fragments
+- `ReorderFragments()`
+- `GetWorkflowFragmentSchemas()`
+- `ClearSchemaCache()`
+
+**Recommendation:** Either implement the features that need these, or remove them.
+
+---
+
+## Optimization Recommendations
+
+### Short-Term (Quick Wins)
+
+1. **Consolidate Pipeline Parsing**
+   - Move all pipeline parsing to `WorkflowService`
+   - `GenerationParameterService` should call `WorkflowService` for parsed data
+
+2. **Add Fragment Type Metadata**
+   - Add `FragmentType` to schema: `sampler`, `latent`, `prompts`, `optional`, etc.
+   - Use this instead of string matching in `DiscoverFragments()`
+
+3. **Cache Parsed Workflow Data**
+   - Parse pipeline steps once in `WorkflowService` and cache
+   - Include extracted defaults in the cached data
+
+### Medium-Term (Refactoring)
+
+4. **Eliminate Local State Copies**
+   - Create computed properties that read/write directly to fragment values
+   - Or create a `FragmentBindingHelper` that handles bidirectional binding
+
+5. **Simplify Default Value Resolution**
+   - Single priority order: workflow step params ? fragment defaults ? schema defaults
+   - Parse once during workflow parsing, store in `WorkflowStep.Defaults`
+
+6. **Type-Safe Fragment Access**
+   - Consider strongly-typed fragment accessors for common fragments
+   - e.g., `Parameters.GetSamplerFragment()` returns a typed wrapper
+
+### Long-Term (Architecture)
+
+7. **Remove Legacy Parameter Bridge**
+   - Update router/ComfyUI services to work with `GenerationParameters` directly
+   - Scriban templates should render from `GenerationParameters.FlattenForTemplateRendering()`
+
+8. **Consider Flux/State Management Pattern**
+   - Single source of truth in `GenerationParameters`
+   - All changes go through `GenerationParameterService`
+   - UI components subscribe to change events
+
+---
+
+## Summary
+
+The services work together but have accumulated complexity from the evolution of the codebase:
+
+| Area | Current State | Ideal State |
+|------|---------------|-------------|
+| **Default values** | Parsed in 3 places | Single source during workflow parsing |
+| **Pipeline parsing** | Duplicated regex | Single cached parse in WorkflowService |
+| **UI state** | Manual sync with fragments | Direct binding or reactive pattern |
+| **Legacy params** | Complex bridge in ImageService | Work directly with GenerationParameters |
+| **Fragment discovery** | String heuristics | Schema-based metadata |
+
+The key insight is that **WorkflowService should be the single source of truth for workflow structure and defaults**, while **GenerationParameterService should only manage runtime state changes**.

@@ -1,0 +1,45 @@
+# Negative prompts
+low quality
+worst quality
+low resolution
+lowres
+blurry
+blurred
+out of focus
+ugly
+bad anatomy
+bad hands
+bad feet
+missing fingers
+extra fingers
+fused fingers
+too many fingers
+mutated hands
+poorly drawn hands
+poorly drawn face
+mutation
+deformed
+bad proportions
+gross proportions
+malformed limbs
+extra limbs
+missing limbs
+extra arms
+extra legs
+long neck
+duplicate
+morbid
+mutilated
+out of frame
+cropped
+watermark
+signature
+text
+logo
+username
+jpeg artifacts
+compression artifacts
+oversaturated
+undersaturated
+overexposed
+underexposed

@@ -1,0 +1,198 @@
+@* Prompt Mixer: Blend two prompts into a cohesive hybrid using an LLM *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject OllamaService OllamaService
+@inject IDatabaseService DB
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudStack Spacing="4">
+    <LLMToolPageDescription Title="Prompt Mixer" Icon="@Icons.Material.Filled.Tune"
+                            Description="Blend two prompts into a cohesive hybrid. Drop in Prompt A and Prompt B, slide the ratio, and let the LLM weave them into a single coherent prompt." />
+
+    @* Input Section *@
+    <MudCard Elevation="2" Class="pa-4">
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_promptA" Label="Prompt A" Lines="3" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_promptB" Label="Prompt B" Lines="3" Variant="Variant.Outlined" />
+
+            @* Blend Ratio Slider *@
+            <div class="d-flex align-center gap-4 mt-2">
+                <MudText Typo="Typo.caption">A</MudText>
+                <MudSlider @bind-Value="_ratio" Min="0" Max="100" Step="5" TickMarks="true"
+                           ValueLabel="true" Class="flex-grow-1" />
+                <MudText Typo="Typo.caption">B</MudText>
+            </div>
+
+            @* Mix Button *@
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="_isMixing || string.IsNullOrWhiteSpace(_promptA) || string.IsNullOrWhiteSpace(_promptB) || string.IsNullOrWhiteSpace(SelectedModel)"
+                       OnClick="MixAsync" Class="mt-2">
+                @if (_isMixing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                }
+                Mix
+            </MudButton>
+        </MudStack>
+    </MudCard>
+
+    @* Result Section *@
+    @if (!string.IsNullOrEmpty(_result))
+    {
+        <MudCard Elevation="2" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.subtitle1">Result</MudText>
+                <MudTextField Value="_result" ReadOnly="true" Lines="4" Variant="Variant.Outlined" />
+
+                <div class="d-flex gap-2 mt-2">
+                    <MudButton OnClick="CopyAsync" StartIcon="@Icons.Material.Filled.ContentCopy">Copy</MudButton>
+                    <MudButton OnClick="SaveAsync" StartIcon="@Icons.Material.Filled.Bookmark">Save as Prompt</MudButton>
+                    @if (OnSendToProcess.HasDelegate)
+                    {
+                        <MudButton OnClick="SendToProcessAsync" StartIcon="@Icons.Material.Filled.ForwardToInbox">Send to Process</MudButton>
+                    }
+                </div>
+            </MudStack>
+        </MudCard>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+
+    private string _promptA = string.Empty;
+    private string _promptB = string.Empty;
+    private int _ratio = 50;
+    private bool _isMixing;
+    private string _result = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var mixer = State.State.Prompts.LLM.Mixer;
+        _promptA = mixer.PromptA;
+        _promptB = mixer.PromptB;
+        _ratio = mixer.Ratio;
+    }
+
+
+    private async Task MixAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedModel))
+        {
+            Snackbar.Add("Select a model first.", Severity.Warning);
+            return;
+        }
+
+        _isMixing = true;
+        _result = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Find the PromptMixer template, or build inline fallback
+            var messages = await BuildMessagesAsync();
+
+            if (messages == null || messages.Count == 0)
+            {
+                Snackbar.Add("Could not load mixer template.", Severity.Error);
+                return;
+            }
+
+            var response = await OllamaService.SendChatMessage(SelectedModel, messages, null, null, false);
+
+            if (response?.Message?.Content != null)
+            {
+                _result = response.Message.Content.Trim();
+            }
+            else
+            {
+                Snackbar.Add("Empty response from LLM.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Mix failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isMixing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<List<OllamaChatMessage>?> BuildMessagesAsync()
+    {
+        try
+        {
+            var templates = await DB.GetSystemPromptTemplates();
+            var mixerTemplate = templates.FirstOrDefault(t => t.Name == "PromptMixer");
+
+            if (mixerTemplate?.Messages != null && mixerTemplate.Messages.Count > 0)
+            {
+                // Clone and substitute placeholders
+                return mixerTemplate.Messages.Select(m => new OllamaChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content
+                        .Replace("{promptA}", _promptA, StringComparison.OrdinalIgnoreCase)
+                        .Replace("{promptB}", _promptB, StringComparison.OrdinalIgnoreCase)
+                        .Replace("{ratio}", _ratio.ToString(), StringComparison.OrdinalIgnoreCase)
+                }).ToList();
+            }
+        }
+        catch
+        {
+            // Fall through to inline fallback
+        }
+
+        // Inline fallback if template not found (existing installs before seeding fix)
+        return new List<OllamaChatMessage>
+        {
+            new() { Role = "system", Content =
+                "You are a prompt-blending assistant. You will receive two prompts (A and B) and a blend ratio from 0 to 100 " +
+                "(0 = keep only A, 100 = keep only B, 50 = equal blend). Produce a SINGLE new prompt that coherently combines " +
+                "the visual concepts of both inputs weighted by the ratio. Return only the final prompt - no commentary." },
+            new() { Role = "user", Content =
+                $"Prompt A: {_promptA}\nPrompt B: {_promptB}\nBlend ratio (0-100, higher = more B): {_ratio}\n\nReturn the blended prompt only." }
+        };
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _result);
+            Snackbar.Add("Copied to clipboard.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy.", Severity.Error);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            var prompt = new Prompt { Title = $"Mixed Prompt ({DateTime.UtcNow:yyyy-MM-dd})", Positive = _result };
+            await DB.CreatePrompt(prompt);
+            Snackbar.Add("Saved to library.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SendToProcessAsync()
+    {
+        if (OnSendToProcess.HasDelegate)
+        {
+            await OnSendToProcess.InvokeAsync(_result);
+        }
+    }
+}

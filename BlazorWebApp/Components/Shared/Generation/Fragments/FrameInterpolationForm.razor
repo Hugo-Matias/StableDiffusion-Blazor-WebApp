@@ -1,0 +1,108 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("FrameInterpolationForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect Label="RIFE Model" 
+                   @bind-Value="_localRifeModel"
+                   @bind-Value:after="OnRifeModelChanged"
+                   T="string"
+                   AnchorOrigin="Origin.BottomLeft" 
+                   TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value="@("rife49.pth")">RIFE 4.9 (Latest)</MudSelectItem>
+            <MudSelectItem Value="@("rife48.pth")">RIFE 4.8</MudSelectItem>
+            <MudSelectItem Value="@("rife47.pth")">RIFE 4.7</MudSelectItem>
+            <MudSelectItem Value="@("rife46.pth")">RIFE 4.6</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="6">
+        <MudNumericField Label="Frame Multiplier" 
+                         @bind-Value="_localFrameMultiplier"
+                         @bind-Value:after="OnFrameMultiplierChanged"
+                         Min="_frameMultiplierMin" 
+                         Max="_frameMultiplierMax"
+                         HelperText="2x doubles frame rate, 4x quadruples it" />
+    </MudItem>
+    
+    <MudItem xs="6">
+        <MudNumericField Label="Upscale Factor" 
+                         @bind-Value="_localScaleBy"
+                         @bind-Value:after="OnScaleByChanged"
+                         Min="_scaleByMin" 
+                         Max="_scaleByMax" 
+                         Step="_scaleByStep"
+                         HelperText="Upscale frames before interpolation" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    private string _localRifeModel = "rife49.pth";
+    private int _localFrameMultiplier;
+    private double _localScaleBy;
+    
+    // Constraints from schema
+    private int _frameMultiplierMin = 1;
+    private int _frameMultiplierMax = 8;
+    
+    private double _scaleByMin = 1.0;
+    private double _scaleByMax = 4.0;
+    private double _scaleByStep = 0.5;
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        
+        // Load constraints from schema
+        LoadConstraintsFromSchema();
+        
+        // Sync local state FROM service
+        _localRifeModel = ParameterService.GetFragmentProperty(Fragment, "rife_model", "rife49.pth") ?? "rife49.pth";
+        _localFrameMultiplier = ParameterService.GetFragmentProperty(Fragment, "frame_multiplier", 2);
+        _localScaleBy = ParameterService.GetFragmentProperty(Fragment, "scale_by", 2.0);
+    }
+    
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+        
+        // Frame multiplier constraints
+        if (Fragment.Schema.Parameters.TryGetValue("frame_multiplier", out var multiplierConstraints))
+        {
+            _frameMultiplierMin = multiplierConstraints.GetMin(1);
+            _frameMultiplierMax = multiplierConstraints.GetMax(8);
+        }
+        
+        // Scale by constraints
+        if (Fragment.Schema.Parameters.TryGetValue("scale_by", out var scaleConstraints))
+        {
+            _scaleByMin = scaleConstraints.GetMin(1.0);
+            _scaleByMax = scaleConstraints.GetMax(4.0);
+            _scaleByStep = scaleConstraints.GetStep(0.5);
+        }
+    }
+    
+    private async Task OnRifeModelChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "rife_model", _localRifeModel, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnFrameMultiplierChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "frame_multiplier", _localFrameMultiplier, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+    
+    private async Task OnScaleByChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "scale_by", _localScaleBy, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

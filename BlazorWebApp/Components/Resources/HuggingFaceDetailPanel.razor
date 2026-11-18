@@ -1,0 +1,668 @@
+﻿@using BlazorWebApp.Data.Dtos.HuggingFace
+@using BlazorWebApp.Data.Entities
+@using Markdig
+@inject IHuggingFaceService Api
+@inject IDatabaseService DB
+@inject CivitaiService Civitai
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<TwoColumnLayout Collapsible="true" @bind-Collapsed="_sidebarCollapsed" SidebarTitle="Model">
+    <Sidebar>
+        <div class="hf-detail-sidebar">
+            <button type="button" class="send-to-btn hf-detail-back" @onclick="HandleBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+                <span>Back to results</span>
+            </button>
+
+            @if (!string.IsNullOrEmpty(_previewUrl))
+            {
+                <div class="hf-detail-preview">
+                    <img src="@_previewUrl" alt="Model preview" class="hf-detail-preview-img" />
+                </div>
+            }
+
+            <MudStack Spacing="1" Class="hf-detail-meta">
+                <MudText Typo="Typo.subtitle1"><b>@Model.DisplayName</b></MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">by @Model.ResolvedAuthor</MudText>
+
+                <div class="hf-detail-badges">
+                    @if (!string.IsNullOrEmpty(Model.PipelineTag))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@Model.PipelineTag
+                        </MudChip>
+                    }
+                    @if (Model.IsGated)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">Gated</MudChip>
+                    }
+                    @if (Model.Private)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Private</MudChip>
+                    }
+                </div>
+
+                <div class="hf-detail-stats">
+                    <span class="hf-stat">
+                        <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Small" />
+                        @FormatCount(Model.Downloads)
+                    </span>
+                    <span class="hf-stat">
+                        <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" />
+                        @FormatCount(Model.Likes)
+                    </span>
+                </div>
+
+                <MudLink Href="@($"https://huggingface.co/{Model.Id}")" Target="_blank" Typo="Typo.body2">
+                    View on HuggingFace
+                </MudLink>
+            </MudStack>
+        </div>
+    </Sidebar>
+    <Content>
+        @if (_isLoading)
+        {
+            <LoadingSpinner />
+        }
+        else
+        {
+            <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="false" Class="hf-detail-tabs">
+                <MudTabPanel Text="Description">
+                    @if (string.IsNullOrEmpty(_readmeHtml))
+                    {
+                        <div class="hf-readme-empty">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No description available for this model.
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="hf-readme-content">
+                            @((MarkupString)_readmeHtml)
+                        </div>
+                    }
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FilesTabLabel">
+                    <div class="hf-detail-content">
+                        <section class="hf-detail-section hf-repository-section">
+                            <div class="hf-section-header hf-section-header--split">
+                                <div>
+                                    <MudText Typo="Typo.subtitle1">Repository Files</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Pick the files that should be downloaded from this repository.
+                                    </MudText>
+                                </div>
+                                @if (_treeEntries.Count > 0)
+                                {
+                                    <span class="hf-section-pill">@(_treeEntries.Count(e => e.IsFile)) files</span>
+                                }
+                            </div>
+                            @if (_treeEntries.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">No files found.</MudText>
+                            }
+                            else
+                            {
+                                <HuggingFaceRepoTree Entries="_treeEntries" SelectedFiles="_selectedFiles"
+                                                     SelectedFilesChanged="HandleSelectionChanged" />
+                            }
+                        </section>
+
+                        <section class="hf-detail-section hf-mapping-section">
+                            <div class="hf-mapping-hero">
+                                <div class="hf-mapping-title">
+                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small"
+                                             Color="Color.Primary" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle1">Resource Mapping</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Route selected files into the local resource library and choose which files
+                                            become tracked resources.
+                                        </MudText>
+                                    </div>
+                                </div>
+                                <div class="hf-mapping-summary">
+                                    <span class="hf-section-pill">@_groups.Count group@(_groups.Count == 1 ? string.Empty :
+                                                      "s")</span>
+                                        <span class="hf-section-pill">@_fileRows.Count selected</span>
+                                        <button type="button" class="send-to-btn hf-add-group" @onclick="AddGroup">
+                                            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                            <span>Add group</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="hf-resource-groups">
+                                    @foreach (var group in _groups)
+                                    {
+                                        <div class="@GetGroupCardClass(group)" style="@GetGroupCardStyle(group)">
+                                            <div class="hf-group-header">
+                                                <div class="hf-group-title">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small"
+                                                             Color="Color.Primary" />
+                                                    <div>
+                                                        <MudText Typo="Typo.subtitle2">@group.Label</MudText>
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @_fileRows.Count(r => r.GroupId == group.Id) file@(_fileRows.Count(r =>
+                                                            r.GroupId == group.Id) == 1 ? string.Empty : "s") assigned
+                                                        </MudText>
+                                                    </div>
+                                                </div>
+                                                @if (_groups.Count > 1)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small"
+                                                                   Title="Remove group" OnClick="@(() => RemoveGroup(group))" />
+                                                }
+                                            </div>
+
+                                            <MudGrid Spacing="4" Class="hf-group-fields">
+                                                <MudItem xs="12" md="4">
+                                                    <MudSelect T="string" Value="group.TypeName"
+                                                               ValueChanged="@(v => OnGroupTypeChanged(group, v))" Label="Type"
+                                                               Variant="Variant.Text"
+                                                               HelperText="@(_hints?.TypeHint is { } th && group == _groups[0] ? $"Suggested: {th}" : "Required")">
+                                                        @foreach (var t in _types)
+                                                        {
+                                                            <MudSelectItem Value="@t.Name">@t.Name</MudSelectItem>
+                                                        }
+                                                    </MudSelect>
+                                                </MudItem>
+                                                <MudItem xs="12" md="4">
+                                                    <MudAutocomplete @key="@($"sub-{group.Id}-{group.TypeName}")" T="string"
+                                                                     Value="group.SubTypeName" ValueChanged="@(v => group.SubTypeName = v)"
+                                                                     SearchFunc="@(v => GetSubTypeNames(group, v))" Label="Sub-Type" Clearable
+                                                                     Variant="Variant.Text" CoerceValue="true" MaxItems="null"
+                                                                     Disabled="@(string.IsNullOrEmpty(group.TypeName))"
+                                                                     HelperText="@(_hints?.SubTypeHint is { } st && group == _groups[0] ? $"Suggested: {st}" : "Optional")" />
+                                                </MudItem>
+                                                <MudItem xs="12" md="4">
+                                                    <MudAutocomplete T="string" Value="group.BaseModel"
+                                                                     ValueChanged="@(v => group.BaseModel = v)" SearchFunc="GetBaseModelNames"
+                                                                     Label="Base Model" Clearable Variant="Variant.Text" CoerceValue="true"
+                                                                     MaxItems="null"
+                                                                     HelperText="@(_hints?.BaseModelHint is { } bm && group == _groups[0] ? $"Suggested: {bm}" : "Optional")" />
+                                                </MudItem>
+                                            </MudGrid>
+
+                                            <div class="hf-group-options">
+                                                <MudSwitch @bind-Value="group.KeepFolderStructure" Label="Keep folder structure"
+                                                           Color="Color.Primary" />
+
+                                                <div class="hf-detail-dest-preview">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Destination</MudText>
+                                                    <MudText Typo="Typo.caption" Class="hf-detail-dest-path">
+                                                        @GetGroupDestinationPreview(group)</MudText>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (_fileRows.Count > 0)
+                                    {
+                                        <div class="hf-files-list">
+                                            <div class="hf-files-list-header">
+                                                <div>
+                                                    <MudText Typo="Typo.subtitle2">Selected Files</MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        Edit saved names, assign groups, and mark tracked resource files.
+                                                    </MudText>
+                                                </div>
+                                                <span class="hf-section-pill">@_fileRows.Count total</span>
+                                            </div>
+                                            @foreach (var row in _fileRows)
+                                            {
+                                                <div class="@($"hf-file-row{(_groups.Count > 1 ? " has-group" : "")}")">
+                                                    <MudIcon Icon="@GetFileIcon(System.IO.Path.GetExtension(row.RepoPath))"
+                                                             Size="Size.Small" Class="hf-file-row__icon" />
+                                                    <div class="hf-file-row__path" title="@row.RepoPath">@row.RepoPath</div>
+                                                    <MudTextField @bind-Value="row.OutputFilename" Label="Save as" Variant="Variant.Text"
+                                                                  Dense="true" Margin="Margin.None" Class="hf-file-row__rename" />
+                                                    @if (_groups.Count > 1)
+                                                    {
+                                                        <MudSelect T="string" Value="row.GroupId" ValueChanged="@(v => row.GroupId = v)"
+                                                                   Dense="true" Variant="Variant.Text" Margin="Margin.None" Class="hf-file-row__group">
+                                                            @foreach (var g in _groups)
+                                                            {
+                                                                <MudSelectItem Value="@g.Id">@g.Label</MudSelectItem>
+                                                            }
+                                                        </MudSelect>
+                                                    }
+                                                    <MudTooltip
+                                                        Text="@(row.IsResourceFile ? "Tracked resource" : "Companion file (not tracked)")">
+                                                        <MudIconButton
+                                                        Icon="@(row.IsResourceFile ? Icons.Material.Filled.Bookmark : Icons.Material.Outlined.BookmarkBorder)"
+                                                        Color="@(row.IsResourceFile ? Color.Primary : Color.Default)" Size="Size.Small"
+                                                        OnClick="@(() => row.IsResourceFile = !row.IsResourceFile)" />
+                                                    </MudTooltip>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="hf-selection-empty">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Medium"
+                                                     Color="Color.Secondary" />
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Select repository files above to prepare
+                                                a download.</MudText>
+                                            </div>
+                                        }
+
+                                        <div class="hf-mapping-footer">
+                                            @foreach (var msg in _validationMessages)
+                                            {
+                                                <MudAlert Severity="Severity.Warning" Dense="true">@msg</MudAlert>
+                                            }
+
+                                            <MudButton Color="Color.Success" Variant="Variant.Filled"
+                                                       Disabled="@(!CanDownload || _isDownloading)" OnClick="StartDownload"
+                                                       Class="hf-download-button">
+                                                @if (_isDownloading)
+                                                {
+                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                                                    <span>Downloading...</span>
+                                                }
+                                                else
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Download" Class="me-1" />
+                                                    <span>Download@(_fileRows.Count > 0 ? $" ({_fileRows.Count})" : string.Empty)</span>
+                                                }
+                                            </MudButton>
+                                        </div>
+                                    </section>
+                                </div>
+                            </MudTabPanel>
+                        </MudTabs>
+                    }
+                </Content>
+            </TwoColumnLayout>
+
+@code {
+    private class ResourceGroup
+    {
+        public string Id { get; } = Guid.NewGuid().ToString("N")[..8];
+        public string TypeName { get; set; } = string.Empty;
+        public string? SubTypeName { get; set; }
+        public string? BaseModel { get; set; }
+        public bool KeepFolderStructure { get; set; }
+        public string Label => string.IsNullOrEmpty(TypeName) ? "(unset type)" : TypeName;
+    }
+
+    private class FileRow
+    {
+        public string RepoPath { get; set; } = string.Empty;
+        public string OutputFilename { get; set; } = string.Empty;
+        public bool IsResourceFile { get; set; } = true;
+        public string GroupId { get; set; } = string.Empty;
+        public double SizeKb { get; set; }
+        public string? Sha { get; set; }
+    }
+
+    [Parameter, EditorRequired]
+    public HuggingFaceModelSummaryDto Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    private static readonly MarkdownPipeline MdPipeline =
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+
+    private bool _sidebarCollapsed;
+    private bool _isLoading = true;
+    private bool _isDownloading;
+    private int _activeTab;
+
+    private string? _previewUrl;
+    private string _readmeHtml = string.Empty;
+
+    private List<HuggingFaceTreeEntryDto> _treeEntries = new();
+    private HashSet<string> _selectedFiles = new();
+    private HuggingFaceMappingHints? _hints;
+
+    private List<ResourceGroup> _groups = new();
+    private List<FileRow> _fileRows = new();
+    private List<ResourceType> _types = new();
+    private List<string> _validationMessages = new();
+
+    private string? _loadedModelId;
+    private CancellationTokenSource? _cts;
+
+    private string FilesTabLabel => _fileRows.Count > 0
+        ? $"Files ({_fileRows.Count} selected)"
+        : "Files";
+
+    private bool CanDownload =>
+        _fileRows.Count > 0 &&
+        _groups.All(g => !string.IsNullOrEmpty(g.TypeName)) &&
+        _validationMessages.Count == 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model?.Id == _loadedModelId) return;
+        await LoadDetail();
+    }
+
+    private async Task LoadDetail()
+    {
+        _loadedModelId = Model.Id;
+        _isLoading = true;
+        _treeEntries = new();
+        _selectedFiles = new();
+        _fileRows = new();
+        _previewUrl = null;
+        _readmeHtml = string.Empty;
+        _validationMessages = new();
+        _activeTab = 0;
+        StateHasChanged();
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            _types = await DB.GetResourceTypes(true);
+
+            var author = Model.ResolvedAuthor;
+            var repo = Model.DisplayName;
+            _hints = HuggingFaceModelMapper.InferHints(Model);
+
+            var firstGroup = new ResourceGroup();
+            if (!string.IsNullOrEmpty(_hints.TypeHint) && _types.Any(t => t.Name == _hints.TypeHint))
+                firstGroup.TypeName = _hints.TypeHint;
+            if (!string.IsNullOrEmpty(_hints.SubTypeHint))
+                firstGroup.SubTypeName = _hints.SubTypeHint;
+            if (!string.IsNullOrEmpty(_hints.BaseModelHint))
+                firstGroup.BaseModel = _hints.BaseModelHint;
+            _groups = new() { firstGroup };
+
+            var treeTask = Api.GetTreeAsync(author, repo, recursive: true, ct: _cts.Token);
+            var readmeTask = Api.GetReadmeAsync(author, repo, ct: _cts.Token);
+            await Task.WhenAll(treeTask, readmeTask);
+
+            _treeEntries = treeTask.Result;
+            var readme = readmeTask.Result;
+            if (!string.IsNullOrEmpty(readme))
+            {
+                _previewUrl = HuggingFaceService.ExtractFirstMarkdownImageUrl(readme, author, repo, "main");
+                _readmeHtml = RenderReadme(readme, author, repo, "main");
+            }
+
+            var firstModelFile = _treeEntries
+                .FirstOrDefault(e => e.IsFile && new[] { ".safetensors", ".gguf", ".bin", ".pt", ".ckpt" }
+                    .Contains(e.Extension))?.Path;
+            if (firstModelFile != null)
+            {
+                _hints = HuggingFaceModelMapper.InferHints(Model, firstModelFile);
+                if (string.IsNullOrEmpty(firstGroup.TypeName) && !string.IsNullOrEmpty(_hints.TypeHint)
+                    && _types.Any(t => t.Name == _hints.TypeHint))
+                    firstGroup.TypeName = _hints.TypeHint;
+                if (string.IsNullOrEmpty(firstGroup.SubTypeName) && !string.IsNullOrEmpty(_hints.SubTypeHint))
+                    firstGroup.SubTypeName = _hints.SubTypeHint;
+            }
+
+            UpdateValidationMessages();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load model details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AddGroup() => _groups.Add(new ResourceGroup());
+
+    private void RemoveGroup(ResourceGroup group)
+    {
+        var fallback = _groups.FirstOrDefault(g => g != group);
+        if (fallback != null)
+            foreach (var row in _fileRows.Where(r => r.GroupId == group.Id))
+                row.GroupId = fallback.Id;
+        _groups.Remove(group);
+        UpdateValidationMessages();
+    }
+
+    private Task OnGroupTypeChanged(ResourceGroup group, string value)
+    {
+        group.TypeName = value;
+        group.SubTypeName = null;
+        UpdateValidationMessages();
+        return Task.CompletedTask;
+    }
+
+    private void HandleSelectionChanged(HashSet<string> files)
+    {
+        _selectedFiles = files;
+        var existingPaths = _fileRows.Select(r => r.RepoPath).ToHashSet();
+        var defaultGroupId = _groups[0].Id;
+        foreach (var path in files.Where(p => !existingPaths.Contains(p)))
+        {
+            var entry = _treeEntries.FirstOrDefault(e => e.Path == path);
+            _fileRows.Add(new FileRow
+            {
+                RepoPath = path,
+                OutputFilename = System.IO.Path.GetFileName(path),
+                IsResourceFile = IsModelExtension(System.IO.Path.GetExtension(path)),
+                GroupId = defaultGroupId,
+                SizeKb = entry?.SizeKb ?? 0,
+                Sha = entry?.Lfs?.Oid ?? entry?.Oid,
+            });
+        }
+        _fileRows.RemoveAll(r => !files.Contains(r.RepoPath));
+        UpdateValidationMessages();
+    }
+
+    private static bool IsModelExtension(string ext) =>
+        ext is ".safetensors" or ".gguf" or ".bin" or ".pt" or ".ckpt";
+
+    private void UpdateValidationMessages()
+    {
+        _validationMessages = new();
+        if (Model.IsGated)
+            _validationMessages.Add("This model is gated. A HuggingFace API token with accepted access is required.");
+        if (Model.Private)
+            _validationMessages.Add("This model is private. A HuggingFace API token is required.");
+
+        foreach (var group in _groups)
+        {
+            if (string.IsNullOrEmpty(group.TypeName)) continue;
+            if (group.KeepFolderStructure) continue;
+            var groupRows = _fileRows.Where(r => r.GroupId == group.Id).ToList();
+            if (groupRows.Count <= 1) continue;
+            var effectiveNames = groupRows
+                .Select(r => string.IsNullOrWhiteSpace(r.OutputFilename)
+                    ? System.IO.Path.GetFileName(r.RepoPath) : r.OutputFilename)
+                .ToList();
+            var dups = effectiveNames
+                .GroupBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            if (dups.Any())
+                _validationMessages.Add(
+                    $"Group '{group.Label}': duplicate filenames in flat mode: {string.Join(", ", dups)}. " +
+                    "Enable folder structure or rename conflicts.");
+        }
+    }
+
+    private async Task StartDownload()
+    {
+        UpdateValidationMessages();
+        if (!CanDownload) return;
+
+        _isDownloading = true;
+        StateHasChanged();
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            int downloadCount = 0;
+            var allFailed = new List<string>();
+            bool firstGroup = true;
+
+            foreach (var group in _groups)
+            {
+                var groupRows = _fileRows.Where(r => r.GroupId == group.Id).ToList();
+                if (groupRows.Count == 0) continue;
+
+                var files = groupRows.Select(row => new HuggingFaceFileSelection
+                {
+                    RepoFilePath = row.RepoPath,
+                    OutputFilename = string.IsNullOrWhiteSpace(row.OutputFilename) ||
+                                     row.OutputFilename == System.IO.Path.GetFileName(row.RepoPath)
+                                     ? null : row.OutputFilename,
+                    SizeKb = row.SizeKb,
+                    Sha = row.Sha,
+                    IsResourceFile = row.IsResourceFile,
+                }).ToList();
+
+                var request = new HuggingFaceDownloadRequest
+                {
+                    ModelId = Model.Id,
+                    Revision = "main",
+                    Files = files,
+                    TypeName = group.TypeName,
+                    SubTypeName = string.IsNullOrEmpty(group.SubTypeName) ||
+                                  group.SubTypeName.Equals("none", StringComparison.OrdinalIgnoreCase)
+                                  ? null : group.SubTypeName,
+                    BaseModel = group.BaseModel,
+                    KeepFolderStructure = group.KeepFolderStructure,
+                    DownloadPreview = firstGroup,
+                    InferredHints = _hints,
+                };
+                firstGroup = false;
+
+                var result = await Api.DownloadAsync(request, _cts.Token);
+                downloadCount += result.DownloadedFiles.Count;
+                allFailed.AddRange(result.FailedFiles);
+                if (result.Status == HuggingFaceDownloadStatus.Cancelled) break;
+            }
+
+            if (allFailed.Count == 0 && downloadCount > 0)
+                Snackbar.Add($"Downloaded {downloadCount} file(s) successfully.", Severity.Success);
+            else if (downloadCount > 0)
+                Snackbar.Add($"Downloaded {downloadCount} file(s). {allFailed.Count} failed.", Severity.Warning);
+            else if (allFailed.Count == 0)
+                Snackbar.Add("All selected files already exist locally.", Severity.Info);
+            else
+                Snackbar.Add("Download failed. Check the application log.", Severity.Error);
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("Download cancelled.", Severity.Normal);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isDownloading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IEnumerable<string>> GetSubTypeNames(ResourceGroup group, string? value)
+    {
+        // ResourceSubType has no FK to ResourceType, so we show all subtypes and filter by text.
+        var names = (await DB.GetResourceSubTypes(ordered: true)).Select(s => s.Name);
+        if (string.IsNullOrWhiteSpace(value)) return names;
+        return names.Where(s => s.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<IEnumerable<string>> GetBaseModelNames(string? value)
+    {
+        var fromDb = await DB.GetDistinctBaseModels();
+        var fromCivitai = Civitai.BaseModelsData.Models
+            .Where(m => m.Hidden != true)
+            .Select(m => m.Name);
+        var all = fromDb.Concat(fromCivitai)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s);
+        if (string.IsNullOrWhiteSpace(value)) return all;
+        return all.Where(s => s.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetGroupDestinationPreview(ResourceGroup group)
+    {
+        var root = Configuration["ResourcesPath"] ?? "{ResourcesPath}";
+        if (string.IsNullOrEmpty(group.TypeName)) return $"{root}\\(select type)";
+        var noSub = string.IsNullOrEmpty(group.SubTypeName) ||
+                    group.SubTypeName.Equals("none", StringComparison.OrdinalIgnoreCase);
+        return noSub ? $"{root}\\{group.TypeName}" : $"{root}\\{group.TypeName}\\{group.SubTypeName}";
+    }
+
+    private static string GetGroupCardClass(ResourceGroup group) =>
+        string.IsNullOrWhiteSpace(group.TypeName)
+            ? "hf-resource-group"
+            : "hf-resource-group hf-resource-group--typed";
+
+    private static string? GetGroupCardStyle(ResourceGroup group)
+    {
+        if (string.IsNullOrWhiteSpace(group.TypeName)) return null;
+
+        var hue = 0;
+        foreach (var ch in group.TypeName)
+        {
+            hue = ((hue * 31) + char.ToUpperInvariant(ch)) % 360;
+        }
+
+        return $"--hf-group-accent: hsl({hue} 68% 54%);";
+    }
+
+    private static string RenderReadme(string markdown, string author, string repo, string revision)
+    {
+        if (string.IsNullOrEmpty(markdown)) return string.Empty;
+        var html = Markdown.ToHtml(FixRelativeImages(StripFrontMatter(markdown), author, repo, revision), MdPipeline);
+        // Inline-constrain every image so it can't expand beyond the container regardless of CSS scoping.
+        html = System.Text.RegularExpressions.Regex.Replace(
+            html, @"<img ", "<img style=\"max-width:100%;height:auto;display:block;\" ");
+        return html;
+    }
+
+    private static string StripFrontMatter(string text)
+    {
+        if (!text.StartsWith("---")) return text;
+        var end = text.IndexOf("---", 3, StringComparison.Ordinal);
+        return end >= 0 ? text[(end + 3)..].TrimStart() : text;
+    }
+
+    private static string FixRelativeImages(string markdown, string author, string repo, string revision)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(
+            markdown,
+            @"!\[([^\]]*)\]\((?!https?://)(?!data:)([^)]+)\)",
+            m =>
+            {
+                var url = m.Groups[2].Value.TrimStart('/');
+                var abs = $"https://huggingface.co/{author}/{repo}/resolve/{revision}/{url}";
+                return $"![{m.Groups[1].Value}]({abs})";
+            });
+    }
+
+    private static string GetFileIcon(string ext) => ext switch
+    {
+        ".safetensors" or ".gguf" or ".bin" or ".pt" or ".ckpt" => Icons.Material.Filled.Memory,
+        ".json" or ".yaml" => Icons.Material.Filled.Code,
+        ".txt" or ".md" => Icons.Material.Filled.Description,
+        ".png" or ".jpg" or ".jpeg" or ".webp" => Icons.Material.Filled.Image,
+        _ => Icons.Material.Filled.InsertDriveFile,
+    };
+
+    private static string FormatCount(int count) =>
+        count >= 1_000_000 ? $"{count / 1_000_000.0:F1}M" :
+        count >= 1_000 ? $"{count / 1_000.0:F1}K" :
+        count.ToString();
+
+    private Task HandleBack() => OnBack.InvokeAsync();
+
+    public void Dispose() => _cts?.Dispose();
+}

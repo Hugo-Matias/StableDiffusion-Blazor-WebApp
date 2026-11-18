@@ -1,0 +1,172 @@
+@using BlazorWebApp.Data.Dtos.HuggingFace
+
+<div class="hf-tree">
+    <div class="hf-tree-filters">
+        @foreach (var ext in AllExtensions)
+        {
+            <MudChip T="string"
+                     Color="@(string.Equals(_extFilter, ext, StringComparison.OrdinalIgnoreCase) ? Color.Primary : Color.Default)"
+                     Variant="@(string.Equals(_extFilter, ext, StringComparison.OrdinalIgnoreCase) ? Variant.Filled : Variant.Text)"
+                     Size="Size.Medium" OnClick="@(() => SetFilter(ext))">
+                @ext
+            </MudChip>
+        }
+    </div>
+
+    <div class="hf-tree-actions">
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="SelectModelFiles">
+            Select model files
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="ClearSelection">
+            Clear all
+        </MudButton>
+        @if (SelectedFiles.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@SelectedFiles.Count file(s) selected</MudText>
+        }
+    </div>
+
+    <div class="hf-tree-list">
+        @foreach (var entry in FilteredEntries)
+        {
+            @if (entry.IsDirectory)
+            {
+                <div class="hf-tree-row hf-tree-row--folder" style="@GetIndentStyle(entry.Path)">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="hf-tree-row__icon" />
+                    <span class="hf-tree-row__name">@entry.Filename</span>
+                </div>
+            }
+            else
+            {
+                var isSelected = SelectedFiles.Contains(entry.Path);
+                <div class="hf-tree-row hf-tree-row--file @(isSelected ? "hf-tree-row--selected" : string.Empty)"
+                     style="@GetIndentStyle(entry.Path)" @onclick="@(() => ToggleFile(entry.Path))">
+                    <span @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool" Value="@isSelected" ValueChanged="@(async (v) => await ToggleFile(entry.Path))"
+                                     Dense="true" />
+                    </span>
+                    <MudIcon Icon="@GetFileIcon(entry.Extension)" Size="Size.Small" Class="hf-tree-row__icon" />
+                    <span class="hf-tree-row__name">@entry.Filename</span>
+                    @if (!string.IsNullOrEmpty(entry.Extension))
+                    {
+                        <span class="hf-tree-row__ext">@entry.Extension</span>
+                    }
+                    @if (entry.Size > 0)
+                    {
+                        <span class="hf-tree-row__size">@FormatSize(entry)</span>
+                    }
+                </div>
+            }
+        }
+
+        @if (!FilteredEntries.Any())
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-2">
+                No files match the current filter.
+            </MudText>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly string[] AllExtensions = ["All", ".safetensors", ".gguf", ".bin", ".pt", ".ckpt", ".json",
+".yaml", ".txt"];
+    private static readonly string[] ModelExtensions = [".safetensors", ".gguf", ".bin", ".pt", ".ckpt"];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<HuggingFaceTreeEntryDto> Entries { get; set; } = Array.Empty<HuggingFaceTreeEntryDto>();
+
+    [Parameter]
+    public HashSet<string> SelectedFiles { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<HashSet<string>> SelectedFilesChanged { get; set; }
+
+    private string _extFilter = "All";
+
+    private IEnumerable<HuggingFaceTreeEntryDto> FilteredEntries
+    {
+        get
+        {
+            IEnumerable<HuggingFaceTreeEntryDto> source;
+            if (string.Equals(_extFilter, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                source = Entries;
+            }
+            else
+            {
+                var matchingFilePaths = Entries
+                    .Where(e => e.IsFile && string.Equals(e.Extension, _extFilter, StringComparison.OrdinalIgnoreCase))
+                    .Select(e => e.Path)
+                    .ToHashSet();
+
+                var ancestorPaths = matchingFilePaths
+                    .SelectMany(GetAncestorPaths)
+                    .ToHashSet();
+
+                source = Entries.Where(e =>
+                    (e.IsFile && string.Equals(e.Extension, _extFilter, StringComparison.OrdinalIgnoreCase)) ||
+                    (e.IsDirectory && ancestorPaths.Contains(e.Path)));
+            }
+
+            // Sort so each directory is immediately followed by its children.
+            // Key: use path as-is for files; append '/' for directories so the dir
+            // entry sorts just before "path/..." children but after any sibling file
+            // that alphabetically precedes it.
+            return source.OrderBy(e => e.IsDirectory ? e.Path + "/" : e.Path,
+                                  StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task ToggleFile(string path)
+    {
+        if (SelectedFiles.Contains(path))
+            SelectedFiles.Remove(path);
+        else
+            SelectedFiles.Add(path);
+        await SelectedFilesChanged.InvokeAsync(SelectedFiles);
+    }
+
+    private async Task SelectModelFiles()
+    {
+        foreach (var entry in Entries.Where(e => e.IsFile && ModelExtensions.Contains(e.Extension)))
+            SelectedFiles.Add(entry.Path);
+        await SelectedFilesChanged.InvokeAsync(SelectedFiles);
+    }
+
+    private async Task ClearSelection()
+    {
+        SelectedFiles.Clear();
+        await SelectedFilesChanged.InvokeAsync(SelectedFiles);
+    }
+
+    private void SetFilter(string ext) => _extFilter = ext;
+
+    private static string GetIndentStyle(string path)
+    {
+        var depth = path.Count(c => c == '/');
+        return depth > 0 ? $"padding-left: calc(var(--space-2) + (var(--space-3) * {depth}))" : string.Empty;
+    }
+
+    private static string GetFileIcon(string ext) => ext switch
+    {
+        ".safetensors" or ".gguf" or ".bin" or ".pt" or ".ckpt" => Icons.Material.Filled.Memory,
+        ".json" or ".yaml" => Icons.Material.Filled.Code,
+        ".txt" or ".md" => Icons.Material.Filled.Description,
+        ".png" or ".jpg" or ".jpeg" or ".webp" => Icons.Material.Filled.Image,
+        _ => Icons.Material.Filled.InsertDriveFile,
+    };
+
+    private static string FormatSize(HuggingFaceTreeEntryDto entry)
+    {
+        if (entry.SizeMb >= 1) return $"{entry.SizeMb:F1} MB";
+        return $"{entry.SizeKb:F0} KB";
+    }
+
+    private static IEnumerable<string> GetAncestorPaths(string filePath)
+    {
+        var parts = filePath.Split('/');
+        for (var i = 1; i < parts.Length; i++)
+            yield return string.Join('/', parts[..i]);
+    }
+}

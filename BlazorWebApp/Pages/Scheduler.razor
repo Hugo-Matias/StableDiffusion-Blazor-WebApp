@@ -1,0 +1,95 @@
+@page "/scheduler"
+@page "/scheduler/{Tab}"
+@using BlazorWebApp.Components.Scheduler
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Services
+@inject NavigationManager Nav
+@inject IInfoService InfoService
+@implements IDisposable
+
+<PageTitle>Scheduler</PageTitle>
+
+<TabbedPageShell ActivePanelIndex="@_activeIndex" ActivePanelIndexChanged="OnTabChanged">
+    <MudTabPanel Text="Jobs" Icon="@Icons.Material.Filled.Edit">
+        <SchedulerEditorTab />
+    </MudTabPanel>
+    <MudTabPanel Text="Runs" Icon="@Icons.Material.Filled.PlaylistPlay">
+        <SchedulerRunsTab />
+    </MudTabPanel>
+    <MudTabPanel Text="Results" Icon="@Icons.Material.Filled.Collections">
+        <SchedulerResultsTab JobIdQuery="@_jobIdQuery" RunIdQuery="@_runIdQuery" />
+    </MudTabPanel>
+</TabbedPageShell>
+
+@code {
+    [Parameter] public string? Tab { get; set; }
+
+    private int _activeIndex;
+    private Guid? _jobIdQuery;
+    private Guid? _runIdQuery;
+
+    protected override void OnInitialized()
+    {
+        InfoService.SetInfo(SchedulerInfoContent.Build());
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyRouteState();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Re-read the active tab + query parameters whenever the URL changes so in-app
+        // navigation (e.g. "View results" from the Runs tab) reflects in the UI.
+        InvokeAsync(() =>
+        {
+            ApplyRouteState();
+            StateHasChanged();
+        });
+    }
+
+    private void ApplyRouteState()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var path = uri.AbsolutePath.TrimEnd('/');
+        // /scheduler/<tab>
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var tab = segments.Length >= 2 ? segments[1] : Tab;
+
+        _activeIndex = (tab?.ToLowerInvariant()) switch
+        {
+            // "editor" kept as an alias so legacy links keep working.
+            "runs" => 1,
+            "results" => 2,
+            "jobs" or "editor" or _ => 0,
+        };
+
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        _jobIdQuery = query.TryGetValue("jobId", out var rawJ) && Guid.TryParse(rawJ.ToString(), out var jid)
+            ? jid : null;
+        _runIdQuery = query.TryGetValue("runId", out var rawR) && Guid.TryParse(rawR.ToString(), out var rid)
+            ? rid : null;
+    }
+
+    private void OnTabChanged(int index)
+    {
+        if (_activeIndex == index) return;
+        _activeIndex = index;
+        // Reflect tab changes in the URL so deep links and back/forward work.
+        var tab = index switch
+        {
+            1 => "runs",
+            2 => "results",
+            _ => "jobs",
+        };
+        Nav.NavigateTo($"/scheduler/{tab}", forceLoad: false);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        InfoService.ClearInfo();
+    }
+}

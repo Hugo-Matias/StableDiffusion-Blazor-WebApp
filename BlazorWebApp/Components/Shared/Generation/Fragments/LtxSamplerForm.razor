@@ -1,0 +1,119 @@
+@using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("LtxSamplerForm")]
+@inject IBackendService Backend
+@inject IImageService ImageService
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1" Max="long.MaxValue" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+            <MudIconButton OnClick="RestoreSeed" Icon="fa-solid fa-rotate-left" Size="Size.Small" Title="Restore seed from last generation" />
+        </MudStack>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double"
+                   @bind-Value="_localCfg"
+                   @bind-Value:after="OnCfgChanged"
+                   Min="_cfgMin"
+                   Max="_cfgMax"
+                   Step="_cfgStep"
+                   Variant="Variant.Filled"
+                   ValueLabel
+                   TickMarks>
+            <small>CFG Scale:</small> @_localCfg.ToString("F1")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private long _localSeed;
+    private double _localCfg;
+
+    private double _cfgMin = 1.0;
+    private double _cfgMax = 10.0;
+    private double _cfgStep = 0.5;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, Params.Seed, -1L);
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, Params.Cfg, 1.0);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue(Params.Cfg, out var cfgConstraints))
+        {
+            _cfgMin = cfgConstraints.GetMin(1.0);
+            _cfgMax = cfgConstraints.GetMax(10.0);
+            _cfgStep = cfgConstraints.GetStep(0.5);
+        }
+    }
+
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, Params.Cfg, _localCfg, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetRandomSeed()
+    {
+        _localSeed = -1;
+        ParameterService.SetFragmentProperty(Fragment, Params.Seed, -1L, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task RestoreSeed()
+    {
+        if (Backend.IsBackendAvailable && !string.IsNullOrWhiteSpace(ImageService.Images?.Info))
+        {
+            var info = ImageService.Images.Info;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(info);
+                var root = doc.RootElement;
+
+                foreach (var nodeProperty in root.EnumerateObject())
+                {
+                    if (nodeProperty.Value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        nodeProperty.Value.TryGetProperty("inputs", out var inputs))
+                    {
+                        // Check for both "noise_seed" (RandomNoise) and "seed" (KSampler)
+                        if (inputs.TryGetProperty("noise_seed", out var seedEl) ||
+                            inputs.TryGetProperty("seed", out seedEl))
+                        {
+                            if (seedEl.ValueKind == System.Text.Json.JsonValueKind.Number && seedEl.TryGetInt64(out var seedValue))
+                            {
+                                _localSeed = seedValue;
+                                ParameterService.SetFragmentProperty(Fragment, Params.Seed, seedValue, notify: true);
+                                await OnChanged.InvokeAsync();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If parsing fails, do nothing
+            }
+        }
+    }
+}

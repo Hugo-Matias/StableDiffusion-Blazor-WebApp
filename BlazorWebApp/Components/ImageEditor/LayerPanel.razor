@@ -1,0 +1,248 @@
+@using BlazorWebApp.Models
+
+<div class="layer-panel @(_isExpanded ? "expanded" : "collapsed")">
+    @* Toggle Button *@
+    <div class="layer-panel-toggle" @onclick="TogglePanel">
+        <MudIcon Icon="@(_isExpanded ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)" Size="Size.Small" />
+        @if (!_isExpanded)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Class="mt-2" />
+        }
+    </div>
+    
+    @if (_isExpanded)
+    {
+        <div class="layer-panel-content">
+            @* Header *@
+            <div class="layer-panel-header">
+                <MudText Typo="Typo.subtitle2">Layers</MudText>
+                <MudStack Row Spacing="0">
+                    <MudTooltip Text="Move Layer Up">
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" 
+                                       OnClick="MoveLayerUp" Disabled="@(!CanMoveUp)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Move Layer Down">
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" 
+                                       OnClick="MoveLayerDown" Disabled="@(!CanMoveDown)" />
+                    </MudTooltip>
+                    <MudTooltip Text="Add Layer">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" 
+                                       OnClick="AddLayer" Disabled="@(Layers.Count >= MaxLayerCount)" />
+                    </MudTooltip>
+                </MudStack>
+            </div>
+            
+            @* Layer List *@
+            <div class="layer-list">
+                @foreach (var layer in GetOrderedLayers())
+                {
+                    var isActive = layer.Id == ActiveLayerId;
+                    <div class="layer-item @(isActive ? "active" : "") @(layer.IsLocked ? "locked" : "")"
+                         @onclick="() => SelectLayer(layer)" @onclick:stopPropagation="true">
+                        
+                        @* Layer Icon *@
+                        <div class="layer-icon">
+                            <MudIcon Icon="@GetLayerIcon(layer)" Size="Size.Small" />
+                        </div>
+                        
+                        @* Layer Name *@
+                        <div class="layer-name" @ondblclick="() => StartRename(layer)" @ondblclick:stopPropagation="true">
+                            @if (_renamingLayerId == layer.Id)
+                            {
+                                <input type="text" class="layer-rename-input" @bind="_renameValue" @bind:event="oninput"
+                                       @onblur="() => FinishRename(layer)" @onkeydown="(e) => HandleRenameKeyDown(e, layer)"
+                                       @onkeydown:stopPropagation="true" @ref="_renameInputRef" />
+                            }
+                            else
+                            {
+                                <span>@layer.Name</span>
+                            }
+                        </div>
+                        
+                        @* Layer Controls *@
+                        <div class="layer-controls">
+                            @* Visibility Toggle *@
+                            <MudTooltip Text="@(layer.IsVisible ? "Hide" : "Show")">
+                                <MudIconButton Icon="@(layer.IsVisible ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)" 
+                                               Size="Size.Small" Class="layer-control-btn"
+                                               OnClick="() => ToggleVisibility(layer)" OnClick:stopPropagation="true" />
+                            </MudTooltip>
+                            
+                            @* Lock Toggle *@
+                            <MudTooltip Text="@(layer.IsLocked ? "Unlock" : "Lock")">
+                                <MudIconButton Icon="@(layer.IsLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)" 
+                                               Size="Size.Small" Class="layer-control-btn"
+                                               OnClick="() => ToggleLock(layer)" OnClick:stopPropagation="true"
+                                               Disabled="@(layer.LayerType == LayerType.Base)" />
+                            </MudTooltip>
+                            
+                            @* Delete *@
+                            @if (layer.CanDelete)
+                            {
+                                <MudTooltip Text="Delete Layer">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                   Class="layer-control-btn delete"
+                                                   OnClick="() => DeleteLayer(layer)" OnClick:stopPropagation="true" />
+                                </MudTooltip>
+                            }
+                        </div>
+                    </div>
+                    
+                    @* Opacity Slider (shown when layer is active and not base) *@
+                    @if (isActive && layer.LayerType != LayerType.Base)
+                    {
+                        <div class="layer-opacity-control">
+                            <MudText Typo="Typo.caption" Class="opacity-label">Opacity</MudText>
+                            <MudSlider T="float" Value="@_localOpacity" 
+                                       ValueChanged="@((v) => HandleLocalOpacityChange(layer, v))"
+                                       Min="0f" Max="1f" Step="0.05f" Class="opacity-slider" />
+                            <MudText Typo="Typo.caption" Class="opacity-value">@($"{(int)(_localOpacity * 100)}%")</MudText>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<LayerInfo> Layers { get; set; } = new();
+    [Parameter] public string? ActiveLayerId { get; set; }
+    [Parameter] public int MaxLayerCount { get; set; } = 20;
+    [Parameter] public EventCallback<string> OnLayerSelected { get; set; }
+    [Parameter] public EventCallback OnAddLayer { get; set; }
+    [Parameter] public EventCallback<string> OnDeleteLayer { get; set; }
+    [Parameter] public EventCallback<(string layerId, bool visible)> OnVisibilityChanged { get; set; }
+    [Parameter] public EventCallback<(string layerId, bool locked)> OnLockChanged { get; set; }
+    [Parameter] public EventCallback<(string layerId, float opacity)> OnOpacityChanged { get; set; }
+    [Parameter] public EventCallback<(string layerId, string name)> OnRename { get; set; }
+    [Parameter] public EventCallback<(string layerId, int direction)> OnReorder { get; set; }
+    
+    private bool _isExpanded = true;
+    private string? _renamingLayerId;
+    private string _renameValue = "";
+    private ElementReference _renameInputRef;
+    private float _localOpacity = 1.0f;
+    private string? _lastActiveLayerId;
+    
+    private LayerInfo? SelectedLayer => Layers.FirstOrDefault(l => l.Id == ActiveLayerId);
+    
+    protected override void OnParametersSet()
+    {
+        // Sync local opacity only when active layer changes (not on every render)
+        if (ActiveLayerId != _lastActiveLayerId)
+        {
+            _lastActiveLayerId = ActiveLayerId;
+            var activeLayer = SelectedLayer;
+            if (activeLayer != null)
+            {
+                _localOpacity = activeLayer.Opacity;
+            }
+        }
+    }
+    
+    private bool CanMoveUp
+    {
+        get
+        {
+            if (SelectedLayer == null || !SelectedLayer.CanReorder) return false;
+            var ordered = GetOrderedLayers().ToList();
+            var index = ordered.FindIndex(l => l.Id == SelectedLayer.Id);
+            // Can move up if not at top and layer above is also reorderable
+            return index > 0 && ordered[index - 1].CanReorder;
+        }
+    }
+    
+    private bool CanMoveDown
+    {
+        get
+        {
+            if (SelectedLayer == null || !SelectedLayer.CanReorder) return false;
+            var ordered = GetOrderedLayers().ToList();
+            var index = ordered.FindIndex(l => l.Id == SelectedLayer.Id);
+            // Can move down if not at bottom and layer below is also reorderable
+            return index >= 0 && index < ordered.Count - 1 && ordered[index + 1].CanReorder;
+        }
+    }
+    
+    private void TogglePanel()
+    {
+        _isExpanded = !_isExpanded;
+    }
+    
+    private IEnumerable<LayerInfo> GetOrderedLayers()
+    {
+        // Display layers from highest order (top) to lowest (bottom)
+        return Layers.OrderByDescending(l => l.Order);
+    }
+    
+    private string GetLayerIcon(LayerInfo layer)
+    {
+        return layer.LayerType switch
+        {
+            LayerType.Base => Icons.Material.Filled.Image,
+            LayerType.Drawing => Icons.Material.Filled.Brush,
+            LayerType.Import => Icons.Material.Filled.AddPhotoAlternate,
+            LayerType.Mask => Icons.Material.Filled.FormatColorFill,
+            _ => Icons.Material.Filled.Layers
+        };
+    }
+    
+    private async Task SelectLayer(LayerInfo layer) => await OnLayerSelected.InvokeAsync(layer.Id);
+    
+    private async Task AddLayer() => await OnAddLayer.InvokeAsync();
+    
+    private async Task DeleteLayer(LayerInfo layer)
+    {
+        if (!layer.CanDelete) return;
+        await OnDeleteLayer.InvokeAsync(layer.Id);
+    }
+    
+    private async Task ToggleVisibility(LayerInfo layer) => 
+        await OnVisibilityChanged.InvokeAsync((layer.Id, !layer.IsVisible));
+    
+    private async Task ToggleLock(LayerInfo layer)
+    {
+        if (layer.LayerType == LayerType.Base) return;
+        await OnLockChanged.InvokeAsync((layer.Id, !layer.IsLocked));
+    }
+    
+    private async Task HandleLocalOpacityChange(LayerInfo layer, float opacity)
+    {
+        _localOpacity = opacity;
+        await OnOpacityChanged.InvokeAsync((layer.Id, opacity));
+    }
+    
+    private void StartRename(LayerInfo layer)
+    {
+        if (layer.LayerType == LayerType.Base) return;
+        _renamingLayerId = layer.Id;
+        _renameValue = layer.Name;
+    }
+    
+    private async Task FinishRename(LayerInfo layer)
+    {
+        if (_renamingLayerId == layer.Id && !string.IsNullOrWhiteSpace(_renameValue))
+            await OnRename.InvokeAsync((layer.Id, _renameValue.Trim()));
+        _renamingLayerId = null;
+        _renameValue = "";
+    }
+    
+    private async Task HandleRenameKeyDown(KeyboardEventArgs e, LayerInfo layer)
+    {
+        if (e.Key == "Enter") await FinishRename(layer);
+        else if (e.Key == "Escape") { _renamingLayerId = null; _renameValue = ""; }
+    }
+    
+    private async Task MoveLayerUp()
+    {
+        if (SelectedLayer != null && CanMoveUp)
+            await OnReorder.InvokeAsync((SelectedLayer.Id, 1));
+    }
+    
+    private async Task MoveLayerDown()
+    {
+        if (SelectedLayer != null && CanMoveDown)
+            await OnReorder.InvokeAsync((SelectedLayer.Id, -1));
+    }
+}

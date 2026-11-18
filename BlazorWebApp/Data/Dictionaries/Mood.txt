@@ -1,0 +1,24 @@
+# Emotional moods and atmospheres
+happy
+joyful
+cheerful
+smiling
+laughing
+sad
+melancholic
+somber
+angry
+fierce
+surprised
+shocked
+peaceful
+serene
+calm
+mysterious
+enigmatic
+dramatic
+intense
+ethereal
+dreamy
+romantic
+nostalgic

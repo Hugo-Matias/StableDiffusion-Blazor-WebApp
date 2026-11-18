@@ -1,0 +1,306 @@
+.odditarium-round-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--odd-spacing-md, 16px);
+}
+
+/* Grid Layout */
+.odditarium-round-grid {
+  gap: var(--odd-spacing-md, 16px) !important;
+}
+
+/* Round Card */
+.odditarium-round-card {
+  background: var(--mud-palette-surface);
+  border-radius: var(--odd-radius-lg, 12px);
+  padding: var(--odd-spacing-lg, 24px);
+  box-shadow: var(--mud-elevation-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--odd-spacing-md, 16px);
+}
+
+/* Question Area */
+.odditarium-question-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Badge row — round badge + optional mode badge sit side by side */
+.odditarium-question-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.odditarium-round-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--odd-radius-pill, 999px);
+  background: color-mix(in srgb, var(--mud-palette-secondary) 12%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mud-palette-secondary);
+}
+
+/* Mode badge */
+.odditarium-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--odd-radius-pill, 999px);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.odditarium-mode-badge--expand {
+  background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+  color: var(--mud-palette-primary);
+}
+
+.odditarium-mode-badge--deepen {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-tertiary, var(--mud-palette-info)) 12%,
+    transparent
+  );
+  color: var(--mud-palette-tertiary, var(--mud-palette-info));
+}
+
+.odditarium-mode-badge--pivot {
+  background: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--mud-palette-warning) 80%,
+    var(--mud-palette-text-primary)
+  );
+}
+
+.odditarium-mode-badge--default {
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-secondary) 10%,
+    transparent
+  );
+  color: var(--mud-palette-text-secondary);
+}
+
+.odditarium-question {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--mud-palette-text-primary);
+}
+
+/* Options Grid */
+.odditarium-options-grid {
+  gap: var(--odd-spacing-sm, 8px) !important;
+}
+
+.odditarium-option-btn {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--odd-spacing-md, 16px);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--odd-radius-md, 8px);
+  background: color-mix(
+    in srgb,
+    var(--mud-palette-text-primary) 5%,
+    transparent
+  );
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.odditarium-option-btn:hover {
+  border-color: var(--mud-palette-secondary);
+  background: color-mix(in srgb, var(--mud-palette-secondary) 6%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.odditarium-option-btn:active {
+  transform: translateY(0);
+}
+
+.odditarium-option-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--mud-palette-text-primary);
+}
+
+.odditarium-option-hint {
+  font-size: 0.8rem;
+  color: var(--mud-palette-text-secondary);
+}
+
+/* Action Bar */
+.odditarium-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: var(--odd-spacing-sm, 8px);
+  border-top: 1px solid var(--mud-palette-divider);
+}
+
+/* Reveal footer — options + action bar animate in after question reveal */
+.odditarium-reveal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--odd-spacing-md, 16px);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+  pointer-events: none;
+}
+
+.odditarium-reveal-footer.opts-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Empty State */
+.odditarium-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.odditarium-empty-icon {
+  color: var(--mud-palette-text-disabled);
+}
+
+.odditarium-empty-text {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--mud-palette-text-secondary);
+}
+
+/* Layers Panel */
+.odditarium-layers-panel {
+  background: var(--mud-palette-surface);
+  border-radius: var(--odd-radius-lg, 12px);
+  padding: var(--odd-spacing-lg, 24px);
+  box-shadow: var(--mud-elevation-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--odd-spacing-sm, 8px);
+}
+
+.odditarium-layers-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--mud-palette-text-primary);
+}
+
+.odditarium-layers-count {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--mud-palette-text-secondary);
+}
+
+.odditarium-layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.odditarium-layer-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--odd-radius-md, 8px);
+  background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+  font-size: 0.9rem;
+  animation: odd-layer-enter 0.3s ease-out;
+}
+
+.odditarium-layer-chip .mud-icon {
+  color: var(--mud-palette-primary);
+  flex-shrink: 0;
+}
+
+.odditarium-layer-anchor {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.6;
+  text-transform: lowercase;
+}
+
+.odditarium-layer-sep {
+  opacity: 0.4;
+  font-size: 0.8rem;
+}
+
+@keyframes odd-layer-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.odditarium-layers-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mud-palette-text-disabled);
+  font-style: italic;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* Vibe Badge */
+.odditarium-vibe-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: var(--odd-radius-pill, 999px);
+  background: color-mix(in srgb, var(--mud-palette-warning) 10%, transparent);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.odditarium-vibe-badge .mud-icon {
+  color: var(--mud-palette-warning);
+}
+
+/* Draft Area */
+.odditarium-draft-area {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.odditarium-draft-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--mud-palette-text-primary);
+}

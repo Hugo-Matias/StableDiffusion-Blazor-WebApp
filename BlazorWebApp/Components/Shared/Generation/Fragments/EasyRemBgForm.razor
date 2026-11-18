@@ -1,0 +1,45 @@
+@*
+    EasyRemBgForm - Form for the easy_rembg fragment (ComfyUI-Easy-Use node).
+
+    Exposes one parameter:
+      - rem_mode  (model selection: RMBG-2.0 | RMBG-1.4 | Inspyrenet | BEN2)
+
+    image_output and save_prefix are hardcoded in the fragment and not exposed here.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("EasyRemBgForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect T="string" Label="Model" @bind-Value="_localRemMode" @bind-Value:after="OnRemModeChanged"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft"
+                   HelperText="RMBG-2.0 requires HF login and may be slower; RMBG-1.4 is faster but lower quality; Inspyrenet and BEN2 are local models with varying quality/speed">
+            @foreach (var opt in _remModeOptions)
+            {
+                <MudSelectItem Value="@opt">@opt</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localRemMode = "RMBG-1.4";
+    private readonly string[] _remModeOptions = ["RMBG-2.0", "RMBG-1.4", "Inspyrenet", "BEN2"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        _localRemMode = ParameterService.GetFragmentProperty(Fragment, "rem_mode", "RMBG-1.4");
+    }
+
+    private async Task OnRemModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "rem_mode", _localRemMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

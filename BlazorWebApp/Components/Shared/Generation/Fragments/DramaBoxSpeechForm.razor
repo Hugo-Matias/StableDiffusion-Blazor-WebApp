@@ -1,0 +1,65 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("DramaBoxSpeechForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    @* Text prompt is now exposed in AudioPromptsForm (tabbed prompt component). *@
+    @* Only voice-specific controls remain here. *@
+    <MudItem xs="6">
+        <MudNumericField T="long" Label="Seed" Variant="Variant.Text" Dense="true" Min="-1" @bind-Value="_seed"
+                         @bind-Value:after="OnSeedChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="10" Step="0.1" @bind-Value="_cfgScale" @bind-Value:after="OnCfgScaleChanged"
+                   ValueLabel>
+            <small>CFG Scale:</small> @_cfgScale.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="10" Step="0.1" @bind-Value="_stgScale" @bind-Value:after="OnStgScaleChanged"
+                   ValueLabel>
+            <small>STG Scale:</small> @_stgScale.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0.25" Max="3" Step="0.05" @bind-Value="_durationMultiplier"
+                   @bind-Value:after="OnDurationMultiplierChanged" ValueLabel>
+            <small>Duration:</small> @_durationMultiplier.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _text = string.Empty;
+    private long _seed;
+    private double _cfgScale;
+    private double _stgScale;
+    private double _durationMultiplier;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _text = ParameterService.GetFragmentProperty(Fragment, "text", "Prompt");
+        _seed = ParameterService.GetFragmentProperty(Fragment, "seed", 3L);
+        _cfgScale = ParameterService.GetFragmentProperty(Fragment, "cfg_scale", 3.5);
+        _stgScale = ParameterService.GetFragmentProperty(Fragment, "stg_scale", 1.5);
+        _durationMultiplier = ParameterService.GetFragmentProperty(Fragment, "duration_multiplier", 1.2);
+    }
+
+    private Task SetAsync(string key, object? value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task OnTextChanged() => SetAsync("text", _text);
+    private Task OnSeedChanged() => SetAsync("seed", _seed);
+    private Task OnCfgScaleChanged() => SetAsync("cfg_scale", _cfgScale);
+    private Task OnStgScaleChanged() => SetAsync("stg_scale", _stgScale);
+    private Task OnDurationMultiplierChanged() => SetAsync("duration_multiplier", _durationMultiplier);
+}

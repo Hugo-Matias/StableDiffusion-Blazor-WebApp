@@ -1,0 +1,433 @@
+@using BlazorWebApp.Extensions
+@inject IDatabaseService DB
+@inject IIOService IO
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="image-viewer-overlay" @onkeydown="HandleKeyDown" @onwheel="HandleWheel" @onwheel:preventDefault="_isPanMode"
+         tabindex="0" @ref="_overlayRef">
+        <div class="image-viewer-container">
+            
+            <!-- Close Button -->
+            <button class="viewer-btn close-btn" @onclick="Close" title="Close (Esc)">
+                <MudIcon Icon="fa-solid fa-xmark" />
+            </button>
+
+            <!-- Main Image Display -->
+            <div class="image-stage @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                 @onclick="HandleStageClick" @onmousedown="HandleMouseDown" @onmousemove="HandleMouseMove"
+                 @onmouseup="HandleMouseUp" @onmouseleave="HandleMouseUp">
+                @if (IsCurrentVideo)
+                {
+                    <video @key="CurrentImage?.Path" class="viewer-media" controls loop muted autoplay
+                           @onclick:stopPropagation="true">
+                        <source src="@CurrentImage?.Path" />
+                    </video>
+                }
+                else
+                {
+                    <img class="viewer-media @(_isPanMode ? "pan-mode" : "") @(_isDragging ? "dragging" : "")"
+                         src="@IO.GetImageStaticFile(CurrentImage?.Path)" alt="Image @(_currentIndex + 1)"
+                         style="@GetImageTransformStyle()" draggable="false" @onclick:stopPropagation="true" />
+                }
+            </div>
+
+            <!-- Bottom Control Bar -->
+            <div class="control-bar" @onclick:stopPropagation="true">
+                <!-- Left: Favorite & Rating (only for local images) -->
+                @if (!IsExternal && CurrentImage?.Id > 0)
+                {
+                    <div class="control-section">
+                        <button class="viewer-btn @(CurrentImage.Favorite ? "active-fav" : "")" @onclick="ToggleFavorite"
+                                title="Favorite (F)">
+                            <MudIcon
+                            Icon="@(CurrentImage.Favorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" />
+                        </button>
+                        @if (Images.Count > 1)
+                        {
+                            <button class="viewer-btn fav-all-btn" @onclick="FavoriteAll" title="Favorite All">
+                                <MudIcon Icon="fa-solid fa-heart-circle-check" />
+                            </button>
+                        }
+                        <div class="rating-container">
+                            <MudRating SelectedValue="CurrentImage.Score" SelectedValueChanged="SetScore" MaxValue="3"
+                                       Size="Size.Medium" FullIcon="fa-solid fa-star" EmptyIcon="fa-regular fa-star" />
+                        </div>
+                    </div>
+                }
+
+                <!-- Center: Navigation -->
+                @if (Images.Count > 1)
+                {
+                    <div class="control-section nav-section">
+                        <button class="viewer-btn nav-btn" @onclick="Previous" title="Previous (←)">
+                            <MudIcon Icon="fa-solid fa-chevron-left" />
+                        </button>
+                        
+                        <div class="counter">
+                            <span class="counter-current">@(_currentIndex + 1)</span>
+                            <span class="counter-sep">/</span>
+                            <span class="counter-total">@Images.Count</span>
+                        </div>
+                        
+                        <button class="viewer-btn nav-btn" @onclick="Next" title="Next (→)">
+                            <MudIcon Icon="fa-solid fa-chevron-right" />
+                        </button>
+                    </div>
+                }
+
+                <!-- Right: Actions -->
+                <div class="control-section actions-section">
+                    @if (Images.Count > 1)
+                    {
+                        <MudTooltip Text="@(_autoPlay ? "Stop Slideshow (Space)" : "Start Slideshow (Space)")" Delay="300">
+                            <button class="viewer-btn @(_autoPlay ? "active" : "")" @onclick="ToggleAutoPlay" title="Slideshow">
+                                <MudIcon Icon="@(_autoPlay ? "fa-solid fa-pause" : "fa-solid fa-play")" />
+                            </button>
+                        </MudTooltip>
+                        <div class="slideshow-controls">
+                            <input type="number" class="slideshow-input" @bind="_autoPlayInterval" @bind:event="onchange"
+                                   min="1" max="60" step="0.5" title="Slideshow interval (seconds)" />
+                            <span class="slideshow-unit">s</span>
+                        </div>
+                    }
+                    <MudTooltip Text="@(_isPanMode ? "Fit to Screen (Z)" : "Pan & Zoom Mode (Z)")" Delay="300">
+                        <button class="viewer-btn @(_isPanMode ? "active" : "")" @onclick="TogglePanMode"
+                                title="@(_isPanMode ? "Fit to Screen" : "Pan & Zoom")">
+                            <MudIcon Icon="@(_isPanMode ? "fa-solid fa-compress" : "fa-solid fa-expand")" />
+                        </button>
+                    </MudTooltip>
+                    @if (_isPanMode)
+                    {
+                        <MudTooltip Text="Reset View (R)" Delay="300">
+                            <button class="viewer-btn" @onclick="ResetZoom" title="Reset View">
+                                <MudIcon Icon="fa-solid fa-crosshairs" />
+                            </button>
+                        </MudTooltip>
+                    }
+
+                    <button class="viewer-btn @(_showInfo ? "active" : "")" @onclick="ToggleInfo" title="Details (I)">
+                        <MudIcon Icon="fa-solid fa-circle-info" />
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zoom indicator (shown briefly when zooming) -->
+            @if (_isPanMode && _showZoomIndicator)
+            {
+                <div class="zoom-indicator">
+                    @((_zoom * 100).ToString("0"))%
+                </div>
+            }
+
+            <!-- Info Panel -->
+            <div class="info-panel @(_showInfo ? "open" : "")">
+                @if (CurrentImage != null)
+                {
+                    <AssetInfoPanel Asset="CurrentImage" IsVideo="IsCurrentVideo" ShowAiMetadata="ShowAiMetadata"
+                                    ShowKeyboardShortcuts="true" SelectedParams="_selectedParams"
+                                    SelectedParamsChanged="HandleSelectedParamsChanged" OnClose="ToggleInfo"
+                                    OnRequestBookmark="OnRequestBookmark" />
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<Image> Images { get; set; } = new();
+    [Parameter] public int StartIndex { get; set; } = 0;
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public bool IsExternal { get; set; }
+    /// <summary>
+    /// When false, hides AI-generation metadata (Seed, Steps, CFG, Sampler, Scheduler, Model, Denoising).
+    /// Useful for non-AI images like Danbooru library items. Defaults to true for backward compatibility.
+    /// </summary>
+    [Parameter] public bool ShowAiMetadata { get; set; } = true;
+    [Parameter] public EventCallback<Image> OnRequestBookmark { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private ElementReference _overlayRef;
+    private int _currentIndex;
+    private bool _showInfo;
+    private bool _autoPlay;
+    private System.Timers.Timer? _autoPlayTimer;
+    private float _autoPlayInterval = 5f;
+    private bool _wasVisible;
+    private HashSet<string> _selectedParams = new();
+
+    // Pan & Zoom state
+    private bool _isPanMode;
+    private bool _isDragging;
+    private double _zoom = 1.0;
+    private double _panX = 0;
+    private double _panY = 0;
+    private double _dragStartX;
+    private double _dragStartY;
+    private double _dragStartPanX;
+    private double _dragStartPanY;
+    private bool _showZoomIndicator;
+    private System.Timers.Timer? _zoomIndicatorTimer;
+
+    private const double MinZoom = 0.25;
+    private const double MaxZoom = 5.0;
+    private const double ZoomStep = 0.15;
+
+    private Image? CurrentImage => Images.Count > 0 && _currentIndex < Images.Count ? Images[_currentIndex] : null;
+
+    private bool IsCurrentVideo => CurrentImage?.Path != null &&
+        (CurrentImage.Path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+         CurrentImage.Path.EndsWith(".webm", StringComparison.OrdinalIgnoreCase) ||
+         CurrentImage.Path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && Images.Count > 0)
+        {
+            _currentIndex = Math.Clamp(StartIndex, 0, Images.Count - 1);
+            ResetZoom();
+            await LoadImageMetadata();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !_wasVisible)
+        {
+            await SetBodyScrollLock(true);
+            try { await _overlayRef.FocusAsync(); } catch { }
+        }
+        else if (!IsVisible && _wasVisible)
+        {
+            await SetBodyScrollLock(false);
+        }
+        
+        _wasVisible = IsVisible;
+    }
+
+    private async Task LoadImageMetadata()
+    {
+        // No-op: AssetInfoPanel handles metadata loading internally.
+        // Kept as stub for backward compatibility with Next()/Previous().
+    }
+
+    private void HandleSelectedParamsChanged(HashSet<string> value)
+    {
+        _selectedParams = value;
+    }
+
+    private async Task SetBodyScrollLock(bool locked)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", $"document.body.style.overflow = '{(locked ? "hidden" : "auto")}'");
+        }
+        catch { }
+    }
+
+    private string GetImageTransformStyle()
+    {
+        if (!_isPanMode) return "";
+        return $"transform: translate({_panX}px, {_panY}px) scale({_zoom});";
+    }
+
+    private void HandleStageClick(MouseEventArgs e)
+    {
+        if (!_isPanMode)
+        {
+            Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        StopAutoPlay();
+        _isPanMode = false;
+        ResetZoom();
+        _selectedParams.Clear();
+        IsVisible = false;
+        await SetBodyScrollLock(false);
+        await IsVisibleChanged.InvokeAsync(false);
+        await OnClosed.InvokeAsync();
+    }
+
+    private async Task Next()
+    {
+        if (Images.Count > 1)
+        {
+            _currentIndex = (_currentIndex + 1) % Images.Count;
+            ResetZoom();
+            _selectedParams.Clear();
+            await LoadImageMetadata();
+        }
+    }
+
+    private async Task Previous()
+    {
+        if (Images.Count > 1)
+        {
+            _currentIndex = (_currentIndex - 1 + Images.Count) % Images.Count;
+            ResetZoom();
+            _selectedParams.Clear();
+            await LoadImageMetadata();
+        }
+    }
+
+    private void ToggleInfo() => _showInfo = !_showInfo;
+
+    private void TogglePanMode()
+    {
+        _isPanMode = !_isPanMode;
+        if (!_isPanMode) ResetZoom();
+        else _zoom = 1.0;
+    }
+
+    private void ResetZoom()
+    {
+        _zoom = 1.0;
+        _panX = 0;
+        _panY = 0;
+    }
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (!_isPanMode) return;
+
+        var delta = e.DeltaY > 0 ? -ZoomStep : ZoomStep;
+        var newZoom = Math.Clamp(_zoom + delta, MinZoom, MaxZoom);
+        
+        if (newZoom != _zoom)
+        {
+            _zoom = newZoom;
+            ShowZoomIndicator();
+        }
+    }
+
+    private void ShowZoomIndicator()
+    {
+        _showZoomIndicator = true;
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _zoomIndicatorTimer = new System.Timers.Timer(800);
+        _zoomIndicatorTimer.Elapsed += async (s, e) =>
+        {
+            _showZoomIndicator = false;
+            _zoomIndicatorTimer?.Stop();
+            await InvokeAsync(StateHasChanged);
+        };
+        _zoomIndicatorTimer.AutoReset = false;
+        _zoomIndicatorTimer.Start();
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (!_isPanMode || e.Button != 0) return;
+        _isDragging = true;
+        _dragStartX = e.ClientX;
+        _dragStartY = e.ClientY;
+        _dragStartPanX = _panX;
+        _dragStartPanY = _panY;
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (!_isDragging) return;
+        _panX = _dragStartPanX + (e.ClientX - _dragStartX);
+        _panY = _dragStartPanY + (e.ClientY - _dragStartY);
+    }
+
+    private void HandleMouseUp(MouseEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    private void ToggleAutoPlay()
+    {
+        _autoPlay = !_autoPlay;
+        if (_autoPlay) StartAutoPlay();
+        else StopAutoPlay();
+    }
+
+    private void StartAutoPlay()
+    {
+        StopAutoPlay();
+        _autoPlay = true;
+        _autoPlayTimer = new System.Timers.Timer(Math.Max(_autoPlayInterval, 1) * 1000);
+        _autoPlayTimer.Elapsed += async (s, e) =>
+        {
+            await Next();
+            await InvokeAsync(StateHasChanged);
+        };
+        _autoPlayTimer.AutoReset = true;
+        _autoPlayTimer.Start();
+    }
+
+    private void StopAutoPlay()
+    {
+        _autoPlayTimer?.Stop();
+        _autoPlayTimer?.Dispose();
+        _autoPlayTimer = null;
+        _autoPlay = false;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": await Close(); break;
+            case "ArrowLeft": await Previous(); break;
+            case "ArrowRight": await Next(); break;
+            case " ": ToggleAutoPlay(); break;
+            case "i": case "I": ToggleInfo(); break;
+            case "f": case "F": await ToggleFavorite(); break;
+            case "z": case "Z": TogglePanMode(); break;
+            case "r": case "R": ResetZoom(); break;
+            case "+": case "=": if (_isPanMode) { _zoom = Math.Min(_zoom + ZoomStep, MaxZoom); ShowZoomIndicator(); } break;
+            case "-": case "_": if (_isPanMode) { _zoom = Math.Max(_zoom - ZoomStep, MinZoom); ShowZoomIndicator(); } break;
+        }
+    }
+
+    private async Task ToggleFavorite()
+    {
+        if (CurrentImage == null) return;
+        CurrentImage.Favorite = !CurrentImage.Favorite;
+        if (CurrentImage.Favorite && CurrentImage.Score == 0)
+        {
+            CurrentImage.Score = 3;
+        }
+        await DB.UpdateImage(CurrentImage);
+    }
+
+    private async Task FavoriteAll()
+    {
+        foreach (var image in Images)
+        {
+            image.Favorite = true;
+            if (image.Score == 0)
+            {
+                image.Score = 3;
+            }
+            await DB.UpdateImage(image);
+        }
+        StateHasChanged();
+    }
+
+    private async Task SetScore(int score)
+    {
+        if (CurrentImage == null) return;
+        CurrentImage.Score = score;
+        await DB.UpdateImage(CurrentImage);
+    }
+
+    public void Dispose()
+    {
+        StopAutoPlay();
+        _zoomIndicatorTimer?.Stop();
+        _zoomIndicatorTimer?.Dispose();
+        _ = SetBodyScrollLock(false);
+    }
+}

@@ -1,0 +1,15 @@
+# Time of day
+morning
+dawn
+sunrise
+early morning
+noon
+midday
+afternoon
+evening
+dusk
+sunset
+twilight
+night
+midnight
+late night

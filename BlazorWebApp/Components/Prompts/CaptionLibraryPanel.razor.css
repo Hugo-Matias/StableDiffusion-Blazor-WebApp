@@ -1,0 +1,46 @@
+.caption-panel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--app-gutter-large, 16px);
+}
+
+.caption-panel-alert {
+  margin: var(--app-gutter-inner, 8px);
+}
+
+.caption-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--app-gutter-large, 16px) 0;
+  opacity: 0.7;
+}
+
+.caption-grid {
+  display: grid;
+  gap: var(--app-gutter-inner, 8px);
+  overflow-y: auto;
+  flex: 1;
+  padding: var(--app-gutter-small, 4px) 0;
+}
+
+.caption-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.caption-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.caption-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.caption-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.caption-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}

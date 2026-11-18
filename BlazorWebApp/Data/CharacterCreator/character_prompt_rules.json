@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "character-prompt-rules",
+  "displayName": "Character Prompt Rules",
+  "items": [
+    {
+      "profileId": "identity_plus_wardrobe",
+      "label": "Identity + Wardrobe",
+      "detailBudget": "balanced",
+      "regionOrder": [
+        "identity_core",
+        "body",
+        "head",
+        "hair",
+        "clothing",
+        "marks"
+      ],
+      "template": "{identity}. {body}. {head}. {wardrobe}. {marks}",
+      "negativeTemplate": "{negative_guard}",
+      "rewriteAllowed": true
+    },
+    {
+      "profileId": "image_edit_preservation",
+      "label": "Image Edit Preserve",
+      "detailBudget": "balanced",
+      "regionOrder": ["identity_core", "body", "head", "hair", "marks"],
+      "template": "{identity}. preserve recognizable face and body identity. {body}. {head}. {marks}",
+      "negativeTemplate": "different person, altered identity, {negative_guard}",
+      "rewriteAllowed": true
+    }
+  ]
+}

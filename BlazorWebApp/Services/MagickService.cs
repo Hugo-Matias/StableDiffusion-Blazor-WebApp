@@ -4,12 +4,12 @@ namespace BlazorWebApp.Services
 {
     public class MagickService
     {
-        private readonly ManagerService _m;
+        private readonly ISettingsService _settings;
 
-        public MagickService(ManagerService m)
+        public MagickService(ISettingsService settings)
         {
             MagickNET.Initialize();
-            _m = m;
+            _settings = settings;
         }
 
         public async Task<string> SaveGrid(List<string> data, string path)
@@ -32,10 +32,10 @@ namespace BlazorWebApp.Services
         public string ResizeImage(byte[] data, bool resize)
         {
             using var image = new MagickImage(data);
-            if (!resize || image.Width < _m.Settings.Generation.Img2Img.InputResolution.Width && image.Height < _m.Settings.Generation.Img2Img.InputResolution.Height)
+            if (!resize || image.Width < _settings.Settings.Generation.Img2Img.InputResolution.Width && image.Height < _settings.Settings.Generation.Img2Img.InputResolution.Height)
                 return image.ToBase64(image.Format);
 
-            var sizeGeom = new MagickGeometry((uint)_m.Settings.Generation.Img2Img.InputResolution.Width, (uint)_m.Settings.Generation.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
+            var sizeGeom = new MagickGeometry((uint)_settings.Settings.Generation.Img2Img.InputResolution.Width, (uint)_settings.Settings.Generation.Img2Img.InputResolution.Height) { IgnoreAspectRatio = false };
 
             image.Resize(sizeGeom);
             return image.ToBase64(image.Format);

@@ -1,0 +1,20 @@
+# Weather conditions
+sunny
+clear sky
+cloudy
+overcast
+partly cloudy
+rainy
+raining
+heavy rain
+drizzle
+stormy
+thunderstorm
+lightning
+snowy
+snowing
+blizzard
+foggy
+misty
+hazy
+windy

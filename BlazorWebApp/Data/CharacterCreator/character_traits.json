@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "character-traits",
+  "displayName": "Character Traits",
+  "items": [
+    {
+      "id": "body.build",
+      "regionId": "body",
+      "label": "Build",
+      "valueType": "option",
+      "scope": "identity",
+      "allowCustomValue": true,
+      "options": [
+        { "id": "slender", "label": "Slender", "prompt": "slender build" },
+        { "id": "athletic", "label": "Athletic", "prompt": "athletic build" },
+        { "id": "sturdy", "label": "Sturdy", "prompt": "sturdy build" }
+      ]
+    },
+    {
+      "id": "hair.length",
+      "regionId": "hair",
+      "label": "Hair Length",
+      "valueType": "option",
+      "scope": "identity",
+      "allowCustomValue": true,
+      "options": [
+        { "id": "short", "label": "Short", "prompt": "short hair" },
+        {
+          "id": "shoulder_length",
+          "label": "Shoulder Length",
+          "prompt": "shoulder-length hair"
+        },
+        { "id": "long", "label": "Long", "prompt": "long hair" }
+      ]
+    },
+    {
+      "id": "eyes.color",
+      "regionId": "eyes",
+      "label": "Eye Color",
+      "valueType": "option",
+      "scope": "identity",
+      "allowCustomValue": true,
+      "options": [
+        { "id": "brown", "label": "Brown", "prompt": "brown eyes" },
+        { "id": "blue", "label": "Blue", "prompt": "blue eyes" },
+        { "id": "green", "label": "Green", "prompt": "green eyes" },
+        { "id": "gold", "label": "Gold", "prompt": "gold eyes" }
+      ]
+    },
+    {
+      "id": "expression.default",
+      "regionId": "expression",
+      "label": "Default Expression",
+      "valueType": "option",
+      "scope": "expression",
+      "allowCustomValue": true,
+      "options": [
+        { "id": "neutral", "label": "Neutral", "prompt": "neutral expression" },
+        { "id": "soft_smile", "label": "Soft Smile", "prompt": "soft smile" },
+        { "id": "focused", "label": "Focused", "prompt": "focused expression" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,503 @@
+@inject ITagGroupService TagService
+@using BlazorWebApp.Extensions
+
+<div class="tg-panel">
+
+    @* ── Toolbar ── *@
+    <div class="tg-toolbar">
+
+        @* Row 1: Search *@
+        <div class="tg-toolbar-row">
+            <MudTextField T="string"
+                          Value="_searchText"
+                          Placeholder="Search tags..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="tg-search"
+                          ValueChanged="HandleSearchChanged" />
+        </div>
+
+        @* Row 2: Category / Group / Sort / Density *@
+        <div class="tg-toolbar-row">
+            <MudSelect T="string"
+                       Value="_selectedCategory"
+                       Dense
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="tg-category-select"
+                       Placeholder="Category"
+                       Clearable="true"
+                       ValueChanged="HandleCategoryChanged">
+                @foreach (var cat in TagService.Categories)
+                {
+                    <MudSelectItem Value="@cat">@cat</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string"
+                       Value="_selectedGroup"
+                       Dense
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="tg-group-select"
+                       Placeholder="Group"
+                       Clearable="true"
+                       Disabled="@(string.IsNullOrEmpty(_selectedCategory) && !string.IsNullOrEmpty(_selectedGroup) == false)"
+                       ValueChanged="HandleGroupChanged">
+                @foreach (var g in _availableGroups)
+                {
+                    <MudSelectItem Value="@g.Group">@FormatGroupName(g.Group) (@g.TagCount)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="TagGroupSortMode"
+                       Value="_sortMode"
+                       Dense
+                       Margin="Margin.Dense"
+                       Variant="Variant.Outlined"
+                       Class="tg-sort-select"
+                       ValueChanged="HandleSortChanged">
+                <MudSelectItem Value="TagGroupSortMode.Count">Post Count</MudSelectItem>
+                <MudSelectItem Value="TagGroupSortMode.Name">Name</MudSelectItem>
+            </MudSelect>
+
+            <MudToggleIconButton Toggled="_sortDescending"
+                                 Icon="@Icons.Material.Filled.ArrowUpward"
+                                 ToggledIcon="@Icons.Material.Filled.ArrowDownward"
+                                 Color="Color.Default"
+                                 ToggledColor="Color.Info"
+                                 Size="Size.Small"
+                                 Title="@(_sortDescending ? "Descending" : "Ascending")"
+                                 ToggledChanged="v => { _sortDescending = v; RefreshTags(); }" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.GridView"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 0 ? Color.Info : Color.Default)"
+                           Title="Compact"
+                           OnClick="() => _cardDensity = 0" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewModule"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 1 ? Color.Info : Color.Default)"
+                           Title="Normal"
+                           OnClick="() => _cardDensity = 1" />
+            <MudIconButton Icon="@Icons.Material.Filled.ViewComfy"
+                           Size="Size.Small"
+                           Color="@(_cardDensity == 2 ? Color.Info : Color.Default)"
+                           Title="Large"
+                           OnClick="() => _cardDensity = 2" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.CameraAlt"
+                           Size="Size.Small"
+                           Color="@(_showGenerator ? Color.Info : Color.Default)"
+                           Title="Generate preview images"
+                           OnClick="() => _showGenerator = !_showGenerator" />
+        </div>
+
+        @* Count summary *@
+        <MudText Typo="Typo.caption" Style="opacity:0.6; text-align:right; padding: 0 2px;">
+            @_filteredTags.Count.ToString("N0") tags
+            @if (_selectedTags.Count > 0)
+            {
+                <text> &bull; @_selectedTags.Count selected</text>
+            }
+        </MudText>
+    </div>
+
+    @* ── Section chips ── *@
+    @if (_availableSections.Count > 1)
+    {
+        <div class="tg-section-chips">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="@(_selectedSection == null ? Variant.Filled : Variant.Text)"
+                     Color="@(_selectedSection == null ? Color.Primary : Color.Default)"
+                     OnClick="() => SelectSection(null)">All</MudChip>
+            @foreach (var sec in _availableSections)
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="@(_selectedSection == sec ? Variant.Filled : Variant.Text)"
+                         Color="@(_selectedSection == sec ? Color.Primary : Color.Default)"
+                         OnClick="() => SelectSection(sec)">@sec</MudChip>
+            }
+        </div>
+    }
+
+    @* ── Selected tags tray ── *@
+    @if (_selectedTags.Count > 0)
+    {
+        <div class="tg-selection-tray">
+            <div class="tg-tray-chips">
+                @foreach (var tag in _selectedTags)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="Variant.Filled"
+                             Color="Color.Primary"
+                             OnClose="() => DeselectTag(tag)">
+                        @tag.Label
+                    </MudChip>
+                }
+            </div>
+            <div class="tg-tray-actions">
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.ArrowRightAlt"
+                           OnClick="HandleSendAll">
+                    Send All
+                </MudButton>
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                           OnClick="HandleCopyAll">
+                    Copy
+                </MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                               Size="Size.Small"
+                               Title="Clear selection"
+                               OnClick="() => _selectedTags.Clear()" />
+            </div>
+        </div>
+    }
+
+    @* ── Preview generator panel ── *@
+    @if (_showGenerator)
+    {
+        <MudPaper Class="pa-3 mt-1" Elevation="2">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.caption" Style="opacity:0.6;">
+                    Generates preview images using your active generation settings. The positive prompt is driven by the
+                    per-group template; the negative prompt is taken from the current generation parameters.
+                    Use <code>{tag}</code> or <code>{tags}</code> as the tag placeholder.
+                </MudText>
+
+                @* Template editor for currently active group *@
+                @if (!string.IsNullOrEmpty(_selectedGroup))
+                {
+                    <MudTextField T="string"
+                                  @bind-Value="_editPositiveTemplate"
+                                  Label="Positive template ({tag} or {tags} = tag name)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth />
+                    <MudStack Row Spacing="1">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="SaveTemplate">
+                            Save Template
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="ResetTemplate">
+                            Reset to Default
+                        </MudButton>
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                        Select a group to edit its preview template.
+                    </MudText>
+                }
+
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudNumericField T="int"
+                                     @bind-Value="_genBatchSize"
+                                     Label="Batch (0=all)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="0"
+                                     Style="max-width:130px;" />
+
+                    <MudCheckBox T="bool" @bind-Value="_genSkipExisting"
+                                 Label="Skip existing"
+                                 Dense Size="Size.Small" />
+
+                    <MudTooltip Text="Prepend co-occurring tags to the prompt for abstract tags (requires co_tags data in the JSONL)">
+                        <MudCheckBox T="bool" @bind-Value="_genUseCoTags"
+                                     Label="Use co-tags"
+                                     Dense Size="Size.Small" />
+                    </MudTooltip>
+
+                    @if (TagService.PreviewProgress.IsRunning)
+                    {
+                        <MudButton OnClick="StopGeneration"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Stop"
+                                   Size="Size.Small">
+                            Stop
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton OnClick="StartGeneration"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   Size="Size.Small"
+                                   Disabled="@(_filteredTags.Count == 0)">
+                            Generate
+                        </MudButton>
+                    }
+                </MudStack>
+
+                @if (TagService.PreviewProgress.IsRunning || TagService.PreviewProgress.Current > 0)
+                {
+                    <MudStack Spacing="1">
+                        <MudProgressLinear Value="@TagService.PreviewProgress.Current"
+                                           Max="@(TagService.PreviewProgress.Total > 0 ? TagService.PreviewProgress.Total : 1)"
+                                           Color="Color.Info"
+                                           Rounded
+                                           Size="Size.Medium" />
+                        <MudText Typo="Typo.caption" Style="opacity:0.7;">
+                            @TagService.PreviewProgress.Current / @TagService.PreviewProgress.Total
+                            @if (!string.IsNullOrEmpty(TagService.PreviewProgress.CurrentTag))
+                            {
+                                <text> &ndash; @TagService.PreviewProgress.CurrentTag</text>
+                            }
+                            @if (TagService.PreviewProgress.Skipped > 0)
+                            {
+                                <text> (@TagService.PreviewProgress.Skipped skipped)</text>
+                            }
+                            @if (TagService.PreviewProgress.Failed > 0)
+                            {
+                                <text> (@TagService.PreviewProgress.Failed failed)</text>
+                            }
+                        </MudText>
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+
+    @* ── Card Grid ── *@
+    <div class="tg-grid @(_cardDensity == 0 ? "tg-grid-sm" : _cardDensity == 2 ? "tg-grid-lg" : "")">
+        @if (_filteredTags.Count == 0)
+        {
+            <div class="tg-empty">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Dark" />
+                <MudText Typo="Typo.body2" Color="Color.Dark">No tags found</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var tag in GetPagedTags())
+            {
+                <TagCard Tag="tag"
+                         IsSelected="_selectedTags.Any(t => t.Name == tag.Name && t.Group == tag.Group)"
+                         CacheBust="_generationVersion"
+                         OnToggleSelect="HandleToggleSelect"
+                         OnSendTag="HandleSendTag" />
+            }
+        }
+    </div>
+
+    @* ── Pagination ── *@
+    @if (_totalPages > 1)
+    {
+        <div class="tg-pagination">
+            <MudPagination Count="_totalPages"
+                           Selected="_currentPage"
+                           SelectedChanged="HandlePageChanged"
+                           ShowFirstButton ShowLastButton
+                           Color="Color.Primary"
+                           Size="Size.Small" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<AppendedTags> OnAppendTags { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private string?           _searchText       = null;
+    private string?           _selectedCategory = null;
+    private string?           _selectedGroup    = null;
+    private string?           _selectedSection  = null;
+    private TagGroupSortMode  _sortMode         = TagGroupSortMode.Count;
+    private bool              _sortDescending   = true;
+    private int               _cardDensity      = 1;
+    private bool              _showGenerator    = false;
+    private int               _currentPage      = 1;
+    private const int         PageSize          = 100;
+
+    private List<DanbooruTag>        _filteredTags      = new();
+    private List<TagGroupDescriptor> _availableGroups   = new();
+    private List<string>             _availableSections = new();
+    private HashSet<DanbooruTag>     _selectedTags      = new(ReferenceEqualityComparer.Instance);
+
+    // Generator state
+    private int  _genBatchSize      = 0;
+    private bool _genSkipExisting   = true;
+    private bool _genUseCoTags      = false;
+    private CancellationTokenSource? _genCts;
+    private int  _generationVersion = 0;
+
+    // Template editor buffers
+    private string _editPositiveTemplate = string.Empty;
+
+    private int _totalPages => (int)Math.Ceiling(_filteredTags.Count / (double)PageSize);
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+
+    protected override void OnInitialized()
+    {
+        _availableGroups = TagService.Groups.ToList();
+        RefreshTags();
+    }
+
+    // ── Toolbar handlers ─────────────────────────────────────────────────────
+
+    private void HandleSearchChanged(string value)
+    {
+        _searchText  = value;
+        _currentPage = 1;
+        RefreshTags();
+    }
+
+    private void HandleCategoryChanged(string? value)
+    {
+        _selectedCategory  = value;
+        _selectedGroup     = null;
+        _selectedSection   = null;
+        _availableSections = new();
+        _currentPage       = 1;
+        _availableGroups   = string.IsNullOrEmpty(value)
+            ? TagService.Groups.ToList()
+            : TagService.GetGroupsForCategory(value).ToList();
+        RefreshTags();
+    }
+
+    private void HandleGroupChanged(string? value)
+    {
+        _selectedGroup     = value;
+        _selectedSection   = null;
+        _availableSections = string.IsNullOrEmpty(value)
+            ? new()
+            : TagService.GetSections(value).ToList();
+        _currentPage = 1;
+        if (!string.IsNullOrEmpty(value))
+        {
+            var cfg = TagService.GetConfig(value);
+            _editPositiveTemplate = cfg.PreviewTemplate;
+        }
+        RefreshTags();
+    }
+
+    private void SelectSection(string? section)
+    {
+        _selectedSection = section;
+        _currentPage     = 1;
+        RefreshTags();
+    }
+
+    private void HandleSortChanged(TagGroupSortMode value)
+    {
+        _sortMode    = value;
+        _currentPage = 1;
+        RefreshTags();
+    }
+
+    private void HandlePageChanged(int page)
+    {
+        _currentPage = page;
+    }
+
+    private void RefreshTags()
+    {
+        // When there is a search term, ignore category/group/section filters so you can search across everything.
+        var hasSearch = !string.IsNullOrWhiteSpace(_searchText);
+        _filteredTags = TagService.GetTags(
+            search:     _searchText,
+            group:      hasSearch ? null : _selectedGroup,
+            category:   hasSearch ? null : _selectedCategory,
+            section:    hasSearch ? null : _selectedSection,
+            sort:       _sortMode,
+            descending: _sortDescending);
+    }
+
+    private IEnumerable<DanbooruTag> GetPagedTags() =>
+        _filteredTags.Skip((_currentPage - 1) * PageSize).Take(PageSize);
+
+    // ── Selection ────────────────────────────────────────────────────────────
+
+    private void HandleToggleSelect(DanbooruTag tag)
+    {
+        if (!_selectedTags.Remove(tag))
+            _selectedTags.Add(tag);
+    }
+
+    private void DeselectTag(DanbooruTag tag) => _selectedTags.Remove(tag);
+
+    private async Task HandleSendTag(DanbooruTag tag)
+    {
+        await OnAppendTags.InvokeAsync(new AppendedTags
+        {
+            Tags     = tag.Name.EscapeParenthesis(),
+            IsPrefix = false,
+        });
+    }
+
+    private async Task HandleSendAll()
+    {
+        if (_selectedTags.Count == 0) return;
+        var text = string.Join(", ", _selectedTags.Select(t => t.Name.EscapeParenthesis()));
+        await OnAppendTags.InvokeAsync(new AppendedTags { Tags = text, IsPrefix = false });
+    }
+
+    private async Task HandleCopyAll()
+    {
+        if (_selectedTags.Count == 0) return;
+        var text = string.Join(", ", _selectedTags.Select(t => t.Name.EscapeParenthesis()));
+        await OnAppendTags.InvokeAsync(new AppendedTags { Tags = text, IsPrefix = false });
+    }
+
+    // ── Template editor ──────────────────────────────────────────────────────
+
+    private async Task SaveTemplate()
+    {
+        if (string.IsNullOrEmpty(_selectedGroup)) return;
+        TagService.SetConfig(_selectedGroup, _editPositiveTemplate);
+        await TagService.SaveConfigAsync();
+    }
+
+    private void ResetTemplate()
+    {
+        if (string.IsNullOrEmpty(_selectedGroup)) return;
+        var cfg = TagService.GetConfig(_selectedGroup);
+        _editPositiveTemplate = cfg.PreviewTemplate;
+    }
+
+    // ── Preview generation ───────────────────────────────────────────────────
+
+    private async Task StartGeneration()
+    {
+        // Auto-apply the live template so the user doesn't need to click Save first.
+        if (!string.IsNullOrEmpty(_selectedGroup))
+            TagService.SetConfig(_selectedGroup, _editPositiveTemplate);
+
+        _genCts = new CancellationTokenSource();
+        await TagService.GenerateBatchPreviewsAsync(
+            tags:         _filteredTags,
+            batchSize:    _genBatchSize,
+            skipExisting: _genSkipExisting,
+            useCoTags:    _genUseCoTags,
+            ct:           _genCts.Token,
+            onProgress:   async () =>
+            {
+                _generationVersion++;
+                await InvokeAsync(StateHasChanged);
+            });
+    }
+
+    private void StopGeneration() => _genCts?.Cancel();
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static string FormatGroupName(string slug) =>
+        System.Globalization.CultureInfo.CurrentCulture.TextInfo
+              .ToTitleCase(slug.Replace('_', ' '));
+}

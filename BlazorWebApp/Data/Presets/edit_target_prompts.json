@@ -1,0 +1,156 @@
+[
+  {
+    "name": "Target: General Subject",
+    "prompt": "The edit focuses on the general subject in the image. Modify the subject's appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "general"]
+  },
+  {
+    "name": "Target: Female Human",
+    "prompt": "The edit focuses on the female human in the image. Modify her appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "human", "female"]
+  },
+  {
+    "name": "Target: Male Human",
+    "prompt": "The edit focuses on the man in the image. Modify his appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "human", "male"]
+  },
+  {
+    "name": "Target: Human Group",
+    "prompt": "The edit focuses on the group of humans in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "human", "group"]
+  },
+  {
+    "name": "Target: Anthro Female",
+    "prompt": "The edit focuses on the female anthropomorphic subject in the image. Modify her appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "anthro", "female"]
+  },
+  {
+    "name": "Target: Anthro Male",
+    "prompt": "The edit focuses on the male anthropomorphic subject in the image. Modify his appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "anthro", "male"]
+  },
+  {
+    "name": "Target: Anthro Group",
+    "prompt": "The edit focuses on the group of anthropomorphic subjects in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "anthro", "group"]
+  },
+  {
+    "name": "Target: Indoor Setting",
+    "prompt": "The edit focuses on the indoor environment. Modify the room's layout, furniture, lighting, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["setting", "environment", "indoor"]
+  },
+  {
+    "name": "Target: Outdoor Setting",
+    "prompt": "The edit focuses on the outdoor environment. Modify the landscape, weather, lighting, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["setting", "environment", "outdoor"]
+  },
+  {
+    "name": "Target: Advertised Object",
+    "prompt": "The edit focuses on the promotional object in the image. Modify the product's appearance, positioning, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["object", "product"]
+  },
+  {
+    "name": "Target: Mechanical Object",
+    "prompt": "The edit focuses on the mechanical object in the image. Modify the machinery's appearance, positioning, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["object", "mechanical"]
+  },
+  {
+    "name": "Target: Robotic Object",
+    "prompt": "The edit focuses on the robotic object in the image. Modify the robot's appearance, positioning, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["object", "robot"]
+  },
+  {
+    "name": "Target: Lighting Effect",
+    "prompt": "The edit focuses on the lighting effects in the image. Modify the light sources, intensity, color, or direction as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["effect", "lighting"]
+  },
+  {
+    "name": "Target: Shadow Effect",
+    "prompt": "The edit focuses on the shadows in the image. Modify the shadow density, orientation, or distribution as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["effect", "lighting", "shadows"]
+  },
+  {
+    "name": "Target: Texture Property",
+    "prompt": "The edit focuses on the texture of a surface in the image. Modify the material properties, roughness, or patterns as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["property", "material", "texture"]
+  },
+  {
+    "name": "Target: Skin Property",
+    "prompt": "The edit focuses on the skin texture and appearance. Modify the skin's detail, smoothness, or properties as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["property", "skin", "texture"]
+  },
+  {
+    "name": "Target: Surface Property",
+    "prompt": "The edit focuses on the properties of a specific surface. Modify its reflective, refractive, or material characteristics as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["property", "material", "surface"]
+  },
+  {
+    "name": "Target: Shemale Human",
+    "prompt": "The edit focuses on the curvaceous transgender female with a feminine appearance in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "human", "transgender", "female"]
+  },
+  {
+    "name": "Target: Femboy Human",
+    "prompt": "The edit focuses on the small skinny male subject with girly features in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "human", "male", "feminine"]
+  },
+  {
+    "name": "Target: Shemale Anthro",
+    "prompt": "The edit focuses on the curvaceous transgender anthropomorphic feminine subject in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "anthro", "transgender", "female"]
+  },
+  {
+    "name": "Target: Femboy Anthro",
+    "prompt": "The edit focuses on the small skinny transgender anthropomorphic male subject with girly features in the image. Modify their appearance, pose, position, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["subject", "anthro", "transgender", "male", "feminine"]
+  },
+  {
+    "name": "Target: Sex Toy Object",
+    "prompt": "The edit focuses on the adult toy in the image. Modify its appearance, positioning, or composition as requested while maintaining visual coherence. Ensure the changes are integrated naturally into the scene. Ensure the new elements or changes respect the visual context. Keep the unedited parts in focus. The image is a faithful execution of the editing request.",
+    "negative_prompt": null,
+    "category": "Edit Targets",
+    "tags": ["object", "adult", "nsfw"]
+  }
+]

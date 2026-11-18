@@ -1,0 +1,367 @@
+@namespace BlazorWebApp.Components.Character
+@using static BlazorWebApp.Data.Enums
+@inject IComfyUIService Comfy
+
+<MudStack Spacing="2" Class="character-settings">
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.subtitle2">Source</MudText>
+        <ImageInput ImageData="@Character.SourceImage.ImageDataUri" ImageDataChanged="HandleSourceImageChanged"
+                    Title="Source Image" Class="character-source-input" AutoResize="false" />
+        @if (!string.IsNullOrWhiteSpace(Character.SourceImage.ImagePath))
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Uploaded source is ready for reuse.</MudText>
+        }
+    </MudStack>
+
+    <MudDivider />
+
+    <MudExpansionPanels Elevation="0">
+        <MudExpansionPanel IsExpanded="@Character.ShowEngineSettings"
+                           IsExpandedChanged="HandleEngineExpandedChanged">
+            <TitleContent>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="fa-solid fa-microchip" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle2">Engine</MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                        @EngineSummary
+                    </MudChip>
+                </MudStack>
+            </TitleContent>
+            <ChildContent>
+                <MudStack Spacing="2">
+                    <MudSelect T="CharacterReferenceEngine" Value="@Character.Engine" ValueChanged="HandleEngineChanged"
+                               Label="Engine" Dense="true" Variant="Variant.Text">
+                        <MudSelectItem Value="CharacterReferenceEngine.Qwen">Qwen Image Edit</MudSelectItem>
+                        <MudSelectItem Value="CharacterReferenceEngine.Flux2Klein">Flux 2 Klein</MudSelectItem>
+                    </MudSelect>
+
+                    @if (Character.Engine == CharacterReferenceEngine.Qwen)
+                    {
+                        <MudSelect T="CharacterLoaderMode" Value="@Character.LoaderMode" ValueChanged="HandleLoaderModeChanged"
+                                   Label="Loader" Dense="true" Variant="Variant.Text">
+                            <MudSelectItem Value="CharacterLoaderMode.AioCheckpoint">Checkpoint</MudSelectItem>
+                            <MudSelectItem Value="CharacterLoaderMode.SplitStack">Diffusion</MudSelectItem>
+                        </MudSelect>
+
+                        @if (Character.LoaderMode == CharacterLoaderMode.AioCheckpoint)
+                        {
+                            <CharacterAssetSelect Label="Checkpoint" AssetType="AssetType.CheckpointModel"
+                                                  Value="@Character.Assets.Aio.Checkpoint" DefaultValue="@CharacterReferenceDefaults.AioCheckpoint"
+                                                  ValueChanged="HandleAioCheckpointChanged" />
+                        }
+                        else
+                        {
+                            <CharacterAssetSelect Label="Diffusion" AssetType="AssetType.DiffusionModel"
+                                                  Value="@Character.Assets.Split.DiffusionModel" ValueChanged="HandleSplitDiffusionChanged"
+                                                  AllowEmpty="true" />
+                            <CharacterAssetSelect Label="CLIP" AssetType="AssetType.Clip" Value="@Character.Assets.Split.Clip"
+                                                  DefaultValue="@CharacterReferenceDefaults.SplitClip" ValueChanged="HandleSplitClipChanged" />
+                            <CharacterAssetSelect Label="VAE" AssetType="AssetType.Vae" Value="@Character.Assets.Split.Vae"
+                                                  DefaultValue="@CharacterReferenceDefaults.SplitVae" ValueChanged="HandleSplitVaeChanged" />
+                        }
+                    }
+                    else
+                    {
+                        <CharacterAssetSelect Label="Diffusion" AssetType="AssetType.DiffusionModel"
+                                              Value="@Character.Assets.Flux.DiffusionModel"
+                                              DefaultValue="@CharacterReferenceDefaults.Flux2KleinDiffusionModel"
+                                              ValueChanged="HandleFluxDiffusionChanged" />
+                        <CharacterAssetSelect Label="CLIP" AssetType="AssetType.Clip" Value="@Character.Assets.Flux.Clip"
+                                              DefaultValue="@CharacterReferenceDefaults.Flux2KleinClip" ValueChanged="HandleFluxClipChanged" />
+                        <CharacterAssetSelect Label="VAE" AssetType="AssetType.Vae" Value="@Character.Assets.Flux.Vae"
+                                              DefaultValue="@CharacterReferenceDefaults.Flux2KleinVae" ValueChanged="HandleFluxVaeChanged" />
+                    }
+                </MudStack>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    <MudDivider />
+
+    <LoraForm Loras="Character.Loras" Backend="Backend.ComfyUI" IsDualModel="false" OnLorasUpdated="HandleChanged" />
+
+    <MudDivider />
+
+    <MudStack Spacing="1">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" Disabled="@IsRunning"
+                   StartIcon="fa-solid fa-wand-magic-sparkles" OnClick="OnRunEnabled">
+            Run Enabled Slots
+        </MudButton>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">@EnabledSummary</MudText>
+    </MudStack>
+
+    <MudExpansionPanels Elevation="0">
+        <MudExpansionPanel Text="Advanced" IsExpanded="@Character.ShowAdvancedSettings"
+                           IsExpandedChanged="HandleAdvancedExpandedChanged">
+            <MudStack Spacing="2" Class="character-advanced-settings">
+                <MudSwitch T="bool" Value="@Character.UseRtxUpscale" ValueChanged="HandleRtxChanged"
+                           Color="Color.Primary" Label="RTX upscale" />
+                <MudSwitch T="bool" Value="@Character.UseCleanGpu" ValueChanged="HandleCleanGpuChanged"
+                           Color="Color.Primary" Label="Clean GPU after slots" />
+                @if (Character.Engine == CharacterReferenceEngine.Qwen)
+                {
+                    <MudSwitch T="bool" Value="@Character.FaceReplacement.Enabled"
+                               ValueChanged="HandleFaceReplacementChanged" Color="Color.Primary"
+                               Label="Qwen face replacement" />
+                    @if (Character.FaceReplacement.Enabled)
+                    {
+                        <MudSwitch T="bool" Value="@Character.FaceReplacement.UseCloseNeutralReference"
+                                   ValueChanged="HandleCloseNeutralReferenceChanged" Color="Color.Primary"
+                                   Label="Use Neutral as face reference" />
+                    }
+                }
+                <MudTextField T="string" Value="@Character.GlobalPositivePromptExtension"
+                              ValueChanged="HandleGlobalPositiveChanged" Label="Global Positive" Lines="3" Dense="true"
+                              Variant="Variant.Text" />
+                <MudTextField T="string" Value="@Character.GlobalNegativePrompt"
+                              ValueChanged="HandleGlobalNegativeChanged" Label="Global Negative" Lines="3" Dense="true"
+                              Variant="Variant.Text" />
+                <MudNumericField T="long" Value="@Character.GlobalSeed" ValueChanged="HandleSeedChanged" Label="Seed"
+                                 Dense="true" Variant="Variant.Text" Min="-1" />
+                <MudSwitch T="bool" Value="@Character.SamplerOverrides.Enabled"
+                           ValueChanged="HandleSamplerOverrideChanged" Color="Color.Primary" Label="Override sampler" />
+                @if (Character.SamplerOverrides.Enabled)
+                {
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudNumericField T="int" Value="@Character.SamplerOverrides.Steps"
+                                             ValueChanged="HandleStepsChanged" Label="Steps" Dense="true" Variant="Variant.Text"
+                                             Min="1" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudNumericField T="double" Value="@Character.SamplerOverrides.Cfg"
+                                             ValueChanged="HandleCfgChanged" Label="CFG" Dense="true" Variant="Variant.Text" Min="0" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSelect T="string" Value="@Character.SamplerOverrides.SamplerName"
+                                       ValueChanged="HandleSamplerNameChanged" Label="Sampler" Dense="true" Variant="Variant.Text"
+                                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                                @foreach (var sampler in _samplerOptions)
+                                {
+                                    <MudSelectItem Value="@sampler">@sampler</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSelect T="string" Value="@Character.SamplerOverrides.Scheduler"
+                                       ValueChanged="HandleSchedulerChanged" Label="Scheduler" Dense="true" Variant="Variant.Text"
+                                       AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                                @foreach (var scheduler in _schedulerOptions)
+                                {
+                                    <MudSelectItem Value="@scheduler">@scheduler</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudStack>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public AppStateCharacter Character { get; set; } = default!;
+    [Parameter] public bool IsRunning { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback OnRunEnabled { get; set; }
+
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+
+    private string EnabledSummary => $"{Character.Slots.Count(slot => slot.IsEnabled)} of {Character.Slots.Count} slots enabled";
+    private string EngineSummary => Character.Engine == CharacterReferenceEngine.Qwen
+        ? $"Qwen / {GetLoaderLabel(Character.LoaderMode)}"
+        : "Flux 2 Klein";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSamplerOptions();
+    }
+
+    private async Task HandleChanged()
+    {
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleSourceImageChanged(string value)
+    {
+        Character.SourceImage.ImageDataUri = value;
+        Character.SourceImage.ImagePath = null;
+        Character.SourceImage.SourceLabel = string.IsNullOrWhiteSpace(value) ? null : "Source image";
+        await HandleChanged();
+    }
+
+    private async Task HandleEngineChanged(CharacterReferenceEngine engine)
+    {
+        Character.Engine = engine;
+        await HandleChanged();
+    }
+
+    private async Task HandleLoaderModeChanged(CharacterLoaderMode mode)
+    {
+        Character.LoaderMode = mode;
+        await HandleChanged();
+    }
+
+    private async Task HandleAioCheckpointChanged(string value)
+    {
+        Character.Assets.Aio.Checkpoint = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleSplitDiffusionChanged(string value)
+    {
+        Character.Assets.Split.DiffusionModel = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleSplitClipChanged(string value)
+    {
+        Character.Assets.Split.Clip = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleSplitVaeChanged(string value)
+    {
+        Character.Assets.Split.Vae = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleFluxDiffusionChanged(string value)
+    {
+        Character.Assets.Flux.DiffusionModel = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleFluxClipChanged(string value)
+    {
+        Character.Assets.Flux.Clip = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleFluxVaeChanged(string value)
+    {
+        Character.Assets.Flux.Vae = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleRtxChanged(bool value)
+    {
+        Character.UseRtxUpscale = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleCleanGpuChanged(bool value)
+    {
+        Character.UseCleanGpu = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleFaceReplacementChanged(bool value)
+    {
+        Character.FaceReplacement.Enabled = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleCloseNeutralReferenceChanged(bool value)
+    {
+        Character.FaceReplacement.UseCloseNeutralReference = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleGlobalPositiveChanged(string value)
+    {
+        Character.GlobalPositivePromptExtension = value ?? string.Empty;
+        await HandleChanged();
+    }
+
+    private async Task HandleGlobalNegativeChanged(string value)
+    {
+        Character.GlobalNegativePrompt = value ?? string.Empty;
+        await HandleChanged();
+    }
+
+    private async Task HandleSamplerOverrideChanged(bool value)
+    {
+        Character.SamplerOverrides.Enabled = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleAdvancedExpandedChanged(bool value)
+    {
+        Character.ShowAdvancedSettings = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleEngineExpandedChanged(bool value)
+    {
+        Character.ShowEngineSettings = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleStepsChanged(int value)
+    {
+        Character.SamplerOverrides.Steps = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleCfgChanged(double value)
+    {
+        Character.SamplerOverrides.Cfg = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleSeedChanged(long value)
+    {
+        Character.GlobalSeed = value;
+        await HandleChanged();
+    }
+
+    private async Task HandleSamplerNameChanged(string value)
+    {
+        Character.SamplerOverrides.SamplerName = value ?? CharacterReferenceDefaults.SamplerName;
+        await HandleChanged();
+    }
+
+    private async Task HandleSchedulerChanged(string value)
+    {
+        Character.SamplerOverrides.Scheduler = value ?? CharacterReferenceDefaults.Scheduler;
+        await HandleChanged();
+    }
+
+    private async Task LoadSamplerOptions()
+    {
+        try
+        {
+            var samplers = await Comfy.GetNodeInputOptionsAsync("KSampler", "sampler_name");
+            var schedulers = await Comfy.GetNodeInputOptionsAsync("KSampler", "scheduler");
+
+            _samplerOptions = BuildOptions(samplers, Character.SamplerOverrides.SamplerName,
+                CharacterReferenceDefaults.SamplerName);
+            _schedulerOptions = BuildOptions(schedulers, Character.SamplerOverrides.Scheduler,
+                CharacterReferenceDefaults.Scheduler);
+        }
+        catch
+        {
+            _samplerOptions = BuildOptions([], Character.SamplerOverrides.SamplerName, CharacterReferenceDefaults.SamplerName);
+            _schedulerOptions = BuildOptions([], Character.SamplerOverrides.Scheduler, CharacterReferenceDefaults.Scheduler);
+        }
+    }
+
+    private static List<string> BuildOptions(IEnumerable<string> options, params string[] fallbackOptions)
+    {
+        return options.Concat(fallbackOptions)
+            .Where(option => !string.IsNullOrWhiteSpace(option))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static string GetLoaderLabel(CharacterLoaderMode mode)
+    {
+        return mode switch
+        {
+            CharacterLoaderMode.SplitStack => "Diffusion",
+            _ => "Checkpoint"
+        };
+    }
+}

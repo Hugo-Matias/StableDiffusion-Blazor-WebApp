@@ -1,0 +1,323 @@
+/* ===========================================
+   SavedDanbooruMediaCard - Base Styles
+   Mirrors DanbooruImageCard.razor.css for consistent styling.
+   =========================================== */
+
+.danbooru-card {
+  position: relative;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--mud-palette-surface);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.danbooru-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ===========================================
+   Image Wrapper & Media (Image/Video)
+   =========================================== */
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.card-image,
+.card-media {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.4s ease;
+  object-fit: cover;
+}
+
+.danbooru-card:hover .card-image,
+.danbooru-card:hover .card-media {
+  transform: scale(1.08);
+}
+
+/* ===========================================
+   Hover Overlay
+   =========================================== */
+
+.hover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hover-overlay.visible {
+  pointer-events: auto;
+}
+
+/* ===========================================
+   Top Section - Rating & Video Badge
+   =========================================== */
+
+.overlay-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.overlay-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rating-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rating-badge.rating-general {
+  background: rgba(33, 150, 243, 0.8);
+  color: #fff;
+}
+
+.rating-badge.rating-sensitive {
+  background: rgba(76, 175, 80, 0.8);
+  color: #fff;
+}
+
+.rating-badge.rating-questionable {
+  background: rgba(255, 152, 0, 0.8);
+  color: #fff;
+}
+
+.rating-badge.rating-explicit {
+  background: rgba(244, 67, 54, 0.8);
+  color: #fff;
+}
+
+.rating-badge.rating-none {
+  background: rgba(158, 158, 158, 0.8);
+  color: #fff;
+}
+
+.video-badge {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  padding: 4px 8px;
+  backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.75rem;
+}
+
+/* ===========================================
+   Center Section - Quick Actions
+   =========================================== */
+
+.overlay-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  opacity: 0;
+  transition: opacity 0.25s ease 0.05s;
+}
+
+.overlay-center.visible {
+  opacity: 1;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 25px;
+  padding: 8px 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.15);
+}
+
+.action-btn.primary {
+  background: var(--mud-palette-warning);
+  color: #000;
+}
+
+.action-btn.primary:hover {
+  background: var(--mud-palette-warning-darken);
+  box-shadow: 0 0 15px var(--mud-palette-warning);
+}
+
+.action-btn.danger {
+  background: rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+.action-btn.danger:hover {
+  background: rgba(244, 67, 54, 0.6);
+  color: #fff;
+}
+
+/* ===========================================
+   Bottom Section - Info
+   =========================================== */
+
+.overlay-bottom {
+  padding: 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.overlay-bottom.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.info-item i {
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
+
+/* ===========================================
+   Persistent Rating Indicator
+   =========================================== */
+
+.rating-indicator {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rating-indicator.rating-general {
+  background: rgba(33, 150, 243, 0.8);
+  color: #fff;
+}
+
+.rating-indicator.rating-sensitive {
+  background: rgba(76, 175, 80, 0.8);
+  color: #fff;
+}
+
+.rating-indicator.rating-questionable {
+  background: rgba(255, 152, 0, 0.8);
+  color: #fff;
+}
+
+.rating-indicator.rating-explicit {
+  background: rgba(244, 67, 54, 0.8);
+  color: #fff;
+}
+
+.rating-indicator.rating-none {
+  background: rgba(158, 158, 158, 0.8);
+  color: #fff;
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+@media (max-width: 768px) {
+  .quick-actions {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .rating-badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+}

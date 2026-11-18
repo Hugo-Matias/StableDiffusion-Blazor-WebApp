@@ -1,0 +1,26 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+
+<MudStack Spacing="2">
+    <MudTextField @bind-Value="Directive.Text" Label="Text" Lines="3" Variant="Variant.Text"
+                  HelperText="Text appended (or prefixed) to the existing prompt each iteration." />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="Directive.Separator" Label="Separator" Variant="Variant.Text"
+                          HelperText="Inserted between existing prompt and appended text." />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSwitch T="bool" @bind-Value="Directive.IsPrefix" Color="Color.Primary" Label="Prepend" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSwitch T="bool" @bind-Value="Directive.IsNegative" Color="Color.Primary" Label="Negative prompt" />
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public AppendPromptDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+}
+

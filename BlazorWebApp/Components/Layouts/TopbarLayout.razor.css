@@ -1,0 +1,19 @@
+/* TopbarLayout - [Topbar] stacked above [Content], inner gutter as gap.
+   Surfaces own their padding + elevation + radius; children render flush. */
+
+.app-topbar-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-gutter-inner);
+    width: 100%;
+}
+
+.app-topbar-layout ::deep .app-topbar-surface,
+.app-topbar-layout ::deep .app-content-surface {
+    border-radius: var(--app-surface-radius) !important;
+    padding: var(--app-surface-padding);
+}
+
+.app-topbar-layout ::deep .app-content-surface {
+    min-height: 0;
+}

@@ -1,0 +1,8 @@
+@page "/huggingface"
+@inject IStateService State
+
+<TabbedPageShell @bind-ActivePanelIndex="State.State.HuggingFace.ActiveTabIndex">
+    <MudTabPanel Text="Models">
+        <HuggingFaceModelsPanel />
+    </MudTabPanel>
+</TabbedPageShell>

@@ -1,0 +1,87 @@
+.hf-tree {
+  --hf-tree-size-column: 72px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.hf-tree-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 var(--space-2);
+}
+
+.hf-tree-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.hf-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.hf-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-1);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hf-tree-row--folder {
+  font-weight: 500;
+  color: var(--mud-palette-text-secondary);
+  cursor: default;
+}
+
+.hf-tree-row--file {
+  cursor: pointer;
+}
+
+.hf-tree-row--file:hover {
+  background: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
+}
+
+.hf-tree-row--selected {
+  background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+.hf-tree-row__icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.hf-tree-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hf-tree-row__ext {
+  font-size: 0.75rem;
+  color: var(--mud-palette-text-secondary);
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border-radius: var(--app-surface-radius);
+  background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+  flex-shrink: 0;
+}
+
+.hf-tree-row__size {
+  font-size: 0.75rem;
+  color: var(--mud-palette-text-secondary);
+  flex-shrink: 0;
+  min-width: var(--hf-tree-size-column);
+  text-align: right;
+}

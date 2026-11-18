@@ -1,27 +1,27 @@
-﻿@inject ManagerService M
-@inject DatabaseService DB
-@inject ResourcesService ResourcesService
-@inject ProgressService ProgressService
+@using BlazorWebApp.Events
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IResourcesService ResourcesService
+@inject IProgressService ProgressService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudGrid>
-    <MudItem xs="9">
-        <MudSelect @bind-Value=_selectedTemplate Label="Templates" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-            @foreach (var template in _templates)
-            {
-                <MudSelectItem Value="template">@template.Title</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="3">
-        <MudButtonGroup OverrideStyles=false>
-            <MudIconButton OnClick=HandleCreate Icon="fa-solid fa-plus" Color="Color.Primary" />
-            <MudIconButton OnClick=HandleEdit Icon="fa-solid fa-pen" Color="Color.Info" Disabled=@(_selectedTemplate == null) />
-            <MudIconButton OnClick=HandleActivate Icon="fa-solid fa-play" Color="Color.Success" Disabled=@(_selectedTemplate == null) />
-        </MudButtonGroup>
-    </MudItem>
-</MudGrid>
+<MudStack Spacing="1">
+    <MudSelect @bind-Value="_selectedTemplate"
+               Label="Selection Templates"
+               AnchorOrigin="Origin.BottomLeft"
+               TransformOrigin="Origin.TopLeft">
+        @foreach (var template in _templates)
+        {
+            <MudSelectItem Value="template">@template.Title</MudSelectItem>
+        }
+    </MudSelect>
+    <MudStack Row="true" Justify="Justify.Center" Spacing="1">
+        <MudIconButton OnClick="HandleCreate" Icon="fa-solid fa-plus" Color="Color.Primary" Size="Size.Small" />
+        <MudIconButton OnClick="HandleEdit" Icon="fa-solid fa-pen" Color="Color.Info" Size="Size.Small" Disabled=@(_selectedTemplate == null) />
+        <MudIconButton OnClick="HandleActivate" Icon="fa-solid fa-play" Color="Color.Success" Size="Size.Small" Disabled=@(_selectedTemplate == null) />
+    </MudStack>
+</MudStack>
 
 @code {
     private ResourceTemplate _selectedTemplate;
@@ -67,7 +67,7 @@
             ProgressService.Update(progress.Id, index);
         }
         Snackbar.Add("All resources managed.", Severity.Success);
-        M.InvokeResourcesStateChanged();
+        Events.Publish(new ResourcesChangedEventArgs());
     }
 
     private async Task ShowTemplateDialog(ResourceTemplate template)

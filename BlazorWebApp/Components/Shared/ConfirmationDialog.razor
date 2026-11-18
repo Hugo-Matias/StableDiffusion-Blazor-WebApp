@@ -8,6 +8,10 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Text" Color="CancelButtonColor">@CancelButtonText</MudButton>
+        @if (ExtraButtonEnabled)
+        {
+            <MudButton OnClick=ExtraButtonClicked Variant="Variant.Filled" Color="ExtraButtonColor">@ExtraButtonText</MudButton>
+        }
         <MudButton OnClick=ConfirmDialog Variant="Variant.Filled" Color="OkButtonColor">@OkButtonText</MudButton>
     </DialogActions>
 </MudDialog>
@@ -18,6 +22,9 @@
     [Parameter] public Color CancelButtonColor { get; set; } = Color.Default;
     [Parameter] public string OkButtonText { get; set; } = "Ok";
     [Parameter] public Color OkButtonColor { get; set; } = Color.Success;
+    [Parameter] public bool ExtraButtonEnabled { get; set; }
+    [Parameter] public string ExtraButtonText { get; set; } = "Extra";
+    [Parameter] public Color ExtraButtonColor { get; set; } = Color.Info;
     [Parameter] public MarkupString Content { get; set; }
     [Parameter] public bool CheckboxEnabled { get; set; }
     [Parameter] public string CheckboxContent { get; set; }
@@ -28,6 +35,11 @@
     private void ConfirmDialog()
     {
         if (CheckboxEnabled) MudDialog.Close(DialogResult.Ok(_isChecked));
-        else MudDialog.Close();
+        else MudDialog.Close(DialogResult.Ok("ok"));
+    }
+
+    private void ExtraButtonClicked()
+    {
+        MudDialog.Close(DialogResult.Ok("extra"));
     }
 }

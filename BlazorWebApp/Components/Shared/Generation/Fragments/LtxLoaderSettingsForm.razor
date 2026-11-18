@@ -1,0 +1,104 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("LtxLoaderSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="Loader Mode"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localLoaderMode"
+                   @bind-Value:after="OnLoaderModeChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            <MudSelectItem Value="@("checkpoint")">Checkpoint</MudSelectItem>
+            <MudSelectItem Value="@("diffusion")">Diffusion</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="6" Class="d-flex align-items-center">
+        <MudCheckBox T="bool"
+                     Label="Use Separate Video VAE"
+                     @bind-Value="_localUseSeparateVideoVae"
+                     @bind-Value:after="OnUseSeparateVideoVaeChanged" />
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="Diffusion Weight DType"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   Disabled="@(_localLoaderMode != "diffusion")"
+                   @bind-Value="_localUnetWeightDtype"
+                   @bind-Value:after="OnUnetWeightDtypeChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _unetWeightDtypes)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="VAE Weight DType"
+                   Variant="Variant.Text"
+                   Dense="true"
+                   @bind-Value="_localVaeWeightDtype"
+                   @bind-Value:after="OnVaeWeightDtypeChanged"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _vaeWeightDtypes)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _localLoaderMode = "checkpoint";
+    private bool _localUseSeparateVideoVae;
+    private string _localUnetWeightDtype = "default";
+    private string _localVaeWeightDtype = "bf16";
+
+    private readonly string[] _unetWeightDtypes = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"];
+    private readonly string[] _vaeWeightDtypes = ["bf16", "fp16", "fp32"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _localLoaderMode = ParameterService.GetFragmentProperty(Fragment, "loader_mode", "checkpoint") ?? "checkpoint";
+        _localUseSeparateVideoVae = ParameterService.GetFragmentProperty(Fragment, "use_separate_video_vae", false);
+        _localUnetWeightDtype = ParameterService.GetFragmentProperty(Fragment, "unet_weight_dtype", "default") ?? "default";
+        _localVaeWeightDtype = ParameterService.GetFragmentProperty(Fragment, "vae_weight_dtype", "bf16") ?? "bf16";
+    }
+
+    private async Task OnLoaderModeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "loader_mode", _localLoaderMode, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnUseSeparateVideoVaeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "use_separate_video_vae", _localUseSeparateVideoVae, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnUnetWeightDtypeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "unet_weight_dtype", _localUnetWeightDtype, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnVaeWeightDtypeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "vae_weight_dtype", _localVaeWeightDtype, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

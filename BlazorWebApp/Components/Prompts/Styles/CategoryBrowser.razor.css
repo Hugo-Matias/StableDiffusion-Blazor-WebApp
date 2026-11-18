@@ -1,0 +1,81 @@
+.category-browser {
+    height: 100%;
+    min-height: 400px;
+    position: sticky;
+    top: 20px;
+}
+
+.category-item {
+    border-radius: 8px;
+    margin: 2px 0;
+    transition: background-color 0.2s ease;
+}
+
+.category-item:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.category-item-selected {
+    background-color: var(--mud-palette-primary) !important;
+    color: white;
+}
+
+.category-item-selected:hover {
+    background-color: var(--mud-palette-primary-darken) !important;
+}
+
+/* Override MudBlazor styles for selected items */
+.category-item-selected .mud-typography,
+.category-item-selected .mud-icon-root {
+    color: white !important;
+}
+
+/* Dark theme */
+.mud-theme-dark .category-item:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.mud-theme-dark .category-item-selected {
+    background-color: var(--mud-palette-primary) !important;
+}
+
+.mud-theme-dark .category-item-selected:hover {
+    background-color: var(--mud-palette-primary-lighten) !important;
+}
+
+/* Scrollbar styling */
+.category-browser .mud-list {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.category-browser .mud-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.category-browser .mud-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.category-browser .mud-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.category-browser .mud-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark theme scrollbar */
+.mud-theme-dark .category-browser .mud-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mud-theme-dark .category-browser .mud-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mud-theme-dark .category-browser .mud-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}

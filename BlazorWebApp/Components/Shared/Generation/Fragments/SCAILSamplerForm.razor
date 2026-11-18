@@ -1,0 +1,271 @@
+@*
+    SCAILSamplerForm - Form for scail_sampler fragment
+    
+    Handles: scheduler, steps, shift, cfg, seed, force_offload, context options
+    
+    Covers the full SCAIL sampler chain: Scheduler -> ExtraArgs -> ContextOptions -> Sampler -> Decode
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("SCAILSamplerForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <!-- Scheduler Section -->
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Scheduler</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler" @bind-Value:after="OnSchedulerChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var sched in _schedulerOptions)
+            {
+                <MudSelectItem Value="@sched" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="int" @bind-Value="_localSteps" @bind-Value:after="OnStepsChanged" Min="_stepsMin" Max="_stepsMax"
+                   Step="1" Variant="Variant.Text" ValueLabel>
+            <small>Steps:</small> @_localSteps
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" @bind-Value="_localShift" @bind-Value:after="OnShiftChanged" Min="_shiftMin"
+                   Max="_shiftMax" Step="_shiftStep" Variant="Variant.Text" ValueLabel>
+            <small>Shift:</small> @_localShift.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed" Min="-1"
+                             Max="long.MaxValue" Variant="Variant.Text" Dense="true" Class="flex-grow-1" />
+            <MudIconButton OnClick="SetRandomSeed" Icon="fa-solid fa-shuffle" Size="Size.Small" Title="Random seed" />
+        </MudStack>
+    </MudItem>
+
+    <!-- Sampler Section -->
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Sampler</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="float" @bind-Value="_localCfg" @bind-Value:after="OnCfgChanged" Min="_cfgMin" Max="_cfgMax"
+                   Step="_cfgStep" Variant="Variant.Text" ValueLabel>
+            <small>CFG:</small> @_localCfg.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Value="_localForceOffload" @bind-Value:after="OnForceOffloadChanged" Label="Force Offload" />
+    </MudItem>
+
+    <!-- Context Options Section -->
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Context Options</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Context Schedule" @bind-Value="_localContextSchedule"
+                   @bind-Value:after="OnContextScheduleChanged" AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft" Variant="Variant.Text" Dense="true">
+            @foreach (var sched in _contextScheduleOptions)
+            {
+                <MudSelectItem Value="@sched" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_localContextFrames" @bind-Value:after="OnContextFramesChanged"
+                         Label="Context Frames" Min="2" Max="1000" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_localContextStride" @bind-Value:after="OnContextStrideChanged"
+                         Label="Context Stride" Min="4" Max="100" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" @bind-Value="_localContextOverlap" @bind-Value:after="OnContextOverlapChanged"
+                         Label="Context Overlap" Min="4" Max="100" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Fuse Method" @bind-Value="_localFuseMethod" @bind-Value:after="OnFuseMethodChanged"
+                   Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var method in _fuseMethodOptions)
+            {
+                <MudSelectItem Value="@method" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox @bind-Value="_localContextFreenoise" @bind-Value:after="OnContextFreenoiseChanged"
+                     Label="FreeNoise" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // Scheduler
+    private string _localScheduler = "dpm++_sde";
+    private int _localSteps = 6;
+    private float _localShift = 7.0f;
+    private long _localSeed = 42;
+    
+    // Sampler
+    private float _localCfg = 1.0f;
+    private bool _localForceOffload = true;
+    
+    // Context Options
+    private string _localContextSchedule = "uniform_standard";
+    private int _localContextFrames = 81;
+    private int _localContextStride = 4;
+    private int _localContextOverlap = 48;
+    private bool _localContextFreenoise = true;
+    private string _localFuseMethod = "linear";
+
+    // Constraints
+    private int _stepsMin = 1, _stepsMax = 100;
+    private float _shiftMin = 0.1f, _shiftMax = 30.0f, _shiftStep = 0.1f;
+    private float _cfgMin = 0.0f, _cfgMax = 30.0f, _cfgStep = 0.01f;
+
+    // Options
+    private List<string> _schedulerOptions = new()
+    {
+        "unipc", "unipc/beta", "dpm++", "dpm++/beta", "dpm++_sde", "dpm++_sde/beta", "euler", "euler/beta",
+        "longcat_distill_euler", "deis", "lcm", "lcm/beta", "res_multistep", "er_sde", "flowmatch_causvid",
+        "flowmatch_distill", "flowmatch_pusa", "multitalk", "sa_ode_stable", "rcm", "vibt_unipc"
+    };
+    private List<string> _contextScheduleOptions = new() { "uniform_standard", "uniform_looped", "static_standard" };
+    private List<string> _fuseMethodOptions = new() { "linear", "pyramid" };
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        // Scheduler
+        _localScheduler = ParameterService.GetFragmentProperty(Fragment, "scheduler_name", "dpm++_sde");
+        _localSteps = ParameterService.GetFragmentProperty(Fragment, "steps", 6);
+        _localShift = ParameterService.GetFragmentProperty(Fragment, "shift", 7.0f);
+        _localSeed = ParameterService.GetFragmentProperty(Fragment, "seed", 42L);
+
+        // Sampler
+        _localCfg = ParameterService.GetFragmentProperty(Fragment, "cfg", 1.0f);
+        _localForceOffload = ParameterService.GetFragmentProperty(Fragment, "force_offload", true);
+
+        // Context Options
+        _localContextSchedule = ParameterService.GetFragmentProperty(Fragment, "context_schedule", "uniform_standard");
+        _localContextFrames = ParameterService.GetFragmentProperty(Fragment, "context_frames", 81);
+        _localContextStride = ParameterService.GetFragmentProperty(Fragment, "context_stride", 4);
+        _localContextOverlap = ParameterService.GetFragmentProperty(Fragment, "context_overlap", 48);
+        _localContextFreenoise = ParameterService.GetFragmentProperty(Fragment, "context_freenoise", true);
+        _localFuseMethod = ParameterService.GetFragmentProperty(Fragment, "fuse_method", "linear");
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("steps", out var stepsC))
+        {
+            _stepsMin = stepsC.GetMin(1);
+            _stepsMax = stepsC.GetMax(100);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("shift", out var shiftC))
+        {
+            _shiftMin = shiftC.GetMin(0.1f);
+            _shiftMax = shiftC.GetMax(30.0f);
+            _shiftStep = shiftC.GetStep(0.1f);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("cfg", out var cfgC))
+        {
+            _cfgMin = cfgC.GetMin(1.0f);
+            _cfgMax = cfgC.GetMax(20.0f);
+            _cfgStep = cfgC.GetStep(0.5f);
+        }
+    }
+
+    private void SetRandomSeed()
+    {
+        _localSeed = -1;
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
+        _ = OnChanged.InvokeAsync();
+    }
+
+    #region Event Handlers
+    
+    private async Task OnSchedulerChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "scheduler_name", _localScheduler, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnStepsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "steps", _localSteps, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnShiftChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "shift", _localShift, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnSeedChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "seed", _localSeed, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnCfgChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "cfg", _localCfg, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnForceOffloadChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "force_offload", _localForceOffload, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnContextScheduleChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "context_schedule", _localContextSchedule, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnContextFramesChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "context_frames", _localContextFrames, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnContextStrideChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "context_stride", _localContextStride, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnContextOverlapChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "context_overlap", _localContextOverlap, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnFuseMethodChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "fuse_method", _localFuseMethod, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnContextFreenoiseChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "context_freenoise", _localContextFreenoise, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    #endregion
+}

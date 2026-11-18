@@ -1,0 +1,105 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanOneToAllPoseForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Detection Models</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="ONNX Device" @bind-Value="_onnxDevice" @bind-Value:after="OnOnnxDeviceChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _onnxDeviceOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="VitPose Model" @bind-Value="_vitposeModel" @bind-Value:after="OnVitposeModelChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _vitposeOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="YOLO Model" @bind-Value="_yoloModel" @bind-Value:after="OnYoloModelChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _yoloOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Align To" @bind-Value="_alignTo" @bind-Value:after="OnAlignToChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _alignOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Pose Rendering</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Face Points" @bind-Value="_drawFacePoints" @bind-Value:after="OnDrawFacePointsChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _drawOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Head" @bind-Value="_drawHead" @bind-Value:after="OnDrawHeadChanged" Variant="Variant.Text" Dense="true" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var option in _drawOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _vitposeModel = "vitpose-l-wholebody.onnx";
+    private string _yoloModel = "yolov10m.onnx";
+    private string _onnxDevice = "CUDAExecutionProvider";
+    private string _alignTo = "ref";
+    private string _drawFacePoints = "full";
+    private string _drawHead = "full";
+
+    private readonly List<string> _vitposeOptions = new() { "vitpose-l-wholebody.onnx", "vitpose-b-wholebody.onnx", "vitpose-h-wholebody.onnx", "vitpose-s-wholebody.onnx" };
+    private readonly List<string> _yoloOptions = new() { "yolov10m.onnx" };
+    private readonly List<string> _onnxDeviceOptions = new() { "CUDAExecutionProvider", "CPUExecutionProvider" };
+    private readonly List<string> _alignOptions = new() { "ref", "pose", "none" };
+    private readonly List<string> _drawOptions = new() { "full", "weak", "none" };
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _vitposeModel = ParameterService.GetFragmentProperty(Fragment, "vitpose_model", "vitpose-l-wholebody.onnx");
+        _yoloModel = ParameterService.GetFragmentProperty(Fragment, "yolo_model", "yolov10m.onnx");
+        _onnxDevice = ParameterService.GetFragmentProperty(Fragment, "onnx_device", "CUDAExecutionProvider");
+        _alignTo = ParameterService.GetFragmentProperty(Fragment, "align_to", "ref");
+        _drawFacePoints = ParameterService.GetFragmentProperty(Fragment, "draw_face_points", "full");
+        _drawHead = ParameterService.GetFragmentProperty(Fragment, "draw_head", "full");
+    }
+
+    private async Task SetValue(string key, string value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnVitposeModelChanged() => SetValue("vitpose_model", _vitposeModel);
+    private Task OnYoloModelChanged() => SetValue("yolo_model", _yoloModel);
+    private Task OnOnnxDeviceChanged() => SetValue("onnx_device", _onnxDevice);
+    private Task OnAlignToChanged() => SetValue("align_to", _alignTo);
+    private Task OnDrawFacePointsChanged() => SetValue("draw_face_points", _drawFacePoints);
+    private Task OnDrawHeadChanged() => SetValue("draw_head", _drawHead);
+}

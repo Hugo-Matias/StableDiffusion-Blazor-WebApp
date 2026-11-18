@@ -1,0 +1,179 @@
+.creator-workspace,
+.creator-diagram-panel,
+.creator-region-editor,
+.creator-prompt-panel,
+.creator-context-panel,
+.creator-authoring-actions,
+.creator-authoring-preview,
+.creator-application-panel,
+.creator-image-draft-panel,
+.creator-image-draft-preview,
+.creator-image-draft-region {
+  min-width: 0;
+}
+
+.creator-toolbar,
+.creator-section-heading,
+.creator-reference-context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-gutter-inner);
+  min-width: 0;
+}
+
+.creator-actions {
+  justify-content: flex-end;
+}
+
+.creator-main-grid,
+.creator-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--app-gutter-inner);
+  min-width: 0;
+}
+
+.creator-region-map {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--creator-region-min, 8rem), 1fr)
+  );
+  gap: calc(var(--app-gutter-inner) / 2);
+  min-width: 0;
+}
+
+.creator-region-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--app-gutter-inner) / 4);
+  min-height: calc(var(--app-surface-padding) * 2);
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  background: transparent;
+  color: inherit;
+  padding: calc(var(--app-surface-padding) / 2);
+  text-align: center;
+  cursor: pointer;
+}
+
+.creator-region-node:hover,
+.creator-region-node:focus-visible,
+.creator-region-node--active {
+  border-color: var(--mud-palette-primary);
+  background: var(--mud-palette-action-default-hover);
+}
+
+.creator-region-node:focus-visible {
+  outline: 2px solid var(--mud-palette-primary);
+  outline-offset: 2px;
+}
+
+.creator-prompt-output {
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: calc(var(--app-surface-padding) / 2);
+  min-width: 0;
+}
+
+.creator-prompt-output p {
+  margin: calc(var(--app-gutter-inner) / 2) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.creator-prompt-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(var(--app-gutter-inner) / 2);
+}
+
+.creator-reference-context {
+  justify-content: flex-start;
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: calc(var(--app-surface-padding) / 2);
+}
+
+.creator-authoring-actions,
+.creator-authoring-preview,
+.creator-application-panel,
+.creator-image-draft-panel,
+.creator-image-draft-preview,
+.creator-image-draft-region,
+.creator-suggestion-block,
+.creator-suggestion-trait,
+.creator-image-draft-trait {
+  border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--app-surface-radius);
+  padding: calc(var(--app-surface-padding) / 2);
+}
+
+.creator-authoring-preview,
+.creator-application-panel,
+.creator-suggestion-traits,
+.creator-image-draft-panel,
+.creator-image-draft-preview,
+.creator-image-draft-region {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--app-gutter-inner) / 2);
+}
+
+.creator-send-section {
+  margin-top: calc(var(--app-gutter-inner) / 2);
+}
+
+.creator-suggestion-block p {
+  margin: calc(var(--app-gutter-inner) / 2) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.creator-suggestion-trait {
+  display: grid;
+  grid-template-columns: minmax(0, 0.6fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: calc(var(--app-gutter-inner) / 2);
+  align-items: center;
+}
+
+.creator-suggestion-trait span,
+.creator-suggestion-trait strong {
+  overflow-wrap: anywhere;
+}
+
+.creator-image-draft-input {
+  width: 100%;
+}
+
+.creator-image-draft-trait {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr) auto;
+  gap: calc(var(--app-gutter-inner) / 2);
+  align-items: center;
+}
+
+.creator-image-draft-raw {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .creator-main-grid,
+  .creator-preview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .creator-suggestion-trait {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .creator-image-draft-trait {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .creator-prompt-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

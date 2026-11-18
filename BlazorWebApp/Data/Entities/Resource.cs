@@ -10,11 +10,18 @@ namespace BlazorWebApp.Data.Entities
         public string? Author { get; set; }
         public int? CivitaiModelId { get; set; }
         public int? CivitaiModelVersionId { get; set; }
+        public string? HuggingFaceModelId { get; set; }
+        public string? HuggingFaceRevision { get; set; }
+        public string? HuggingFaceFilePath { get; set; }
+        public string? HuggingFaceSha { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
+        public string? BaseModel { get; set; }
         public List<string>? Tags { get; set; }
         public List<string>? TriggerWords { get; set; }
         public string? Description { get; set; }
+        public string? VersionName { get; set; }
+        public string? VersionDescription { get; set; }
         public bool IsEnabled { get; set; }
         public double SizeKb { get; set; }
         public DateTime CreatedDate { get; set; }
@@ -29,9 +36,11 @@ namespace BlazorWebApp.Data.Entities
             CivitaiModelId = model.Id;
             CivitaiModelVersionId = version.Id;
             Type = new() { Name = model.Type };
+            BaseModel = version.BaseModel;
             Tags = model.Tags;
-            if (!string.IsNullOrWhiteSpace(version.Description)) Description = version.Description;
-            else Description = model.Description;
+            Description = model.Description;
+            VersionName = version.Name;
+            VersionDescription = version.Description;
             IsEnabled = false;
             if (version.TrainedWords != null) TriggerWords = version.TrainedWords;
             SizeKb = file.SizeKb;

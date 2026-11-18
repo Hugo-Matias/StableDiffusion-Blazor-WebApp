@@ -1,0 +1,1151 @@
+@page "/cleanup"
+@using BlazorWebApp.Data.Repositories
+@using BlazorWebApp.Services.Cleanup
+@using ImageEntity = BlazorWebApp.Data.Entities.Image
+@inject IDatabaseService DB
+@inject IGalleryService Gallery
+@inject ICleanupIndexingService IndexingService
+@inject ICleanupOnnxIndexingService OnnxIndexingService
+@inject ICleanupGroupingService GroupingService
+@inject ICleanupGroupExplanationService GroupExplanationService
+@inject ICleanupRepository CleanupRepository
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@inject IIOService IO
+@implements IDisposable
+
+<PageTitle>Cleanup Review</PageTitle>
+
+<div class="cleanup-page">
+    <TopbarLayout>
+        <Topbar>
+            <div class="cleanup-toolbar">
+                <div class="cleanup-toolbar-fields">
+                    <MudSelect T="int" Label="Scope" Value="_selectedProjectId" ValueChanged="HandleProjectChanged"
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.FolderSpecial">
+                        <MudSelectItem T="int" Value="0">All projects</MudSelectItem>
+                        @foreach (var project in _projects)
+                        {
+                            <MudSelectItem T="int" Value="@project.Id">@project.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="CleanupGroupingStrategy" Label="Strategy" @bind-Value="_strategy"
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.Hub">
+                        <MudSelectItem Value="CleanupGroupingStrategy.ExactDuplicate">Exact duplicates</MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.NearDuplicate">Near duplicates</MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.PromptFingerprint">Prompt fingerprint
+                        </MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.PromptFuzzy">Prompt fuzzy</MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.VisualSimilarity">Visual similarity
+                        </MudSelectItem>
+                        <MudSelectItem Value="CleanupGroupingStrategy.LowValueCandidates">Low-value candidates
+                        </MudSelectItem>
+                    </MudSelect>
+
+                    <MudNumericField T="int" Label="Minimum group" @bind-Value="_minimumGroupSize" Min="2" Max="50"
+                                     Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+
+                    @if (_strategy == CleanupGroupingStrategy.NearDuplicate)
+                    {
+                        <MudNumericField T="int" Label="Max distance" @bind-Value="_perceptualHashDistance" Min="0" Max="16"
+                                         Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    @if (_strategy == CleanupGroupingStrategy.PromptFuzzy)
+                    {
+                        <MudNumericField T="double" Label="Min similarity" @bind-Value="_promptSimilarity" Min="0.1" Max="1"
+                                         Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    @if (_strategy == CleanupGroupingStrategy.VisualSimilarity)
+                    {
+                        <MudNumericField T="double" Label="Visual min similarity" @bind-Value="_visualSimilarity" Min="0.1"
+                                         Max="1" Step="0.01" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    @if (_strategy == CleanupGroupingStrategy.LowValueCandidates)
+                    {
+                        <MudNumericField T="double" Label="Score max" @bind-Value="_scoreCleanupThreshold" Min="0" Max="1"
+                                         Step="0.05" Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+                    }
+
+                    <MudNumericField T="int" Label="Max groups" @bind-Value="_maxGroups" Min="0" Max="1000"
+                                     Variant="Variant.Text" Dense="true" Margin="Margin.Dense" />
+
+                    <MudSelect T="int" Label="Review run" Value="_selectedRunId" ValueChanged="HandleRunChanged"
+                               Variant="Variant.Text" Dense="true" Margin="Margin.Dense" Adornment="Adornment.Start"
+                               AdornmentIcon="@Icons.Material.Filled.PlaylistPlay">
+                        <MudSelectItem T="int" Value="0">No run selected</MudSelectItem>
+                        @foreach (var run in _runs)
+                        {
+                            <MudSelectItem T="int" Value="@run.Id">@GetRunLabel(run)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="cleanup-toolbar-actions">
+                    @if (_operationCts != null)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.StopCircle" Color="Color.Warning" Size="Size.Small"
+                                       Title="Cancel" OnClick="CancelOperation" />
+                    }
+                    <button type="button" class="send-to-btn" disabled="@IsBusy" @onclick="IndexScopeAsync">
+                        <MudIcon Icon="@Icons.Material.Filled.DataUsage" Size="Size.Small" />
+                        <span>Index scope</span>
+                    </button>
+                    <button type="button" class="send-to-btn" disabled="@IsBusy" @onclick="IndexOnnxAsync">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" />
+                        <span>Index AI</span>
+                    </button>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.AutoAwesomeMosaic" Disabled="@IsBusy"
+                               OnClick="GenerateGroupsAsync">
+                        Generate groups
+                    </MudButton>
+                    <MudIconButton Icon="fa-solid fa-images" Color="Color.Primary" Size="Size.Small" Title="Gallery"
+                                   OnClick="OpenGallery" />
+                </div>
+            </div>
+
+            @if (_operationCts != null)
+            {
+                <div class="cleanup-progress-row">
+                    @if (HasDeterminateIndexProgress())
+                    {
+                        <MudProgressLinear Value="@GetOperationProgressPercent()" Color="Color.Info" />
+                    }
+                    else
+                    {
+                        <MudProgressLinear Indeterminate="true" Color="Color.Info" />
+                    }
+                    <div class="cleanup-progress-copy">
+                        <MudText Typo="Typo.caption">@GetOperationText()</MudText>
+                        @if (HasOperationDetail())
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@GetOperationDetailText()</MudText>
+                        }
+                    </div>
+                </div>
+            }
+        </Topbar>
+        <Content>
+            <div class="cleanup-review-content">
+                <div class="cleanup-review-header">
+                    <div>
+                        <MudText Typo="Typo.h6">Review groups</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@GetReviewSubtitle()</MudText>
+                        @if (_storageSummary != null)
+                        {
+                            <div class="cleanup-storage-summary">
+                                <MudChip Color="Color.Default" Variant="Variant.Text" Size="Size.Small">
+                                    @_storageSummary.IndexedImages indexed</MudChip>
+                                    <MudChip Color="Color.Warning" Variant="Variant.Text" Size="Size.Small">
+                                        @_storageSummary.MissingFiles missing</MudChip>
+                                        <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">
+                                            @FormatBytes(_storageSummary.IndexedBytes)</MudChip>
+                                            <MudChip Color="Color.Success" Variant="Variant.Text" Size="Size.Small">
+                                                @_storageSummary.Groups groups</MudChip>
+                                            </div>
+                                        }
+                                        @if (_workflowStorageSummaries.Count > 0)
+                                        {
+                                            <div class="cleanup-workflow-summary">
+                                                @foreach (var item in _workflowStorageSummaries)
+                                                {
+                                                    <MudChip Color="Color.Default" Variant="Variant.Text" Size="Size.Small">
+                                                        @item.WorkflowId: @FormatBytes(item.IndexedBytes)</MudChip>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="cleanup-review-actions">
+                                            <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">
+                                                @Gallery.SelectedImageIds.Count selected</MudChip>
+                                                <button type="button" class="send-to-btn" disabled="@(_storageSummary?.MissingFiles <= 0)"
+                                                        @onclick="LoadMissingReportAsync">
+                                                    <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Size="Size.Small" />
+                                                    <span>Missing</span>
+                                                </button>
+                                                @if (Gallery.SelectedImageIds.Count > 0)
+                                                {
+                                                    <button type="button" class="send-to-btn" @onclick="ClearSelection">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
+                                                        <span>Clear</span>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        @if (_isLoadingGroups)
+                                        {
+                                            <div class="app-empty-state">
+                                                <MudProgressCircular Color="Color.Info" Indeterminate="true" />
+                                                <MudText Typo="Typo.body2">Loading cleanup groups</MudText>
+                                            </div>
+                                        }
+                                        else if (_selectedRun == null)
+                                        {
+                                            <div class="app-empty-state">
+                                                <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Size="Size.Large" />
+                                                <MudText Typo="Typo.body2">Create or select a cleanup run to begin review.</MudText>
+                                            </div>
+                                        }
+                                        else if (_groups.Count == 0)
+                                        {
+                                            <div class="app-empty-state">
+                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" />
+                                                <MudText Typo="Typo.body2">No groups matched the current run settings.</MudText>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @if (_showMissingReport)
+                                            {
+                                                <section class="cleanup-missing-report">
+                                                    <div class="cleanup-missing-report-header">
+                                                        <MudText Typo="Typo.subtitle2">Missing file report</MudText>
+                                                        <button type="button" class="send-to-btn" @onclick="HideMissingReport">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                                                            <span>Close</span>
+                                                        </button>
+                                                    </div>
+                                                    @if (_missingReport.Count == 0)
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">No missing indexed files matched the current
+                                                            scope.</MudText>
+                                                        }
+                                else
+                                                        {
+                                                            <div class="cleanup-missing-report-list">
+                                                                @foreach (var item in _missingReport)
+                                                                {
+                                                                    <div class="cleanup-missing-report-row">
+                                                                        <MudText Typo="Typo.caption">#@item.ImageId</MudText>
+                                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@item.ImagePath</MudText>
+                                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatBytes(item.FileSizeBytes)
+                                                                        </MudText>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </section>
+                                                }
+
+                                                <div class="cleanup-group-list">
+                                                    @foreach (var group in _groups)
+                                                    {
+                                                        var state = GetGroupState(group.Id);
+                                                        <section class="cleanup-group-card">
+                                                            <div class="cleanup-group-header">
+                                                                <div class="cleanup-group-preview" aria-label="Group preview">
+                                                                    @if (state.IsPreviewLoading)
+                                                                    {
+                                                                        <div class="cleanup-group-preview-placeholder">
+                                                                            <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                                                                        </div>
+                                                                    }
+                                                                    else if (state.PreviewViews.Count == 0)
+                                                                    {
+                                                                        <div class="cleanup-group-preview-placeholder">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" />
+                                                                        </div>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        @foreach (var preview in state.PreviewViews.Select((view, index) => new
+                                                                        {
+                                                                            view,
+                                                                            index
+                                                                        }))
+                                                                        {
+                                                                            <button type="button" class="cleanup-preview-image" title="Preview image"
+                                                                                    style="--cleanup-preview-index: @preview.index; --cleanup-preview-z: @(GroupPreviewImageCount - preview.index);"
+                                                                                    @onclick="() => OpenViewerAsync(preview.view.Image, state.PreviewViews.Select(view => view.Image).ToList())">
+                                                                                <img src="@IO.GetImageStaticFile(preview.view.Image.Path)" alt="" loading="lazy" />
+                                                                            </button>
+                                                                        }
+                                                                    }
+                                                                </div>
+
+                                                                <button type="button" class="cleanup-expand-button"
+                                                                        title="@(state.IsExpanded ? "Collapse group" : "Expand group")"
+                                                                        @onclick="() => ToggleGroupAsync(group)">
+                                                                    <MudIcon
+                                                                    Icon="@(state.IsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                                                    Size="Size.Small" />
+                                                                </button>
+
+                                                                <div class="cleanup-group-title">
+                                                                    <MudText Typo="Typo.subtitle2">@GetGroupTitle(group)</MudText>
+                                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Reason</MudText>
+                                                                </div>
+
+                                                                <div class="cleanup-group-metrics">
+                                                                    <MudChip Color="Color.Default" Variant="Variant.Text" Size="Size.Small">
+                                                                        @group.MemberCount images</MudChip>
+                                                                        <MudChip Color="Color.Info" Variant="Variant.Text" Size="Size.Small">
+                                                                            @FormatBytes(group.EstimatedBytes)</MudChip>
+                                                                            @if (group.Confidence.HasValue)
+                                                                            {
+                                                                                <MudChip Color="Color.Success" Variant="Variant.Text" Size="Size.Small">
+                                                                                    @FormatPercent(group.Confidence.Value)</MudChip>
+                                                                                }
+                                                                            </div>
+
+                                                                            <div class="cleanup-group-actions">
+                                                                                <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                        disabled="@state.IsLoading" @onclick="() => SaveGroupSelectionAsync(group)">
+                                                                                    <MudIcon Icon="@Icons.Material.Filled.BookmarkAdd" Size="Size.Small" />
+                                                                                    <span>Save</span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        @if (state.IsExplanationLoading || state.Explanation != null)
+                                                                        {
+                                                                            <div class="cleanup-group-explanation">
+                                                                                @if (state.IsExplanationLoading)
+                                                                                {
+                                                                                    <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                                                                                    <MudText Typo="Typo.caption">Generating explanation</MudText>
+                                                                                }
+                                                                                else if (state.Explanation != null)
+                                                                                {
+                                                                                    <div class="cleanup-group-explanation-copy">
+                                                                                        <MudText Typo="Typo.body2">@state.Explanation.Explanation</MudText>
+                                                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@state.Explanation.ModelName -
+                                                                                            @state.Explanation.Style</MudText>
+                                                                                        </div>
+                                                                                    }
+                                                                                </div>
+                                                                            }
+
+                                                                            @if (state.IsExpanded)
+                                                                            {
+                                                                                <div class="cleanup-group-body">
+                                                                                    @if (state.IsLoading)
+                                                                                    {
+                                                                                        <div class="app-empty-state cleanup-group-loading">
+                                                                                            <MudProgressCircular Color="Color.Info" Indeterminate="true" Size="Size.Small" />
+                                                                                            <MudText Typo="Typo.caption">Loading members</MudText>
+                                                                                        </div>
+                                                                                    }
+                                                                                    else if (state.MemberViews.Count == 0)
+                                                                                    {
+                                                                                        <div class="app-empty-state cleanup-group-loading">
+                                                                                            <MudText Typo="Typo.caption">No member images are available for this group.</MudText>
+                                                                                        </div>
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <div class="cleanup-member-toolbar">
+                                                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Representative stays unselected by
+                                                                                                the suggested action.</MudText>
+                                                                                                <div class="cleanup-member-actions">
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceAll)">
+                                                                                                        <MudIcon Icon="@Icons.Material.Filled.SelectAll" Size="Size.Small" />
+                                                                                                        <span>All</span>
+                                                                                                    </button>
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.ReplaceSuggested)">
+                                                                                                        <MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" />
+                                                                                                        <span>Suggested</span>
+                                                                                                    </button>
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.AddSuggested)">
+                                                                                                        <MudIcon Icon="@Icons.Material.Filled.AddTask" Size="Size.Small" />
+                                                                                                        <span>Add</span>
+                                                                                                    </button>
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.InvertAll)">
+                                                                                                        <MudIcon Icon="fa-solid fa-arrows-rotate" Size="Size.Small" />
+                                                                                                        <span>Invert</span>
+                                                                                                    </button>
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            @onclick="() => SelectGroupAsync(group, CleanupSelectionMode.DeselectAll)">
+                                                                                                        <MudIcon Icon="@Icons.Material.Filled.Deselect" Size="Size.Small" />
+                                                                                                        <span>Deselect</span>
+                                                                                                    </button>
+                                                                                                    <button type="button" class="send-to-btn cleanup-group-action"
+                                                                                                            disabled="@state.IsExplanationLoading"
+                                                                                                            @onclick="() => ExplainGroupAsync(group)">
+                                                                                                        <MudIcon Icon="@Icons.Material.Filled.AutoStories" Size="Size.Small" />
+                                                                                                        <span>Explain</span>
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div class="app-grid cleanup-member-grid">
+                                                                                                @foreach (var member in state.MemberViews)
+                                                                                                {
+                                                                                                    <div class="cleanup-member-card">
+                                                                                                        <div class="cleanup-member-meta">
+                                                                                                            <MudChip Color="@GetRoleColor(member.Member.Role)" Variant="Variant.Text"
+                                                                                                                     Size="Size.Small">@GetRoleLabel(member.Member.Role)</MudChip>
+                                                                                                            @if (member.Member.SimilarityScore.HasValue)
+                                                                                                            {
+                                                                                                                <MudText Typo="Typo.caption">@FormatPercent(member.Member.SimilarityScore.Value)
+                                                                                                                </MudText>
+                                                                                                            }
+                                                                                                        </div>
+                                                                                                        <GalleryImageTile Image="member.Image" ShowSelectionCheckbox="true"
+                                                                                                                          SelectionFocusedOverlay="true"
+                                                                                                                          OnSelectImage="image => OpenViewerAsync(image, state.MemberViews.Select(view => view.Image).ToList())"
+                                                                                                                          OnDeleteImage="RejectDirectDeleteAsync" OnCoverChanged="NoOpAsync" />
+                                                                                                    </div>
+                                                                                                }
+                                                                                            </div>
+                                                                                        }
+                                                                                    </div>
+                                                                                }
+                                                                            </section>
+                                                                        }
+                                                                    </div>
+
+                                                                    @if (_hasMoreGroups)
+                                                                    {
+                                                                        <div class="cleanup-load-more">
+                                                                            <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="@_isLoadingGroups"
+                                                                                       StartIcon="@Icons.Material.Filled.ExpandMore" OnClick="LoadMoreGroupsAsync">
+                                                                                Load more groups
+                                                                            </MudButton>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </Content>
+                                                    </TopbarLayout>
+                                                </div>
+
+<AssetViewer Assets="_viewerAssets" StartIndex="_viewerStartIndex" @bind-IsVisible="_viewerOpen" />
+
+@code {
+    private const int RecentRunCount = 25;
+    private const int GroupPageSize = 25;
+    private const int GroupPreviewImageCount = 5;
+
+    private readonly Dictionary<int, CleanupGroupReviewState> _groupStates = new();
+    private List<Project> _projects = new();
+    private List<CleanupGroupRun> _runs = new();
+    private List<CleanupGroup> _groups = new();
+    private CleanupGroupRun? _selectedRun;
+    private int _selectedProjectId;
+    private int _selectedRunId;
+    private CleanupGroupingStrategy _strategy = CleanupGroupingStrategy.ExactDuplicate;
+    private int _minimumGroupSize = 2;
+    private int _perceptualHashDistance = 6;
+    private double _promptSimilarity = 0.8;
+    private double _visualSimilarity = 0.9;
+    private double _scoreCleanupThreshold = 0.35;
+    private int _maxGroups = 100;
+    private bool _isLoadingGroups;
+    private bool _hasMoreGroups;
+    private CancellationTokenSource? _operationCts;
+    private CleanupIndexingProgress? _indexProgress;
+    private CleanupOnnxIndexingProgress? _onnxProgress;
+    private CleanupStorageSummary? _storageSummary;
+    private List<CleanupWorkflowStorageSummaryItem> _workflowStorageSummaries = new();
+    private List<CleanupMissingFileReportItem> _missingReport = new();
+    private bool _showMissingReport;
+    private string? _operationLabel;
+    private List<ImageEntity> _viewerAssets = new();
+    private int _viewerStartIndex;
+    private bool _viewerOpen;
+
+    private bool IsBusy => _operationCts != null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedProjectId = StateProjectIdOrAll();
+        await LoadProjectsAsync();
+        await LoadRunsAsync(selectLatest: true);
+        await LoadStorageSummaryAsync();
+    }
+
+    private int StateProjectIdOrAll()
+    {
+        return Gallery.Projects?.Any(project => project.Id > 0) == true ? 0 : 0;
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        _projects = await DB.GetProjects();
+    }
+
+    private async Task LoadRunsAsync(bool selectLatest)
+    {
+        _runs = await CleanupRepository.GetGroupRunsAsync(0, RecentRunCount);
+        if (selectLatest && _runs.Count > 0)
+        {
+            await SelectRunAsync(_runs[0].Id);
+        }
+    }
+
+    private async Task HandleProjectChanged(int projectId)
+    {
+        _selectedProjectId = projectId;
+        await LoadStorageSummaryAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleRunChanged(int runId)
+    {
+        await SelectRunAsync(runId);
+    }
+
+    private async Task SelectRunAsync(int runId)
+    {
+        _selectedRunId = runId;
+        _selectedRun = runId <= 0 ? null : _runs.FirstOrDefault(run => run.Id == runId) ?? await
+CleanupRepository.GetGroupRunAsync(runId);
+        _groups.Clear();
+        _groupStates.Clear();
+        _hasMoreGroups = false;
+
+        if (_selectedRun != null)
+        {
+            _strategy = _selectedRun.Strategy;
+            _selectedProjectId = _selectedRun.ProjectId ?? 0;
+            await LoadGroupsAsync(reset: true);
+        }
+
+        await LoadStorageSummaryAsync();
+    }
+
+    private async Task IndexScopeAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _operationCts = new CancellationTokenSource();
+        _operationLabel = "Indexing cleanup facts";
+        _indexProgress = null;
+        _onnxProgress = null;
+        try
+        {
+            var progress = new Progress<CleanupIndexingProgress>(value =>
+            {
+                _indexProgress = value;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            var result = await IndexingService.IndexImagesAsync(new CleanupIndexingOptions
+            {
+                ProjectId = SelectedProjectScope(),
+                BatchSize = 250
+            }, progress, _operationCts.Token);
+
+            Snackbar.Add($"Indexed {result.Indexed} images, skipped {result.Skipped}, missing {result.MissingFiles}, failed {result.Failed}.", Severity.Success);
+            await LoadStorageSummaryAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("Cleanup indexing was canceled.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Cleanup indexing failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ClearOperation();
+        }
+    }
+
+    private async Task IndexOnnxAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _operationCts = new CancellationTokenSource();
+        _operationLabel = "Indexing AI signals";
+        _indexProgress = null;
+        _onnxProgress = null;
+        try
+        {
+            var progress = new Progress<CleanupOnnxIndexingProgress>(value =>
+            {
+                _onnxProgress = value;
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            var result = await OnnxIndexingService.IndexAsync(new CleanupOnnxIndexingOptions
+            {
+                ProjectId = SelectedProjectScope(),
+                BatchSize = 50
+            }, progress, _operationCts.Token);
+
+            Snackbar.Add(
+                $"AI indexing processed {result.Processed:N0} images. Embeddings: {result.EmbeddingsIndexed:N0} indexed, {result.EmbeddingsSkipped:N0} skipped, {result.EmbeddingsFailed:N0} failed. Scores: {result.ScoresIndexed:N0} indexed, {result.ScoresSkipped:N0} skipped, {result.ScoresFailed:N0} failed.",
+                Severity.Success);
+            await LoadStorageSummaryAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("AI cleanup indexing was canceled.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"AI cleanup indexing failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ClearOperation();
+        }
+    }
+
+    private async Task GenerateGroupsAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _operationCts = new CancellationTokenSource();
+        _operationLabel = "Generating cleanup groups";
+        _indexProgress = null;
+        _onnxProgress = null;
+        try
+        {
+            var result = await GroupingService.GenerateGroupsAsync(new CleanupGroupingOptions
+            {
+                Strategy = _strategy,
+                ProjectId = SelectedProjectScope(),
+                MinimumGroupSize = _minimumGroupSize,
+                MaxGroups = _maxGroups > 0 ? _maxGroups : null,
+                PerceptualHashMaxDistance = _perceptualHashDistance,
+                PromptFuzzyMinSimilarity = _promptSimilarity,
+                VisualSimilarityMinSimilarity = _visualSimilarity,
+                ScoreCleanupThreshold = _scoreCleanupThreshold,
+                Name = BuildRunName()
+            }, _operationCts.Token);
+
+            if (result.Status == CleanupGroupRunStatus.Completed)
+            {
+                Snackbar.Add($"Created {result.TotalGroups} groups with {result.TotalMembers} images.", Severity.Success);
+                await LoadRunsAsync(selectLatest: false);
+                await SelectRunAsync(result.RunId);
+                await LoadStorageSummaryAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Group generation did not complete: {result.ErrorMessage}", Severity.Error);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Snackbar.Add("Cleanup grouping was canceled.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Cleanup grouping failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            ClearOperation();
+        }
+    }
+
+    private async Task LoadGroupsAsync(bool reset)
+    {
+        if (_selectedRun == null)
+        {
+            return;
+        }
+
+        _isLoadingGroups = true;
+        try
+        {
+            var skip = reset ? 0 : _groups.Count;
+            var next = await CleanupRepository.GetGroupsAsync(_selectedRun.Id, skip, GroupPageSize);
+            if (reset)
+            {
+                _groups = next;
+            }
+            else
+            {
+                _groups.AddRange(next);
+            }
+
+            _hasMoreGroups = next.Count == GroupPageSize && _groups.Count < _selectedRun.TotalGroups;
+            await LoadGroupPreviewsAsync(next);
+            await LoadCachedGroupExplanationsAsync(next);
+        }
+        finally
+        {
+            _isLoadingGroups = false;
+        }
+    }
+
+    private Task LoadMoreGroupsAsync() => LoadGroupsAsync(reset: false);
+
+    private async Task LoadStorageSummaryAsync()
+    {
+        _storageSummary = await CleanupRepository.GetStorageSummaryAsync(
+            SelectedProjectScope(),
+            _selectedRunId > 0 ? _selectedRunId : null);
+        _workflowStorageSummaries = await CleanupRepository.GetWorkflowStorageSummaryAsync(SelectedProjectScope(), 3);
+    }
+
+    private async Task LoadMissingReportAsync()
+    {
+        _missingReport = await CleanupRepository.GetMissingFileReportAsync(SelectedProjectScope(), 0, 10);
+        _showMissingReport = true;
+    }
+
+    private void HideMissingReport()
+    {
+        _showMissingReport = false;
+    }
+
+    private async Task ToggleGroupAsync(CleanupGroup group)
+    {
+        var state = GetGroupState(group.Id);
+        state.IsExpanded = !state.IsExpanded;
+        if (state.IsExpanded && !state.HasLoaded)
+        {
+            await LoadGroupMembersAsync(group, state);
+        }
+    }
+
+    private async Task LoadGroupMembersAsync(CleanupGroup group, CleanupGroupReviewState state)
+    {
+        state.IsLoading = true;
+        try
+        {
+            var members = await CleanupRepository.GetGroupMembersAsync(group.Id);
+            var imagesById = (await DB.GetImages(members.Select(member => member.ImageId).ToList()))
+                .ToDictionary(image => image.Id);
+            state.MemberViews = members
+                .Where(member => imagesById.ContainsKey(member.ImageId))
+                .Select(member => new CleanupGroupMemberView(member, imagesById[member.ImageId]))
+                .ToList();
+            state.PreviewViews = state.MemberViews.Take(GroupPreviewImageCount).ToList();
+            state.HasPreviewLoaded = true;
+            state.HasLoaded = true;
+        }
+        finally
+        {
+            state.IsLoading = false;
+        }
+    }
+
+    private async Task LoadGroupPreviewsAsync(IReadOnlyList<CleanupGroup> groups)
+    {
+        var groupsToLoad = groups
+            .Select(group => new { group, state = GetGroupState(group.Id) })
+            .Where(entry => !entry.state.HasPreviewLoaded)
+            .ToList();
+
+        if (groupsToLoad.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var entry in groupsToLoad)
+        {
+            entry.state.IsPreviewLoading = true;
+        }
+
+        try
+        {
+            var membersByGroup = new Dictionary<int, List<CleanupGroupMember>>();
+            foreach (var entry in groupsToLoad)
+            {
+                membersByGroup[entry.group.Id] = await CleanupRepository.GetGroupMembersAsync(entry.group.Id, GroupPreviewImageCount);
+            }
+
+            var imageIds = membersByGroup.Values
+                .SelectMany(members => members.Select(member => member.ImageId))
+                .Distinct()
+                .ToList();
+
+            var imagesById = imageIds.Count == 0
+                ? new Dictionary<int, ImageEntity>()
+                : (await DB.GetImages(imageIds)).ToDictionary(image => image.Id);
+
+            foreach (var entry in groupsToLoad)
+            {
+                var members = membersByGroup[entry.group.Id];
+                entry.state.PreviewViews = members
+                    .Where(member => imagesById.ContainsKey(member.ImageId))
+                    .Select(member => new CleanupGroupMemberView(member, imagesById[member.ImageId]))
+                    .ToList();
+                entry.state.HasPreviewLoaded = true;
+            }
+        }
+        finally
+        {
+            foreach (var entry in groupsToLoad)
+            {
+                entry.state.IsPreviewLoading = false;
+            }
+        }
+    }
+
+    private async Task LoadCachedGroupExplanationsAsync(IReadOnlyList<CleanupGroup> groups)
+    {
+        foreach (var group in groups)
+        {
+            var state = GetGroupState(group.Id);
+            state.Explanation ??= await GroupExplanationService.GetCachedExplanationAsync(group.Id);
+        }
+    }
+
+    private async Task ExplainGroupAsync(CleanupGroup group)
+    {
+        var state = GetGroupState(group.Id);
+        if (state.IsExplanationLoading)
+        {
+            return;
+        }
+
+        state.IsExplanationLoading = true;
+        try
+        {
+            state.Explanation = await GroupExplanationService.GenerateExplanationAsync(group.Id);
+            Snackbar.Add("Generated group explanation.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Group explanation failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            state.IsExplanationLoading = false;
+        }
+    }
+
+    private async Task SelectGroupAsync(CleanupGroup group, CleanupSelectionMode mode)
+    {
+        var ids = await GetGroupSelectionIdsAsync(group, mode);
+        if (ids.Count == 0)
+        {
+            Snackbar.Add("This group has no images available for selection.", Severity.Warning);
+            return;
+        }
+
+        if (mode == CleanupSelectionMode.AddSuggested)
+        {
+            Gallery.AddSelectedImages(ids);
+            Snackbar.Add($"Added {ids.Count} suggested images. Use the Gallery selections toolbar to delete or move them.",
+Severity.Info);
+        }
+        else if (mode == CleanupSelectionMode.DeselectAll)
+        {
+            var groupIds = ids.ToHashSet();
+            var nextIds = Gallery.SelectedImageIds
+                .Where(id => !groupIds.Contains(id))
+                .ToList();
+            var removedCount = Gallery.SelectedImageIds.Count - nextIds.Count;
+            Gallery.ReplaceSelectedImages(nextIds);
+            Snackbar.Add(removedCount == 0 ? "No images from this group were selected." : $"Deselected {removedCount} images from this group.", Severity.Info);
+        }
+        else if (mode == CleanupSelectionMode.InvertAll)
+        {
+            var groupIds = ids.ToHashSet();
+            var selectedIds = Gallery.SelectedImageIds.ToHashSet();
+            var nextIds = selectedIds
+                .Where(id => !groupIds.Contains(id))
+                .Concat(groupIds.Where(id => !selectedIds.Contains(id)))
+                .ToList();
+
+            Gallery.ReplaceSelectedImages(nextIds);
+            Snackbar.Add($"Inverted selection for {groupIds.Count} images in this group.", Severity.Info);
+        }
+        else
+        {
+            Gallery.ReplaceSelectedImages(ids);
+            Snackbar.Add($"Selected {ids.Count} images. Use the Gallery selections toolbar to delete or move them.", Severity.Info);
+        }
+    }
+
+    private async Task SaveGroupSelectionAsync(CleanupGroup group)
+    {
+        var ids = await GetGroupSelectionIdsAsync(group, CleanupSelectionMode.ReplaceSuggested);
+        if (ids.Count == 0)
+        {
+            Snackbar.Add("This group has no suggested cleanup images to save.", Severity.Warning);
+            return;
+        }
+
+        var images = await DB.GetImages(ids);
+        await DB.CreateSelection(new Selection
+        {
+            Name = $"Cleanup {group.Strategy} #{group.Id}",
+            Images = images
+        });
+
+        Snackbar.Add($"Saved {images.Count} images as a gallery selection.", Severity.Success);
+    }
+
+    private async Task<List<int>> GetGroupSelectionIdsAsync(CleanupGroup group, CleanupSelectionMode mode)
+    {
+        var state = GetGroupState(group.Id);
+        if (!state.HasLoaded)
+        {
+            await LoadGroupMembersAsync(group, state);
+        }
+
+        var query = state.MemberViews.Select(view => view.Member);
+        if (mode is CleanupSelectionMode.ReplaceSuggested or CleanupSelectionMode.AddSuggested)
+        {
+            query = query.Where(member => member.SuggestedAction == CleanupSuggestedAction.Review && member.Role !=
+CleanupGroupMemberRole.Representative);
+        }
+
+        return query
+            .Select(member => member.ImageId)
+            .Distinct()
+            .ToList();
+    }
+
+    private Task OpenViewerAsync(ImageEntity image, List<ImageEntity> assets)
+    {
+        _viewerAssets = assets;
+        _viewerStartIndex = Math.Max(0, assets.FindIndex(asset => asset.Id == image.Id));
+        _viewerOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task RejectDirectDeleteAsync(ImageEntity image)
+    {
+        Snackbar.Add("Cleanup review only selects images. Delete from the Gallery selections toolbar after review.",
+Severity.Info);
+        return Task.CompletedTask;
+    }
+
+    private Task NoOpAsync() => Task.CompletedTask;
+
+    private void ClearSelection()
+    {
+        Gallery.ClearSelectedImages();
+    }
+
+    private void OpenGallery() => NavManager.NavigateTo("/");
+
+    private void CancelOperation()
+    {
+        _operationCts?.Cancel();
+    }
+
+    private void ClearOperation()
+    {
+        _operationCts?.Dispose();
+        _operationCts = null;
+        _operationLabel = null;
+        _indexProgress = null;
+        _onnxProgress = null;
+    }
+
+    private CleanupGroupReviewState GetGroupState(int groupId)
+    {
+        if (!_groupStates.TryGetValue(groupId, out var state))
+        {
+            state = new CleanupGroupReviewState();
+            _groupStates[groupId] = state;
+        }
+
+        return state;
+    }
+
+    private int? SelectedProjectScope() => _selectedProjectId > 0 ? _selectedProjectId : null;
+
+    private string BuildRunName()
+    {
+        var scope = _selectedProjectId > 0
+            ? _projects.FirstOrDefault(project => project.Id == _selectedProjectId)?.Name ?? $"Project {_selectedProjectId}"
+            : "All projects";
+        return $"{GetStrategyLabel(_strategy)} - {scope} - {DateTime.Now:g}";
+    }
+
+    private string GetReviewSubtitle()
+    {
+        if (_selectedRun == null)
+        {
+            return "No cleanup run is selected.";
+        }
+
+        return $"Run #{_selectedRun.Id} has {_selectedRun.TotalGroups} groups and {_selectedRun.TotalMembers} members.";
+    }
+
+    private string GetOperationText()
+    {
+        if (_onnxProgress != null)
+        {
+            if (_onnxProgress.TotalCandidates <= 0)
+            {
+                return $"{_operationLabel}: no indexed images matched the current scope.";
+            }
+
+            return $"{_operationLabel}: {_onnxProgress.Processed:N0} of {_onnxProgress.TotalCandidates:N0} images processed ({GetOperationProgressPercent():0.#}%).";
+        }
+
+        if (_indexProgress == null)
+        {
+            return _operationLabel ?? "Working";
+        }
+
+        var processed = GetOperationProcessedCount();
+        if (_indexProgress.TotalCandidates <= 0)
+        {
+            return $"{_operationLabel}: no images matched the current scope.";
+        }
+
+        return $"{_operationLabel}: {processed:N0} of {_indexProgress.TotalCandidates:N0} images scanned ({GetOperationProgressPercent():0.#}%).";
+    }
+
+    private string GetOperationDetailText()
+    {
+        if (_onnxProgress != null)
+        {
+            return $"Embeddings: {_onnxProgress.EmbeddingsIndexed:N0} indexed, {_onnxProgress.EmbeddingsSkipped:N0} skipped, {_onnxProgress.EmbeddingsFailed:N0} failed; scores: {_onnxProgress.ScoresIndexed:N0} indexed, {_onnxProgress.ScoresSkipped:N0} skipped, {_onnxProgress.ScoresFailed:N0} failed";
+        }
+
+        if (_indexProgress == null)
+        {
+            return string.Empty;
+        }
+
+        return $"{_indexProgress.Indexed:N0} indexed, {_indexProgress.Skipped:N0} skipped, {_indexProgress.MissingFiles:N0} missing, {_indexProgress.Failed:N0} failed";
+    }
+
+    private bool HasOperationDetail() => _indexProgress != null || _onnxProgress != null;
+
+    private bool HasDeterminateIndexProgress() => GetOperationTotalCandidates() > 0;
+
+    private int GetOperationProcessedCount()
+    {
+        if (_onnxProgress != null)
+        {
+            return _onnxProgress.Processed;
+        }
+
+        if (_indexProgress == null)
+        {
+            return 0;
+        }
+
+        return _indexProgress.Indexed + _indexProgress.Skipped + _indexProgress.MissingFiles + _indexProgress.Failed;
+    }
+
+    private double GetOperationProgressPercent()
+    {
+        var totalCandidates = GetOperationTotalCandidates();
+        if (totalCandidates <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Min(100, GetOperationProcessedCount() * 100.0 / totalCandidates);
+    }
+
+    private int GetOperationTotalCandidates()
+    {
+        if (_onnxProgress != null)
+        {
+            return _onnxProgress.TotalCandidates;
+        }
+
+        return _indexProgress?.TotalCandidates ?? 0;
+    }
+
+    private static string GetRunLabel(CleanupGroupRun run)
+    {
+        return $"#{run.Id} {run.Name} ({run.TotalGroups})";
+    }
+
+    private static string GetGroupTitle(CleanupGroup group)
+    {
+        return $"Group #{group.Id} - {GetStrategyLabel(group.Strategy)}";
+    }
+
+    private static string GetStrategyLabel(CleanupGroupingStrategy strategy) => strategy switch
+    {
+        CleanupGroupingStrategy.ExactDuplicate => "Exact duplicates",
+        CleanupGroupingStrategy.NearDuplicate => "Near duplicates",
+        CleanupGroupingStrategy.PromptFingerprint => "Prompt fingerprint",
+        CleanupGroupingStrategy.PromptFuzzy => "Prompt fuzzy",
+        CleanupGroupingStrategy.SameExperiment => "Same experiment",
+        CleanupGroupingStrategy.VisualSimilarity => "Visual similarity",
+        CleanupGroupingStrategy.LowValueCandidates => "Low-value candidates",
+        CleanupGroupingStrategy.OrphansAndMissingFiles => "Missing files",
+        CleanupGroupingStrategy.LargeStorageOffenders => "Large files",
+        _ => strategy.ToString()
+    };
+
+    private static string GetRoleLabel(CleanupGroupMemberRole role) => role switch
+    {
+        CleanupGroupMemberRole.Member => "Member",
+        CleanupGroupMemberRole.Representative => "Keep",
+        CleanupGroupMemberRole.KeepCandidate => "Keep?",
+        CleanupGroupMemberRole.CleanupCandidate => "Review",
+        _ => role.ToString()
+    };
+
+    private static Color GetRoleColor(CleanupGroupMemberRole role) => role switch
+    {
+        CleanupGroupMemberRole.Member => Color.Default,
+        CleanupGroupMemberRole.Representative => Color.Success,
+        CleanupGroupMemberRole.KeepCandidate => Color.Info,
+        CleanupGroupMemberRole.CleanupCandidate => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string FormatPercent(double value) => $"{value:P0}";
+
+    private static string FormatBytes(long? bytes)
+    {
+        if (!bytes.HasValue || bytes.Value <= 0)
+        {
+            return "0 B";
+        }
+
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        var value = (double)bytes.Value;
+        var index = 0;
+        while (value >= 1024 && index < units.Length - 1)
+        {
+            value /= 1024;
+            index++;
+        }
+
+        return $"{value:0.#} {units[index]}";
+    }
+
+    public void Dispose()
+    {
+        _operationCts?.Cancel();
+        _operationCts?.Dispose();
+    }
+
+    private sealed class CleanupGroupReviewState
+    {
+        public bool IsExpanded { get; set; }
+        public bool IsLoading { get; set; }
+        public bool HasLoaded { get; set; }
+        public bool IsPreviewLoading { get; set; }
+        public bool HasPreviewLoaded { get; set; }
+        public bool IsExplanationLoading { get; set; }
+        public CleanupGroupExplanation? Explanation { get; set; }
+        public List<CleanupGroupMemberView> PreviewViews { get; set; } = new();
+        public List<CleanupGroupMemberView> MemberViews { get; set; } = new();
+    }
+
+    private sealed record CleanupGroupMemberView(CleanupGroupMember Member, ImageEntity Image);
+
+    private enum CleanupSelectionMode
+    {
+        ReplaceSuggested,
+        AddSuggested,
+        ReplaceAll,
+        InvertAll,
+        DeselectAll
+    }
+}

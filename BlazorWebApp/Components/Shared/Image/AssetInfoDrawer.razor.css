@@ -1,0 +1,37 @@
+/* Drawer Overlay */
+.asset-info-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.asset-info-drawer-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Drawer Container */
+.asset-info-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    max-width: 90vw;
+    background: var(--mud-palette-drawer-background);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    z-index: 10150;
+}
+
+.asset-info-drawer.open {
+    transform: translateX(0);
+}

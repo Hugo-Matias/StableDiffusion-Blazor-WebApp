@@ -1,0 +1,16 @@
+<!-- StableDiffusion: Layered crystal/diamond representing structured diffusion -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24">
+  <defs>
+    <linearGradient id="sd-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Outer diamond -->
+  <polygon points="16,2 28,14 16,26 4,14" fill="none" stroke="url(#sd-grad)" stroke-width="1.5"/>
+  <!-- Inner diamond layers -->
+  <polygon points="16,7 23,14 16,21 9,14" fill="url(#sd-grad)" opacity="0.5"/>
+  <polygon points="16,10 19,14 16,18 13,14" fill="url(#sd-grad)"/>
+  <!-- Center sparkle -->
+  <circle cx="16" cy="14" r="1.5" fill="#fff"/>
+</svg>

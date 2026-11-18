@@ -1,0 +1,43 @@
+.civitai-model-detail,
+.civitai-model-detail__sidebar {
+  --civitai-detail-gap: var(--app-gutter-inner);
+  display: flex;
+  flex-direction: column;
+  gap: var(--civitai-detail-gap);
+  min-width: 0;
+}
+
+.civitai-model-detail__back {
+  width: 100%;
+}
+
+.civitai-model-detail__media {
+  min-width: 0;
+}
+
+.civitai-model-detail__description-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: var(--civitai-detail-gap);
+  min-width: 0;
+}
+
+.civitai-model-detail__section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--civitai-detail-gap) / 2);
+  min-width: 0;
+}
+
+.civitai-model-detail__prose {
+  max-height: calc(100vh - var(--civitai-detail-prose-offset, 24rem));
+  overflow-y: auto;
+  overflow-x: hidden;
+  line-height: 1.5;
+  color: var(--mud-palette-text-primary);
+}
+
+.civitai-model-detail__prose img {
+  max-width: 100%;
+  height: auto;
+}

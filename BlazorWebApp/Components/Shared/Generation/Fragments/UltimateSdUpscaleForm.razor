@@ -1,0 +1,387 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Workflows.Models
+@attribute [FragmentComponent("UltimateSdUpscaleForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect T="string" Label="Upscale Model" @bind-Value="_localUpscaleModel"
+                   @bind-Value:after="OnUpscaleModelChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var model in _upscaleModelOptions)
+            {
+                <MudSelectItem Value="@model" />
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localUpscaleBy" @bind-Value:after="OnUpscaleByChanged"
+                   Min="@GetMinDouble("upscale_by", 0.05)" Max="@GetMaxDouble("upscale_by", 4.0)"
+                   Step="@GetStepDouble("upscale_by", 0.05)" Variant="Variant.Filled" ValueLabel>
+            <small>Upscale Factor:</small> @_localUpscaleBy.ToString("F2")x
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localDenoise" @bind-Value:after="OnDenoiseChanged"
+                   Min="@GetMinDouble("upscale_denoise", 0.0)" Max="@GetMaxDouble("upscale_denoise", 1.0)"
+                   Step="@GetStepDouble("upscale_denoise", 0.01)" Variant="Variant.Filled" ValueLabel>
+            <small>Denoise:</small> @_localDenoise.ToString("F2")
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string" Label="Sampler" @bind-Value="_localSamplerName"
+                   @bind-Value:after="OnSamplerNameChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var sampler in _samplerOptions)
+            {
+                <MudSelectItem Value="@sampler" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSelect T="string" Label="Scheduler" @bind-Value="_localScheduler"
+                   @bind-Value:after="OnSchedulerChanged" Variant="Variant.Text" Dense="true"
+                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+            @foreach (var scheduler in _schedulerOptions)
+            {
+                <MudSelectItem Value="@scheduler" />
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="int" @bind-Value="_localSteps" @bind-Value:after="OnStepsChanged" Label="Steps"
+                         Min="@GetMinInt("upscale_steps", 1)" Max="@GetMaxInt("upscale_steps", 10000)"
+                         Step="@GetStepInt("upscale_steps", 1)" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="double" @bind-Value="_localCfg" @bind-Value:after="OnCfgChanged" Label="CFG"
+                         Min="@GetMinDouble("upscale_cfg", 0.0)" Max="@GetMaxDouble("upscale_cfg", 100.0)"
+                         Step="@GetStepDouble("upscale_cfg", 0.5)" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudNumericField T="long" @bind-Value="_localSeed" @bind-Value:after="OnSeedChanged" Label="Seed"
+                         Min="-1" Max="long.MaxValue" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+
+    <MudItem xs="12" Class="align-items-center justify-content-center d-flex">
+        <MudText Typo="Typo.overline">@_resizeInfo</MudText>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="Advanced">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4">
+                        <MudSwitch T="bool" @bind-Value="_localAutoTileSize" @bind-Value:after="OnAutoTileSizeChanged"
+                                   Color="Color.Primary" Size="Size.Small" Label="Auto Tile Size" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localTileWidth" @bind-Value:after="OnTileWidthChanged"
+                                         Label="Tile Width" Min="@GetMinInt("tile_width", 64)"
+                                         Max="@GetMaxInt("tile_width", 8192)" Step="@GetStepInt("tile_width", 8)"
+                                         Variant="Variant.Text" Dense="true" Disabled="@_localAutoTileSize" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localTileHeight" @bind-Value:after="OnTileHeightChanged"
+                                         Label="Tile Height" Min="@GetMinInt("tile_height", 64)"
+                                         Max="@GetMaxInt("tile_height", 8192)" Step="@GetStepInt("tile_height", 8)"
+                                         Variant="Variant.Text" Dense="true" Disabled="@_localAutoTileSize" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="string" Label="Mode Type" @bind-Value="_localModeType"
+                                   @bind-Value:after="OnModeTypeChanged" Variant="Variant.Text" Dense="true"
+                                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            @foreach (var modeType in _modeTypeOptions)
+                            {
+                                <MudSelectItem Value="@modeType" />
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSlider T="int" @bind-Value="_localMaskBlur" @bind-Value:after="OnMaskBlurChanged"
+                                   Min="@GetMinInt("mask_blur", 0)" Max="@GetMaxInt("mask_blur", 64)"
+                                   Step="@GetStepInt("mask_blur", 1)" Variant="Variant.Filled" ValueLabel>
+                            <small>Mask Blur:</small> @_localMaskBlur
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localTilePadding" @bind-Value:after="OnTilePaddingChanged"
+                                         Label="Tile Padding" Min="@GetMinInt("tile_padding", 0)"
+                                         Max="@GetMaxInt("tile_padding", 8192)" Step="@GetStepInt("tile_padding", 8)"
+                                         Variant="Variant.Text" Dense="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="string" Label="Seam Fix" @bind-Value="_localSeamFixMode"
+                                   @bind-Value:after="OnSeamFixModeChanged" Variant="Variant.Text" Dense="true"
+                                   AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                            @foreach (var seamFixMode in _seamFixModeOptions)
+                            {
+                                <MudSelectItem Value="@seamFixMode" />
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudSlider T="double" @bind-Value="_localSeamFixDenoise"
+                                   @bind-Value:after="OnSeamFixDenoiseChanged" Min="@GetMinDouble("seam_fix_denoise", 0.0)"
+                                   Max="@GetMaxDouble("seam_fix_denoise", 1.0)" Step="@GetStepDouble("seam_fix_denoise", 0.01)"
+                                   Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Denoise:</small> @_localSeamFixDenoise.ToString("F2")
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localSeamFixWidth" @bind-Value:after="OnSeamFixWidthChanged"
+                                         Label="Seam Width" Min="@GetMinInt("seam_fix_width", 0)"
+                                         Max="@GetMaxInt("seam_fix_width", 8192)" Step="@GetStepInt("seam_fix_width", 8)"
+                                         Variant="Variant.Text" Dense="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudSlider T="int" @bind-Value="_localSeamFixMaskBlur"
+                                   @bind-Value:after="OnSeamFixMaskBlurChanged" Min="@GetMinInt("seam_fix_mask_blur", 0)"
+                                   Max="@GetMaxInt("seam_fix_mask_blur", 64)" Step="@GetStepInt("seam_fix_mask_blur", 1)"
+                                   Variant="Variant.Filled" ValueLabel>
+                            <small>Seam Mask Blur:</small> @_localSeamFixMaskBlur
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localSeamFixPadding" @bind-Value:after="OnSeamFixPaddingChanged"
+                                         Label="Seam Padding" Min="@GetMinInt("seam_fix_padding", 0)"
+                                         Max="@GetMaxInt("seam_fix_padding", 8192)" Step="@GetStepInt("seam_fix_padding", 8)"
+                                         Variant="Variant.Text" Dense="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_localBatchSize" @bind-Value:after="OnBatchSizeChanged"
+                                         Label="Tile Batch" Min="@GetMinInt("batch_size", 1)"
+                                         Max="@GetMaxInt("batch_size", 4096)" Step="@GetStepInt("batch_size", 1)"
+                                         Variant="Variant.Text" Dense="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSwitch T="bool" @bind-Value="_localForceUniformTiles"
+                                   @bind-Value:after="OnForceUniformTilesChanged" Color="Color.Primary" Size="Size.Small"
+                                   Label="Force Uniform Tiles" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSwitch T="bool" @bind-Value="_localTiledDecode" @bind-Value:after="OnTiledDecodeChanged"
+                                   Color="Color.Primary" Size="Size.Small" Label="Tiled Decode" />
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string? _localUpscaleModel;
+    private double _localUpscaleBy;
+    private string? _localSamplerName;
+    private string? _localScheduler;
+    private int _localSteps;
+    private long _localSeed;
+    private double _localCfg;
+    private double _localDenoise;
+    private bool _localAutoTileSize;
+    private int _localTileWidth;
+    private int _localTileHeight;
+    private string? _localModeType;
+    private int _localMaskBlur;
+    private int _localTilePadding;
+    private string? _localSeamFixMode;
+    private double _localSeamFixDenoise;
+    private int _localSeamFixWidth;
+    private int _localSeamFixMaskBlur;
+    private int _localSeamFixPadding;
+    private bool _localForceUniformTiles;
+    private bool _localTiledDecode;
+    private int _localBatchSize;
+    private MarkupString _resizeInfo = new();
+    private List<string> _upscaleModelOptions = new();
+    private List<string> _samplerOptions = new();
+    private List<string> _schedulerOptions = new();
+    private List<string> _modeTypeOptions = new();
+    private List<string> _seamFixModeOptions = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null)
+        {
+            return;
+        }
+
+        _localUpscaleModel = GetProperty("upscale_model", "4x-UltraSharpV2.safetensors") ?? "4x-UltraSharpV2.safetensors";
+        _localUpscaleBy = GetProperty("upscale_by", 2.0);
+        _localSamplerName = GetProperty("upscale_sampler_name", "dpmpp_2m") ?? "dpmpp_2m";
+        _localScheduler = GetProperty("upscale_scheduler", "beta") ?? "beta";
+        _localSteps = GetProperty("upscale_steps", 20);
+        _localSeed = GetProperty("upscale_seed", -1L);
+        _localCfg = GetProperty("upscale_cfg", 8.0);
+        _localDenoise = GetProperty("upscale_denoise", 0.2);
+        _localAutoTileSize = GetProperty("auto_tile_size", true);
+        _localTileWidth = GetProperty("tile_width", 512);
+        _localTileHeight = GetProperty("tile_height", 512);
+        _localModeType = GetProperty("mode_type", "Linear") ?? "Linear";
+        _localMaskBlur = GetProperty("mask_blur", 8);
+        _localTilePadding = GetProperty("tile_padding", 32);
+        _localSeamFixMode = GetProperty("seam_fix_mode", "None") ?? "None";
+        _localSeamFixDenoise = GetProperty("seam_fix_denoise", 1.0);
+        _localSeamFixWidth = GetProperty("seam_fix_width", 64);
+        _localSeamFixMaskBlur = GetProperty("seam_fix_mask_blur", 8);
+        _localSeamFixPadding = GetProperty("seam_fix_padding", 16);
+        _localForceUniformTiles = GetProperty("force_uniform_tiles", true);
+        _localTiledDecode = GetProperty("tiled_decode", false);
+        _localBatchSize = GetProperty("batch_size", 1);
+
+        _upscaleModelOptions = GetOptions("upscale_model", _localUpscaleModel);
+        _samplerOptions = GetOptions("upscale_sampler_name", _localSamplerName);
+        _schedulerOptions = GetOptions("upscale_scheduler", _localScheduler);
+        _modeTypeOptions = GetOptions("mode_type", _localModeType);
+        _seamFixModeOptions = GetOptions("seam_fix_mode", _localSeamFixMode);
+
+        RefreshResizeInfo();
+    }
+
+    private Task OnUpscaleModelChanged() => SetValue("upscale_model", _localUpscaleModel);
+    private Task OnSamplerNameChanged() => SetValue("upscale_sampler_name", _localSamplerName);
+    private Task OnSchedulerChanged() => SetValue("upscale_scheduler", _localScheduler);
+    private Task OnStepsChanged() => SetValue("upscale_steps", _localSteps);
+    private Task OnSeedChanged() => SetValue("upscale_seed", _localSeed);
+    private Task OnCfgChanged() => SetValue("upscale_cfg", _localCfg);
+    private Task OnDenoiseChanged() => SetValue("upscale_denoise", _localDenoise);
+    private Task OnModeTypeChanged() => SetValue("mode_type", _localModeType);
+    private Task OnMaskBlurChanged() => SetValue("mask_blur", _localMaskBlur);
+    private Task OnTilePaddingChanged() => SetValue("tile_padding", _localTilePadding);
+    private Task OnSeamFixModeChanged() => SetValue("seam_fix_mode", _localSeamFixMode);
+    private Task OnSeamFixDenoiseChanged() => SetValue("seam_fix_denoise", _localSeamFixDenoise);
+    private Task OnSeamFixWidthChanged() => SetValue("seam_fix_width", _localSeamFixWidth);
+    private Task OnSeamFixMaskBlurChanged() => SetValue("seam_fix_mask_blur", _localSeamFixMaskBlur);
+    private Task OnSeamFixPaddingChanged() => SetValue("seam_fix_padding", _localSeamFixPadding);
+    private Task OnForceUniformTilesChanged() => SetValue("force_uniform_tiles", _localForceUniformTiles);
+    private Task OnTiledDecodeChanged() => SetValue("tiled_decode", _localTiledDecode);
+    private Task OnBatchSizeChanged() => SetValue("batch_size", _localBatchSize);
+
+    private async Task OnUpscaleByChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "upscale_by", _localUpscaleBy, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnAutoTileSizeChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "auto_tile_size", _localAutoTileSize, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTileWidthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "tile_width", _localTileWidth, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnTileHeightChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "tile_height", _localTileHeight, notify: true);
+        RefreshResizeInfo();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task SetValue<T>(string key, T value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private T GetProperty<T>(string key, T fallback)
+    {
+        var schemaDefault = Constraint(key).GetDefault<T>();
+        return ParameterService.GetFragmentProperty(Fragment, key, schemaDefault ?? fallback);
+    }
+
+    private List<string> GetOptions(string parameterName, string? currentValue)
+    {
+        if (Fragment == null)
+        {
+            return [];
+        }
+
+        var options = ParameterService.GetResolvedOptions(Fragment.Id, parameterName);
+        if (options.Count == 0)
+        {
+            options = Fragment.Schema?.GetConstraints(parameterName).Options ?? [];
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentValue) && !options.Contains(currentValue, StringComparer.OrdinalIgnoreCase))
+        {
+            options = [currentValue, .. options];
+        }
+
+        return options;
+    }
+
+    private void RefreshResizeInfo()
+    {
+        var baseSize = ResolveResizeHintBaseSize();
+        var baseWidth = baseSize.Width;
+        var baseHeight = baseSize.Height;
+
+        var targetWidth = (int)(baseWidth * _localUpscaleBy);
+        var targetHeight = (int)(baseHeight * _localUpscaleBy);
+        var tileWidth = _localAutoTileSize ? WorkflowSizing.CalculateUltimateSdTileSize(baseWidth, _localUpscaleBy) : _localTileWidth;
+        var tileHeight = _localAutoTileSize ? WorkflowSizing.CalculateUltimateSdTileSize(baseHeight, _localUpscaleBy) : _localTileHeight;
+        _resizeInfo = new MarkupString($"From: {baseWidth}x{baseHeight} px &rarr; To: <strong>{targetWidth}x{targetHeight} px</strong> ({_localUpscaleBy:F2}x) | Tile: <strong>{tileWidth}x{tileHeight}</strong>");
+    }
+
+    private WorkflowImageSize ResolveResizeHintBaseSize()
+    {
+        if (ParameterService.PrimaryLatentFragment != null)
+        {
+            return new WorkflowImageSize(
+                ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "width", 1024),
+                ParameterService.GetFragmentProperty(ParameterService.PrimaryLatentFragment, "height", 1024));
+        }
+
+        var referenceSource = ParameterService.Current.Sources
+            .Where(kvp => kvp.Key.StartsWith("reference_image") && kvp.Value.HasData)
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => kvp.Value)
+            .FirstOrDefault(source => source.Width is > 0 && source.Height is > 0);
+
+        if (referenceSource != null)
+        {
+            var referenceSettings = ParameterService.Current.GetFragment("reference_latent_settings");
+            return WorkflowSizing.ScaleToTotalPixels(
+                referenceSource.Width,
+                referenceSource.Height,
+                referenceSettings?.GetDouble("megapixels", 1.0) ?? 1.0,
+                referenceSettings?.GetInt("resolution_steps", 1) ?? 1);
+        }
+
+        var source = ParameterService.Current.Sources.Values
+            .FirstOrDefault(source => source.HasData && source.Width is > 0 && source.Height is > 0);
+
+        return source != null
+            ? new WorkflowImageSize(source.Width!.Value, source.Height!.Value)
+            : new WorkflowImageSize(1024, 1024);
+    }
+
+    private ParameterConstraints Constraint(string parameterName)
+        => Fragment?.Schema?.GetConstraints(parameterName) ?? new ParameterConstraints();
+
+    private int GetMinInt(string parameterName, int fallback) => Constraint(parameterName).GetMin(fallback);
+    private int GetMaxInt(string parameterName, int fallback) => Constraint(parameterName).GetMax(fallback);
+    private int GetStepInt(string parameterName, int fallback) => Constraint(parameterName).GetStep(fallback);
+    private double GetMinDouble(string parameterName, double fallback) => Constraint(parameterName).GetMin(fallback);
+    private double GetMaxDouble(string parameterName, double fallback) => Constraint(parameterName).GetMax(fallback);
+    private double GetStepDouble(string parameterName, double fallback) => Constraint(parameterName).GetStep(fallback);
+
+}

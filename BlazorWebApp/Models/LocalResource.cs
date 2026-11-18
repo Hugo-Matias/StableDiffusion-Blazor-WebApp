@@ -10,7 +10,9 @@ namespace BlazorWebApp.Models
         public int? CivitaiId { get; set; }
         public ResourceType Type { get; set; }
         public ResourceSubType? SubType { get; set; }
+        public string? BaseModel { get; set; }
         public List<string>? Tags { get; set; }
+        public string? Description { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? LastLoadedDate { get; set; }
 
@@ -24,7 +26,9 @@ namespace BlazorWebApp.Models
             CivitaiId = resourceEntity.CivitaiModelId;
             Type = resourceEntity.Type;
             SubType = resourceEntity.SubType;
+            BaseModel = resourceEntity.BaseModel;
             Tags = resourceEntity.Tags;
+            Description = resourceEntity.Description;
             CreatedDate = resourceEntity.CreatedDate;
             LastLoadedDate = resourceEntity.LastLoadedDate;
         }
@@ -39,6 +43,8 @@ namespace BlazorWebApp.Models
         public List<string>? TriggerWords { get; set; }
         public bool IsEnabled { get; set; }
         public string? Description { get; set; }
+        public string? VersionName { get; set; }
+        public string? VersionDescription { get; set; }
         public double SizeKb { get; set; }
 
         public LocalResourceFile() { }
@@ -48,7 +54,9 @@ namespace BlazorWebApp.Models
             CivitaiId = resourceEntity.CivitaiModelVersionId;
             Filename = resourceEntity.Filename;
             TriggerWords = resourceEntity.TriggerWords;
-            Description = resourceEntity.Description;
+            VersionName = resourceEntity.VersionName;
+            VersionDescription = resourceEntity.VersionDescription;
+            Description = resourceEntity.VersionDescription ?? resourceEntity.Description;
             SizeKb = resourceEntity.SizeKb;
         }
     }

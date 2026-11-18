@@ -1,0 +1,173 @@
+.video-input-container {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-default);
+}
+
+.video-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--mud-palette-surface);
+  border-bottom: 1px solid var(--mud-palette-lines-default);
+  position: relative;
+  z-index: 20;
+}
+
+.video-input-title {
+  font-weight: 500;
+  color: var(--mud-palette-text-primary);
+}
+
+.video-input-actions {
+  gap: 4px;
+}
+
+.video-input-content {
+  position: relative;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mud-palette-background);
+  overflow: hidden;
+}
+
+.video-input-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: black;
+  z-index: 1;
+}
+
+.video-input-preview.hidden {
+  display: none;
+}
+
+.video-input-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+  pointer-events: none;
+  z-index: 5;
+  border: 2px dashed transparent;
+}
+
+.video-input-overlay.drag-over {
+  background: rgba(var(--mud-palette-primary-rgb), 0.3);
+  border-color: var(--mud-palette-primary);
+}
+
+.overlay-content {
+  color: var(--mud-palette-text-primary);
+  text-align: center;
+  pointer-events: none;
+}
+
+.video-input-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 15;
+  pointer-events: none;
+}
+
+.video-input-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 16;
+}
+
+/*
+ * The native file input sits on top of the dropzone so clicking anywhere
+ * inside the content area opens the file picker. It is fully transparent
+ * and does NOT receive bytes server-side - VideoInput.js intercepts the
+ * change event and uploads via fetch() to bypass SignalR.
+ *
+ * When a video is loaded the .passthrough modifier moves the input out of
+ * the way so the <video> controls receive clicks. The header "Replace
+ * video" button programmatically opens the picker through the JS instance.
+ */
+.video-input-file {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 0;
+  color: transparent;
+}
+
+.video-input-file.passthrough {
+  pointer-events: none;
+  z-index: -1;
+}
+
+.video-input-file::file-selector-button,
+.video-input-file::-webkit-file-upload-button {
+  display: none;
+}
+
+.video-input-stored {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.video-input-stored .stored-filename {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mud-typography-monospace-family, monospace);
+  color: var(--mud-palette-text-primary);
+}
+
+.video-input-settings {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--mud-palette-lines-default);
+  background: var(--mud-palette-surface);
+}
+
+.video-input-cut-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.slider-label-row {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.slider-label-row small {
+  white-space: nowrap;
+  flex-shrink: 0;
+}

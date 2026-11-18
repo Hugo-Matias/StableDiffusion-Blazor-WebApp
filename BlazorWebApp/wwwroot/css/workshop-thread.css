@@ -1,0 +1,384 @@
+/* Workshop chat-thread styles (Phase 8.6 Step 3).
+   Globally scoped so the bubble + carousel cards share treatment without
+   per-component CSS duplication. */
+
+/* Phase 8.6 Step 5 - collapsible session rail.
+   Width transitions between expanded (220px) and collapsed (56px) states.
+   The whole sidebar paper carries .workshop-session-sidebar; the .collapsed
+   modifier shrinks it. Internals use sibling selectors to swap between the
+   full session button and the icon-only version. */
+.workshop-session-sidebar {
+  width: 220px;
+  min-width: 220px;
+  flex: 0 0 220px;
+  overflow-y: auto;
+  transition:
+    width 160ms ease,
+    min-width 160ms ease,
+    flex-basis 160ms ease;
+}
+
+.workshop-session-sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
+  flex-basis: 56px;
+}
+
+.workshop-session-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  gap: 4px;
+}
+
+.workshop-session-sidebar.collapsed .workshop-session-sidebar-header {
+  flex-direction: column;
+  padding: 8px 4px;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+/* Hide the "Sessions" caption when collapsed - the chevron + icons speak for themselves. */
+.workshop-session-sidebar.collapsed .workshop-session-sidebar-title {
+  display: none;
+}
+
+/* Each session entry in collapsed mode: a centered icon button. */
+.workshop-session-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.workshop-session-rail-item .mud-icon-button {
+  width: 40px;
+  height: 40px;
+}
+
+/* Highlight the active session in the rail with a primary-coloured indicator. */
+.workshop-session-rail-item.active .mud-icon-button {
+  background: rgba(var(--mud-palette-primary-rgb, 33, 150, 243), 0.18);
+}
+
+.workshop-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* Inline composer (Phase 8.6 Step 4) - sticks to the bottom of the chat column. */
+.workshop-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+  flex: 0 0 auto;
+}
+
+.workshop-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.workshop-composer .send-to-btn {
+  height: 32px;
+}
+
+/* Empty-state container shown when no session is active or session is empty. */
+.workshop-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  flex: 1 1 auto;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+.workshop-empty-state-icon {
+  font-size: 48px;
+  opacity: 0.35;
+}
+
+/* Evolve dialog: collapsible resolved-prompt preview. */
+.workshop-evolve-preview {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.workshop-evolve-preview > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+  user-select: none;
+}
+
+.workshop-evolve-preview-text {
+  margin: 8px 0 0;
+  padding: 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.78);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.workshop-bubble-row {
+  display: flex;
+  width: 100%;
+}
+
+.workshop-bubble-row.align-left {
+  justify-content: flex-start;
+}
+
+.workshop-bubble-row.align-right {
+  justify-content: flex-end;
+}
+
+.workshop-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(720px, 90%);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workshop-bubble:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.workshop-bubble.is-active {
+  border-color: var(--mud-palette-primary);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.workshop-bubble.mode-chat {
+  background: rgba(102, 153, 255, 0.08);
+  border-color: rgba(102, 153, 255, 0.15);
+}
+
+.workshop-bubble.mode-chat.is-active {
+  border-color: var(--mud-palette-primary);
+}
+
+.workshop-bubble-instruction {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+.workshop-bubble-body {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.workshop-bubble-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.workshop-bubble-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.workshop-bubble-toggle {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  align-self: flex-start;
+  text-decoration: underline;
+}
+
+.workshop-bubble-toggle:hover {
+  color: var(--mud-palette-primary);
+}
+
+.workshop-bubble-thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 84px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--mud-palette-background-grey);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workshop-bubble-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.workshop-bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Prev/next chip for switching between chat-edit siblings on the same parent. */
+.workshop-bubble-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workshop-bubble-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.workshop-bubble-chip-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.workshop-bubble-chip-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.workshop-bubble-chip-label {
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0 4px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.workshop-bubble-actions {
+  margin-top: 4px;
+}
+
+/* Variation carousel */
+.workshop-carousel {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px 4px;
+  margin-left: 4px;
+}
+
+.workshop-carousel-strip {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  padding-bottom: 4px;
+}
+
+.workshop-carousel-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.workshop-carousel-strip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.workshop-carousel-card {
+  flex: 0 0 auto;
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workshop-carousel-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.workshop-carousel-card.is-active {
+  border-color: var(--mud-palette-primary);
+}
+
+.workshop-carousel-thumb {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--mud-palette-background-grey);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workshop-carousel-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.workshop-carousel-text {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

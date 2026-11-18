@@ -1,0 +1,55 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanVideoEnhanceForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSlider T="double"
+                   @bind-Value="_weight"
+                   @bind-Value:after="OnWeightChanged"
+                   Min="_weightMin"
+                   Max="_weightMax"
+                   Step="_weightStep"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Weight:</small> @_weight.ToString("F3")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _weight;
+    private double _weightMin = 0.0;
+    private double _weightMax = 10.0;
+    private double _weightStep = 0.001;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+        _weight = ParameterService.GetFragmentProperty(Fragment, "weight", 2.0);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("weight", out var weight))
+        {
+            _weightMin = weight.GetMin(0.0);
+            _weightMax = weight.GetMax(10.0);
+            _weightStep = weight.GetStep(0.001);
+        }
+    }
+
+    private async Task OnWeightChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "weight", _weight, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

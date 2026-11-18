@@ -1,0 +1,256 @@
+@using BlazorWebApp.Data.Entities
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="1">
+    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Collections</MudText>
+        <MudStack Row Spacing="1">
+            <MudTooltip Text="Refresh collections">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                               Size="Size.Small" 
+                               OnClick="OnRefresh" />
+            </MudTooltip>
+            <MudTooltip Text="Import collection">
+                <MudIconButton Icon="@Icons.Material.Filled.FileUpload" 
+                               Size="Size.Small" 
+                               Color="Color.Secondary"
+                               OnClick="ImportCollection" />
+            </MudTooltip>
+            <MudTooltip Text="Create new collection">
+                <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                               Size="Size.Small" 
+                               Color="Color.Primary"
+                               OnClick="CreateNewCollection" />
+            </MudTooltip>
+        </MudStack>
+    </MudStack>
+
+    <MudTextField @bind-Value="_searchText"
+                  Placeholder="Search collections..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Clearable
+                  OnClearButtonClick="ClearSearch"
+                  Immediate
+                  DebounceInterval="300"
+                  OnDebounceIntervalElapsed="ApplySearch"
+                  Variant="Variant.Text"
+                  Margin="Margin.Dense" />
+
+    <MudDivider />
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate Color="Color.Primary" />
+    }
+    else if (!_filteredCollections.Any())
+    {
+        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center" Class="pa-4">
+            @if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                <text>No collections found matching "@_searchText"</text>
+            }
+            else
+            {
+                <text>No collections yet. Create your first collection!</text>
+            }
+        </MudText>
+    }
+    else
+    {
+        <MudList Clickable Dense Class="collection-list">
+            @* All Collections *@
+            <MudListItem OnClick="() => HandleAllSelected()"
+                         Class="@GetCategoryItemClass(null)">
+                <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.AllInclusive" Size="Size.Small" />
+                        <MudText Typo="Typo.body1"><strong>All Collections</strong></MudText>
+                    </MudStack>
+                    <MudChip Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                        @Collections.Count
+                    </MudChip>
+                </MudStack>
+            </MudListItem>
+
+            <MudDivider Class="my-2" />
+
+            @* Category Groups *@
+            @foreach (var category in _filteredCategories.OrderBy(c => c))
+            {
+                var collectionsInCategory = _filteredCollections
+                    .Where(c => (c.Category ?? "Uncategorized") == category)
+                    .ToList();
+
+                <MudExpansionPanels Elevation="0" Dense>
+                    <MudExpansionPanel Text="@category" 
+                                       IsInitiallyExpanded="@(_expandedCategories.Contains(category))">
+                        <TitleContent>
+                            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="flex-grow-1">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info" />
+                                    <MudText Typo="Typo.body1">@category</MudText>
+                                </MudStack>
+                                <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                    @collectionsInCategory.Count
+                                </MudChip>
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudList Clickable Dense Class="pl-4">
+                                @foreach (var collection in collectionsInCategory.OrderBy(c => c.Name))
+                                {
+                                    <MudListItem OnClick="() => HandleCollectionSelected(collection)"
+                                                 Class="@GetCollectionItemClass(collection)">
+                                        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@Icons.Material.Filled.List" Size="Size.Small" />
+                                                <MudText Typo="Typo.body2">@collection.Name</MudText>
+                                            </MudStack>
+                                            <MudChip Size="Size.Small" Variant="Variant.Text">
+                                                @collection.Entries.Count
+                                            </MudChip>
+                                        </MudStack>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+        </MudList>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<WildcardCollection> Collections { get; set; } = new();
+
+    [Parameter]
+    public Dictionary<string, List<WildcardCollection>> CollectionsByCategory { get; set; } = new();
+
+    [Parameter]
+    public WildcardCollection? SelectedCollection { get; set; }
+
+    [Parameter]
+    public EventCallback<WildcardCollection> OnCollectionSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    private bool _isLoading = false;
+    private string _searchText = string.Empty;
+    private List<WildcardCollection> _filteredCollections = new();
+    private List<string> _filteredCategories = new();
+    private HashSet<string> _expandedCategories = new();
+
+    protected override void OnParametersSet()
+    {
+        _filteredCollections = Collections;
+        _filteredCategories = CollectionsByCategory.Keys.ToList();
+        
+        // Expand all categories by default
+        _expandedCategories = CollectionsByCategory.Keys.ToHashSet();
+    }
+
+    private void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredCollections = Collections;
+            _filteredCategories = CollectionsByCategory.Keys.ToList();
+        }
+        else
+        {
+            var searchLower = _searchText.ToLower();
+            _filteredCollections = Collections
+                .Where(c => c.Name.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
+                           (c.Category != null && c.Category.Contains(searchLower, StringComparison.OrdinalIgnoreCase)) ||
+                           (c.Description != null && c.Description.Contains(searchLower, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            _filteredCategories = _filteredCollections
+                .Select(c => c.Category ?? "Uncategorized")
+                .Distinct()
+                .ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchText = string.Empty;
+        ApplySearch();
+    }
+
+    private async Task HandleCollectionSelected(WildcardCollection collection)
+    {
+        await OnCollectionSelected.InvokeAsync(collection);
+    }
+
+    private async Task HandleAllSelected()
+    {
+        // Deselect current collection (show all in future enhancement)
+        await OnCollectionSelected.InvokeAsync(null);
+    }
+
+    private string GetCategoryItemClass(string? category)
+    {
+        var baseClass = "collection-item";
+        if (SelectedCollection == null && category == null)
+        {
+            return $"{baseClass} collection-item-selected";
+        }
+        return baseClass;
+    }
+
+    private string GetCollectionItemClass(WildcardCollection collection)
+    {
+        var baseClass = "collection-item";
+        if (SelectedCollection?.Id == collection.Id)
+        {
+            return $"{baseClass} collection-item-selected";
+        }
+        return baseClass;
+    }
+
+    private async Task CreateNewCollection()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        
+        var dialog = await DialogService.ShowAsync<CollectionEditorDialog>("Create Collection", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnRefresh.InvokeAsync();
+            Snackbar.Add("Collection created successfully", Severity.Success);
+        }
+    }
+
+    private async Task ImportCollection()
+    {
+        var options = new DialogOptions 
+        { 
+            CloseButton = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        
+        var dialog = await DialogService.ShowAsync<WildcardImportDialog>("Import Collection", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await OnRefresh.InvokeAsync();
+            Snackbar.Add("Collection imported successfully", Severity.Success);
+        }
+    }
+}

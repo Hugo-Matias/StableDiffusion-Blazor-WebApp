@@ -1,0 +1,92 @@
+﻿@inject IIOService IO
+
+<section class="selection-banner">
+    <div class="selection-preview-stack" aria-label="Selection preview">
+        @if (Selection.Images.Count == 0)
+        {
+            <div class="selection-preview-placeholder">
+                <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Small" />
+            </div>
+        }
+        else
+        {
+            @foreach (var preview in _previewImages.Select((image, index) => new { image, index }))
+            {
+                <div class="selection-preview-image"
+                     style="--selection-preview-index: @preview.index; --selection-preview-z: @(PreviewImageCount - preview.index);">
+                    <img src="@IO.GetImageStaticFile(preview.image.Path)" alt="" loading="lazy" />
+                </div>
+            }
+        }
+    </div>
+
+    <div class="selection-banner-copy">
+        <MudText Typo="Typo.subtitle2" Class="selection-banner-title">@Selection.Name</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">@GetImageCountLabel()</MudText>
+    </div>
+
+    <div class="selection-banner-actions">
+        <MudTooltip Text="Replace current selection">
+            <MudIconButton OnClick="@(() => OnReplaceSelection.InvokeAsync(Selection))"
+                           Icon="@Icons.Material.Filled.PlaylistAddCheck" ButtonType="ButtonType.Button" Color="Color.Success"
+                           Size="Size.Small" />
+        </MudTooltip>
+        <MudTooltip Text="Append to current selection">
+            <MudIconButton OnClick="@(() => OnAppendSelection.InvokeAsync(Selection))"
+                           Icon="@Icons.Material.Filled.PlaylistAdd" ButtonType="ButtonType.Button" Color="Color.Info"
+                           Size="Size.Small" />
+        </MudTooltip>
+        <MudTooltip Text="Replace saved selection with current">
+            <MudIconButton OnClick="@(() => OnReplaceSavedSelection.InvokeAsync(Selection.Id))"
+                           Icon="@Icons.Material.Filled.SaveAs" ButtonType="ButtonType.Button" Color="Color.Warning"
+                           Size="Size.Small" />
+        </MudTooltip>
+        <MudTooltip Text="Append current images to saved selection">
+            <MudIconButton OnClick="@(() => OnAppendCurrentToSelection.InvokeAsync(Selection.Id))"
+                           Icon="@Icons.Material.Filled.LibraryAdd" ButtonType="ButtonType.Button" Color="Color.Secondary"
+                           Size="Size.Small" />
+        </MudTooltip>
+        <MudTooltip Text="Delete selection">
+            <MudIconButton OnClick="@(() => OnRequestDeleteSelection.InvokeAsync(Selection.Id))"
+                           Icon="@Icons.Material.Filled.Delete" ButtonType="ButtonType.Button" Color="Color.Error"
+                           Size="Size.Small" />
+        </MudTooltip>
+    </div>
+</section>
+
+@code {
+    private const int PreviewImageCount = 3;
+
+    [Parameter, EditorRequired] public Selection Selection { get; set; } = new();
+    [Parameter] public int PreviewGeneration { get; set; }
+    [Parameter] public EventCallback<Selection> OnAppendSelection { get; set; }
+    [Parameter] public EventCallback<Selection> OnReplaceSelection { get; set; }
+    [Parameter] public EventCallback<int> OnAppendCurrentToSelection { get; set; }
+    [Parameter] public EventCallback<int> OnReplaceSavedSelection { get; set; }
+    [Parameter] public EventCallback<int> OnRequestDeleteSelection { get; set; }
+
+    private List<Image> _previewImages = new();
+    private int _lastPreviewGeneration = -1;
+    private int _lastSelectionId;
+
+    protected override void OnParametersSet()
+    {
+        if (_lastPreviewGeneration == PreviewGeneration && _lastSelectionId == Selection.Id)
+        {
+            return;
+        }
+
+        _lastPreviewGeneration = PreviewGeneration;
+        _lastSelectionId = Selection.Id;
+        _previewImages = Selection.Images
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(PreviewImageCount)
+            .ToList();
+    }
+
+    private string GetImageCountLabel()
+    {
+        var imageCount = Selection.Images.Count;
+        return imageCount == 1 ? "1 image" : $"{imageCount} images";
+    }
+}

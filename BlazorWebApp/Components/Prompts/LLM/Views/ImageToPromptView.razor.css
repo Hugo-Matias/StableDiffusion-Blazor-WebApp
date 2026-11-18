@@ -1,0 +1,33 @@
+/* Phase 12 - ImageToPromptView page-scoped styles. Mirrors TagBuilderView's
+   send-to bar layout so the two views feel consistent. */
+
+.image-to-prompt-page ::deep .mud-button-root,
+.image-to-prompt-page ::deep .send-to-btn {
+  max-width: 500px !important;
+}
+
+.image-to-prompt-page ::deep .image-to-prompt-send-to {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.image-to-prompt-page ::deep .send-to-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-to-prompt-page ::deep .send-to-group + .send-to-group {
+  padding-top: 10px;
+  border-top: 1px solid
+    var(--mud-palette-lines-default, rgba(255, 255, 255, 0.08));
+}
+
+.image-to-prompt-page ::deep .send-to-group-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}

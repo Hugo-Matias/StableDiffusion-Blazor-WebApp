@@ -1,0 +1,182 @@
+@*
+    MiniMaxVideoSettingsForm - Resolution (Manual or Aspect Ratio + Megapixels) and Duration
+    for the MiniMax H3 workflow.
+
+    When a first_frame or last_frame source image is present (first takes precedence), the
+    Aspect Ratio dropdown inside ResolutionPanel is replaced with a read-only label and the
+    output resolution is derived from that image's aspect ratio instead - megapixels/multiple-of
+    still control the output size. Subscribes to SourceChanged so uploading/clearing a frame
+    recomputes the resolution live.
+*@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Events
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("MiniMaxVideoSettingsForm")]
+@inject IGenerationParameterService ParameterService
+@inject IEventService EventService
+@implements IDisposable
+
+<MudGrid Spacing="2">
+    <ResolutionPanel Width="@_localWidth" WidthChanged="HandleWidthChanged" Height="@_localHeight"
+                     HeightChanged="HandleHeightChanged" Mode="@_localResolutionMode" ModeChanged="HandleResolutionModeChanged"
+                     AspectRatio="@_localAspectRatio" AspectRatioChanged="HandleAspectRatioChanged" Megapixels="@_localMegapixels"
+                     MegapixelsChanged="HandleMegapixelsChanged" MegapixelsMax="@_megapixelsMax" MultipleOf="@_localMultipleOf"
+                     MultipleOfChanged="HandleMultipleOfChanged" SourceImageWidth="@_sourceImageWidth"
+                     SourceImageHeight="@_sourceImageHeight" SourceImageLabel="@_sourceImageLabel" />
+
+    <MudItem xs="12">
+        <MudSlider T="double" @bind-Value="_localDuration" @bind-Value:after="OnDurationChanged" Min="_durationMin"
+                   Max="_durationMax" Step="_durationStep" Variant="Variant.Filled" ValueLabel>
+            <small>Duration:</small> @(_localDuration.ToString("0.0"))<small>s</small>
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _localWidth;
+    private int _localHeight;
+    private string _localResolutionMode = "calculated";
+    private string _localAspectRatio = BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0];
+    private double _localMegapixels = 0.45;
+    private int _localMultipleOf = 32;
+    private double _localDuration = 10;
+
+    private double _durationMin = 0.5, _durationMax = 15, _durationStep = 0.5;
+    private double _megapixelsMax = 5.0;
+
+    private int? _sourceImageWidth;
+    private int? _sourceImageHeight;
+    private string? _sourceImageLabel;
+
+    protected override void OnInitialized()
+    {
+        EventService.Subscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+        ResolveSourceImage();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localWidth = ParameterService.GetFragmentProperty(Fragment, "width", 1344);
+        _localHeight = ParameterService.GetFragmentProperty(Fragment, "height", 768);
+        _localResolutionMode = ParameterService.GetFragmentProperty(Fragment, "resolution_mode", "calculated");
+        _localAspectRatio = ParameterService.GetFragmentProperty(Fragment, "aspect_ratio",
+            BlazorWebApp.Models.ResolutionSelectorMath.AspectRatios[0]);
+        _localMegapixels = ParameterService.GetFragmentProperty(Fragment, "megapixels", 0.45);
+        _localMultipleOf = ParameterService.GetFragmentProperty(Fragment, "multiple_of", 32);
+        _localDuration = ParameterService.GetFragmentProperty(Fragment, "duration", 10.0);
+
+        ResolveSourceImage();
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("duration", out var durationConstraints))
+        {
+            _durationMin = durationConstraints.GetMin(0.5);
+            _durationMax = durationConstraints.GetMax(15);
+            _durationStep = durationConstraints.GetStep(0.5);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("megapixels", out var megapixelsConstraints))
+        {
+            _megapixelsMax = megapixelsConstraints.GetMax(5.0);
+        }
+    }
+
+    private void OnParametersChanged(GenerationParametersChangedEventArgs args)
+    {
+        if (args.ChangeType == GenerationParameterChangeType.SourceChanged &&
+            (args.FragmentId == "first_frame" || args.FragmentId == "last_frame"))
+        {
+            ResolveSourceImage();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ResolveSourceImage()
+    {
+        var first = ParameterService.GetSource("first_frame");
+        if (first is { Width: > 0, Height: > 0 })
+        {
+            _sourceImageWidth = first.Width;
+            _sourceImageHeight = first.Height;
+            _sourceImageLabel = "First Frame";
+            return;
+        }
+
+        var last = ParameterService.GetSource("last_frame");
+        if (last is { Width: > 0, Height: > 0 })
+        {
+            _sourceImageWidth = last.Width;
+            _sourceImageHeight = last.Height;
+            _sourceImageLabel = "Last Frame";
+            return;
+        }
+
+        _sourceImageWidth = null;
+        _sourceImageHeight = null;
+        _sourceImageLabel = null;
+    }
+
+    private async Task HandleWidthChanged(int value)
+    {
+        _localWidth = value;
+        ParameterService.SetFragmentProperty(Fragment, "width", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleHeightChanged(int value)
+    {
+        _localHeight = value;
+        ParameterService.SetFragmentProperty(Fragment, "height", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleResolutionModeChanged(string value)
+    {
+        _localResolutionMode = value;
+        ParameterService.SetFragmentProperty(Fragment, "resolution_mode", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleAspectRatioChanged(string value)
+    {
+        _localAspectRatio = value;
+        ParameterService.SetFragmentProperty(Fragment, "aspect_ratio", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleMegapixelsChanged(double value)
+    {
+        _localMegapixels = value;
+        ParameterService.SetFragmentProperty(Fragment, "megapixels", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleMultipleOfChanged(int value)
+    {
+        _localMultipleOf = value;
+        ParameterService.SetFragmentProperty(Fragment, "multiple_of", value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnDurationChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "duration", _localDuration, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        EventService.Unsubscribe<GenerationParametersChangedEventArgs>(OnParametersChanged);
+    }
+}

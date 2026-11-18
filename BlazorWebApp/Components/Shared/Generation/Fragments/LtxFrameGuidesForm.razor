@@ -1,0 +1,78 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("LtxFrameGuidesForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localFirstStrength" @bind-Value:after="OnFirstStrengthChanged"
+                   Min='@GetMin("first_strength", 0.0)' Max='@GetMax("first_strength", 1.0)'
+                   Step='@GetStep("first_strength", 0.05)' ValueLabel>
+            <small>First Frame:</small> @_localFirstStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudSlider T="double" @bind-Value="_localLastStrength" @bind-Value:after="OnLastStrengthChanged"
+                   Min='@GetMin("last_strength", 0.0)' Max='@GetMax("last_strength", 1.0)'
+                   Step='@GetStep("last_strength", 0.05)' ValueLabel>
+            <small>Last Frame:</small> @_localLastStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localFirstStrength;
+    private double _localLastStrength;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _localFirstStrength = GetStrengthValue("first_strength", "stage1_first_strength", GetDefault("first_strength", 1.0));
+        _localLastStrength = GetStrengthValue("last_strength", "stage1_last_strength", GetDefault("last_strength", 1.0));
+    }
+
+    private T GetDefault<T>(string parameterName, T fallback)
+    {
+        var constraints = Fragment?.Schema?.GetConstraints(parameterName);
+        if (constraints?.Default == null)
+        {
+            return fallback;
+        }
+
+        var value = constraints.GetDefault<T>();
+        return value == null ? fallback : value;
+    }
+
+    private double GetMin(string parameterName, double fallback) =>
+        Fragment?.Schema?.GetConstraints(parameterName).GetMin(fallback) ?? fallback;
+
+    private double GetMax(string parameterName, double fallback) =>
+        Fragment?.Schema?.GetConstraints(parameterName).GetMax(fallback) ?? fallback;
+
+    private double GetStep(string parameterName, double fallback) =>
+        Fragment?.Schema?.GetConstraints(parameterName).GetStep(fallback) ?? fallback;
+
+    private double GetStrengthValue(string parameterName, string legacyParameterName, double fallback)
+    {
+        var value = ParameterService.GetFragmentProperty(Fragment, parameterName, double.NaN);
+        return double.IsNaN(value)
+            ? ParameterService.GetFragmentProperty(Fragment, legacyParameterName, fallback)
+            : value;
+    }
+
+    private async Task OnFirstStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "first_strength", _localFirstStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnLastStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "last_strength", _localLastStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

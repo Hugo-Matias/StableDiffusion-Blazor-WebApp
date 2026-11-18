@@ -1,0 +1,114 @@
+[
+  {
+    "name": "Light: Golden Hour",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to warm golden hour sunlight coming from a low side angle. Make the scene look like it was captured during sunset or sunrise. Keep subject position and their pose the same as the reference. Ensure long soft shadows stretch across the scene. Make skin tones glow with warm amber highlights. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm directional sunlight bathes the subject from one side. Ensure the background has a golden atmospheric haze. Keep in focus. The result should be lit by beautiful golden hour light.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["warm", "directional", "natural"]
+  },
+  {
+    "name": "Light: Blue Hour",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to cool blue hour twilight ambient light. Make the scene look like it was captured during the deep blue moment between dusk and night. Keep subject position and their pose the same as the reference. Ensure soft diffuse illumination with no harsh shadows. Make colors shift toward cool blues and purples. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even blue-toned ambient light fills the scene. Ensure any artificial lights appear warm against the cool background. Keep in focus. The result should be lit by atmospheric blue hour twilight.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["cool", "ambient", "natural"]
+  },
+  {
+    "name": "Light: Studio Softbox",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to clean professional studio softbox illumination. Make the scene look like a high-end studio photograph. Keep subject position and their pose the same as the reference. Ensure even flattering light with minimal harsh shadows. Make skin tones smooth and evenly lit. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft diffused frontal lighting wraps gently around the subject. Ensure subtle fill light eliminates unwanted contrast. Keep in focus. The result should be lit by professional studio softbox lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["studio", "soft", "professional"]
+  },
+  {
+    "name": "Light: Rembrandt",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to classic Rembrandt portrait illumination. Make the scene look like a master oil painting with dramatic side light. Keep subject position and their pose the same as the reference. Ensure a small triangular highlight appears on the shadowed cheek of the subject. Make shadows fall deeply on one side while the other is warmly lit. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional side lighting creates the signature Rembrandt triangle. Ensure the background fades into deep shadow behind the subject. Keep in focus. The result should be lit by classic Rembrandt portrait lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["portrait", "dramatic", "classic"]
+  },
+  {
+    "name": "Light: Rim Lighting",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to strong rim and backlight illumination. Make the subject appear outlined in bright light from behind. Keep subject position and their pose the same as the reference. Ensure a glowing edge of light separates the subject from the background. Make the front of the subject fall into softer shadow while the edges catch brilliant highlights. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure powerful backlight creates a luminous halo around the subject silhouette. Ensure the background is darker than the rim light edge. Keep in focus. The result should be lit by dramatic rim lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["backlight", "edge", "dramatic"]
+  },
+  {
+    "name": "Light: Neon Glow",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to vibrant neon glow illumination. Make the scene look like a colorful urban night environment lit by neon signs. Keep subject position and their pose the same as the reference. Ensure colored light pools in vivid pinks, blues, cyans, and purples across surfaces. Make reflections cast colorful highlights on skin and surrounding materials. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure multiple neon light sources create layered color washes. Ensure dark areas contrast sharply with bright neon accents. Keep in focus. The result should be lit by vibrant neon glow lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["neon", "colorful", "urban"]
+  },
+  {
+    "name": "Light: Chiaroscuro",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to extreme chiaroscuro contrast. Make the scene look like a dramatic baroque painting with stark light and shadow. Keep subject position and their pose the same as the reference. Ensure bright highlights strike select areas while deep black shadows consume the rest. Make the transition between light and dark sharp and defined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure a single strong light source creates maximum contrast. Ensure shadowed areas fall to near-black with minimal fill. Keep in focus. The result should be lit by dramatic chiaroscuro lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["dramatic", "contrast", "noir"]
+  },
+  {
+    "name": "Light: Volumetric Rays",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to volumetric god rays streaming through the scene. Make the atmosphere look filled with visible light beams cutting through haze or dust. Keep subject position and their pose the same as the reference. Ensure distinct shafts of light pierce through openings in the environment. Make illuminated particles and atmospheric depth clearly visible. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure volumetric light rays create dramatic directional beams. Ensure areas between rays remain in soft shadow. Keep in focus. The result should be lit by atmospheric volumetric ray lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["volumetric", "atmospheric", "dramatic"]
+  },
+  {
+    "name": "Light: Candlelight",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to warm intimate candlelight illumination. Make the scene look like it is lit by flickering candles at close range. Keep subject position and their pose the same as the reference. Ensure a small warm point source creates soft glowing highlights that fall off quickly with distance. Make skin tones rich and amber with gentle orange reflections. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure candlelight creates long dancing shadows on surrounding surfaces. Ensure areas beyond the candle glow fade into warm darkness. Keep in focus. The result should be lit by intimate candlelight.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["warm", "intimate", "point-source"]
+  },
+  {
+    "name": "Light: Overcast Diffuse",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to flat overcast diffuse sky illumination. Make the scene look like it was captured on a cloudy day with no direct sunlight. Keep subject position and their pose the even lit from all directions. Ensure minimal shadows with soft transitions between light areas. Make colors natural and evenly exposed without harsh contrast. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure uniform overcast sky light eliminates directional shadows. Ensure the scene has a gentle even exposure throughout. Keep in focus. The result should be lit by soft overcast diffuse lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["soft", "flat", "natural"]
+  },
+  {
+    "name": "Light: Split Lighting",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to dramatic split illumination. Make one half of the subject brightly lit while the other falls into deep shadow. Keep subject position and their pose the same as the reference. Ensure a sharp dividing line separates the lit side from the shadowed side. Make the transition between light and dark clean and defined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure narrow directional side lighting creates the split effect. Ensure the shadowed half retains subtle detail without fill light. Keep in focus. The result should be lit by dramatic split lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["dramatic", "portrait", "contrast"]
+  },
+  {
+    "name": "Light: Moonlight",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to cool silver-blue moonlight illumination. Make the scene look like a quiet nighttime environment lit by full moon light filtering through the sky. Keep subject position and their pose the same as the reference. Ensure soft low-intensity blue-white light creates gentle pale highlights. Make shadows deep but not completely black with subtle blue fill. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure moonlight casts a cool ethereal glow across the scene. Ensure distant areas fade into dark blue night tones. Keep in focus. The result should be lit by atmospheric moonlight.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["cool", "night", "subtle"]
+  },
+  {
+    "name": "Light: Harsh Noon Sun",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to harsh direct overhead noon sunlight. Make the scene look like it was captured at midday under a bright cloudless sky. Keep subject position and their pose the same as the reference. Ensure hard short shadows fall directly beneath objects with sharp edges. Make highlights intense and contrast high with minimal fill light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure direct overhead sunlight creates strong downward illumination. Ensure shadow areas are small but deep and well-defined. Keep in focus. The result should be lit by harsh noon sun lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["hard", "natural", "directional"]
+  },
+  {
+    "name": "Light: Teal and Orange",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to cinematic teal and orange dual-tone illumination. Make the scene look like a color-graded Hollywood film with warm highlights and cool shadows. Keep subject position and their pose the same as the reference. Ensure skin tones and direct light areas glow in warm amber and orange. Make shadow areas shift toward deep teal and cyan tones. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the dual-tone color separation creates cinematic contrast. Ensure highlights and shadows are clearly divided by temperature. Keep in focus. The result should be lit by cinematic teal and orange lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["cinematic", "color-graded", "dual-tone"]
+  },
+  {
+    "name": "Light: Bioluminescent",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to ethereal bioluminescent glow illumination. Make the scene look like it is lit by organic glowing elements in the environment or on the subject itself. Keep subject position and their pose the same as the reference. Ensure soft pulsing light emanates from multiple points creating an otherworldly atmosphere. Make colors shift toward electric blues, greens, and purples with a natural glow effect. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bioluminescent light sources create layered ethereal illumination. Ensure the background fades into deep darkness punctuated by glowing accents. Keep in focus. The result should be lit by magical bioluminescent lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["ethereal", "glow", "fantasy"]
+  },
+  {
+    "name": "Light: Noir Window Light",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the lighting to dramatic noir window illumination. Make the scene look like a classic film noir interior lit by a single window source. Keep subject position and their pose the same as the reference. Ensure strong directional light streams through the window casting venetian blind shadow patterns across surfaces. Make deep black shadows fill areas not reached by the window light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure the single window source creates high contrast with patterned shadows. Ensure unlit areas fall to near-black with minimal ambient fill. Keep in focus. The result should be lit by dramatic noir window lighting.",
+    "negative_prompt": null,
+    "category": "Lighting Transforms",
+    "tags": ["noir", "dramatic", "window"]
+  }
+]

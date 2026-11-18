@@ -1,0 +1,34 @@
+{
+  "collection": {
+    "name": "patterns-pattern-types",
+    "category": "Fashion & Clothing",
+    "description": "Fabric pattern types for garment randomization in wardrobe change prompts. Balanced verbosity with clear visual descriptors.",
+    "entries": [
+      { "value": "classic pinstripe pattern", "weight": 1.0, "sortOrder": 0 },
+      { "value": "bold plaid check pattern", "weight": 1.2, "sortOrder": 1 },
+      { "value": "delicate floral print", "weight": 1.2, "sortOrder": 2 },
+      { "value": "geometric abstract pattern", "weight": 1.0, "sortOrder": 3 },
+      { "value": "subtle herringbone weave", "weight": 0.9, "sortOrder": 4 },
+      { "value": "polka dot print", "weight": 1.0, "sortOrder": 5 },
+      { "value": "striped nautical pattern", "weight": 1.0, "sortOrder": 6 },
+      { "value": "paisley swirl design", "weight": 0.8, "sortOrder": 7 },
+      { "value": "camouflage military print", "weight": 0.9, "sortOrder": 8 },
+      { "value": "animal leopard print", "weight": 1.0, "sortOrder": 9 },
+      { "value": "zebra stripe pattern", "weight": 0.7, "sortOrder": 10 },
+      { "value": "tropical leaf print", "weight": 0.9, "sortOrder": 11 },
+      { "value": "tie-dye swirl pattern", "weight": 0.8, "sortOrder": 12 },
+      { "value": "tartan Scottish plaid", "weight": 0.9, "sortOrder": 13 },
+      { "value": "houndstooth check pattern", "weight": 0.8, "sortOrder": 14 },
+      { "value": "chevron zigzag pattern", "weight": 0.7, "sortOrder": 15 },
+      { "value": "damask brocade pattern", "weight": 0.7, "sortOrder": 16 },
+      { "value": "ikat woven pattern", "weight": 0.6, "sortOrder": 17 },
+      { "value": "colorblock panel design", "weight": 1.0, "sortOrder": 18 },
+      { "value": "marble stone texture print", "weight": 0.7, "sortOrder": 19 },
+      { "value": "galaxy space print", "weight": 0.6, "sortOrder": 20 },
+      { "value": "watercolor wash pattern", "weight": 0.8, "sortOrder": 21 },
+      { "value": "quilted diamond stitching", "weight": 0.9, "sortOrder": 22 },
+      { "value": "smoke ombre gradient", "weight": 0.8, "sortOrder": 23 },
+      { "value": "solid color no pattern", "weight": 1.5, "sortOrder": 24 }
+    ]
+  }
+}

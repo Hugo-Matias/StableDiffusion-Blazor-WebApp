@@ -1,0 +1,275 @@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Components.Shared.Image
+@using BlazorWebApp.Components.Shared.Generation
+@inject ISessionService Session
+
+@* Individual source input (image or video) - reuses ImageInput for images *@
+
+<div class="source-item">
+    @if (Source.Type?.ToLowerInvariant() == "video")
+    {
+        @* Video input - drag/drop with browser-side preview. Uploads bypass SignalR
+           via fetch() to /api/upload-source so the page stays responsive. *@
+        <VideoInput Filename="@Source.Filename" FilePath="@Source.FilePath" FilenameChanged="HandleVideoFilenameChanged"
+                    Title="@DisplayLabel" VideoOptions="@Source.VideoOptions" VideoOptionsChanged="HandleVideoOptionsChanged"
+                    DefaultVideoOptions="@SourceDefinition?.DefaultVideoOptions"
+                    ShowIncludeAudioToggle="@(SourceDefinition?.ShowIncludeAudioToggle == true)" MaxFileSizeMB="1024" />
+    }
+    else if (Source.Type?.ToLowerInvariant() == "audio")
+    {
+        @* Audio input - direct browser upload via XHR to /api/upload-source.
+           Bypasses SignalR so large audio files don't disconnect the circuit. *@
+        <AudioInput Filename="@Source.Filename" FilenameChanged="HandleAudioFilenameChanged" Title="@DisplayLabel"
+                    AudioOptions="@Source.AudioOptions" AudioOptionsChanged="HandleAudioOptionsChanged"
+                    DefaultAudioOptions="@SourceDefinition?.DefaultAudioOptions" MaxFileSizeMB="200"
+                    DurationLoaded="HandleAudioDurationLoaded" />
+
+        @* Trim settings panel - shown when audio is loaded *@
+        @if (_audioDuration > 0)
+        {
+            <div class="audio-trim-panel">
+                <MudText Typo="Typo.caption" Color="Color.Info" Class="mb-1">
+                    Trim: @_audioTrimStart.ToString("0.1")s - @_audioTrimEnd.ToString("0.1")s / @_audioDuration.ToString("0.1")s
+                    total
+                </MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudSlider T="double" Value="@_audioTrimStart" ValueChanged="SetAudioTrimStart" Min="0"
+                                   Max="@_audioDuration" Step="0.1" Variant="Variant.Text" ThumbSize="18" Dense="true">
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="slider-label-row">
+                                <small>Start:</small>
+                                <MudNumericField T="double" Value="@_audioTrimStart" ValueChanged="SetAudioTrimStart"
+                                                 Variant="Variant.Text" Dense="true" Min="0" Max="@_audioDuration" Step="0.1"
+                                                 HideSpinButtons="true" Style="width:64px;" />
+                                <small>s</small>
+                            </MudStack>
+                        </MudSlider>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSlider T="double" Value="@_audioTrimDuration" ValueChanged="SetAudioTrimDuration" Min="0"
+                                   Max="@_audioTrimDurationMax" Step="0.5" Variant="Variant.Text" ThumbSize="18" Dense="true">
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="slider-label-row">
+                                <small>Duration:</small>
+                                <MudNumericField T="double" Value="@_audioTrimDuration" ValueChanged="SetAudioTrimDuration"
+                                                 Variant="Variant.Text" Dense="true" Min="0" Max="@_audioTrimDurationMax" Step="0.5"
+                                                 HideSpinButtons="true" Style="width:64px;" />
+                                <small>s (@(_audioTrimDuration > 0 ? $"ends {_audioTrimEnd:0.1}s" : "to end"))</small>
+                            </MudStack>
+                        </MudSlider>
+                    </MudItem>
+                </MudGrid>
+            </div>
+        }
+    }
+    else
+    {
+        @* Image input - reuse ImageInput component for drag/drop, clipboard, and editor *@
+        <ImageInput ImageData="@Source.Data" ImageDataChanged="HandleImageChanged" Title="@DisplayLabel"
+                    MaskImageData="@MaskPreviewData" OnImageLoaded="HandleImageLoaded" OnEditClicked="HandleEditClicked"
+                    OnBlankCanvasClicked="HandleBlankCanvasClicked" MaxFileSizeMB="50" AutoResize="false" />
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The source asset to display/edit.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public SourceAsset Source { get; set; } = new();
+
+    /// <summary>
+    /// The source ID.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string SourceId { get; set; } = "";
+
+    /// <summary>
+    /// Callback when the source changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string sourceId, SourceAsset source)> OnSourceChanged { get; set; }
+
+    [Parameter]
+    public WorkflowSource? SourceDefinition { get; set; }
+
+    private string DisplayLabel => string.IsNullOrWhiteSpace(SourceDefinition?.Label) ? Source.Label :
+SourceDefinition.Label;
+    private string? MaskPreviewData => ResolveMaskPreviewData();
+
+    // Audio trim state (mirrors AudioSourceOptions but tracks duration locally)
+    private double _audioDuration;
+    private double _audioTrimStart;
+    private double _audioTrimDuration;
+    private double _audioTrimEnd => _audioTrimStart + (_audioTrimDuration > 0 ? _audioTrimDuration : Math.Max(0,
+_audioDuration - _audioTrimStart));
+    private double _audioTrimDurationMax => _audioDuration > 0 && _audioTrimStart < _audioDuration
+        ? _audioDuration - _audioTrimStart
+        : 120;
+
+    protected override void OnParametersSet()
+    {
+        // Sync local trim state from Source.AudioOptions.
+        if (Source.AudioOptions is not null)
+        {
+            _audioTrimStart = Math.Max(0, Source.AudioOptions.TrimStart);
+            _audioTrimDuration = Math.Max(0, Source.AudioOptions.TrimDuration);
+        }
+    }
+
+    private string? ResolveMaskPreviewData()
+    {
+        if (!string.IsNullOrWhiteSpace(Source.MaskData))
+        {
+            return Source.MaskData.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? Source.MaskData
+                : $"/api/source-preview?filename={Uri.EscapeDataString(Source.MaskData)}";
+        }
+
+        return string.IsNullOrWhiteSpace(Source.MaskFilename)
+            ? null
+            : $"/api/source-preview?filename={Uri.EscapeDataString(Source.MaskFilename)}";
+    }
+
+    /// <summary>
+    /// Callback when edit is clicked (for image editor integration).
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnEditClicked { get; set; }
+
+    /// <summary>
+    /// Callback when blank canvas is clicked (for image editor integration).
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnBlankCanvasClicked { get; set; }
+
+    private async Task HandleImageChanged(string imageData)
+    {
+        var imageChanged = !string.Equals(Source.Data, imageData, StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(imageData))
+        {
+            Source.Clear();
+        }
+        else
+        {
+            Source.Data = imageData;
+            Source.Filename = null; // Clear filename since it's from drag/drop or clipboard
+            Source.MaskData = null;
+            Source.MaskFilename = null;
+            Source.MaskFilePath = null;
+        }
+        if (imageChanged)
+        {
+            Session.ResetImageEditorState();
+        }
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleImageLoaded((int width, int height) dimensions)
+    {
+        Source.Width = dimensions.width;
+        Source.Height = dimensions.height;
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleEditClicked()
+    {
+        await OnEditClicked.InvokeAsync(SourceId);
+    }
+
+    private async Task HandleBlankCanvasClicked()
+    {
+        await OnBlankCanvasClicked.InvokeAsync(SourceId);
+    }
+
+    private async Task HandleVideoFilenameChanged(string? filename)
+    {
+        // The VideoInput component uploads directly to ComfyUI and gives us back the
+        // server-side input filename. The workflow fragments resolve videos through
+        // SourceAsset.Filename, and UploadSourceImagesAsync skips re-uploading when
+        // Data is short and not a data: URI - so we leave Data null on purpose.
+        Source.Filename = filename;
+        Source.Data = filename; // Marks the source as "has data" without storing bytes.
+        if (string.IsNullOrEmpty(filename))
+        {
+            Source.Clear();
+        }
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleVideoOptionsChanged(VideoSourceOptions options)
+    {
+        Source.VideoOptions = options;
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleAudioFilenameChanged(string? filename)
+    {
+        // The AudioInput component uploads directly to ComfyUI and gives us back the
+        // server-side input filename. The workflow fragments resolve audio through
+        // SourceAsset.Filename, and UploadSourceImagesAsync skips re-uploading when
+        // Data is short and not a data: URI - so we leave Data as the filename marker.
+        Source.Filename = filename;
+        Source.Data = filename;
+        if (string.IsNullOrEmpty(filename))
+        {
+            Source.Clear();
+            // Reset audio trim state so the panel disappears immediately.
+            _audioDuration = 0;
+            _audioTrimStart = 0;
+            _audioTrimDuration = 0;
+        }
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleAudioOptionsChanged(AudioSourceOptions options)
+    {
+        Source.AudioOptions = options;
+        _audioTrimStart = Math.Max(0, options.TrimStart);
+        _audioTrimDuration = Math.Max(0, options.TrimDuration);
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task HandleAudioDurationLoaded(double duration)
+    {
+        _audioDuration = duration;
+        // Clamp trim start to audio duration.
+        if (_audioTrimStart > _audioDuration && _audioDuration > 0)
+        {
+            _audioTrimStart = 0;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetAudioTrimStart(double value)
+    {
+        var clamped = Math.Clamp(value, 0, _audioDuration);
+        if (Math.Abs(_audioTrimStart - clamped) < 0.01) return;
+        _audioTrimStart = clamped;
+        await CommitAudioOptionsAsync();
+    }
+
+    private async Task SetAudioTrimDuration(double value)
+    {
+        var clamped = Math.Clamp(value, 0, _audioTrimDurationMax);
+        if (Math.Abs(_audioTrimDuration - clamped) < 0.1) return;
+        _audioTrimDuration = clamped;
+        await CommitAudioOptionsAsync();
+    }
+
+    private async Task CommitAudioOptionsAsync()
+    {
+        var options = new AudioSourceOptions
+        {
+            TrimStart = _audioTrimStart,
+            TrimDuration = _audioTrimDuration
+        };
+        Source.AudioOptions = options;
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+
+    private async Task ClearSource()
+    {
+        Source.Clear();
+        await OnSourceChanged.InvokeAsync((SourceId, Source));
+    }
+}

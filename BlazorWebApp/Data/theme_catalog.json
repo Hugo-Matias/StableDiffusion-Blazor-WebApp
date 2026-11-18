@@ -1,0 +1,722 @@
+{
+  "_comment": "Theme Catalog v1.0 - Complete reference for wildcard collection themes",
+  "_purpose": "Provides standardized categories, typical conventions, and examples for creating wildcard collections",
+
+  "theme_categories": [
+    {
+      "id": 1,
+      "name": "Fashion & Clothing",
+      "description": "Clothing items, accessories, outfits, and fashion styles",
+      "typical_verbosity": "balanced",
+      "icon": "checkroom",
+      
+      "subcategories": [
+        "tops",
+        "bottoms",
+        "dresses",
+        "outerwear",
+        "shoes",
+        "accessories",
+        "jewelry",
+        "complete-outfits",
+        "fashion-styles",
+        "historical-fashion",
+        "cultural-attire"
+      ],
+      
+      "keywords": [
+        "fashion",
+        "clothing",
+        "apparel",
+        "outfit",
+        "attire",
+        "garment",
+        "wear",
+        "style",
+        "accessory"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "leather jacket",
+          "evening gown",
+          "sneakers"
+        ],
+        "balanced": [
+          "vintage leather motorcycle jacket",
+          "elegant red evening gown",
+          "casual white canvas sneakers"
+        ],
+        "detailed": [
+          "vintage brown leather motorcycle jacket with silver zippers",
+          "elegant flowing red evening gown with lace details",
+          "casual white canvas sneakers with rubber sole"
+        ],
+        "verbose": [
+          "vintage distressed brown leather motorcycle jacket with asymmetric silver zippers and studded collar details",
+          "elegant flowing red evening gown with intricate lace overlay, silk fabric, and dramatic floor-length train",
+          "casual worn white canvas sneakers with thick rubber sole, frayed laces, and scuffed toe caps"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "casual-tops",
+          "verbosity": "balanced",
+          "entry_count": 15,
+          "examples": [
+            "comfortable cotton t-shirt",
+            "vintage band graphic tee",
+            "cozy oversized sweater"
+          ]
+        },
+        {
+          "name": "formal-wear",
+          "verbosity": "detailed",
+          "entry_count": 12,
+          "examples": [
+            "tailored black business suit with crisp white shirt",
+            "elegant floor-length evening gown with beaded bodice",
+            "classic black tie tuxedo with silk bow tie"
+          ]
+        }
+      ],
+      
+      "best_practices": [
+        "Specify fabric/material when relevant",
+        "Include fit/style descriptors (fitted, loose, flowing)",
+        "Consider color as part of description",
+        "Think about occasion/context",
+        "Include both common and unique items"
+      ],
+      
+      "avoid": [
+        "Brand names (unless essential to style)",
+        "Sizing numbers (use descriptive terms)",
+        "Price or quality judgments",
+        "Wearer characteristics (focus on garment)"
+      ]
+    },
+
+    {
+      "id": 2,
+      "name": "Locations & Settings",
+      "description": "Indoor and outdoor locations, environments, and scene settings",
+      "typical_verbosity": "detailed",
+      "icon": "place",
+      
+      "subcategories": [
+        "indoor-residential",
+        "indoor-commercial",
+        "outdoor-natural",
+        "outdoor-urban",
+        "fantasy-locations",
+        "historical-settings",
+        "sci-fi-environments",
+        "abstract-spaces"
+      ],
+      
+      "keywords": [
+        "location",
+        "setting",
+        "environment",
+        "place",
+        "scene",
+        "landscape",
+        "interior",
+        "exterior",
+        "backdrop"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "forest",
+          "coffee shop",
+          "beach"
+        ],
+        "balanced": [
+          "dense pine forest clearing",
+          "cozy corner coffee shop",
+          "tropical sandy beach"
+        ],
+        "detailed": [
+          "dense misty pine forest with sunlight filtering through trees",
+          "cozy corner coffee shop with wooden tables and warm lighting",
+          "tropical white sand beach with crystal blue water"
+        ],
+        "verbose": [
+          "dense misty pine forest with golden sunlight filtering through tall ancient trees, moss-covered rocks scattered on the forest floor",
+          "cozy corner coffee shop with rustic wooden tables, vintage pendant lighting, exposed brick walls, and the aroma of fresh espresso",
+          "pristine tropical white sand beach with crystal clear turquoise water, swaying palm trees, and gentle waves lapping at the shore"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "urban-locations",
+          "verbosity": "detailed",
+          "entry_count": 18,
+          "examples": [
+            "busy downtown street corner with towering skyscrapers",
+            "quiet residential neighborhood with tree-lined sidewalks",
+            "industrial warehouse district with brick buildings"
+          ]
+        }
+      ],
+      
+      "best_practices": [
+        "Include atmospheric details",
+        "Specify time of day when relevant",
+        "Describe scale/scope",
+        "Include environmental conditions",
+        "Consider mood and ambiance"
+      ],
+      
+      "avoid": [
+        "Specific real-world addresses",
+        "Named locations (unless historical/famous)",
+        "Temporary/transient elements",
+        "Characters or people in description"
+      ]
+    },
+
+    {
+      "id": 3,
+      "name": "Artistic Styles",
+      "description": "Art styles, mediums, techniques, and aesthetic approaches",
+      "typical_verbosity": "balanced",
+      "icon": "palette",
+      
+      "subcategories": [
+        "traditional-art",
+        "digital-art",
+        "photography-styles",
+        "art-movements",
+        "cultural-styles",
+        "modern-aesthetics",
+        "mixed-media"
+      ],
+      
+      "keywords": [
+        "art",
+        "style",
+        "aesthetic",
+        "artistic",
+        "visual",
+        "technique",
+        "medium",
+        "approach"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "oil painting",
+          "sketch",
+          "watercolor"
+        ],
+        "balanced": [
+          "impressionist oil painting style",
+          "detailed graphite pencil sketch",
+          "soft watercolor wash technique"
+        ],
+        "detailed": [
+          "impressionist oil painting with visible brushstrokes and vibrant colors",
+          "highly detailed graphite pencil sketch with fine crosshatching",
+          "delicate watercolor wash with soft color gradients"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "digital-art-styles",
+          "verbosity": "balanced",
+          "entry_count": 20,
+          "examples": [
+            "cel-shaded anime style",
+            "photorealistic digital painting",
+            "low-poly 3D render"
+          ]
+        }
+      ],
+      
+      "best_practices": [
+        "Specify medium when relevant",
+        "Include technical aspects",
+        "Reference art movements accurately",
+        "Consider cultural context",
+        "Mix mainstream and niche styles"
+      ]
+    },
+
+    {
+      "id": 4,
+      "name": "Lighting & Atmosphere",
+      "description": "Lighting conditions, atmospheric effects, and mood",
+      "typical_verbosity": "detailed",
+      "icon": "wb_sunny",
+      
+      "subcategories": [
+        "natural-light",
+        "artificial-light",
+        "time-of-day",
+        "weather-lighting",
+        "dramatic-lighting",
+        "studio-lighting",
+        "special-effects"
+      ],
+      
+      "keywords": [
+        "lighting",
+        "atmosphere",
+        "ambiance",
+        "mood",
+        "illumination",
+        "glow",
+        "shadow",
+        "brightness"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "golden hour",
+          "candlelight",
+          "neon glow"
+        ],
+        "balanced": [
+          "soft golden hour sunlight",
+          "warm flickering candlelight",
+          "vibrant neon city glow"
+        ],
+        "detailed": [
+          "soft golden hour sunlight filtering through window blinds",
+          "warm flickering candlelight casting dancing shadows",
+          "vibrant neon city lights reflecting off wet pavement"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "cinematic-lighting",
+          "verbosity": "detailed",
+          "entry_count": 15,
+          "examples": [
+            "dramatic rim lighting with deep shadows and bright highlights",
+            "soft diffused backlight creating a gentle halo effect",
+            "harsh overhead lighting with stark contrasts"
+          ]
+        }
+      ],
+      
+      "best_practices": [
+        "Describe light quality (soft, harsh, diffused)",
+        "Include direction when relevant",
+        "Mention color temperature",
+        "Describe shadow characteristics",
+        "Consider mood/atmosphere"
+      ]
+    },
+
+    {
+      "id": 5,
+      "name": "Character Features",
+      "description": "Physical characteristics, features, and appearance details",
+      "typical_verbosity": "balanced",
+      "icon": "face",
+      
+      "subcategories": [
+        "hair-styles",
+        "hair-colors",
+        "eye-features",
+        "facial-features",
+        "body-types",
+        "age-ranges",
+        "skin-tones",
+        "distinctive-features"
+      ],
+      
+      "keywords": [
+        "character",
+        "person",
+        "human",
+        "features",
+        "appearance",
+        "physical",
+        "traits"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "long hair",
+          "blue eyes",
+          "athletic"
+        ],
+        "balanced": [
+          "long flowing auburn hair",
+          "piercing blue eyes",
+          "athletic muscular build"
+        ],
+        "detailed": [
+          "long flowing auburn hair with natural waves",
+          "piercing blue eyes with subtle green flecks",
+          "athletic muscular build with defined shoulders"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "hair-styles",
+          "verbosity": "balanced",
+          "entry_count": 25,
+          "examples": [
+            "short pixie cut",
+            "long flowing waves",
+            "neat professional bun"
+          ]
+        }
+      ],
+      
+      "best_practices": [
+        "Be specific but respectful",
+        "Include diverse representations",
+        "Focus on visual observable traits",
+        "Avoid stereotypes",
+        "Use appropriate terminology"
+      ]
+    },
+
+    {
+      "id": 6,
+      "name": "Actions & Poses",
+      "description": "Character poses, actions, gestures, and movements",
+      "typical_verbosity": "balanced",
+      "icon": "directions_run",
+      
+      "subcategories": [
+        "standing-poses",
+        "sitting-poses",
+        "dynamic-actions",
+        "hand-gestures",
+        "facial-expressions-actions",
+        "sports-activities",
+        "daily-activities",
+        "interactions"
+      ],
+      
+      "keywords": [
+        "action",
+        "pose",
+        "position",
+        "gesture",
+        "movement",
+        "stance",
+        "posture"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "standing",
+          "running",
+          "sitting"
+        ],
+        "balanced": [
+          "standing with arms crossed",
+          "running at full speed",
+          "sitting cross-legged comfortably"
+        ],
+        "detailed": [
+          "standing confidently with arms crossed over chest",
+          "running at full speed with determined expression",
+          "sitting cross-legged on floor with relaxed posture"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "portrait-poses",
+          "verbosity": "balanced",
+          "entry_count": 20,
+          "examples": [
+            "looking over shoulder gracefully",
+            "leaning against wall casually",
+            "hand under chin thoughtfully"
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "name": "Objects & Props",
+      "description": "Physical objects, props, and items",
+      "typical_verbosity": "minimal",
+      "icon": "category",
+      
+      "subcategories": [
+        "furniture",
+        "technology",
+        "tools",
+        "decorative-items",
+        "everyday-objects",
+        "vintage-items",
+        "modern-items"
+      ],
+      
+      "keywords": [
+        "object",
+        "item",
+        "prop",
+        "element",
+        "thing",
+        "artifact"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "coffee mug",
+          "book",
+          "chair"
+        ],
+        "balanced": [
+          "ceramic coffee mug",
+          "leather-bound book",
+          "wooden dining chair"
+        ],
+        "detailed": [
+          "white ceramic coffee mug with handle",
+          "old leather-bound book with yellowed pages",
+          "rustic wooden dining chair with carved details"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "office-items",
+          "verbosity": "minimal",
+          "entry_count": 15,
+          "examples": [
+            "laptop computer",
+            "desk lamp",
+            "notepad"
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "name": "Colors & Palettes",
+      "description": "Colors, color combinations, and palette schemes",
+      "typical_verbosity": "minimal",
+      "icon": "color_lens",
+      
+      "subcategories": [
+        "basic-colors",
+        "color-modifiers",
+        "color-combinations",
+        "mood-palettes",
+        "seasonal-colors",
+        "metallic-colors"
+      ],
+      
+      "keywords": [
+        "color",
+        "palette",
+        "hue",
+        "tone",
+        "shade",
+        "tint"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "red",
+          "blue",
+          "gold"
+        ],
+        "balanced": [
+          "vibrant red",
+          "deep ocean blue",
+          "metallic gold"
+        ],
+        "detailed": [
+          "vibrant crimson red",
+          "deep rich ocean blue",
+          "bright metallic gold"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "color-descriptors",
+          "verbosity": "balanced",
+          "entry_count": 30,
+          "examples": [
+            "pastel pink",
+            "neon green",
+            "matte black"
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "name": "Emotions & Expressions",
+      "description": "Emotional states, facial expressions, and moods",
+      "typical_verbosity": "balanced",
+      "icon": "mood",
+      
+      "subcategories": [
+        "positive-emotions",
+        "negative-emotions",
+        "neutral-expressions",
+        "complex-emotions",
+        "subtle-expressions",
+        "intense-emotions"
+      ],
+      
+      "keywords": [
+        "emotion",
+        "feeling",
+        "expression",
+        "mood",
+        "sentiment"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "happy",
+          "sad",
+          "angry"
+        ],
+        "balanced": [
+          "genuinely happy smile",
+          "melancholy sad expression",
+          "intensely angry glare"
+        ],
+        "detailed": [
+          "genuinely happy smile with crinkled eyes",
+          "melancholy sad expression with downcast gaze",
+          "intensely angry glare with furrowed brow"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "facial-expressions",
+          "verbosity": "balanced",
+          "entry_count": 25,
+          "examples": [
+            "gentle warm smile",
+            "contemplative thoughtful gaze",
+            "surprised wide-eyed look"
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "name": "Composition & Framing",
+      "description": "Camera angles, framing, composition techniques",
+      "typical_verbosity": "balanced",
+      "icon": "photo_camera",
+      
+      "subcategories": [
+        "shot-types",
+        "camera-angles",
+        "perspectives",
+        "depth-of-field",
+        "framing-techniques",
+        "focal-points"
+      ],
+      
+      "keywords": [
+        "composition",
+        "framing",
+        "shot",
+        "view",
+        "camera",
+        "angle",
+        "perspective"
+      ],
+      
+      "verbosity_examples": {
+        "minimal": [
+          "closeup",
+          "wide shot",
+          "low angle"
+        ],
+        "balanced": [
+          "tight facial closeup",
+          "wide establishing shot",
+          "dramatic low angle"
+        ],
+        "detailed": [
+          "tight closeup focusing on facial features",
+          "wide establishing shot showing full environment",
+          "dramatic low angle looking up at subject"
+        ]
+      },
+      
+      "sample_collections": [
+        {
+          "name": "camera-shots",
+          "verbosity": "balanced",
+          "entry_count": 15,
+          "examples": [
+            "medium shot from eye level",
+            "extreme closeup macro shot",
+            "bird's eye view from above"
+          ]
+        }
+      ]
+    }
+  ],
+
+  "category_selection_guide": {
+    "if_describing_people": [
+      "Character Features",
+      "Emotions & Expressions",
+      "Actions & Poses"
+    ],
+    "if_describing_clothing": [
+      "Fashion & Clothing"
+    ],
+    "if_describing_places": [
+      "Locations & Settings",
+      "Lighting & Atmosphere"
+    ],
+    "if_describing_art_style": [
+      "Artistic Styles",
+      "Colors & Palettes"
+    ],
+    "if_describing_camera": [
+      "Composition & Framing"
+    ],
+    "if_describing_things": [
+      "Objects & Props"
+    ]
+  },
+
+  "cross_category_examples": {
+    "complete_portrait_prompt": {
+      "description": "Example using wildcards from multiple categories",
+      "prompt": "portrait of __character-features-hair__, __emotions-expressions__, wearing __fashion-tops__, __lighting-styles__, __camera-shots__",
+      "possible_expansion": "portrait of long flowing auburn hair, gentle warm smile, wearing vintage leather jacket, soft golden hour sunlight, medium shot from eye level"
+    },
+    "landscape_scene": {
+      "description": "Landscape using multiple categories",
+      "prompt": "__locations-outdoor__, __lighting-atmosphere__, __color-palettes__, __composition-framing__",
+      "possible_expansion": "misty pine forest, dramatic rim lighting, cool blue tones, wide establishing shot"
+    }
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2024-01-01",
+    "total_categories": 10,
+    "recommended_verbosity_default": "balanced",
+    "usage_note": "This catalog provides standardized structure for organizing wildcard collections. Use category conventions as guidelines, not strict rules."
+  }
+}

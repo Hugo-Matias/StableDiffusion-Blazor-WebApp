@@ -1,0 +1,28 @@
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+
+<MudStack Spacing="2">
+    <ProjectFolderSelector Dense="true"
+                           ProjectName="@Directive.ProjectName"
+                           ProjectNameChanged="OnProjectChanged"
+                           FolderName="@_filterFolder"
+                           FolderNameChanged="OnFolderFilterChanged"
+                           FolderLabel="Folder (filter)"
+                           EmptyFolderLabel="(all folders)"
+                           EmptyProjectLabel="(job default)" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        Folder filters the project list; only the selected project is persisted as the override.
+        Leaving the project empty falls back to the job's default output config.
+    </MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public SetOutputDirective Directive { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // UI-only folder filter; not stored on the directive (Phase 16c).
+    private string? _filterFolder;
+
+    private void OnProjectChanged(string? value) => Directive.ProjectName = value;
+    private void OnFolderFilterChanged(string? value) => _filterFolder = value;
+}

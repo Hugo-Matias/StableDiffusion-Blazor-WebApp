@@ -1,0 +1,193 @@
+@namespace BlazorWebApp.Components.Character
+
+<div class="character-shot-grid-shell">
+    <div class="character-shot-toolbar">
+        <div>
+            <MudText Typo="Typo.subtitle1">Reference Slots</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@EnabledCount enabled / @Slots.Count total</MudText>
+        </div>
+        <div class="send-to-buttons character-shot-toolbar-actions">
+            <button type="button" class="send-to-btn mode-extras" @onclick="ToggleAddSlotMenu" disabled="@IsRunning">
+                <MudIcon Icon="fa-solid fa-plus" Size="Size.Small" />
+                <span>Add Slot</span>
+            </button>
+            <button type="button" class="send-to-btn" @onclick="EnableAll" disabled="@IsRunning">
+                <MudIcon Icon="fa-solid fa-check-double" Size="Size.Small" />
+                <span>Enable All</span>
+            </button>
+            <button type="button" class="send-to-btn" @onclick="DisableAll" disabled="@IsRunning">
+                <MudIcon Icon="fa-solid fa-ban" Size="Size.Small" />
+                <span>Disable All</span>
+            </button>
+        </div>
+        @if (_addSlotMenuOpen)
+        {
+            <div class="character-add-slot-popover-layer" @onclick="CloseAddSlotMenu">
+                <div class="character-add-slot-popover" @onclick:stopPropagation="true">
+                    <div class="character-add-slot-actions">
+                        @foreach (var preset in CharacterReferenceSlotCatalog.GetAddablePresets())
+                        {
+                            <button type="button" class="send-to-btn" disabled="@IsRunning"
+                                    @onclick="() => AddSlot(preset.PresetKey)">
+                                <MudIcon Icon="@GetPresetIcon(preset.PresetKey)" Size="Size.Small" />
+                                <span>@preset.Label</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="character-shot-grid-scroll">
+        <div class="character-shot-groups">
+            @foreach (var group in GroupSlots())
+            {
+                <section class="character-shot-group" aria-label="@group.Label slots">
+                    <header class="character-shot-group-header">
+                        <button type="button" class="character-shot-group-toggle" @onclick="() => ToggleGroup(group.Kind)">
+                            <MudIcon Icon="@GetKindIcon(group.Kind)" Size="Size.Small" />
+                            <MudText Typo="Typo.subtitle2">@group.Label</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@group.Slots.Count</MudText>
+                            <MudIcon Icon="@(IsGroupExpanded(group.Kind) ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down")" Size="Size.Small" Class="character-shot-group-chevron" />
+                        </button>
+                        <button type="button" class="send-to-btn" @onclick="() => ToggleGroupSelection(group)" disabled="@IsRunning">
+                            <MudIcon Icon="@(group.Slots.All(s => s.IsEnabled) ? "fa-solid fa-ban" : "fa-solid fa-check-double")" Size="Size.Small" />
+                            <span>@(group.Slots.All(s => s.IsEnabled) ? "Deselect" : "Select All")</span>
+                        </button>
+                    </header>
+                    @if (IsGroupExpanded(group.Kind))
+                    {
+                        <div class="character-shot-grid">
+                            @foreach (var slot in group.Slots)
+                            {
+                                <CharacterShotCard Slot="slot" IsRunning="IsRunning" OnChanged="OnSlotChanged" OnRun="OnRunSlot"
+                                                   OnView="OnViewSlot" OnRemove="OnRemoveSlot" />
+                            }
+                        </div>
+                    }
+                </section>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<CharacterReferenceSlotState> Slots { get; set; } = new();
+    [Parameter] public bool IsRunning { get; set; }
+    [Parameter] public EventCallback OnSlotChanged { get; set; }
+    [Parameter] public EventCallback<CharacterReferenceSlotPresetKey> OnAddSlot { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveSlot { get; set; }
+    [Parameter] public EventCallback<string> OnRunSlot { get; set; }
+    [Parameter] public EventCallback<string> OnViewSlot { get; set; }
+
+    private bool _addSlotMenuOpen;
+    private readonly HashSet<CharacterReferenceSlotKind> _collapsedGroups = new();
+
+    private int EnabledCount => Slots.Count(slot => slot.IsEnabled);
+
+    private bool IsGroupExpanded(CharacterReferenceSlotKind kind) => !_collapsedGroups.Contains(kind);
+
+    private void ToggleGroup(CharacterReferenceSlotKind kind)
+    {
+        if (!_collapsedGroups.Remove(kind))
+            _collapsedGroups.Add(kind);
+    }
+
+    private async Task ToggleGroupSelection(CharacterSlotGroup group)
+    {
+        var allEnabled = group.Slots.All(s => s.IsEnabled);
+        foreach (var slot in group.Slots)
+            slot.IsEnabled = !allEnabled;
+        await OnSlotChanged.InvokeAsync();
+    }
+
+    private IReadOnlyList<CharacterSlotGroup> GroupSlots()
+    {
+        return CharacterReferenceSlotCatalog.SlotKindOrder
+            .Select(kind => new CharacterSlotGroup(kind, GetKindLabel(kind), Slots.Where(slot => slot.Kind == kind).ToList()))
+            .Where(group => group.Slots.Count > 0)
+            .ToList();
+    }
+
+    private void ToggleAddSlotMenu()
+    {
+        _addSlotMenuOpen = !_addSlotMenuOpen;
+    }
+
+    private void CloseAddSlotMenu()
+    {
+        _addSlotMenuOpen = false;
+    }
+
+    private async Task AddSlot(CharacterReferenceSlotPresetKey presetKey)
+    {
+        _addSlotMenuOpen = false;
+        await OnAddSlot.InvokeAsync(presetKey);
+    }
+
+    private async Task EnableAll()
+    {
+        foreach (var slot in Slots)
+        {
+            slot.IsEnabled = true;
+        }
+
+        await OnSlotChanged.InvokeAsync();
+    }
+
+    private async Task DisableAll()
+    {
+        foreach (var slot in Slots)
+        {
+            slot.IsEnabled = false;
+        }
+
+        await OnSlotChanged.InvokeAsync();
+    }
+
+    private sealed record CharacterSlotGroup(CharacterReferenceSlotKind Kind, string Label,
+List<CharacterReferenceSlotState> Slots);
+
+    private static string GetKindLabel(CharacterReferenceSlotKind kind)
+    {
+        return kind switch
+        {
+            CharacterReferenceSlotKind.BodyAngle => "Body Angles",
+            CharacterReferenceSlotKind.Expression => "Expressions",
+            CharacterReferenceSlotKind.Pose => "Poses",
+            CharacterReferenceSlotKind.Body => "Body",
+            CharacterReferenceSlotKind.Outfit => "Outfits",
+            CharacterReferenceSlotKind.Landscape => "Landscapes",
+            _ => "Custom"
+        };
+    }
+
+    private static string GetKindIcon(CharacterReferenceSlotKind kind)
+    {
+        return kind switch
+        {
+            CharacterReferenceSlotKind.BodyAngle => "fa-solid fa-camera-retro",
+            CharacterReferenceSlotKind.Expression => "fa-solid fa-face-smile",
+            CharacterReferenceSlotKind.Pose => "fa-solid fa-person-running",
+            CharacterReferenceSlotKind.Body => "fa-solid fa-child-reaching",
+            CharacterReferenceSlotKind.Outfit => "fa-solid fa-shirt",
+            CharacterReferenceSlotKind.Landscape => "fa-solid fa-panorama",
+            _ => "fa-solid fa-square-plus"
+        };
+    }
+
+    private static string GetPresetIcon(CharacterReferenceSlotPresetKey presetKey)
+    {
+        return presetKey switch
+        {
+            CharacterReferenceSlotPresetKey.CustomExpression => "fa-solid fa-face-smile",
+            CharacterReferenceSlotPresetKey.CustomPose => "fa-solid fa-person-running",
+            CharacterReferenceSlotPresetKey.CustomCamera => "fa-solid fa-camera-retro",
+            CharacterReferenceSlotPresetKey.CustomBody => "fa-solid fa-child-reaching",
+            CharacterReferenceSlotPresetKey.CustomOutfit => "fa-solid fa-shirt",
+            CharacterReferenceSlotPresetKey.CustomLandscape => "fa-solid fa-panorama",
+            _ => "fa-solid fa-square-plus"
+        };
+    }
+}

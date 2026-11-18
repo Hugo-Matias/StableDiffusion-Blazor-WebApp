@@ -1,0 +1,1082 @@
+﻿[
+    {
+        "name":  "Face: Natural No-Makeup Look",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a natural, no-makeup appearance. Remove any visible makeup traces while maintaining skin texture and natural features. Keep subject position and their pose the same as the reference. Ensure skin looks clean but not airbrushed. Make sure facial features remain unchanged except for makeup removal. Make complexion look fresh and bare. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure natural lighting fits the bare-face aesthetic. Ensure no artificial coloration on lips or cheeks. Keep in focus. The result should be a clean, makeup-free face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "natural",
+                     "bare-face",
+                     "clean"
+                 ]
+    },
+    {
+        "name":  "Face: Everyday Light Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have light, everyday makeup suitable for daily wear. Apply subtle foundation, light mascara, natural brow definition, and a soft lip tint. Keep subject position and their pose the same as the reference. Ensure makeup looks effortless and understated. Make sure skin has even tone without heavy coverage. Make lips look naturally colored with a hint of tint. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, natural lighting complements the light makeup. Ensure brows are groomed but not dramatic. Keep in focus. The result should be an everyday, lightly made-up face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "everyday",
+                     "light",
+                     "natural"
+                 ]
+    },
+    {
+        "name":  "Face: Smoky Eye Glam",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature dramatic smoky eye makeup with dark blended eyeshadow, winged eyeliner, and voluminous lashes. Use deep charcoal, black, or plum tones blending outward from the lash line into a soft halo. Keep subject position and their pose the same as the reference. Ensure the smoky gradient is smooth and professional. Make sure the eyes are the focal point with intense dark shading. Make lashes look thick and defined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic lighting accentuates the eye makeup depth. Ensure cheek and lip makeup stays subdued to balance the eyes. Keep in focus. The result should be a glamorous smoky eye look.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "smoky-eye",
+                     "glam",
+                     "dramatic"
+                 ]
+    },
+    {
+        "name":  "Face: Bold Red Lip",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s lips to feature a bold, classic red lipstick with sharp lip lines and full coverage. Use a rich crimson or true red shade with precise application. Keep subject position and their pose the same as the reference. Ensure lip color is vibrant and evenly applied. Make sure lip edges are clean and defined. Make the rest of the face makeup minimal to let the lips stand out. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the red lip vibrancy. Ensure no smudging or feathering at the lip line. Keep in focus. The result should be a striking bold red lip.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "red-lip",
+                     "bold",
+                     "classic"
+                 ]
+    },
+    {
+        "name":  "Face: Gothic Dark Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature gothic dark makeup with pale foundation, heavy black eyeliner, dark purple or black eyeshadow, and deep burgundy or black lipstick. Add dramatic contouring for a hollow-cheek effect. Keep subject position and their pose the same as the reference. Ensure the overall palette is dark and moody. Make sure skin tone appears porcelain-pale beneath the makeup. Make lips look like they wear deep gothic color. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure low-key lighting fits the gothic aesthetic. Ensure dark shadows enhance the dramatic contouring. Keep in focus. The result should be a gothic, dark makeup look.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "gothic",
+                     "dark",
+                     "pale"
+                 ]
+    },
+    {
+        "name":  "Face: Editorial Avant-Garde Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature editorial avant-garde makeup with unconventional color placement, graphic liner shapes, and artistic paint strokes. Use unexpected colors like electric blue, neon green, or metallic silver applied in bold geometric patterns across the face. Keep subject position and their pose the same as the reference. Ensure the makeup reads as high-fashion artistry. Make sure the application is precise and intentional. Make the color blocking look deliberate and striking. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure studio lighting highlights the artistic makeup details. Ensure clean lines and sharp edges. Keep in focus. The result should be an editorial avant-garde makeup face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "editorial",
+                     "avant-garde",
+                     "artistic"
+                 ]
+    },
+    {
+        "name":  "Face: Bridal Soft Glam",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature bridal soft glam makeup with flawless luminous skin, soft rosy blush, subtle shimmery eyeshadow in champagne or rose gold tones, defined lashes, and a soft pink or nude-pink lip. Add delicate highlighter on cheekbones and brow bone. Keep subject position and their pose the same as the reference. Ensure the overall look is romantic and polished. Make sure skin has a radiant glow without being oily. Make eyes look softly enhanced with shimmer. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, flattering lighting enhances the bridal radiance. Ensure everything looks camera-ready and timeless. Keep in focus. The result should be a beautiful bridal soft glam face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "bridal",
+                     "soft-glam",
+                     "romantic"
+                 ]
+    },
+    {
+        "name":  "Face: Heavy Contouring",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature heavy, dramatic contouring with dark shading along cheekbones, jawline, and nose sides paired with bright highlighter on the high points of the face. Create a sculpted, chiseled appearance through strategic shadow placement. Keep subject position and their pose the same as the reference. Ensure contour lines are blended but visibly impactful. Make sure cheekbones appear sharply defined. Make the nose look slimmer from the contour shading. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting maximizes the 3D sculpted effect. Ensure highlighter catches light on cheekbones, bridge of nose, and cupid\u0027s bow. Keep in focus. The result should be a heavily contoured, sculpted face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "contouring",
+                     "sculpted",
+                     "dramatic"
+                 ]
+    },
+    {
+        "name":  "Face: Highlighter Glow",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature intense highlighter glow with shimmering, dewy skin and metallic or pearlescent highlight on cheekbones, brow bones, nose bridge, cupid\u0027s bow, and inner eye corners. Create a wet-look luminous finish across the high points of the face. Keep subject position and their pose the same as the reference. Ensure the glow is radiant and reflective. Make sure skin looks dewy and lit-from-within. Make the highlighter catch light dramatically. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright lighting maximizes the shimmering effect. Ensure the glow reads as glamorous and fresh. Keep in focus. The result should be an intensely glowing, highlighted face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "highlighter",
+                     "glow",
+                     "dewy"
+                 ]
+    },
+    {
+        "name":  "Face: Tribal Face Paint",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature tribal-style face paint with bold geometric patterns, stripes, and symbolic markings in earth tones or high-contrast colors like white, black, red, and ochre. Apply symmetrical designs across cheeks, forehead, and around the eyes. Keep subject position and their pose the same as the reference. Ensure the painted patterns are sharp and culturally inspired. Make sure the paint looks applied to skin rather than digital overlay. Make the markings read as ceremonial or warrior-style body art. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure natural lighting fits the tribal aesthetic. Ensure patterns are symmetrical and intentional. Keep in focus. The result should be a face with tribal paint designs.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "tribal",
+                     "face-paint",
+                     "ceremonial"
+                 ]
+    },
+    {
+        "name":  "Face: Defined Cheekbones",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have sharply defined, prominent cheekbones. Enhance the bone structure beneath the skin so the zygomatic arches appear high and angular with visible shadow beneath them. Keep subject position and their pose the same as the reference. Ensure the cheekbone definition looks anatomically natural but enhanced. Make sure the upper cheek area appears more sculpted. Make the face look more chiseled from the mid-face downward. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting accentuates the cheekbone shadows. Ensure the jawline complements the defined cheek structure. Keep in focus. The result should be a face with sharply defined cheekbones.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "cheekbones",
+                     "structure",
+                     "sculpted"
+                 ]
+    },
+    {
+        "name":  "Face: Softened Jawline",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a softer, more rounded jawline. Reduce angular definition at the mandible and create gentler curves from ear to chin. Keep subject position and their pose the same as the reference. Ensure the jaw transition is smooth without harsh angles. Make sure the lower face appears more delicate and feminine. Make the chin look less pointed or square. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting complements the rounded jaw shape. Ensure the overall face reads as softer and gentler. Keep in focus. The result should be a face with a softened, rounded jawline.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "jawline",
+                     "softened",
+                     "rounded"
+                 ]
+    },
+    {
+        "name":  "Face: Strong Angular Jaw",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a strong, angular jawline with sharp mandible definition and a chiseled chin. Enhance the bone structure to create a powerful, masculine or heroic lower face silhouette. Keep subject position and their pose the same as the reference. Ensure the jaw angles are pronounced and well-defined. Make sure the chin appears firm and squared. Make the lower face look commanding and structured. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting creates dramatic shadows along the jaw edge. Ensure the jaw reads as powerful and defined. Keep in focus. The result should be a face with a strong, angular jawline.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "jawline",
+                     "angular",
+                     "strong"
+                 ]
+    },
+    {
+        "name":  "Face: V-Shaped Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a V-shaped silhouette, narrowing from wider cheekbones down to a slim, pointed chin. Reduce width at the jaw and lower cheeks while maintaining the upper face proportions. Keep subject position and their pose the same as the reference. Ensure the tapering is smooth and elegant. Make sure the face appears longer and more slender. Make the chin look delicately tapered. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting emphasizes the slim facial contour. Ensure the V-shape reads as refined and graceful. Keep in focus. The result should be a face with an elegant V-shaped silhouette.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "v-shape",
+                     "slim",
+                     "tapered"
+                 ]
+    },
+    {
+        "name":  "Face: Rounder Full Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a rounder, fuller appearance with soft full cheeks and gentle curves throughout. Reduce angular features and create a plump, youthful facial silhouette. Keep subject position and their pose the same as the reference. Ensure the cheeks appear softly rounded and filled. Make sure the overall face shape is circular rather than angular. Make the chin look shorter and softer. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, diffused lighting complements the round face shape. Ensure the fullness reads as youthful and healthy. Keep in focus. The result should be a face with a rounder, fuller appearance.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "round",
+                     "full-cheeks",
+                     "youthful"
+                 ]
+    },
+    {
+        "name":  "Face: Longer Oblong Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a longer, oblong shape with an elongated forehead and chin while maintaining even width from temple to jaw. Stretch the vertical proportions slightly for a more elongated silhouette. Keep subject position and their pose the same as the reference. Ensure the lengthening is subtle and proportional. Make sure the face appears taller without distortion. Make the features look gracefully spaced along the longer frame. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting complements the elongated proportions. Ensure the oblong shape reads as elegant and refined. Keep in focus. The result should be a face with a longer, oblong silhouette.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "oblong",
+                     "elongated",
+                     "tall"
+                 ]
+    },
+    {
+        "name":  "Face: Heart-Shaped Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a heart-shaped silhouette with a wider forehead and cheekbone area tapering down to a narrow, delicate chin. Create the classic heart shape with full upper face and slim lower point. Keep subject position and their pose the same as the reference. Ensure the transition from wide temples to narrow chin is smooth. Make sure the forehead appears proportionally broader. Make the chin look small and pointed. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the cheekbone width while softening the chin area. Ensure the heart shape reads as classic and feminine. Keep in focus. The result should be a face with a heart-shaped silhouette.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "heart-shaped",
+                     "feminine",
+                     "classic"
+                 ]
+    },
+    {
+        "name":  "Face: Square Strong Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a square, strong appearance with equal width at forehead, cheekbones, and jawline. Create a powerful rectangular silhouette with defined corners at the jaw angles. Keep subject position and their pose the same as the reference. Ensure the facial width is consistent from top to bottom. Make sure the jaw corners are prominent and angular. Make the chin look broad and flat. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting emphasizes the square bone structure. Ensure the face reads as strong and commanding. Keep in focus. The result should be a face with a square, powerful shape.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "square",
+                     "strong",
+                     "angular"
+                 ]
+    },
+    {
+        "name":  "Face: Diamond Face Shape",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to have a diamond shape with narrow forehead and chin but wide, prominent cheekbones as the widest point of the face. Create the distinctive diamond silhouette with angular cheekbone emphasis. Keep subject position and their pose the same as the reference. Ensure the cheekbones are the clear focal width of the face. Make sure both the forehead and chin taper inward from the cheekbones. Make the overall shape read as geometrically striking. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the wide cheekbone apex. Ensure the diamond proportions look elegant and distinctive. Keep in focus. The result should be a face with a diamond-shaped silhouette.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "diamond",
+                     "cheekbones",
+                     "angular"
+                 ]
+    },
+    {
+        "name":  "Face: Slimmer Narrower Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to appear slimmer and narrower overall, reducing width at cheeks and jaw while maintaining natural proportions. Create a lean, refined facial silhouette without distortion. Keep subject position and their pose the same as the reference. Ensure the slimming is even across all horizontal measurements. Make sure the face looks thinner but still proportional. Make the cheek area appear less wide. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates natural shadow lines that enhance the slim appearance. Ensure the narrowness reads as elegant rather than extreme. Keep in focus. The result should be a slimmer, narrower face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "face-shape",
+                     "slim",
+                     "narrow",
+                     "refined"
+                 ]
+    },
+    {
+        "name":  "Face: Fuller Lips",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s lips to appear fuller and more voluminous. Enhance both upper and lower lip with increased plumpness while maintaining natural lip shape and proportion. Create a soft, hydrated appearance with subtle definition at the cupid\u0027s bow. Keep subject position and their pose the same as the reference. Ensure the fullness looks natural and proportional. Make sure the lips appear plush but not exaggerated. Make the mouth look more prominent on the face. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates soft highlights on the lip surface. Ensure the fuller lips read as attractive and natural. Keep in focus. The result should be a face with fuller, plumper lips.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "lips",
+                     "fuller",
+                     "plump",
+                     "volume"
+                 ]
+    },
+    {
+        "name":  "Face: Thinner Lips",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s lips to appear thinner and more delicate. Reduce lip volume while maintaining a defined lip line and natural mouth proportions. Create a subtle, refined mouth appearance with less prominent fullness. Keep subject position and their pose the same as the reference. Ensure the thinning is proportional and elegant. Make sure the lips look naturally slim rather than compressed. Make the mouth appear more understated on the face. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting complements the delicate lip shape. Ensure the thinner lips read as refined and subtle. Keep in focus. The result should be a face with thinner, more delicate lips.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "lips",
+                     "thinner",
+                     "delicate",
+                     "subtle"
+                 ]
+    },
+    {
+        "name":  "Face: Defined Cupid\u0027s Bow",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s upper lip to have a sharply defined cupid\u0027s bow with clear V-shaped indentations at the center of the upper lip. Enhance the double-curve shape for a classic, elegant lip contour. Keep subject position and their pose the same as the reference. Ensure the cupid\u0027s bow peaks are distinct but not exaggerated. Make sure the upper lip line is crisp and well-defined. Make the lip shape look more sculpted and refined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the cupid\u0027s bow definition. Ensure the lip contour reads as elegant and classic. Keep in focus. The result should be a face with a sharply defined cupid\u0027s bow.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "lips",
+                     "cupids-bow",
+                     "defined",
+                     "classic"
+                 ]
+    },
+    {
+        "name":  "Face: Pouty Lips",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s lips to have a pouty, slightly protruding appearance with enhanced forward projection and soft rounded edges. Create a sultry, kissable lip shape that appears naturally pushed outward. Keep subject position and their pose the same as the reference. Ensure the pout looks natural and alluring. Make sure both lips project slightly forward. Make the mouth look softly parted or ready to pout. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates soft shadows beneath the lower lip to enhance the pout effect. Ensure the lips read as seductive and full. Keep in focus. The result should be a face with pouty, alluring lips.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "lips",
+                     "pouty",
+                     "sultry",
+                     "alluring"
+                 ]
+    },
+    {
+        "name":  "Face: Wide Smile Lips",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s mouth to show a wide, bright smile with lips stretched broadly across the face revealing upper teeth. Create an enthusiastic, joyful expression through the lip and mouth shape alone while keeping other facial features unchanged. Keep subject position and their pose the same as the reference. Ensure the smile corners extend well toward the cheeks. Make sure the upper teeth are visible in a natural arc. Make the smile look genuine with slight cheek lift. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright lighting enhances the cheerful expression. Ensure the wide smile reads as warm and inviting. Keep in focus. The result should be a face with a wide, bright smile.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "lips",
+                     "smile",
+                     "wide",
+                     "cheerful"
+                 ]
+    },
+    {
+        "name":  "Face: Arched Dramatic Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eyebrows to have high, dramatic arches with sharp peaks and clean tapered tails. Create bold, well-defined brows with a pronounced upward curve at the outer third. Keep subject position and their pose the same as the reference. Ensure the arch peak is clearly defined and elevated. Make sure the brow shape is symmetrical on both sides. Make the brows look groomed and intentional. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the brow bone beneath the arches. Ensure the dramatic brows read as powerful and elegant. Keep in focus. The result should be a face with dramatically arched eyebrows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "brows",
+                     "arched",
+                     "dramatic",
+                     "groomed"
+                 ]
+    },
+    {
+        "name":  "Face: Straight Natural Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eyebrows to have a straight, horizontal shape with minimal arch and natural fullness. Create soft, low-maintenance brows that follow a nearly flat line across the brow bone. Keep subject position and their pose the same as the reference. Ensure the brow line is even without dramatic peaks. Make sure the brows look naturally grown rather than heavily shaped. Make the overall brow appearance relaxed and youthful. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting complements the natural brow shape. Ensure the straight brows read as fresh and effortless. Keep in focus. The result should be a face with straight, natural eyebrows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "brows",
+                     "straight",
+                     "natural",
+                     "youthful"
+                 ]
+    },
+    {
+        "name":  "Face: Thick Bold Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eyebrows to be thick, bold, and heavily filled with dense hair coverage across the entire brow area. Create powerful, statement-making brows that frame the face prominently. Keep subject position and their pose the same as the reference. Ensure the brow density is high and uniform. Make sure the brows have clear shape despite the thickness. Make the facial framing look strong and confident. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows individual hair texture within the thick brows. Ensure the bold brows read as modern and powerful. Keep in focus. The result should be a face with thick, bold eyebrows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "brows",
+                     "thick",
+                     "bold",
+                     "statement"
+                 ]
+    },
+    {
+        "name":  "Face: Thin Delicate Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eyebrows to be thin, delicate, and finely drawn with a narrow band of hair across the brow bone. Create refined, elegant brows reminiscent of classic beauty standards with subtle shaping. Keep subject position and their pose the same as the reference. Ensure the thinness is graceful rather than sparse. Make sure the brow shape remains defined despite being narrow. Make the overall appearance look polished and refined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting complements the delicate brow lines. Ensure the thin brows read as elegant and classic. Keep in focus. The result should be a face with thin, delicate eyebrows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "brows",
+                     "thin",
+                     "delicate",
+                     "classic"
+                 ]
+    },
+    {
+        "name":  "Face: Unibrow Connected Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eyebrows to connect at the center of the bridge forming a continuous unibrow. Create a natural-looking brow band that spans across both brows with hair growing through the glabella area. Keep subject position and their pose the same as the reference. Ensure the connection looks like natural hair growth rather than drawn-on. Make sure the overall brow shape remains defined despite being connected. Make the unibread look intentional and styled. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows the continuous brow texture. Ensure the unibrow reads as a deliberate aesthetic choice. Keep in focus. The result should be a face with connected unibrow eyebrows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "brows",
+                     "unibrow",
+                     "connected",
+                     "distinctive"
+                 ]
+    },
+    {
+        "name":  "Face: Freckles",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a natural freckle pattern across the nose bridge, cheeks, and upper face. Create small brown or tan spots scattered naturally with higher density on sun-exposed areas. Keep subject position and their pose the same as the reference. Ensure the freckles look organic and randomly distributed. Make sure the freckle size varies slightly for realism. Make the skin between freckles look clear and natural. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm lighting enhances the freckle visibility. Ensure the freckles read as youthful and charming. Keep in focus. The result should be a face with natural freckles.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "freckles",
+                     "natural",
+                     "youthful"
+                 ]
+    },
+    {
+        "name":  "Face: Beauty Mark Mole",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a small, dark beauty mark or mole placed elegantly near the mouth corner, cheek, or upper lip area. Create a single distinctive dark spot that adds character and allure to the face. Keep subject position and their pose the same as the reference. Ensure the beauty mark is small and well-defined. Make sure it looks like a natural skin feature rather than makeup. Make the placement look intentional and flattering. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the beauty mark clearly. Ensure the mole reads as charming and distinctive. Keep in focus. The result should be a face with an elegant beauty mark.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "beauty-mark",
+                     "mole",
+                     "distinctive"
+                 ]
+    },
+    {
+        "name":  "Face: Glowing Dewy Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to have a glowing, dewy appearance with visible moisture sheen and luminous undertones. Create fresh, hydrated-looking skin that reflects light softly across the cheeks, forehead, and nose. Keep subject position and their pose the same as the reference. Ensure the glow looks like healthy hydration rather than oiliness. Make sure the skin texture appears smooth and plump. Make the complexion look radiant and lit from within. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright, soft lighting maximizes the dewy reflection. Ensure the glow reads as fresh and healthy. Keep in focus. The result should be a face with glowing, dewy skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "dewy",
+                     "glowing",
+                     "hydrated"
+                 ]
+    },
+    {
+        "name":  "Face: Matte Porcelain Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to have a matte, porcelain-like finish with zero shine and perfectly even pale tone. Create smooth, refined skin that absorbs light rather than reflecting it, giving a velvety flat appearance. Keep subject position and their pose the same as the reference. Ensure the skin looks flawlessly uniform without texture variation. Make sure there is no visible oil or moisture sheen. Make the complexion look like polished porcelain ceramic. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even, diffused lighting shows the matte quality. Ensure the skin reads as refined and elegant. Keep in focus. The result should be a face with matte porcelain skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "matte",
+                     "porcelain",
+                     "pale"
+                 ]
+    },
+    {
+        "name":  "Face: Weathered Rugged Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to have a weathered, rugged appearance with visible texture, sun damage marks, and lived-in character. Create skin that shows signs of outdoor exposure with slight roughness, uneven tone, and natural imperfections. Keep subject position and their pose the same as the reference. Ensure the weathering looks authentic and earned rather than damaged. Make sure the skin has realistic texture variation. Make the complexion look experienced and strong. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting reveals the skin texture details. Ensure the ruggedness reads as characterful and authentic. Keep in focus. The result should be a face with weathered, rugged skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "weathered",
+                     "rugged",
+                     "textured"
+                 ]
+    },
+    {
+        "name":  "Face: Tan Bronzed Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to have a warm, bronzed tan complexion with golden undertones and even sun-kissed coloring across the face. Create a healthy, beach-fresh appearance with rich warm tones. Keep subject position and their pose the same as the reference. Ensure the tan is evenly distributed without patchiness. Make sure the skin looks smooth beneath the warm coloration. Make the complexion glow with golden warmth. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm lighting complements the bronzed tones. Ensure the tan reads as healthy and vibrant. Keep in focus. The result should be a face with tan, bronzed skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "tan",
+                     "bronzed",
+                     "golden"
+                 ]
+    },
+    {
+        "name":  "Face: Rosy Flush Cheeks",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s cheeks to have a natural rosy flush with soft pink-red coloration concentrated on the apple of each cheek blending outward. Create a healthy, warm blush effect that looks like natural blood flow beneath the skin rather than applied makeup. Keep subject position and their pose the same as the reference. Ensure the flush is symmetrical and softly blended. Make sure the rosy color fades naturally into the surrounding skin tone. Make the cheeks look alive with warmth. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting enhances the natural blush glow. Ensure the flush reads as healthy and youthful. Keep in focus. The result should be a face with rosy flushed cheeks.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "rosy",
+                     "blush",
+                     "flushed"
+                 ]
+    },
+    {
+        "name":  "Face: Oily Shiny Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to have an oily, shiny appearance with visible specular highlights across the T-zone including forehead, nose bridge, and chin. Create a greasy sheen that reflects light strongly giving the skin a wet-looking surface quality. Keep subject position and their pose the same as the reference. Ensure the shininess is concentrated on natural oil-producing areas. Make sure the oily look reads as realistic skin texture. Make the highlights appear sharp and reflective. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting creates strong specular reflections on the oily surface. Ensure the shine reads as natural sebum production. Keep in focus. The result should be a face with oily, shiny skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "oily",
+                     "shiny",
+                     "realistic"
+                 ]
+    },
+    {
+        "name":  "Face: Dry Flaky Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to show signs of dryness with subtle flaking, tight appearance, and slightly rough texture especially around the cheeks and nose area. Create a dehydrated skin look with minor surface irregularities and dull matte finish. Keep subject position and their pose the same as the reference. Ensure the dryness looks realistic without being extreme. Make sure the skin texture shows fine surface cracks and uneven tone. Make the complexion look parched and in need of moisture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure harsh lighting reveals the dry skin texture. Ensure the flakiness reads as a natural skin condition. Keep in focus. The result should be a face with dry, flaky skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "dry",
+                     "flaky",
+                     "dehydrated"
+                 ]
+    },
+    {
+        "name":  "Face: Acne Blemish Scars",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s skin to show acne-related features including active red blemishes, small pustules, and healed acne scars with slight textural irregularities across the cheeks, chin, and forehead. Create realistic skin imperfections that add authenticity. Keep subject position and their pose the same as the reference. Ensure the blemishes vary in size and stage of healing. Make sure some areas show redness while others have pitted scarring texture. Make the skin look authentically imperfect. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even lighting reveals the skin imperfections clearly. Ensure the acne features read as realistic and unretouched. Keep in focus. The result should be a face with acne blemishes and scars.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "skin",
+                     "acne",
+                     "blemish",
+                     "scars"
+                 ]
+    },
+    {
+        "name":  "Face: Slimmer Nose",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s nose to appear slimmer and narrower with a refined bridge and smaller nostril width. Create an elegant, narrow nasal profile while maintaining natural proportions relative to the rest of the face. Keep subject position and their pose the same as the reference. Ensure the slimming is subtle and proportional. Make sure the nose bridge appears straighter and thinner. Make the tip look more delicate and refined. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates clean shadows along the narrowed bridge. Ensure the slimmer nose reads as elegant and natural. Keep in focus. The result should be a face with a slimmer, more refined nose.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "nose",
+                     "slimmer",
+                     "narrow",
+                     "refined"
+                 ]
+    },
+    {
+        "name":  "Face: Broader Nose",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s nose to appear broader and wider with a thicker bridge and more prominent nostril spread. Create a stronger, more commanding nasal presence while keeping natural facial proportions. Keep subject position and their pose the same as the reference. Ensure the broadening is proportional to the face. Make sure the nose bridge appears wider and more substantial. Make the tip look fuller and broader. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the broader nasal structure. Ensure the wider nose reads as strong and distinctive. Keep in focus. The result should be a face with a broader, stronger nose.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "nose",
+                     "broader",
+                     "wide",
+                     "strong"
+                 ]
+    },
+    {
+        "name":  "Face: Upturned Button Nose",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s nose to have an upturned, button-nose appearance with a slightly elevated tip and shorter bridge creating a cute, youthful profile. The nostrils should be subtly visible from the front view due to the upward tilt. Keep subject position and their pose the same as the reference. Ensure the upturn is gentle and charming. Make sure the nose appears small and delicate. Make the tip look slightly lifted and rounded. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting highlights the upturned tip shape. Ensure the button nose reads as cute and youthful. Keep in focus. The result should be a face with an upturned button nose.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "nose",
+                     "upturned",
+                     "button-nose",
+                     "youthful"
+                 ]
+    },
+    {
+        "name":  "Face: Aquiline Roman Nose",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s nose to have an aquiline, Roman profile with a pronounced convex curve along the bridge creating a noble, distinguished appearance. The nasal bridge should arch outward slightly before descending to a refined tip. Keep subject position and their pose the same as the reference. Ensure the curve is elegant rather than extreme. Make sure the nose reads as classical and commanding. Make the profile look regal and aristocratic. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure side lighting emphasizes the aquiline bridge curve. Ensure the Roman nose reads as distinguished and noble. Keep in focus. The result should be a face with an aquiline, Roman-style nose.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "nose",
+                     "aquiline",
+                     "roman",
+                     "noble"
+                 ]
+    },
+    {
+        "name":  "Face: Clean Shaven",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to be completely clean-shaven with all facial hair removed including beard, mustache, sideburns, and stubble. Create smooth, bare skin across the jawline, chin, upper lip, and cheeks where facial hair would normally grow. Keep subject position and their pose the same as the reference. Ensure the shaved areas look like natural bare skin. Make sure no shadow or stubble texture remains. Make the face appear fresh and clean. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even lighting shows the smooth shaven surface. Ensure the clean-shaven look reads as polished and neat. Keep in focus. The result should be a completely clean-shaven face.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "clean-shaven",
+                     "bare",
+                     "smooth"
+                 ]
+    },
+    {
+        "name":  "Face: Full Beard",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a full, thick beard covering the chin, jawline, cheeks, and connecting to a mustache. Create dense facial hair with natural texture and volume that frames the lower face completely. Keep subject position and their pose the same as the reference. Ensure the beard looks naturally grown with varied hair direction. Make sure the beard is well-groomed but full-bodied. Make the jawline appear broader from the beard coverage. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows individual hair strands within the beard texture. Ensure the full beard reads as masculine and rugged. Keep in focus. The result should be a face with a full, thick beard.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "beard",
+                     "full-beard",
+                     "masculine"
+                 ]
+    },
+    {
+        "name":  "Face: Stubble 5-O-Clock Shadow",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to show short stubble and 5-o\u0027clock shadow across the jawline, chin, cheeks, and upper lip area. Create a dark textured appearance from closely cropped facial hair that gives a rough, masculine edge without being a full beard. Keep subject position and their pose the same as the reference. Ensure the stubble looks like one to two days of growth. Make sure the shadow is evenly distributed across all facial hair zones. Make the skin look slightly rougher from the hair texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the stubble texture creating a darkened appearance. Ensure the 5-o\u0027clock shadow reads as ruggedly attractive. Keep in focus. The result should be a face with stubble and 5-o\u0027clock shadow.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "stubble",
+                     "shadow",
+                     "rugged"
+                 ]
+    },
+    {
+        "name":  "Face: Mustache Only",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a mustache while keeping the rest of the face clean-shaven. Create well-defined facial hair above the upper lip with natural shape and density. The chin, jawline, and cheeks should remain bare. Keep subject position and their pose the same as the reference. Ensure the mustache is neatly shaped and groomed. Make sure the mustache style looks classic and intentional. Make the upper lip area look distinguished from the facial hair. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the mustache shape clearly. Ensure the mustache reads as stylish and deliberate. Keep in focus. The result should be a face with a clean mustache.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "mustache",
+                     "groomed",
+                     "classic"
+                 ]
+    },
+    {
+        "name":  "Face: Goatee",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a goatee with facial hair concentrated on the chin area optionally connected to a mustache while keeping the cheeks and jawline clean-shaven. Create a defined patch of beard that frames the mouth and chin without extending to the sides. Keep subject position and their pose the same as the reference. Ensure the goatee is neatly trimmed and shaped. Make sure the cheek areas remain completely bare. Make the chin look more prominent from the facial hair. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting defines the goatee boundaries clearly. Ensure the goatee reads as stylish and well-maintained. Keep in focus. The result should be a face with a neat goatee.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "goatee",
+                     "trimmed",
+                     "stylish"
+                 ]
+    },
+    {
+        "name":  "Face: Long Wild Beard",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a long, wild, unkempt beard extending well below the chin with thick voluminous hair flowing downward. Create an untamed, natural-looking beard with varied hair directions and some wispy strands giving a rugged, Viking-like appearance. Keep subject position and their pose the same as the reference. Ensure the beard length is substantial reaching toward the chest. Make sure the hair looks naturally wild rather than styled. Make the overall face look more imposing from the massive facial hair. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows depth and volume within the long beard. Ensure the wild beard reads as powerful and untamed. Keep in focus. The result should be a face with a long, wild flowing beard.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "facial-hair",
+                     "long-beard",
+                     "wild",
+                     "viking"
+                 ]
+    },
+    {
+        "name":  "Face: Youthful Smooth Skin",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to appear youthful with completely smooth, wrinkle-free skin and firm facial contours. Remove any signs of aging including fine lines, crow\u0027s feet, forehead wrinkles, and nasolabial folds while maintaining the subject\u0027s identity. Create fresh, elastic-looking skin with even tone. Keep subject position and their pose the same as the reference. Ensure the skin looks naturally young rather than artificially smoothed. Make sure facial features appear tight and lifted. Make the complexion look vibrant and energetic. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright, even lighting enhances the youthful glow. Ensure no age-related sagging or lines are visible. Keep in focus. The result should be a face with youthful, smooth skin.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "youthful",
+                     "smooth",
+                     "wrinkle-free"
+                 ]
+    },
+    {
+        "name":  "Face: Fine Lines and Wrinkles",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to show fine lines and wrinkles consistent with middle age including crow\u0027s feet at eye corners, forehead horizontal lines, nasolabial folds from nose to mouth corners, and slight chin creasing. Create realistic aging marks that add character and wisdom to the face. Keep subject position and their pose the same as the reference. Ensure the wrinkles follow natural facial fold patterns. Make sure the skin texture shows age-related changes without looking damaged. Make the expression lines look earned through years of use. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting reveals the wrinkle depth and texture. Ensure the aging reads as natural and dignified. Keep in focus. The result should be a face with fine lines and age-appropriate wrinkles.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "wrinkles",
+                     "fine-lines",
+                     "mature"
+                 ]
+    },
+    {
+        "name":  "Face: Elderly Deep Wrinkles",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to show advanced aging with deep wrinkles, pronounced sagging skin, age spots, and significant loss of facial volume. Create an elderly appearance with heavy crow\u0027s feet, deep forehead furrows, prominent nasolabial folds, marionette lines, and loose jowls along the jawline. Keep subject position and their pose the same as the reference. Ensure the aging is realistic and respectful. Make sure the skin texture shows thinning and age spots. Make the facial contours look softened from volume loss. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the deep wrinkle patterns and skin texture changes. Ensure the elderly appearance reads as wise and experienced. Keep in focus. The result should be a face showing advanced age with deep wrinkles.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "elderly",
+                     "deep-wrinkles",
+                     "aged"
+                 ]
+    },
+    {
+        "name":  "Face: Laugh Lines Smile Creases",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature prominent laugh lines and smile creases running from the outer corners of the nose down past the mouth corners. Create deep nasolabial folds that suggest a history of frequent smiling, adding warmth and approachability to the expression. Keep subject position and their pose the same as the reference. Ensure the laugh lines are symmetrical and naturally placed. Make sure the creases look like permanent expression lines rather than temporary. Make the face look friendly and well-lived. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the depth of the smile creases. Ensure the laugh lines read as warm and characterful. Keep in focus. The result should be a face with prominent laugh lines.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "laugh-lines",
+                     "smile-creases",
+                     "warm"
+                 ]
+    },
+    {
+        "name":  "Face: Frown Lines Between Brows",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature vertical frown lines between the eyebrows in the glabella region. Create deep expression creases that run vertically from the brow line toward the nose bridge, suggesting a habit of furrowing the brows in concentration or concern. Keep subject position and their pose the same as the reference. Ensure the frown lines are clearly defined but natural-looking. Make sure the skin between the brows shows repeated fold patterns. Make the expression look more serious and intense. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting emphasizes the vertical crease depth. Ensure the frown lines read as characterful intensity. Keep in focus. The result should be a face with prominent frown lines between the brows.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "frown-lines",
+                     "expression",
+                     "serious"
+                 ]
+    },
+    {
+        "name":  "Face: Sagging Jowls",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s lower face to show sagging jowls with loose skin drooping along the jawline from the mouth corners downward. Create age-related volume loss and skin laxity that softens the jaw definition and creates vertical folds beside the mouth. Keep subject position and their pose the same as the reference. Ensure the jowling looks like natural gravity-induced aging. Make sure the jawline appears less defined beneath the sagging tissue. Make the lower face look heavier and more aged. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals the jowl folds and shadow patterns. Ensure the sagging reads as realistic aging. Keep in focus. The result should be a face with noticeable sagging jowls.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "age",
+                     "jowls",
+                     "sagging",
+                     "aged"
+                 ]
+    },
+    {
+        "name":  "Face: Subtle Smiling Resting Expression",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s resting facial expression to show a subtle, gentle smile with slightly upturned mouth corners and relaxed cheek muscles. Create a warm, approachable neutral expression that is neither laughing nor frowning but carries a hint of pleasant contentment. Keep subject position and their pose the same as the reference. Ensure the smile is barely noticeable but present. Make sure the cheeks lift just enough to suggest happiness. Make the overall mood look friendly and calm. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft lighting complements the gentle expression. Ensure the subtle smile reads as natural and warm. Keep in focus. The result should be a face with a subtle, pleasant resting smile.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "expression",
+                     "smile",
+                     "subtle",
+                     "warm"
+                 ]
+    },
+    {
+        "name":  "Face: Serious Stern Expression",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s facial expression to appear serious and stern with a firm mouth line, slightly furrowed brows, and intense focused gaze. Create an authoritative, no-nonsense demeanor through subtle brow tension and closed lip positioning without changing the head angle or pose. Keep subject position and their pose the same as the reference. Ensure the seriousness reads as controlled rather than angry. Make sure the mouth is set in a firm horizontal line. Make the eyes look more intense and penetrating. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic lighting enhances the stern mood. Ensure the expression reads as commanding and authoritative. Keep in focus. The result should be a face with a serious, stern expression.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "expression",
+                     "serious",
+                     "stern",
+                     "authoritative"
+                 ]
+    },
+    {
+        "name":  "Face: Sad Pensive Expression",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s facial expression to appear sad and pensive with slightly downturned mouth corners, softened eye gaze looking downward or distant, and relaxed brow with inner brow lift suggesting melancholy. Create a thoughtful, sorrowful mood through subtle facial muscle changes without altering head position. Keep subject position and their pose the same as the reference. Ensure the sadness reads as quiet contemplation rather than active crying. Make sure the mouth corners turn down gently. Make the eyes look distant and wistful. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, muted lighting complements the melancholic mood. Ensure the expression reads as pensive and emotional. Keep in focus. The result should be a face with a sad, pensive expression.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "expression",
+                     "sad",
+                     "pensive",
+                     "melancholy"
+                 ]
+    },
+    {
+        "name":  "Face: Angry Intense Expression",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s facial expression to appear angry and intense with lowered, furrowed brows creating vertical tension lines between them, a tight compressed mouth with pressed lips, and a hard focused stare. Create an aggressive, confrontational mood through strong brow and mouth muscle engagement without changing head position. Keep subject position and their pose the same as the reference. Ensure the anger reads as controlled fury rather thanå¤±æŽ§ rage. Make sure the brows are drawn down and together aggressively. Make the jaw look tense and set. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure harsh directional lighting enhances the angry intensity. Ensure the expression reads as powerful and threatening. Keep in focus. The result should be a face with an angry, intense expression.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "expression",
+                     "angry",
+                     "intense",
+                     "aggressive"
+                 ]
+    },
+    {
+        "name":  "Face: Glitter Eye Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s eye area to feature glitter makeup with sparkling particles applied across the eyelids, brow bone, and inner corners. Create a festive, radiant look with fine metallic or holographic glitter catching light from every angle. Keep subject position and their pose the same as the reference. Ensure the glitter distribution looks intentional and glamorous. Make sure individual sparkle points are visible. Make the eyes look dazzling and eye-catching. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright lighting maximizes the glitter reflection. Ensure the sparkle reads as celebratory and bold. Keep in focus. The result should be a face with glittering eye makeup.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "glitter",
+                     "sparkle",
+                     "festive"
+                 ]
+    },
+    {
+        "name":  "Face: Face Gems and Rhinestones",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature decorative gems and rhinestones placed strategically around the eyes, cheekbones, temples, and forehead. Create a glamorous jeweled look with small crystal accents that catch light and add sparkle to the facial features. Keep subject position and their pose the same as the reference. Ensure the gem placement is symmetrical and aesthetically pleasing. Make sure each stone looks like it adheres to the skin surface. Make the face look adorned and celebratory. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates bright reflections on each gem. Ensure the rhinestones read as high-fashion decoration. Keep in focus. The result should be a face decorated with gems and rhinestones.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "gems",
+                     "rhinestones",
+                     "jeweled"
+                 ]
+    },
+    {
+        "name":  "Face: War Paint Stripes",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature bold war paint stripes in high-contrast colors like red, white, and black applied across cheeks, forehead, and around the eyes. Create aggressive, warrior-inspired markings with thick painted lines that convey strength and battle readiness. Keep subject position and their pose the same as the reference. Ensure the paint looks freshly applied with solid color coverage. Make sure the stripe patterns are symmetrical and fierce-looking. Make the face look intimidating and battle-ready. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic lighting enhances the war paint contrast. Ensure the markings read as fierce and combative. Keep in focus. The result should be a face with bold war paint stripes.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "war-paint",
+                     "stripes",
+                     "fierce"
+                 ]
+    },
+    {
+        "name":  "Face: Glowing Bioluminescent Markings",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature glowing bioluminescent markings that emit their own soft light in cyan, blue, or green tones. Create ethereal patterns across cheeks, temples, and forehead that appear to glow from beneath the skin surface with a magical luminescence. Keep subject position and their pose the same as the reference. Ensure the glow has a soft halo effect around each marking. Make sure the patterns look organic and otherworldly rather than painted on. Make the face look mystical and supernatural. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dark ambient lighting makes the bioluminescence stand out dramatically. Ensure the glow reads as magical and alien. Keep in focus. The result should be a face with glowing bioluminescent markings.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "markings",
+                     "bioluminescent",
+                     "glowing",
+                     "fantasy"
+                 ]
+    },
+    {
+        "name":  "Face: Scar Across Eye",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a visible scar running diagonally across one eye area from temple to cheek. Create a healed wound mark with slightly raised, discolored tissue that interrupts the smooth skin surface and adds a rugged, battle-worn character to the face. Keep subject position and their pose the same as the reference. Ensure the scar looks like old healed tissue rather than an open wound. Make sure the scar texture contrasts with surrounding healthy skin. Make the face look experienced and hardened. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting reveals the scar\u0027s raised texture. Ensure the scar reads as a mark of survival. Keep in focus. The result should be a face with a scar across one eye.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "scars",
+                     "scar",
+                     "battle-worn",
+                     "rugged"
+                 ]
+    },
+    {
+        "name":  "Face: Multiple Facial Scars",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature multiple scars of varying sizes and orientations across different areas including cheeks, forehead, nose bridge, and chin. Create a collection of healed wound marks that tell a story of repeated battles or hardships with each scar having slightly different texture and age appearance. Keep subject position and their pose the same as the reference. Ensure the scars vary from thin lines to broader patches. Make sure some look older and faded while others are more recent. Make the face look heavily battle-scarred and resilient. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting reveals each scar\u0027s individual texture. Ensure the scarring reads as a history of survival. Keep in focus. The result should be a face with multiple battle scars.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "scars",
+                     "multiple-scars",
+                     "battle-worn",
+                     "resilient"
+                 ]
+    },
+    {
+        "name":  "Face: Henna Patterns",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature intricate henna patterns with detailed floral and geometric designs in rich reddish-brown tones applied along the cheeks, temples, chin, and forehead. Create delicate ornamental body art inspired by South Asian and Middle Eastern traditions with fine line work and symmetrical motifs. Keep subject position and their pose the same as the reference. Ensure the henna patterns are detailed and culturally authentic. Make sure the color looks like natural henna stain on skin. Make the face look beautifully adorned for celebration. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm lighting enhances the reddish-brown henna tones. Ensure the patterns read as elegant and traditional. Keep in focus. The result should be a face decorated with intricate henna patterns.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "markings",
+                     "henna",
+                     "ornamental",
+                     "cultural"
+                 ]
+    },
+    {
+        "name":  "Face: Metallic Foil Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature metallic foil makeup with shiny chrome-like patches applied in bold shapes across the cheekbones, under eyes, and forehead. Create a futuristic, high-fashion look with reflective metal surfaces adhered to the skin creating sharp geometric or organic metallic accents. Keep subject position and their pose the same as the reference. Ensure the foil looks like actual metallic material on skin. Make sure the reflections are mirror-like and bright. Make the face look avant-garde and cybernetic. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure direct lighting creates strong metallic reflections. Ensure the foil reads as futuristic fashion artistry. Keep in focus. The result should be a face with metallic foil makeup accents.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "metallic",
+                     "foil",
+                     "futuristic"
+                 ]
+    },
+    {
+        "name":  "Face: Facial Tattoo",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature a permanent facial tattoo with ink design placed along one cheek, temple, jawline, or forehead area. Create a bold, committed body art piece that looks like professional tattoo work with clean lines and solid color saturation beneath the skin surface. Keep subject position and their pose the same as the reference. Ensure the tattoo looks permanently inked rather than temporary paint. Make sure the design is detailed and intentional. Make the face look edgy and alternative. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even lighting shows the tattoo clearly without glare. Ensure the facial tattoo reads as a deliberate style statement. Keep in focus. The result should be a face with a visible facial tattoo.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "tattoo",
+                     "facial-tattoo",
+                     "ink",
+                     "edgy"
+                 ]
+    },
+    {
+        "name":  "Face: Half-Face Split Makeup",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature dramatically different makeup on each half with one side showing glamorous, colorful styling and the other side bare or minimally styled creating a striking split-face contrast. The dividing line runs vertically down the center of the face through nose and mouth. Keep subject position and their pose the same as the reference. Ensure the transition between halves is sharp and clean. Make sure each half has distinctly different aesthetics. Make the duality look artistic and intentional. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even lighting shows both halves equally. Ensure the split reads as a creative dual-personality statement. Keep in focus. The result should be a face with dramatic half-face split makeup.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "makeup",
+                     "split-face",
+                     "dual",
+                     "artistic"
+                 ]
+    },
+    {
+        "name":  "Face: Perfect White Teeth",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s visible teeth to appear perfectly white, straight, and evenly aligned with a bright Hollywood smile aesthetic. Create flawless dental appearance with uniform tooth size and shape, no gaps or discoloration, and a clean glossy surface. Keep subject position and their pose the same as the reference. Ensure the whiteness is bright but still looks like natural enamel. Make sure the teeth alignment is perfectly even. Make the smile look polished and professional. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates subtle highlights on the tooth surfaces. Ensure the white teeth read as healthy and attractive. Keep in focus. The result should be a face with perfect, bright white teeth.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "white-teeth",
+                     "perfect-smile",
+                     "polished"
+                 ]
+    },
+    {
+        "name":  "Face: Natural Slightly Imperfect Teeth",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s visible teeth to appear natural with slight imperfections including minor variations in tooth size, subtle off-white enamel tone, and small natural gaps or irregularities. Create an authentic, unretouched dental appearance that looks genuinely human rather than artificially perfected. Keep subject position and their pose the same as the reference. Ensure the imperfections are subtle and realistic. Make sure the teeth look healthy despite being imperfect. Make the smile look genuine and approachable. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure natural lighting shows the authentic tooth texture. Ensure the slight imperfections read as charmingly real. Keep in focus. The result should be a face with natural, slightly imperfect teeth.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "natural-teeth",
+                     "imperfect",
+                     "authentic"
+                 ]
+    },
+    {
+        "name":  "Face: Gold Tooth Grill",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s visible teeth to feature a gold grill covering one or more front teeth with ornate metallic detailing. Create a flashy, hip-hop-inspired dental accessory that catches light and adds bold personality to the smile. The grill should look like removable gold jewelry fitted over the natural teeth. Keep subject position and their pose the same as the reference. Ensure the gold looks reflective and luxurious. Make sure the grill design is detailed with patterns or text. Make the smile look flashy and confident. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates bright golden reflections on the grill surface. Ensure the gold tooth reads as bold and stylish. Keep in focus. The result should be a face with a gold tooth grill.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "gold-grill",
+                     "flashy",
+                     "hip-hop"
+                 ]
+    },
+    {
+        "name":  "Face: Silver Tooth Cap",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s visible teeth to feature a silver or chrome dental cap on one molar or front tooth creating a distinctive metallic dental accent. Create a single shiny metal tooth that contrasts with the natural enamel of surrounding teeth giving an edgy, alternative appearance. Keep subject position and their pose the same as the reference. Ensure the silver cap looks like real dental metal. Make sure it reflects light differently from natural teeth. Make the smile look unique and unconventional. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the metallic tooth reflection. Ensure the silver cap reads as distinctive character detail. Keep in focus. The result should be a face with a silver tooth cap.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "silver-tooth",
+                     "metallic",
+                     "edgy"
+                 ]
+    },
+    {
+        "name":  "Face: Buck Teeth Prominent Front",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s front teeth to protrude slightly forward creating a noticeable overbite with prominent buck teeth that extend beyond the lip line when mouth is closed or slightly open. Create a distinctive dental feature where the upper incisors project outward noticeably. Keep subject position and their pose the same as the reference. Ensure the protrusion looks anatomically natural. Make sure the lips adjust slightly to accommodate the forward teeth. Make the smile look characterful and distinctive. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows the tooth projection clearly. Ensure the buck teeth read as a unique facial feature. Keep in focus. The result should be a face with prominent buck teeth.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "buck-teeth",
+                     "overbite",
+                     "distinctive"
+                 ]
+    },
+    {
+        "name":  "Face: Gap Tooth Diastema",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s front teeth to feature a noticeable gap (diastema) between the two upper central incisors creating a charming, distinctive smile characteristic. Create a clean vertical space of about 1-2mm between the front teeth that is visible when smiling or with lips parted. Keep subject position and their pose the same as the reference. Ensure the gap looks natural and symmetrical. Make sure the surrounding teeth are normal and healthy-looking. Make the smile look charmingly unique. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows the gap clearly between the front teeth. Ensure the diastema reads as a cute distinctive feature. Keep in focus. The result should be a face with a gap tooth diastema.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "gap-tooth",
+                     "diastema",
+                     "charming"
+                 ]
+    },
+    {
+        "name":  "Face: Vampiric Fangs",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s upper canine teeth to extend into sharp, elongated vampiric fangs that protrude below the level of the other teeth creating a predatory, supernatural dental appearance. Create two prominent pointed canines that look like genuine vampire fangs with smooth white enamel tapering to needle points. Keep subject position and their pose the same as the reference. Ensure the fangs are symmetrical and sharply defined. Make sure they look like natural tooth extensions rather than props. Make the smile look dangerous and alluring. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting catches the sharp fang tips with bright highlights. Ensure the vampiric fangs read as supernatural and seductive. Keep in focus. The result should be a face with vampiric fangs.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "fangs",
+                     "vampire",
+                     "supernatural"
+                 ]
+    },
+    {
+        "name":  "Face: Animal Snout Prominent Teeth",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s mouth area to feature prominent animal-like teeth with large canines and a slightly protruding snout structure creating a feral, beastly dental appearance while maintaining overall human facial proportions. Create exaggerated predatory dentition that suggests wolf or big cat ancestry. Keep subject position and their pose the same as the reference. Ensure the teeth look like natural animal dentition scaled to human face size. Make sure the canines are oversized and pointed. Make the mouth area look more aggressive and feral. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting emphasizes the predatory tooth structure. Ensure the animal teeth read as beastly transformation. Keep in focus. The result should be a face with prominent animal-like snout teeth.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "animal-teeth",
+                     "snout",
+                     "feral"
+                 ]
+    },
+    {
+        "name":  "Face: Chipped Broken Tooth",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify one of the subject\u0027s front teeth to appear chipped or broken with an irregular edge and exposed dentin layer creating a damaged, battle-worn dental appearance. Create a realistic tooth fracture where part of the enamel is missing revealing a slightly yellowish inner layer beneath. Keep subject position and their pose the same as the reference. Ensure the chip looks like recent trauma damage. Make sure only one or two teeth are affected while others remain normal. Make the smile look damaged but functional. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting shows the broken tooth edge clearly. Ensure the chipped tooth reads as a mark of physical struggle. Keep in focus. The result should be a face with a chipped, broken front tooth.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "chipped-tooth",
+                     "broken",
+                     "damaged"
+                 ]
+    },
+    {
+        "name":  "Face: Dental Braces",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s visible teeth to feature metal dental braces with brackets attached to each front tooth connected by a thin archwire running horizontally across the row. Create an orthodontic appearance that looks like active teeth-straightening treatment with reflective metal components catching light. Keep subject position and their pose the same as the reference. Ensure the brackets are evenly spaced on each tooth surface. Make sure the wire runs smoothly between all brackets. Make the smile look youthful and in-progress. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure lighting creates metallic reflections on the braces hardware. Ensure the dental braces read as a realistic orthodontic detail. Keep in focus. The result should be a face with metal dental braces.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "dental",
+                     "braces",
+                     "orthodontic",
+                     "youthful"
+                 ]
+    },
+    {
+        "name":  "Face: East Asian Beauty Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow East Asian beauty aesthetics with smooth pale porcelain skin, a small V-shaped face, delicate double eyelids, straight thin brows, and soft natural lip color. Create a refined appearance emphasizing youthfulness, clear skin, and gentle features following Korean and Japanese beauty ideals. Keep subject position and their pose the same as the reference. Ensure the skin looks flawlessly smooth with even tone. Make sure the facial proportions are delicate and petite. Make the overall look read as polished K-beauty style. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft, diffused lighting enhances the porcelain complexion. Ensure every feature reads as delicately refined. Keep in focus. The result should be a face following East Asian beauty aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "east-asian",
+                     "k-beauty",
+                     "porcelain"
+                 ]
+    },
+    {
+        "name":  "Face: South Asian Bridal Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow South Asian bridal beauty aesthetics with warm golden-brown skin tone, bold kohl-rimmed eyes with heavy eyeliner and dramatic lashes, bindi on forehead, rich red or maroon lipstick, and gold jewelry accents around the eyes. Create a traditional Indian bride appearance with ornate makeup and ceremonial adornment. Keep subject position and their pose the same as the reference. Ensure the eye makeup is bold and heavily defined with kohl. Make sure the lip color is deep and saturated. Make the skin look warm and glowing with bindi placement centered on forehead. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm golden lighting enhances the bridal richness. Ensure every element reads as traditional South Asian celebration beauty. Keep in focus. The result should be a face following South Asian bridal aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "south-asian",
+                     "bridal",
+                     "bindi"
+                 ]
+    },
+    {
+        "name":  "Face: Middle Eastern Glamour Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow Middle Eastern glamour beauty aesthetics with flawless warm-toned foundation, dramatic winged eyeliner extending far outward, false lashes with heavy volume, defined arched brows, glossy nude or rose lips, and intense highlighter on cheekbones creating a luminous glow. Create a luxurious, high-maintenance appearance emphasizing powerful eye makeup and radiant skin. Keep subject position and their pose the same as the reference. Ensure the winged liner is sharp and extended dramatically. Make sure the lashes are thick and voluminous. Make the skin look perfectly polished with golden warmth. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright lighting maximizes the highlighter glow and eye drama. Ensure every feature reads as opulent Middle Eastern glamour. Keep in focus. The result should be a face following Middle Eastern glamour aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "middle-eastern",
+                     "glamour",
+                     "dramatic-eyes"
+                 ]
+    },
+    {
+        "name":  "Face: Latin American Vibrant Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow Latin American beauty aesthetics with warm olive or golden skin tone, full defined brows, voluminous lashes, contoured cheekbones with warm bronzer, glossy full lips in bold red or coral shade, and an overall radiant sun-kissed glow. Create a vibrant, passionate appearance emphasizing warmth, curves of the face, and confident glamour. Keep subject position and their pose the same as the reference. Ensure the skin has warm golden undertones throughout. Make sure the brows are thick and well-defined. Make the lips look full and glossy with saturated color. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm, sunny lighting enhances the vibrant complexion. Ensure every feature reads as confidently Latin glamour. Keep in focus. The result should be a face following Latin American beauty aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "latin-american",
+                     "vibrant",
+                     "warm"
+                 ]
+    },
+    {
+        "name":  "Face: African Queen Regal Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow African queen beauty aesthetics with rich deep skin tones that glow with golden undertones, defined facial features enhanced by subtle contouring, bold red or nude lips, elegant natural brows, and decorative gold accessories or facial markings suggesting royalty and cultural heritage. Create a powerful, regal appearance celebrating dark skin radiance and strong bone structure. Keep subject position and their pose the same as the reference. Ensure the deep skin tone looks luminous and richly colored. Make sure the features are enhanced but remain authentically African. Make the overall presence look commanding and royal. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm golden lighting makes the dark skin glow brilliantly. Ensure every feature reads as regal and culturally proud. Keep in focus. The result should be a face following African queen beauty aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "african",
+                     "regal",
+                     "queen"
+                 ]
+    },
+    {
+        "name":  "Face: Scandinavian Natural Aesthetic",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to follow Scandinavian beauty aesthetics with very fair pale skin, natural freckles across nose and cheeks, minimal makeup emphasizing fresh bare-faced look, thin naturally shaped brows, subtle pink lip balm, and an overall clean Nordic appearance that celebrates natural imperfections. Create a minimalist, effortless beauty style that looks like healthy unadorned skin. Keep subject position and their pose the same as the reference. Ensure the pale skin looks naturally fair with cool undertones. Make sure freckles are visible and charmingly distributed. Make the makeup look almost invisible with just a hint of color. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft natural Nordic lighting complements the minimal aesthetic. Ensure every feature reads as authentically Scandinavian natural beauty. Keep in focus. The result should be a face following Scandinavian natural aesthetics.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cultural",
+                     "scandinavian",
+                     "natural",
+                     "minimal"
+                 ]
+    },
+    {
+        "name":  "Face: Cybernetic Augmented Face",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature cybernetic augmentations with metallic implants, glowing circuit patterns beneath the skin, mechanical eye components, and synthetic skin patches that blend organic tissue with machine elements. Create a transhumanist appearance where technology and biology merge seamlessly across the facial surface. Keep subject position and their pose the same as the reference. Ensure the cybernetic elements look integrated into the face rather than bolted on. Make sure some areas show exposed metal or glowing components beneath translucent skin. Make the overall look read as advanced technological enhancement. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure neon-blue lighting accentuates the cybernetic glow elements. Ensure every augmentation reads as futuristic body modification. Keep in focus. The result should be a face with cybernetic augmentations.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "cybernetic",
+                     "augmented",
+                     "sci-fi",
+                     "transhuman"
+                 ]
+    },
+    {
+        "name":  "Face: Undead Zombie Decay",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to show undead zombie decay with pale grey-green necrotic skin, dark sunken eye sockets, visible wounds and exposed tissue in patches, dried blood stains, cracked lips, and a generally decomposed appearance suggesting recent reanimation from death. Create a horrifying but recognizable human face in advanced stages of decomposition while maintaining the basic facial structure. Keep subject position and their pose the same as the reference. Ensure the decay looks like realistic post-mortem deterioration. Make sure some areas show more damage than others for variety. Make the skin look dead and lifeless with wrong coloration. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure cold greenish lighting enhances the undead atmosphere. Ensure every decay detail reads as authentically horrifying. Keep in focus. The result should be a face showing undead zombie decay.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "undead",
+                     "zombie",
+                     "decay",
+                     "horror"
+                 ]
+    },
+    {
+        "name":  "Face: Demon Features Dark",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature demonic characteristics with dark red or deep crimson skin tone, small curved horns emerging from the forehead, pointed chin and cheekbones, glowing yellow or red eyes, subtle fang-like teeth visible at the lip line, and faint horn-shaped markings on temples. Create an infernal appearance that transforms a human face into something clearly supernatural and evil while maintaining recognizable facial structure. Keep subject position and their pose the same as the reference. Ensure the demonic features are integrated naturally into the bone structure. Make sure the skin color is deeply saturated red. Make the eyes look menacing with unnatural glow. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dark reddish lighting enhances the infernal atmosphere. Ensure every demonic feature reads as authentically supernatural evil. Keep in focus. The result should be a face with demonic features.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "demon",
+                     "supernatural",
+                     "dark-fantasy",
+                     "horns"
+                 ]
+    },
+    {
+        "name":  "Face: Angelic Ethereal Features",
+        "prompt":  "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify the subject\u0027s face to feature angelic ethereal characteristics with luminous pale skin that seems to emit soft white light, perfectly symmetrical features, large innocent eyes with crystalline clarity, subtle golden halo glow around the head area, delicate high cheekbones, and an expression of pure serenity and divine compassion. Create a heavenly appearance that looks transcendent and otherworldly while maintaining human facial proportions. Keep subject position and their pose the same as the reference. Ensure the ethereal glow surrounds the face like a soft aura. Make sure every feature is perfectly balanced and harmonious. Make the eyes look pure and compassionate with inner light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright white-gold lighting creates the heavenly atmosphere. Ensure every angelic detail reads as divinely beautiful. Keep in focus. The result should be a face with angelic ethereal features.",
+        "negative_prompt":  null,
+        "category":  "Facial Beauty",
+        "tags":  [
+                     "angelic",
+                     "ethereal",
+                     "divine",
+                     "heavenly"
+                 ]
+    }
+]

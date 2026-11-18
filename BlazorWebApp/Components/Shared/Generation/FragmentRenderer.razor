@@ -1,0 +1,149 @@
+@*
+    FragmentRenderer - Dynamic component renderer for workflow fragments
+    
+    Renders a fragment using either:
+    1. A registered Blazor component (e.g., LatentForm, SamplerForm)
+    2. Dynamic field rendering based on schema (future enhancement)
+    3. Nothing (for utility fragments with no UI)
+    
+    Created in Phase 14.4 to enable data-driven fragment rendering.
+*@
+@using BlazorWebApp.Models
+@using BlazorWebApp.Workflows.Models
+@inject IComponentRegistry ComponentRegistry
+@inject ILogger<FragmentRenderer> Logger
+
+@if (Fragment != null)
+{
+    @if (Fragment.HasDesignedComponent)
+    {
+        @* Render registered Blazor component *@
+        @if (_componentType != null)
+        {
+            <DynamicComponent Type="@_componentType" Parameters="@_componentParams" />
+        }
+        else
+        {
+            @* Component not found - show warning *@
+            <MudAlert Severity="Severity.Warning" Class="my-2">
+                <MudText Typo="Typo.body2">
+                    Component '<strong>@_componentName</strong>' not found for fragment '<strong>@Fragment.Title</strong>'.
+                </MudText>
+            </MudAlert>
+        }
+    }
+    else if (Fragment.HasUI && Fragment.Schema?.UsesDynamicFields == true)
+    {
+        @* TODO: Implement dynamic field rendering based on schema.Fields *@
+        <MudPaper Class="pa-4 my-2" Elevation="2">
+            <MudText Typo="Typo.h6" Class="mb-2">@Fragment.Title</MudText>
+            <MudAlert Severity="Severity.Info" Dense>
+                Dynamic field rendering for '@Fragment.Title' - coming soon!
+            </MudAlert>
+        </MudPaper>
+    }
+    else if (!Fragment.HasUI)
+    {
+        @* Utility fragment with no UI - don't render anything *@
+    }
+    else
+    {
+        @* Fragment has UI but no component or fields defined *@
+        <MudAlert Severity="Severity.Warning" Class="my-2">
+            <MudText Typo="Typo.body2">
+                Fragment '<strong>@Fragment.Title</strong>' has no UI component or fields defined.
+            </MudText>
+        </MudAlert>
+    }
+}
+
+@code {
+    /// <summary>
+    /// The fragment to render.
+    /// </summary>
+    [Parameter]
+    public FragmentReference? Fragment { get; set; }
+
+    /// <summary>
+    /// Additional CSS class for the container.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    /// <summary>
+    /// Whether to use Guidance instead of CFG Scale (for Flux models).
+    /// Passed to SamplerForm if this is a sampler fragment.
+    /// </summary>
+    [Parameter]
+    public bool UseGuidance { get; set; }
+
+    /// <summary>
+    /// Optional callback when any fragment value changes.
+    /// Passed to child components.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private Type? _componentType;
+    private Dictionary<string, object>? _componentParams;
+    private string? _componentName;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null)
+        {
+            _componentType = null;
+            _componentParams = null;
+            _componentName = null;
+            return;
+        }
+
+        // Get component name from schema. We intentionally only look up a component
+        // when the fragment metadata explicitly declares one (Schema.Component). Header-only
+        // fragments (e.g. enhancement toggles like NAG / SageAttention / Mel separation)
+        // legitimately have no component, and the legacy file-based fallback below would
+        // mangle a fluent fragment id like "fluent:ltx_video_settings" into a bogus name
+        // such as "Fluent:ltxVideoSettingsForm" and log a misleading registry warning.
+        _componentName = Fragment.Schema?.Component;
+
+        if (string.IsNullOrEmpty(_componentName))
+        {
+            _componentType = null;
+            _componentParams = null;
+            return;
+        }
+
+        // Look up component type in registry
+        _componentType = ComponentRegistry.GetComponent(_componentName);
+
+        if (_componentType != null)
+        {
+            // Build parameters dictionary for DynamicComponent
+            _componentParams = new Dictionary<string, object>
+            {
+                { "Fragment", Fragment }
+            };
+
+            // Add OnChanged callback if provided
+            if (OnChanged.HasDelegate)
+            {
+                _componentParams["OnChanged"] = OnChanged;
+            }
+
+            // Add UseGuidance only for Flux-based sampler fragments
+            // WAN and other non-Flux workflows don't use this parameter
+            if (Fragment.Schema?.Type == FragmentType.Sampler && UseGuidance)
+            {
+                _componentParams["UseGuidance"] = UseGuidance;
+            }
+
+            Logger.LogTrace("Resolved component '{ComponentName}' for fragment '{FragmentId}'",
+                _componentName, Fragment.Id);
+        }
+        else
+        {
+            Logger.LogWarning("Component '{ComponentName}' not found for fragment '{FragmentId}'",
+                _componentName, Fragment.Id);
+        }
+    }
+}

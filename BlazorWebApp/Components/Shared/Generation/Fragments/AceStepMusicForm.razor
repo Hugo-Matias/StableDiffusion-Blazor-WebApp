@@ -1,0 +1,152 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("AceStepMusicForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    @* Tags and Lyrics are now exposed in AudioPromptsForm (tabbed prompt component). *@
+    @* Only music-specific controls remain here. *@
+    <MudItem xs="6">
+        <MudNumericField T="long" Label="Seed" Variant="Variant.Text" Dense="true" Min="-1" @bind-Value="_seed"
+                         @bind-Value:after="OnSeedChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" Label="Duration" Variant="Variant.Text" Dense="true" Min="1" Max="240"
+                         @bind-Value="_duration" @bind-Value:after="OnDurationChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" Label="BPM" Variant="Variant.Text" Dense="true" Min="40" Max="300" @bind-Value="_bpm"
+                         @bind-Value:after="OnBpmChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Time" Variant="Variant.Text" Dense="true" @bind-Value="_timeSignature"
+                   @bind-Value:after="OnTimeSignatureChanged">
+            @foreach (var option in _timeSignatures)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Language" Variant="Variant.Text" Dense="true" @bind-Value="_language"
+                   @bind-Value:after="OnLanguageChanged">
+            @foreach (var option in _languages)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Key" Variant="Variant.Text" Dense="true" @bind-Value="_keyScale"
+                   @bind-Value:after="OnKeyScaleChanged">
+            @foreach (var option in _keys)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCheckBox T="bool" Label="Generate Audio Codes" Color="Color.Primary" @bind-Value="_generateAudioCodes"
+                     @bind-Value:after="OnGenerateAudioCodesChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" Label="Batch Size" Variant="Variant.Text" Dense="true" Min="1" Max="16"
+                         @bind-Value="_batchSize" @bind-Value:after="OnBatchSizeChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="10" Step="0.1" @bind-Value="_cfgScale" @bind-Value:after="OnCfgScaleChanged"
+                   ValueLabel>
+            <small>Text CFG:</small> @_cfgScale.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="2" Step="0.01" @bind-Value="_temperature"
+                   @bind-Value:after="OnTemperatureChanged" ValueLabel>
+            <small>Temperature:</small> @_temperature.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="1" Step="0.01" @bind-Value="_topP" @bind-Value:after="OnTopPChanged"
+                   ValueLabel>
+            <small>Top P:</small> @_topP.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="int" Label="Top K" Variant="Variant.Text" Dense="true" Min="0" Max="200" @bind-Value="_topK"
+                         @bind-Value:after="OnTopKChanged" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" Min="0" Max="1" Step="0.01" @bind-Value="_minP" @bind-Value:after="OnMinPChanged"
+                   ValueLabel>
+            <small>Min P:</small> @_minP.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _tags = string.Empty;
+    private string _lyrics = string.Empty;
+    private long _seed;
+    private int _bpm;
+    private int _duration;
+    private string _timeSignature = "4";
+    private string _language = "en";
+    private string _keyScale = "E minor";
+    private bool _generateAudioCodes = true;
+    private double _cfgScale;
+    private double _temperature;
+    private double _topP;
+    private int _topK;
+    private double _minP;
+    private int _batchSize;
+
+    private readonly string[] _timeSignatures = ["2", "3", "4", "5", "6", "7", "8"];
+    private readonly string[] _languages = ["en", "zh", "ja", "ko"];
+    private readonly string[] _keys = ["C major", "C minor", "C# major", "C# minor", "D major", "D minor", "D# major", "D# minor", "E major", "E minor", "F major", "F minor", "F# major", "F# minor", "G major", "G minor", "G# major", "G# minor", "A major", "A minor", "A# major", "A# minor", "B major", "B minor"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _tags = ParameterService.GetFragmentProperty(Fragment, "tags", "");
+        _lyrics = ParameterService.GetFragmentProperty(Fragment, "lyrics", "");
+        _seed = ParameterService.GetFragmentProperty(Fragment, "seed", 31L);
+        _bpm = ParameterService.GetFragmentProperty(Fragment, "bpm", 190);
+        _duration = ParameterService.GetFragmentProperty(Fragment, "duration", 120);
+        _timeSignature = ParameterService.GetFragmentProperty(Fragment, "timesignature", "4");
+        _language = ParameterService.GetFragmentProperty(Fragment, "language", "en");
+        _keyScale = ParameterService.GetFragmentProperty(Fragment, "keyscale", "E minor");
+        _generateAudioCodes = ParameterService.GetFragmentProperty(Fragment, "generate_audio_codes", true);
+        _cfgScale = ParameterService.GetFragmentProperty(Fragment, "cfg_scale", 2.0);
+        _temperature = ParameterService.GetFragmentProperty(Fragment, "temperature", 0.85);
+        _topP = ParameterService.GetFragmentProperty(Fragment, "top_p", 0.9);
+        _topK = ParameterService.GetFragmentProperty(Fragment, "top_k", 0);
+        _minP = ParameterService.GetFragmentProperty(Fragment, "min_p", 0.0);
+        _batchSize = ParameterService.GetFragmentProperty(Fragment, "batch_size", 1);
+    }
+
+    private Task SetAsync(string key, object? value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task OnTagsChanged() => SetAsync("tags", _tags);
+    private Task OnLyricsChanged() => SetAsync("lyrics", _lyrics);
+    private Task OnSeedChanged() => SetAsync("seed", _seed);
+    private Task OnBpmChanged() => SetAsync("bpm", _bpm);
+    private Task OnDurationChanged() => SetAsync("duration", _duration);
+    private Task OnTimeSignatureChanged() => SetAsync("timesignature", _timeSignature);
+    private Task OnLanguageChanged() => SetAsync("language", _language);
+    private Task OnKeyScaleChanged() => SetAsync("keyscale", _keyScale);
+    private Task OnGenerateAudioCodesChanged() => SetAsync("generate_audio_codes", _generateAudioCodes);
+    private Task OnCfgScaleChanged() => SetAsync("cfg_scale", _cfgScale);
+    private Task OnTemperatureChanged() => SetAsync("temperature", _temperature);
+    private Task OnTopPChanged() => SetAsync("top_p", _topP);
+    private Task OnTopKChanged() => SetAsync("top_k", _topK);
+    private Task OnMinPChanged() => SetAsync("min_p", _minP);
+    private Task OnBatchSizeChanged() => SetAsync("batch_size", _batchSize);
+}

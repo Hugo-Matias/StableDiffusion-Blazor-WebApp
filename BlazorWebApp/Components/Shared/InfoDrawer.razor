@@ -1,0 +1,190 @@
+@inject IDialogService DialogService
+@inject IInfoService InfoService
+@implements IDisposable
+
+<MudDrawer @bind-Open="_isOpen" 
+           Anchor="Anchor.Right" 
+           Elevation="4" 
+           Variant="@DrawerVariant.Temporary"
+           Width="480px"
+           ClipMode="DrawerClipMode.Always">
+    <MudDrawerHeader>
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
+                @(InfoService.CurrentInfo?.Title ?? "Quick Guide")
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                           Size="Size.Small" 
+                           OnClick="Close" />
+        </MudStack>
+    </MudDrawerHeader>
+    <MudDivider />
+    <div class="pa-4" style="overflow-y: auto; height: calc(100vh - 120px);">
+        @if (InfoService.CurrentInfo != null)
+        {
+            <MudStack Spacing="4">
+                @* Overview Section *@
+                @if (!string.IsNullOrWhiteSpace(InfoService.CurrentInfo.Overview))
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />
+                            Overview
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Default">
+                            @InfoService.CurrentInfo.Overview
+                        </MudText>
+                    </MudStack>
+                    <MudDivider />
+                }
+
+                @* Keyboard Shortcuts Section *@
+                @if (InfoService.CurrentInfo.Shortcuts?.Any() == true)
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.Keyboard" Size="Size.Small" Class="mr-1" />
+                            Keyboard Shortcuts
+                        </MudText>
+                        <MudList Dense>
+                            @foreach (var shortcut in InfoService.CurrentInfo.Shortcuts)
+                            {
+                                <MudListItem>
+                                    <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudChip Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                            @shortcut.Keys
+                                        </MudChip>
+                                        <MudText Typo="Typo.body2" Color="Color.Default" Style="flex: 1; margin-left: 12px;">
+                                            @shortcut.Description
+                                        </MudText>
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudStack>
+                    <MudDivider />
+                }
+
+                @* Tips Section *@
+                @if (InfoService.CurrentInfo.Tips?.Any() == true)
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" Class="mr-1" />
+                            Tips & Tricks
+                        </MudText>
+                        <MudList Dense>
+                            @foreach (var tip in InfoService.CurrentInfo.Tips)
+                            {
+                                <MudListItem>
+                                    <MudText Typo="Typo.body2" Color="Color.Default">
+                                        • @tip
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudStack>
+                }
+
+                @* Structured Sections *@
+                @if (InfoService.CurrentInfo.Sections?.Any() == true)
+                {
+                    <MudDivider />
+                    <MudExpansionPanels MultiExpansion="true" Dense="true">
+                        @foreach (var sec in InfoService.CurrentInfo.Sections)
+                        {
+                            var isHighlighted = !string.IsNullOrEmpty(InfoService.HighlightedSectionId)
+                                && string.Equals(sec.Id, InfoService.HighlightedSectionId, StringComparison.Ordinal);
+                            <MudExpansionPanel IsInitiallyExpanded="@isHighlighted"
+                                               @key="@($"{sec.Id}::{InfoService.HighlightedSectionId}")">
+                                <TitleContent>
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        @if (!string.IsNullOrEmpty(sec.Icon))
+                                        {
+                                            <MudIcon Icon="@sec.Icon" Size="Size.Small" Color="Color.Primary" />
+                                        }
+                                        <MudText Typo="Typo.subtitle2">@sec.Title</MudText>
+                                    </MudStack>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudStack Spacing="1">
+                                        @foreach (var item in sec.Items)
+                                        {
+                                            <div>
+                                                @if (!string.IsNullOrEmpty(item.Label))
+                                                {
+                                                    <MudText Typo="Typo.body2"><strong>@item.Label</strong></MudText>
+                                                }
+                                                @if (item.IsCode)
+                                                {
+                                                    <pre class="mud-theme-surface"
+                                                         style="font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+                                                                font-size: 0.80rem;
+                                                                padding: 8px 10px;
+                                                                border-radius: 4px;
+                                                                margin: 4px 0 0 0;
+                                                                white-space: pre-wrap;
+                                                                word-break: break-word;
+                                                                overflow-x: auto;"><code>@item.Text</code></pre>
+                                                }
+                                                else
+                                                {
+                                                    <MudText Typo="Typo.body2"
+                                                             Color="Color.Default"
+                                                             Style="white-space: pre-wrap; word-break: break-word;">
+                                                        @item.Text
+                                                    </MudText>
+                                                }
+                                            </div>
+                                        }
+                                    </MudStack>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="3" Style="height: 100%;">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.body1" Color="Color.Default">No help content available</MudText>
+            </MudStack>
+        }
+    </div>
+</MudDrawer>
+
+@code {
+    private bool _isOpen;
+
+    public bool IsOpen => _isOpen;
+
+    protected override void OnInitialized()
+    {
+        InfoService.OnInfoChanged += HandleInfoChanged;
+    }
+
+    private void HandleInfoChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Open()
+    {
+        _isOpen = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        _isOpen = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        InfoService.OnInfoChanged -= HandleInfoChanged;
+    }
+}

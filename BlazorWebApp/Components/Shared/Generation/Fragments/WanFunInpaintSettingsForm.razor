@@ -1,0 +1,114 @@
+@using BlazorWebApp.Attributes
+@attribute [FragmentComponent("WanFunInpaintSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="6">
+        <MudNumericField T="int" Label="Video Length" Variant="Variant.Text" Dense="true" @bind-Value="_localLength"
+                         @bind-Value:after="OnLengthChanged" Min="_lengthMin" Max="_lengthMax" Step="_lengthStep" />
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localShift" @bind-Value:after="OnShiftChanged" Min="_shiftMin"
+                   Max="_shiftMax" Step="_shiftStep" ValueLabel>
+            <small>Model Shift:</small> @_localShift.ToString("F2")
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localHighSpeedLoraStrength"
+                   @bind-Value:after="OnHighSpeedLoraStrengthChanged" Min="_loraStrengthMin" Max="_loraStrengthMax"
+                   Step="_loraStrengthStep" ValueLabel>
+            <small>High Speed LoRA:</small> @_localHighSpeedLoraStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_localLowSpeedLoraStrength" @bind-Value:after="OnLowSpeedLoraStrengthChanged"
+                   Min="_loraStrengthMin" Max="_loraStrengthMax" Step="_loraStrengthStep" ValueLabel>
+            <small>Low Speed LoRA:</small> @_localLowSpeedLoraStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private int _localLength;
+    private double _localShift;
+    private double _localHighSpeedLoraStrength;
+    private double _localLowSpeedLoraStrength;
+
+    private int _lengthMin = 1;
+    private int _lengthMax = 257;
+    private int _lengthStep = 4;
+    private double _shiftMin;
+    private double _shiftMax = 20;
+    private double _shiftStep = 0.01;
+    private double _loraStrengthMin;
+    private double _loraStrengthMax = 2;
+    private double _loraStrengthStep = 0.05;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localLength = ParameterService.GetFragmentProperty(Fragment, "length", 81);
+        _localShift = ParameterService.GetFragmentProperty(Fragment, "shift", 8.0);
+        _localHighSpeedLoraStrength = ParameterService.GetFragmentProperty(Fragment, "high_speed_lora_strength", 1.0);
+        _localLowSpeedLoraStrength = ParameterService.GetFragmentProperty(Fragment, "low_speed_lora_strength", 1.0);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("length", out var lengthConstraints))
+        {
+            _lengthMin = lengthConstraints.GetMin(1);
+            _lengthMax = lengthConstraints.GetMax(257);
+            _lengthStep = lengthConstraints.GetStep(4);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("shift", out var shiftConstraints))
+        {
+            _shiftMin = shiftConstraints.GetMin(0.0);
+            _shiftMax = shiftConstraints.GetMax(20.0);
+            _shiftStep = shiftConstraints.GetStep(0.01);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("high_speed_lora_strength", out var loraConstraints))
+        {
+            _loraStrengthMin = loraConstraints.GetMin(0.0);
+            _loraStrengthMax = loraConstraints.GetMax(2.0);
+            _loraStrengthStep = loraConstraints.GetStep(0.05);
+        }
+    }
+
+    private async Task OnLengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "length", _localLength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnShiftChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "shift", _localShift, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnHighSpeedLoraStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "high_speed_lora_strength", _localHighSpeedLoraStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnLowSpeedLoraStrengthChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "low_speed_lora_strength", _localLowSpeedLoraStrength, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

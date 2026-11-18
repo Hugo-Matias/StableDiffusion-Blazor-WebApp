@@ -1,0 +1,78 @@
+@*
+    ConditioningVariationForm - Form for conditioning-variation.sbn fragment
+    
+    Handles: switch_point
+    
+    This is an optional feature that renders the first X% of steps with an empty prompt,
+    then switches to the actual prompt for the remaining steps.
+    
+    Refactored in Phase 14.4 to use FragmentReference and write directly to ParameterService.
+*@
+@using BlazorWebApp.Attributes
+@using static BlazorWebApp.Models.FragmentKeys
+@attribute [FragmentComponent("ConditioningVariationForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudSlider T="float" 
+                   @bind-Value="_localSwitchPoint"
+                   @bind-Value:after="OnSwitchPointChanged"
+                   Min="@_constraints.switch_point.GetMin(0f)"
+                   Max="@_constraints.switch_point.GetMax(1f)"
+                   Step="@_constraints.switch_point.GetStep(0.05f)"
+                   Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Empty Prompt Duration:</small> @((_localSwitchPoint * 100).ToString("F0"))% (@_localSwitchPoint.ToString("F2"))
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+            <MudText Typo="Typo.caption">
+                <strong>Conditioning Variation</strong> renders the first <strong>@((_localSwitchPoint * 100).ToString("F0"))%</strong> of steps with an empty prompt,
+                then switches to your actual prompt for the remaining steps. This provides output variability while maintaining the core concept.
+                <br /><br />
+                <em>Tip: Lower values (10-20%) add subtle variation, higher values (30-40%) create more diverse outputs.</em>
+            </MudText>
+        </MudAlert>
+    </MudItem>
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Fragment reference containing the fragment ID, parameters, and schema.
+    /// </summary>
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    
+    /// <summary>
+    /// Optional callback when any value changes.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+    
+    #region Local State (for MudBlazor binding - prevents snap-back)
+    
+    private float _localSwitchPoint;
+    
+    // Cached constraints from schema
+    private (ParameterConstraints switch_point, int _) _constraints;
+    
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        
+        // Load constraints from schema
+        _constraints = (Fragment.Schema.GetConstraints("switch_point"), 0);
+        
+        // Sync local state FROM service
+        _localSwitchPoint = ParameterService.GetFragmentProperty(Fragment, "switch_point", 0.2f);
+    }
+    
+    #endregion
+    
+    private async Task OnSwitchPointChanged()
+    {
+        // Write TO service (with notification for UI updates)
+        ParameterService.SetFragmentProperty(Fragment, "switch_point", _localSwitchPoint, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

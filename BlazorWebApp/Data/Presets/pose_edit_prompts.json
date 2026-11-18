@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Pose: Natural Stand",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Do not alter hair color, clothing patterns, or facial proportions. Modify only the subject's pose: relaxed, natural standing posture with weight shifted onto one leg, relaxed shoulders, and neutral hand placement (at sides, lightly on hips, or in pockets). If needed, adjust camera framing to a full-body eye-level view to show the new stance. Ensure anatomy and limb placement are correct for the new posture. Update lighting, shadows, and reflections to match the altered pose. Keep in focus. The result should be a lifelike, natural standing pose.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "eye-level", "calm"]
+  },
+  {
+    "name": "Pose: Heroic Power Stance",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: broad, confident power stance with feet shoulder-width or wider, chest forward, shoulders back, and hands on hips or slightly akimbo. You may lower the camera angle slightly (subtle low-angle) and widen framing to full-body to emphasize presence, but preserve the subject's face and clothing details. Ensure anatomy remains natural and lighting/shadows update consistently. Keep in focus. The result should be a bold heroic posture.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "low-angle", "dynamic", "heroic"]
+  },
+  {
+    "name": "Pose: Mid-Stride Walk",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: freeze the subject mid-stride with one foot forward, natural torso rotation, and a relaxed opposite-arm swing to convey walking motion. Maintain balance and natural limb placement. Camera may be adjusted to a three-quarter or full-body framing at eye level to capture the motion. Ensure clothing drape and shadows update realistically. Keep in focus. The result should read as a natural walking stride.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "walking", "motion", "eye-level"]
+  },
+  {
+    "name": "Pose: Running Action",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: dynamic running posture with forward lean, knees bent, arms pumping, and clear directional motion. Camera framing may be adjusted (full-body or three-quarter) and a slight low-angle is acceptable to heighten dynamism; do not obscure the face. Ensure anatomy, cloth motion, and lighting match the new action. Keep in focus. The result should convey a convincing running action.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "running", "dynamic", "action"]
+  },
+  {
+    "name": "Pose: Leap / Jump",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: captured mid-air leap or jump, limbs arranged naturally for the motion (e.g., knees bent, arms extended or expressive), with clear airborne spacing from the ground. Camera framing may be widened to full-body and timing preserved so the face remains visible. Ensure lighting, motion cues, and shadows are updated to match the airborne pose. Keep in focus. The result should be a dynamic, weightless leap.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "jump", "dynamic"]
+  },
+  {
+    "name": "Pose: Sitting Relaxed",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: seated in a relaxed, natural manner with comfortable limb placement (hands resting on lap, armrest, or casually draped), shoulders relaxed, and torso aligned with the seat. Camera framing may be adjusted to medium or three-quarter as needed; do not change the face or clothing details. Ensure anatomy and cloth folding update realistically and lighting/shadows match the new pose. Keep in focus. The result should read as a comfortable seated posture.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "sitting", "medium", "relaxed"]
+  },
+  {
+    "name": "Pose: Crossed-Legs Seated",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: seated with legs crossed (ankle over knee or cross-legged) and a composed, balanced posture; arms may rest naturally on legs or lap. Camera framing should be medium to show the leg position while preserving facial visibility. Ensure clothing folds and shadows update correctly. Keep in focus. The result should be a composed, cross-legged seated portrait.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "sitting", "cross-legged", "medium", "composed"]
+  },
+  {
+    "name": "Pose: Kneeling",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: kneeling posture (one-knee or both knees) with stable torso alignment and natural hand placement (resting on thigh, clasped, or relaxed). Camera framing may be adjusted to full-body or three-quarter to show the kneel; preserve face visibility. Ensure anatomy, clothing creases, and shadows update naturally. Keep in focus. The result should be a grounded kneeling pose.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "kneeling", "full-body", "grounded"]
+  },
+  {
+    "name": "Pose: Hands-to-Face Gesture",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression visible. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: a thoughtful or expressive hand-to-face gesture (hand gently touching chin, cheek, or temple) while ensuring the face remains visible and unobscured. Camera framing should be medium or close so the gesture reads clearly without covering key facial features. Ensure anatomical proportions, skin detail, lighting and shadows update consistently. Keep in focus. The result should be a natural, expressive hand-to-face pose.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "headshot", "medium", "gesture"]
+  },
+  {
+    "name": "Pose: Over-the-Shoulder Look",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression visible. Keep clothing, textures, and accessories. Keep scenery and background elements unchanged. Modify only the subject's pose: upper body turned slightly away from the camera with the head turned back over the shoulder to look at the viewer; ensure the face remains recognizable and not obscured by hair or hand. Camera framing should be medium to three-quarter and may adjust for the glance-over-shoulder composition. Update anatomy, clothing drape, and lighting to match the turned pose. Keep in focus. The result should be a clear, glance-over-shoulder portrait.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "portrait", "medium", "over-the-shoulder", "framing"]
+  },
+  {
+    "name": "Pose: Fashion / Runway Walk",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression. Keep clothing, textures, and accessories unchanged. Keep scenery and background elements unchanged. Modify only the subject's pose: stylized runway stride with confident weight transfer, elongated posture, subtle hip rotation, and deliberate arm placement suited for fashion/editorial presentation. Camera framing should be full-body with runway-style spacing; a slight low-angle is acceptable to enhance stature, but do not obscure the face. Ensure pose styling matches clothing flow and lighting updates accordingly. Keep in focus. The result should read as an editorial runway walk.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "fashion", "runway", "editorial"]
+  },
+  {
+    "name": "Pose: Yoga — Tree Pose (Balanced)",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression calm and visible. Keep clothing, textures, and accessories appropriate to the scene. Keep scenery and background elements unchanged. Modify only the subject's pose: a balanced yoga tree pose (standing on one leg, the other foot placed on inner thigh or calf, hands in prayer or raised) with stable alignment and natural balance. Camera framing should be full-body or three-quarter to show balance while preserving facial visibility. Ensure anatomy, muscle tension, and clothing conformity update realistically. Keep in focus. The result should be a stable, graceful tree pose.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "yoga", "balanced"]
+  },
+  {
+    "name": "Pose: Defensive / Ready Stance",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression visible. Keep clothing, textures, and accessories unchanged. Keep scenery and background elements unchanged. Modify only the subject's pose: athletic ready stance with knees slightly bent, weight centered or slightly forward, hands positioned to suggest readiness (non-weaponized), and shoulders squared—clear defensive/alert body language without aggressive or violent elements. Camera framing may be full-body or three-quarter as needed; preserve the face. Ensure anatomy and clothing react naturally and lighting/shadows update. Keep in focus. The result should convey preparedness and alertness.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "full-body", "athletic", "ready", "non-violent"]
+  },
+  {
+    "name": "Pose: Reclining / Lounging",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression visible. Keep clothing, textures, and accessories tasteful and unchanged. Keep scenery and background elements unchanged. Modify only the subject's pose: a relaxed reclining or lounging posture (on a couch, bed, or ground) with natural limb placement and comfortable foreshortening; avoid sexualized presentation—keep the pose tasteful and non-exploitative. Camera framing may be three-quarter or full-body to capture the lounge angle while preserving facial visibility. Ensure anatomy, cloth drape, and lighting update realistically. Keep in focus. The result should be a relaxed, tasteful reclining pose.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "reclining", "lounge", "tasteful", "full-body"]
+  },
+  {
+    "name": "Pose: Candid Laugh / Natural Expression",
+    "prompt": "Keep facial features and identity. Keep eyes and facial expression natural and visible. Keep clothing, textures, and accessories unchanged. Keep scenery and background elements unchanged. Modify only the subject's pose: mid-laugh, spontaneous body language (slight torso bend, relaxed arms, natural head tilt) that reads as candid and unposed. Camera framing may be medium to close to capture expression while preserving facial clarity. Ensure anatomy, clothing motion, and lighting update to match the gesture. Keep in focus. The result should feel like a genuine candid laugh.",
+    "negative_prompt": null,
+    "category": "Edit Operations",
+    "tags": ["pose", "single-subject", "preserve-face", "preserve-clothing", "preserve-scenery", "portrait", "natural", "candid", "expression"]
+  }
+]

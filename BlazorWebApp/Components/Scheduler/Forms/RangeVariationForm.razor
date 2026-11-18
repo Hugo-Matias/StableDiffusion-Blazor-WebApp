@@ -1,0 +1,109 @@
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Targets
+@using BlazorWebApp.Scheduler.Variations
+
+<MudStack Spacing="2">
+    <ParameterTargetPicker Value="Variation.Target" ValueChanged="OnTargetChanged" Job="Job"
+                           AllowedKinds="@_allowedKinds"
+                           FragmentValueFilter="ParameterTargetPicker.FragmentValueTypeFilter.Numeric" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            @if (Variation.IsInteger)
+            {
+                <MudNumericField T="long" Value="@((long)Variation.Start)"
+                                 ValueChanged="@(v => Variation.Start = v)"
+                                 Label="Start" Step="1" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudNumericField T="double" @bind-Value="Variation.Start" Label="Start" Step="0.1" Variant="Variant.Text" />
+            }
+        </MudItem>
+        <MudItem xs="12" md="4">
+            @if (Variation.IsInteger)
+            {
+                <MudNumericField T="long" Value="@((long)Variation.End)"
+                                 ValueChanged="@(v => Variation.End = v)"
+                                 Label="End (inclusive)" Step="1" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudNumericField T="double" @bind-Value="Variation.End" Label="End (inclusive)" Step="0.1" Variant="Variant.Text" />
+            }
+        </MudItem>
+        <MudItem xs="12" md="4">
+            @if (Variation.IsInteger)
+            {
+                <MudNumericField T="long" Value="@((long)Math.Max(1, Variation.Step))"
+                                 ValueChanged="@(v => Variation.Step = Math.Max(1, v))"
+                                 Label="Step" Step="1" Min="1" Variant="Variant.Text" />
+            }
+            else
+            {
+                <MudNumericField T="double" @bind-Value="Variation.Step" Label="Step" Step="0.1" Min="0.0001" Variant="Variant.Text" />
+            }
+        </MudItem>
+    </MudGrid>
+
+    <MudSwitch T="bool" Value="Variation.IsInteger" ValueChanged="OnIsIntegerChanged" Color="Color.Primary"
+               Label="@(Variation.IsInteger ? "Integer values (cast to long)" : "Floating-point values")" />
+
+    @{
+        var count = ComputeCount();
+        var preview = PreviewFirstFive(count);
+    }
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">Iterations: @count</MudChip>
+        <MudText Typo="Typo.caption" Color="Color.Default">@preview</MudText>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public RangeVariation Variation { get; set; } = default!;
+    [Parameter, EditorRequired] public Job Job { get; set; } = default!;
+
+    // Range produces numeric values; restrict to numeric-compatible targets.
+    private static readonly ParameterTargetPicker.TargetKind[] _allowedKinds = new[]
+    {
+        ParameterTargetPicker.TargetKind.Fragment,
+        ParameterTargetPicker.TargetKind.Lora,
+    };
+
+    private void OnTargetChanged(ParameterTarget? target) => Variation.Target = target!;
+
+    private void OnIsIntegerChanged(bool value)
+    {
+        Variation.IsInteger = value;
+        if (value)
+        {
+            // Normalize backing doubles to whole numbers when flipping to integer mode.
+            Variation.Start = Math.Truncate(Variation.Start);
+            Variation.End = Math.Truncate(Variation.End);
+            Variation.Step = Math.Max(1, Math.Truncate(Variation.Step));
+        }
+    }
+
+    private int ComputeCount()
+    {
+        if (Variation.Step <= 0) return 0;
+        var n = (long)Math.Floor(Math.Abs((Variation.End - Variation.Start) / Variation.Step)) + 1;
+        return (int)Math.Max(0, Math.Min(int.MaxValue, n));
+    }
+
+    private string PreviewFirstFive(int count)
+    {
+        if (count == 0) return "(no values)";
+        var values = new List<string>();
+        var sign = Math.Sign(Variation.End - Variation.Start);
+        if (sign == 0) sign = 1;
+        var absStep = Math.Abs(Variation.Step);
+        for (int i = 0; i < Math.Min(5, count); i++)
+        {
+            var v = Variation.Start + sign * absStep * i;
+            values.Add(Variation.IsInteger ? ((long)v).ToString() : v.ToString("G5", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        return count <= 5 ? $"-> {string.Join(", ", values)}" : $"-> {string.Join(", ", values)}, ...";
+    }
+}
+

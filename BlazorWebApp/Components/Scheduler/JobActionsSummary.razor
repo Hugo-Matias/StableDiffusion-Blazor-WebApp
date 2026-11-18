@@ -1,0 +1,87 @@
+@using BlazorWebApp.Scheduler
+@using BlazorWebApp.Scheduler.Directives
+@using BlazorWebApp.Scheduler.Models
+@using BlazorWebApp.Scheduler.Variations
+
+@if (Actions is null || Actions.Count == 0)
+{
+    <MudText Typo="Typo.caption">No actions.</MudText>
+}
+else
+{
+    <MudPaper Class="pa-3" Elevation="0" Outlined>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.PlaylistPlay" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle2">Actions (@Actions.Count)</MudText>
+        </MudStack>
+
+        @for (int i = 0; i < Actions.Count; i++)
+        {
+            var idx = i;
+            var action = Actions[idx];
+            <MudPaper Class="pa-3 mb-2" Elevation="0" Outlined>
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                    <MudText Typo="Typo.body2">
+                        <strong>Action #@(idx + 1)</strong>@(string.IsNullOrWhiteSpace(action.Label) ? "" : $" - {action.Label}")
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@action.PermutationOrder</MudChip>
+                    @if (action.Limit is int limit)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Limit @limit</MudChip>
+                    }
+                    @if (action.Repeat > 1)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Repeat x@(action.Repeat)</MudChip>
+                    }
+                </MudStack>
+
+                @if (action.Directives.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Directives (@action.Directives.Count)</MudText>
+                    @foreach (var d in action.Directives)
+                    {
+                        <MudPaper Class="pa-2 mb-1 d-flex align-center" Elevation="0" Outlined Style="gap: 8px;">
+                            <MudIcon Icon="@SchedulerCardFormatting.DirectiveIcon(d)" Color="Color.Info" Size="Size.Small" />
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <MudText Typo="Typo.body2">
+                                    <strong>@SchedulerCardFormatting.DirectiveTitle(d)</strong>@(string.IsNullOrWhiteSpace(d.Label) ? "" : $" - {d.Label}")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="overflow-wrap: anywhere;">
+                                    @SchedulerCardFormatting.DirectiveSummary(d)
+                                </MudText>
+                            </div>
+                        </MudPaper>
+                    }
+                }
+
+                @if (action.Variations.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Variations (@action.Variations.Count)</MudText>
+                    @foreach (var v in action.Variations)
+                    {
+                        <MudPaper Class="pa-2 mb-1 d-flex align-center" Elevation="0" Outlined Style="gap: 8px;">
+                            <MudIcon Icon="@SchedulerCardFormatting.VariationIcon(v)" Color="Color.Secondary" Size="Size.Small" />
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <MudText Typo="Typo.body2">
+                                    <strong>@SchedulerCardFormatting.VariationTitle(v)</strong>@(string.IsNullOrWhiteSpace(v.Label) ? "" : $" - {v.Label}")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="overflow-wrap: anywhere;">
+                                    @SchedulerCardFormatting.VariationSummary(v)
+                                </MudText>
+                            </div>
+                        </MudPaper>
+                    }
+                }
+
+                @if (action.Directives.Count == 0 && action.Variations.Count == 0)
+                {
+                    <MudText Typo="Typo.caption">(no directives or variations)</MudText>
+                }
+            </MudPaper>
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public List<JobAction>? Actions { get; set; }
+}

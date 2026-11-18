@@ -1,0 +1,557 @@
+using BlazorWebApp.Data.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace BlazorWebApp.Data.Repositories
+{
+    public class CleanupRepository : ICleanupRepository
+    {
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
+
+        public CleanupRepository(IDbContextFactory<AppDbContext> contextFactory)
+        {
+            _contextFactory = contextFactory;
+        }
+
+        public async Task<CleanupImageIndex> UpsertImageIndexAsync(CleanupImageIndex index, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupImageIndexes
+                .FirstOrDefaultAsync(row => row.ImageId == index.ImageId, cancellationToken);
+
+            if (existing == null)
+            {
+                index.CreatedAtUtc = index.CreatedAtUtc == default ? now : index.CreatedAtUtc;
+                index.UpdatedAtUtc = index.UpdatedAtUtc == default ? now : index.UpdatedAtUtc;
+                context.CleanupImageIndexes.Add(index);
+                await context.SaveChangesAsync(cancellationToken);
+                return index;
+            }
+
+            index.Id = existing.Id;
+            index.CreatedAtUtc = existing.CreatedAtUtc;
+            index.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(index);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupImageIndex?> GetImageIndexAsync(int imageId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageIndexes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(index => index.ImageId == imageId, cancellationToken);
+        }
+
+        public async Task<List<CleanupImageIndex>> GetImageIndexesAsync(CleanupIndexFilter filter, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageIndexes.AsNoTracking();
+
+            if (filter.ProjectId.HasValue)
+            {
+                query = query.Where(index => index.ProjectId == filter.ProjectId.Value);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(index => index.Status == filter.Status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.PromptFingerprint))
+            {
+                query = query.Where(index => index.PromptFingerprint == filter.PromptFingerprint);
+            }
+
+            return await query
+                .OrderByDescending(index => index.UpdatedAtUtc)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageIndex>> GetStaleImageIndexesAsync(DateTime staleBeforeUtc, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => index.Status == CleanupIndexStatus.Stale || index.IndexedAtUtc == null || index.IndexedAtUtc < staleBeforeUtc)
+                .OrderBy(index => index.UpdatedAtUtc)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageIndex>> GetMissingFileIndexesAsync(int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists)
+                .OrderByDescending(index => index.UpdatedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<CleanupImageEmbedding> UpsertImageEmbeddingAsync(CleanupImageEmbedding embedding, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupImageEmbeddings
+                .FirstOrDefaultAsync(row => row.ImageId == embedding.ImageId
+                    && row.ModelKey == embedding.ModelKey
+                    && row.ModelHash == embedding.ModelHash, cancellationToken);
+
+            if (embedding.Status == CleanupEmbeddingStatus.Indexed && embedding.IndexedAtUtc == null)
+            {
+                embedding.IndexedAtUtc = now;
+            }
+
+            if (existing == null)
+            {
+                embedding.CreatedAtUtc = embedding.CreatedAtUtc == default ? now : embedding.CreatedAtUtc;
+                embedding.UpdatedAtUtc = embedding.UpdatedAtUtc == default ? now : embedding.UpdatedAtUtc;
+                context.CleanupImageEmbeddings.Add(embedding);
+                await context.SaveChangesAsync(cancellationToken);
+                return embedding;
+            }
+
+            embedding.Id = existing.Id;
+            embedding.CreatedAtUtc = existing.CreatedAtUtc;
+            embedding.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(embedding);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupImageEmbedding?> GetImageEmbeddingAsync(int imageId, string modelKey, string? modelHash, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageEmbeddings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(embedding => embedding.ImageId == imageId
+                    && embedding.ModelKey == modelKey
+                    && embedding.ModelHash == modelHash, cancellationToken);
+        }
+
+        public async Task<List<CleanupImageEmbedding>> GetImageEmbeddingsAsync(CleanupEmbeddingFilter filter, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageEmbeddings.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelKey))
+            {
+                query = query.Where(embedding => embedding.ModelKey == filter.ModelKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelHash))
+            {
+                query = query.Where(embedding => embedding.ModelHash == filter.ModelHash);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(embedding => embedding.Status == filter.Status.Value);
+            }
+
+            return await query
+                .OrderByDescending(embedding => embedding.UpdatedAtUtc)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageEmbedding>> GetStaleImageEmbeddingsAsync(string modelKey, string? modelHash, int dimensions, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageEmbeddings
+                .AsNoTracking()
+                .Where(embedding => embedding.ModelKey == modelKey
+                    && (embedding.Status == CleanupEmbeddingStatus.Stale
+                        || embedding.ModelHash != modelHash
+                        || embedding.Dimensions != dimensions))
+                .OrderBy(embedding => embedding.UpdatedAtUtc)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<CleanupImageScore> UpsertImageScoreAsync(CleanupImageScore score, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupImageScores
+                .FirstOrDefaultAsync(row => row.ImageId == score.ImageId
+                    && row.ModelKey == score.ModelKey
+                    && row.ModelHash == score.ModelHash
+                    && row.ScoreName == score.ScoreName, cancellationToken);
+
+            if (score.Status == CleanupScoreStatus.Indexed && score.IndexedAtUtc == null)
+            {
+                score.IndexedAtUtc = now;
+            }
+
+            if (existing == null)
+            {
+                score.CreatedAtUtc = score.CreatedAtUtc == default ? now : score.CreatedAtUtc;
+                score.UpdatedAtUtc = score.UpdatedAtUtc == default ? now : score.UpdatedAtUtc;
+                context.CleanupImageScores.Add(score);
+                await context.SaveChangesAsync(cancellationToken);
+                return score;
+            }
+
+            score.Id = existing.Id;
+            score.CreatedAtUtc = existing.CreatedAtUtc;
+            score.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(score);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupImageScore?> GetImageScoreAsync(int imageId, string modelKey, string? modelHash, string scoreName, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageScores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(score => score.ImageId == imageId
+                    && score.ModelKey == modelKey
+                    && score.ModelHash == modelHash
+                    && score.ScoreName == scoreName, cancellationToken);
+        }
+
+        public async Task<List<CleanupImageScore>> GetImageScoresAsync(CleanupScoreFilter filter, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageScores.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelKey))
+            {
+                query = query.Where(score => score.ModelKey == filter.ModelKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ModelHash))
+            {
+                query = query.Where(score => score.ModelHash == filter.ModelHash);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.ScoreName))
+            {
+                query = query.Where(score => score.ScoreName == filter.ScoreName);
+            }
+
+            if (filter.Status.HasValue)
+            {
+                query = query.Where(score => score.Status == filter.Status.Value);
+            }
+
+            if (filter.MaxScore.HasValue)
+            {
+                query = query.Where(score => score.Score <= filter.MaxScore.Value);
+            }
+
+            return await query
+                .OrderBy(score => score.Score)
+                .ThenByDescending(score => score.UpdatedAtUtc)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupImageScore>> GetStaleImageScoresAsync(string modelKey, string? modelHash, string scoreName, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupImageScores
+                .AsNoTracking()
+                .Where(score => score.ModelKey == modelKey
+                    && score.ScoreName == scoreName
+                    && (score.Status == CleanupScoreStatus.Stale || score.ModelHash != modelHash))
+                .OrderBy(score => score.UpdatedAtUtc)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<CleanupGroupRun> CreateGroupRunAsync(CleanupGroupRun run, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            run.CreatedAtUtc = run.CreatedAtUtc == default ? now : run.CreatedAtUtc;
+            run.UpdatedAtUtc = run.UpdatedAtUtc == default ? now : run.UpdatedAtUtc;
+            context.CleanupGroupRuns.Add(run);
+            await context.SaveChangesAsync(cancellationToken);
+            return run;
+        }
+
+        public async Task<CleanupGroupRun?> GetGroupRunAsync(int runId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroupRuns
+                .AsNoTracking()
+                .FirstOrDefaultAsync(run => run.Id == runId, cancellationToken);
+        }
+
+        public async Task<List<CleanupGroupRun>> GetGroupRunsAsync(int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroupRuns
+                .AsNoTracking()
+                .OrderByDescending(run => run.CreatedAtUtc)
+                .ThenByDescending(run => run.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task AddGroupsAsync(int runId, IReadOnlyList<CleanupGroup> groups, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            foreach (var group in groups)
+            {
+                group.RunId = runId;
+                group.CreatedAtUtc = group.CreatedAtUtc == default ? DateTime.UtcNow : group.CreatedAtUtc;
+                foreach (var member in group.Members)
+                {
+                    member.CreatedAtUtc = member.CreatedAtUtc == default ? DateTime.UtcNow : member.CreatedAtUtc;
+                }
+            }
+
+            context.CleanupGroups.AddRange(groups);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupGroup>> GetGroupsAsync(int runId, int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroups
+                .AsNoTracking()
+                .Where(group => group.RunId == runId)
+                .OrderByDescending(group => group.MemberCount)
+                .ThenBy(group => group.Id)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupGroupMember>> GetGroupMembersAsync(int groupId, int? take = null, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            IQueryable<CleanupGroupMember> query = context.CleanupGroupMembers
+                .AsNoTracking()
+                .Where(member => member.GroupId == groupId)
+                .OrderBy(member => member.SortOrder)
+                .ThenBy(member => member.Id);
+
+            if (take is > 0)
+            {
+                query = query.Take(take.Value);
+            }
+
+            return await query
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<CleanupGroupExplanation?> GetGroupExplanationAsync(int groupId, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            return await context.CleanupGroupExplanations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(explanation => explanation.GroupId == groupId, cancellationToken);
+        }
+
+        public async Task<CleanupGroupExplanation> UpsertGroupExplanationAsync(CleanupGroupExplanation explanation, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await context.CleanupGroupExplanations
+                .FirstOrDefaultAsync(row => row.GroupId == explanation.GroupId, cancellationToken);
+
+            if (existing == null)
+            {
+                explanation.CreatedAtUtc = explanation.CreatedAtUtc == default ? now : explanation.CreatedAtUtc;
+                explanation.UpdatedAtUtc = explanation.UpdatedAtUtc == default ? now : explanation.UpdatedAtUtc;
+                context.CleanupGroupExplanations.Add(explanation);
+                await context.SaveChangesAsync(cancellationToken);
+                return explanation;
+            }
+
+            explanation.Id = existing.Id;
+            explanation.CreatedAtUtc = existing.CreatedAtUtc;
+            explanation.UpdatedAtUtc = now;
+            context.Entry(existing).CurrentValues.SetValues(explanation);
+            await context.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
+        public async Task<CleanupGroupReconciliationResult> ReconcileGroupsAsync(IReadOnlyCollection<int> groupIds, CancellationToken cancellationToken = default)
+        {
+            if (groupIds.Count == 0)
+            {
+                return new CleanupGroupReconciliationResult();
+            }
+
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var distinctGroupIds = groupIds.Where(id => id > 0).Distinct().ToList();
+            var groups = await context.CleanupGroups
+                .Where(group => distinctGroupIds.Contains(group.Id))
+                .ToListAsync(cancellationToken);
+
+            var runIds = groups.Select(group => group.RunId).Distinct().ToHashSet();
+            var updatedGroups = 0;
+            var removedGroups = 0;
+
+            foreach (var group in groups)
+            {
+                var members = await context.CleanupGroupMembers
+                    .Where(member => member.GroupId == group.Id)
+                    .OrderBy(member => member.SortOrder)
+                    .ThenBy(member => member.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (members.Count == 0)
+                {
+                    context.CleanupGroups.Remove(group);
+                    removedGroups++;
+                    continue;
+                }
+
+                var representativeImageId = group.RepresentativeImageId;
+                if (!representativeImageId.HasValue || members.All(member => member.ImageId != representativeImageId.Value))
+                {
+                    representativeImageId = members.FirstOrDefault(member => member.Role == CleanupGroupMemberRole.Representative)?.ImageId
+                        ?? members[0].ImageId;
+                }
+
+                group.RepresentativeImageId = representativeImageId;
+                group.MemberCount = members.Count;
+                group.EstimatedBytes = members.Sum(member => member.EstimatedBytes ?? 0);
+                var similarities = members
+                    .Where(member => member.SimilarityScore.HasValue)
+                    .Select(member => member.SimilarityScore!.Value)
+                    .ToList();
+                group.MinSimilarity = similarities.Count == 0 ? null : similarities.Min();
+                group.MaxSimilarity = similarities.Count == 0 ? null : similarities.Max();
+                updatedGroups++;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            var updatedRuns = 0;
+            foreach (var runId in runIds)
+            {
+                var run = await context.CleanupGroupRuns.FirstOrDefaultAsync(row => row.Id == runId, cancellationToken);
+                if (run == null)
+                {
+                    continue;
+                }
+
+                var runGroups = await context.CleanupGroups
+                    .Where(group => group.RunId == runId)
+                    .ToListAsync(cancellationToken);
+                run.TotalGroups = runGroups.Count;
+                run.TotalMembers = runGroups.Sum(group => group.MemberCount);
+                run.UpdatedAtUtc = DateTime.UtcNow;
+                updatedRuns++;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            return new CleanupGroupReconciliationResult
+            {
+                RequestedGroups = distinctGroupIds.Count,
+                UpdatedGroups = updatedGroups,
+                RemovedGroups = removedGroups,
+                UpdatedRuns = updatedRuns
+            };
+        }
+
+        public async Task<CleanupStorageSummary> GetStorageSummaryAsync(int? projectId = null, int? runId = null, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var indexQuery = context.CleanupImageIndexes.AsNoTracking();
+            if (projectId.HasValue)
+            {
+                indexQuery = indexQuery.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            var runQuery = context.CleanupGroupRuns.AsNoTracking();
+            if (projectId.HasValue)
+            {
+                runQuery = runQuery.Where(run => run.ProjectId == projectId.Value);
+            }
+
+            if (runId.HasValue)
+            {
+                runQuery = runQuery.Where(run => run.Id == runId.Value);
+            }
+
+            var runIds = await runQuery.Select(run => run.Id).ToListAsync(cancellationToken);
+            var groupQuery = context.CleanupGroups.AsNoTracking().Where(group => runIds.Contains(group.RunId));
+
+            return new CleanupStorageSummary
+            {
+                IndexedImages = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.Indexed && index.FileExists, cancellationToken),
+                MissingFiles = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists, cancellationToken),
+                ErrorImages = await indexQuery.CountAsync(index => index.Status == CleanupIndexStatus.Error, cancellationToken),
+                IndexedBytes = await indexQuery.Where(index => index.FileExists).SumAsync(index => index.FileSizeBytes ?? 0, cancellationToken),
+                GroupRuns = runIds.Count,
+                Groups = await groupQuery.CountAsync(cancellationToken),
+                GroupMembers = await groupQuery.SumAsync(group => group.MemberCount, cancellationToken),
+                GroupEstimatedBytes = await groupQuery.SumAsync(group => group.EstimatedBytes ?? 0, cancellationToken)
+            };
+        }
+
+        public async Task<List<CleanupMissingFileReportItem>> GetMissingFileReportAsync(int? projectId, int skip, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists);
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            return await query
+                .OrderByDescending(index => index.UpdatedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .Select(index => new CleanupMissingFileReportItem
+                {
+                    ImageId = index.ImageId,
+                    ProjectId = index.ProjectId,
+                    ImagePath = index.ImagePath,
+                    FileSizeBytes = index.FileSizeBytes,
+                    UpdatedAtUtc = index.UpdatedAtUtc
+                })
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<CleanupWorkflowStorageSummaryItem>> GetWorkflowStorageSummaryAsync(int? projectId, int take, CancellationToken cancellationToken = default)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var query = context.CleanupImageIndexes
+                .AsNoTracking()
+                .Where(index => !string.IsNullOrWhiteSpace(index.WorkflowId));
+
+            if (projectId.HasValue)
+            {
+                query = query.Where(index => index.ProjectId == projectId.Value);
+            }
+
+            return await query
+                .GroupBy(index => index.WorkflowId!)
+                .Select(group => new CleanupWorkflowStorageSummaryItem
+                {
+                    WorkflowId = group.Key,
+                    IndexedImages = group.Count(index => index.Status == CleanupIndexStatus.Indexed && index.FileExists),
+                    MissingFiles = group.Count(index => index.Status == CleanupIndexStatus.MissingFile || !index.FileExists),
+                    IndexedBytes = group.Where(index => index.FileExists).Sum(index => index.FileSizeBytes ?? 0)
+                })
+                .OrderByDescending(item => item.IndexedBytes)
+                .ThenByDescending(item => item.IndexedImages)
+                .Take(Math.Max(1, take))
+                .ToListAsync(cancellationToken);
+        }
+    }
+}

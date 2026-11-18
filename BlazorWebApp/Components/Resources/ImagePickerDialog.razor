@@ -1,0 +1,164 @@
+@inject IDatabaseService DB
+@inject IIOService IO
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.subtitle2">
+                Select an image from your gallery to use as the resource cover
+            </MudText>
+            <MudAlert Severity="Severity.Info" Dense>
+                Showing @_images.Count selected image(s) from Gallery
+            </MudAlert>
+
+            @if (_loading)
+            {
+                <MudProgressLinear Indeterminate />
+                <MudText Align="Align.Center" Color="Color.Secondary">Loading images...</MudText>
+            }
+            else if (_images.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">
+                    No images found in your gallery. Generate some images first to use them as covers.
+                </MudAlert>
+            }
+            else
+            {
+                <MudGrid Spacing="2">
+                    @foreach (var image in _images)
+                    {
+                        var imagePath = IO.GetImageStaticFile(image.Path);
+                        var isSelected = _selectedImagePath == imagePath;
+                        
+                        <MudItem xs="6" sm="4" md="3">
+                            <MudCard @onclick="@(() => SelectImage(imagePath))"
+                                     Style="@($"cursor: pointer; border: {(isSelected ? "3px solid var(--mud-palette-primary)" : "1px solid transparent")};")">
+                                <MudCardMedia Image="@imagePath" Height="150" Style="object-fit: cover;" />
+                                @if (isSelected)
+                                {
+                                    <MudCardContent Class="pa-1">
+                                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                            Selected
+                                        </MudChip>
+                                    </MudCardContent>
+                                }
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                @if (_hasMore)
+                {
+                    <MudButton OnClick="LoadMore" StartIcon="@Icons.Material.Filled.ExpandMore" Variant="Variant.Text" FullWidth
+                               Disabled="_loadingMore">
+                        @if (_loadingMore)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate />
+                        }
+                        else
+                        {
+                            <span>Load More</span>
+                        }
+                    </MudButton>
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(string.IsNullOrEmpty(_selectedImagePath))">
+            Ok
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<int> SelectedImageIds { get; set; } = new();
+
+    private bool _loading = true;
+    private bool _loadingMore = false;
+    private bool _hasMore = false;
+    private int _currentPage = 1;
+    private const int PageSize = 24;
+    private List<Image> _images = new();
+    private string? _selectedImagePath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadImages();
+    }
+
+    private async Task LoadImages()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await DB.GetPagedImages(_currentPage, SelectedImageIds);
+            if (result != null)
+            {
+                _images.AddRange(result.Images);
+                _hasMore = result.HasNext;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load images: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMore()
+    {
+        if (!_hasMore || _loadingMore) return;
+
+        _loadingMore = true;
+        _currentPage++;
+        StateHasChanged();
+
+        try
+        {
+            var result = await DB.GetPagedImages(_currentPage, SelectedImageIds);
+            if (result != null)
+            {
+                _images.AddRange(result.Images);
+                _hasMore = result.HasNext;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load more images: {ex.Message}");
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectImage(string imagePath)
+    {
+        _selectedImagePath = imagePath;
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(_selectedImagePath));
+    }
+}

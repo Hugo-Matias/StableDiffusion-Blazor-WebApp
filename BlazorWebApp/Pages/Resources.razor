@@ -1,40 +1,43 @@
 ﻿@page "/resources"
-@inject ManagerService M
-@inject SDAPIService SD
-@inject IOService IO
-@inject DatabaseService DB
-@inject ResourcesService ResourcesService
-@inject CivitaiService Civitai
-@inject IConfiguration Configuration
-@inject IDialogService DialogService
-@inject ISnackbar Snackbar
+@using BlazorWebApp.Events
+@inject IStateService State
+@inject IEventService Events
+@inject IDatabaseService DB
+@inject IResourcesService ResourcesService
 @implements IDisposable
 
-<MudTabs @bind-ActivePanelIndex=M.State.Resources.ActiveTabIndex Elevation="4" PanelClass="px-5 py-2" Rounded Centered>
-    <MudTabPanel Text="CivitAI">
-        <CivitaiPanel />
-    </MudTabPanel>
+<TabbedPageShell @bind-ActivePanelIndex="State.State.Resources.ActiveTabIndex">
     @foreach (var resource in _resources)
     {
         <MudTabPanel Text=@(resource.Key.Name == "TextualInversion" ? "Embedding" : resource.Key.Name)>
-            <ResourcePanel Resources="resource.Value" OnLoad=@((r) => r.Files.Count > 1 ? ShowResourceVersionsDialog(r) : LoadResource(r, r.Files[0])) />
+            @if (_selectedResource != null && _selectedResourceTypeId == resource.Key.Id)
+            {
+                <ResourceDetailPanel Resource="_selectedResource" OnBack="ReturnToResults"
+                                     OnResourceChanged="HandleResourceChanged" OnResourceDeleted="HandleResourceDeleted" />
+            }
+            else
+            {
+                <ResourcePanel Resources="resource.Value" OnLoad="ShowResourceDetail" />
+            }
         </MudTabPanel>
     }
-    <MudTabPanel Text="Audit">
-        <ResourceAuditPanel />
+    
+    <MudTabPanel Text="Import">
+        <ImportResourcePanel />
     </MudTabPanel>
-</MudTabs>
+</TabbedPageShell>
 
 @code {
-    private Dictionary<ResourceType, List<LocalResource>> _resources;
-    private List<string> _resourceFormats = new() { ".safetensors", ".ckpt", ".pt" };
+    private Dictionary<ResourceType, List<LocalResource>> _resources = new();
+    private LocalResource? _selectedResource;
+    private int? _selectedResourceTypeId;
 
     protected async override Task OnInitializedAsync()
     {
-        M.OnWebuiStateChanged += Refresh;
-        M.OnDownloadCompleted += Refresh;
-        M.OnResourcesStateChanged += Refresh;
-        if (M.ResourceTypeDirectories == null) await M.GetResourceTypeDirectories();
+        Events.Subscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Subscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
+        Events.Subscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
+        
         await InitializeResourceDictionary();
     }
 
@@ -48,161 +51,52 @@
         }
     }
 
-    private async Task ShowResourceVersionsDialog(LocalResource resource)
+    private void ShowResourceDetail(LocalResource resource)
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var param = new DialogParameters();
-        param.Add("Resource", resource);
-        var dialog = await DialogService.ShowAsync<ResourceVersionsDialog>(resource.Title, param, options);
-        var result = await dialog.Result;
-        if (!result.Canceled) await LoadResource(resource, (LocalResourceFile)result.Data);
+        _selectedResource = resource;
+        _selectedResourceTypeId = resource.Type.Id;
     }
 
-    private async Task LoadResource(LocalResource resource, LocalResourceFile resourceFile)
+    private void ReturnToResults()
     {
-        if (resource.Type.Name.Equals("vae", StringComparison.InvariantCultureIgnoreCase))
-        {
-            if (!M.IsWebuiUp) return;
-            await M.PostOptions(new() { SDVae = resource.Title });
-            return;
-        }
-
-        var subtype = resource.SubType != null ? resource.SubType.Name : null;
-        var file = await ResourcesService.GetResourceFileInfo(resource.Type.Name, subtype, resourceFile);
-
-        if (file == null)
-        {
-            // Snackbar.Add($"Couldn't get file info!\nFile: {resourceFile.Filename} | Type: {resource.Type.Name} | SubType: {subtype}", Severity.Error);
-            // return;
-            await ShowNotFoundDeleteDialog(resourceFile);
-            return;
-        }
-
-        await ShowLoadResourceDialog(resource, file);
+        _selectedResource = null;
+        _selectedResourceTypeId = null;
     }
 
-    private async Task ShowLoadResourceDialog(LocalResource resource, LocalResourceFile file)
+    private async Task HandleResourceChanged()
     {
-        var comp = StringComparison.InvariantCultureIgnoreCase;
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var dialogParam = new DialogParameters();
-        dialogParam.Add("Resource", resource);
-        dialogParam.Add("File", file);
-        var dialog = await DialogService.ShowAsync<LoadResourceDialog>("", dialogParam, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
+        var selectedResourceId = _selectedResource?.ResourceId;
+        await RefreshAsync();
+        if (selectedResourceId != null)
         {
-            if (result.Data != null)
-            {
-                var command = result.Data.ToString();
-                if (string.IsNullOrEmpty(command)) return;
-                if (command.Equals("Edit", comp))
-                {
-                    await ShowResourceInfoDialog(file);
-                    Refresh();
-                }
-                else if (command == "Toggle") Refresh();
-                else if (!M.IsWebuiUp) return;
-                // result.Data is null if the Load Checkpoint button was clicked, loading the relevant TriggerWords otherwise
-                else if (command.Equals("Load", comp) && resource.Type.Name.Equals("Checkpoint", comp))
-                {
-                    await M.GetSDModels(refresh: true);
-                    var filename = file.File.Name.Replace(file.File.Extension, "");
-                    var model = M.SDModels.SingleOrDefault(m => m.Model_name.Contains(filename, comp));
-                    await M.SetSDModel(model.Title);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                }
-                else
-                {
-                    var target = (ValueTuple<ModeType, bool>)result.Data;
-                    await ResourcesService.LoadPrompt(file, resource.Type.Name, target);
-                    await DB.UpdateResourceLoadedDate(file.ResourceId);
-                }
-            }
+            _selectedResource = _resources.Values
+                .SelectMany(resources => resources)
+                .FirstOrDefault(resource => resource.ResourceId == selectedResourceId || resource.Files.Any(file => file.ResourceId ==
+selectedResourceId));
+            _selectedResourceTypeId = _selectedResource?.Type.Id;
         }
     }
 
-    private async Task ShowResourceInfoDialog(LocalResourceFile file)
+    private async Task HandleResourceDeleted()
     {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var entity = await DB.GetResourceById(file.ResourceId);
-        var param = new DialogParameters();
-        param.Add("Resource", entity);
-        var dialog = await DialogService.ShowAsync<ResourceInfoDialog>("Edit", param, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            var data = (ValueTuple<Resource, string>)result.Data;
-            if (data.Item2 == "Update")
-            {
-                var directory = file.File.Directory.FullName;
-                var filename = file.File.Name.Replace(file.File.Extension, "");
-                var resourceId = file.ResourceId;
-                var isEnabled = file.IsEnabled;
-                await ResourcesService.UpdateResource(data.Item1, directory, filename, resourceId, isEnabled);
-            }
-            else if (data.Item2 == "Delete")
-            {
-                await ShowDeleteDialog(data.Item1, file);
-            }
-        }
+        ReturnToResults();
+        await RefreshAsync();
     }
 
-    private async Task ShowDeleteDialog(Resource resource, LocalResourceFile file)
-    {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var confirmParam = new DialogParameters();
-        var msg = new MarkupString(@"<span class='lead'>Are you sure you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>All preview images associated with this resource will also be removed.<br/>This action is irreversible!</small>");
-        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxEnabled), true);
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxContent), "Delete files from disk?");
-        confirmParam.Add(nameof(ConfirmationDialog.CheckboxColor), Color.Error);
-        options.MaxWidth = MaxWidth.Small;
-        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
-        var confirmationResult = await confirmationDialog.Result;
-        if (!confirmationResult.Canceled)
-        {
-            var deleteFiles = confirmationResult.Data != null && (bool)confirmationResult.Data == true;
-            await ResourcesService.DeleteResource(resource, deleteFiles, file.File.Directory.FullName, file.File.Name.Replace(file.File.Extension, ""));
-            Snackbar.Add(deleteFiles ? "Resource and files were" : "Resource was" + " deleted successfully.", Severity.Success);
-        }
-    }
+    private void OnBackendStateChanged(BackendAvailabilityChangedEventArgs args) => _ = RefreshAsync();
+    private void OnDownloadCompleted(DownloadCompletedEventArgs args) => _ = RefreshAsync();
+    private void OnResourcesStateChanged(ResourcesChangedEventArgs args) => _ = RefreshAsync();
 
-
-    private async Task ShowNotFoundDeleteDialog(LocalResourceFile file)
-    {
-        var options = new DialogOptions() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large };
-        var confirmParam = new DialogParameters();
-        var msg = new MarkupString(@"<span class='lead'>File not found!</br>Do you want to <strong class='text-danger'>delete</strong> this resource?<br /></span><small>This action is irreversible!</small>");
-        confirmParam.Add(nameof(ConfirmationDialog.CancelButtonText), "No");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonText), "Yes");
-        confirmParam.Add(nameof(ConfirmationDialog.OkButtonColor), Color.Error);
-        confirmParam.Add(nameof(ConfirmationDialog.Content), msg);
-        options.MaxWidth = MaxWidth.Small;
-        var confirmationDialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete Resource", confirmParam, options);
-        var confirmationResult = await confirmationDialog.Result;
-        if (!confirmationResult.Canceled)
-        {
-            await ResourcesService.DeleteResource(await DB.GetResourceById(file.ResourceId), false, string.Empty, string.Empty);
-            Snackbar.Add("Resource deleted successfully!", Severity.Success);
-        }
-    }
-    private async void Refresh()
+    private async Task RefreshAsync()
     {
         await InitializeResourceDictionary();
-        await M.GetResourceTypeDirectories();
         await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        M.OnWebuiStateChanged -= Refresh;
-        M.OnDownloadCompleted -= Refresh;
-        M.OnResourcesStateChanged -= Refresh;
+        Events.Unsubscribe<BackendAvailabilityChangedEventArgs>(OnBackendStateChanged);
+        Events.Unsubscribe<DownloadCompletedEventArgs>(OnDownloadCompleted);
+        Events.Unsubscribe<ResourcesChangedEventArgs>(OnResourcesStateChanged);
     }
 }

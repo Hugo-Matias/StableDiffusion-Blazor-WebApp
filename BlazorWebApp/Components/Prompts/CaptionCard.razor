@@ -1,0 +1,124 @@
+@*
+    CaptionCard - Displays a single caption record with metadata badges and action buttons.
+*@
+@using BlazorWebApp.Data.Dtos
+
+<div class="caption-card">
+    <div class="caption-preview" @onclick="ToggleExpanded">
+        @CaptionPreview
+    </div>
+
+    @if (_expanded)
+    {
+        <div class="caption-full">
+            @Record.Caption
+        </div>
+    }
+
+    <div class="caption-badges">
+        @if (!string.IsNullOrWhiteSpace(Record.AspectRatio))
+        {
+            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="caption-badge">@Record.AspectRatio
+            </MudChip>
+        }
+
+        @if (Record.ArtisticQuality > 0)
+        {
+            var qualityColor = Record.ArtisticQuality >= 0.7 ? Color.Success : (Record.ArtisticQuality >= 0.4 ?
+        Color.Warning : Color.Error);
+            <MudChip Size="Size.Small" Variant="Variant.Text" Color="@qualityColor" Class="caption-badge">
+                Q:@($"{Record.ArtisticQuality:F2}")</MudChip>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Record.Nudity))
+            {
+                var nudityColor = Record.Nudity.ToLowerInvariant() switch
+                {
+                    "full_nudity" => Color.Error,
+                    "partial_nudity" => Color.Warning,
+                    _ => Color.Default
+                };
+                <MudChip Size="Size.Small" Variant="Variant.Text" Color="@nudityColor" Class="caption-badge">@Record.Nudity
+                </MudChip>
+            }
+
+            @if (Record.Males > 0 || Record.Females > 0)
+            {
+                var genderLabel = new System.Text.StringBuilder();
+                if (Record.Males > 0) genderLabel.Append($"M:{Record.Males}");
+                if (Record.Females > 0)
+                {
+                    if (genderLabel.Length > 0) genderLabel.Append(" ");
+                    genderLabel.Append($"F:{Record.Females}");
+                }
+                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Class="caption-badge">
+                    @genderLabel.ToString()</MudChip>
+                }
+
+                @if (Record.Clothing.Count > 0)
+                {
+                    foreach (var clothing in Record.Clothing.Take(4))
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Tertiary"
+                                 Class="caption-badge caption-badge-clothing" StartIcon="@Icons.Material.Filled.Checkroom">@clothing
+                        </MudChip>
+                    }
+                    @if (Record.Clothing.Count > 4)
+                    {
+                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Tertiary" Class="caption-badge">
+                            +@(Record.Clothing.Count - 4)</MudChip>
+                        }
+                    }
+                </div>
+
+                <div class="caption-actions">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="HandleInsert"
+                               StartIcon="@Icons.Material.Filled.AddCircleOutline" Class="caption-insert-button">Insert</MudButton>
+                    <MudTooltip Text="Append caption to prompt" Delay="600" Duration="600">
+                        <MudIconButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" OnClick="HandleAppend"
+                                       Icon="@Icons.Material.Filled.AddComment" />
+                    </MudTooltip>
+                </div>
+            </div>
+
+@code {
+    [Parameter] public CaptionRecord Record { get; set; } = null!;
+    [Parameter] public EventCallback<string> OnInsert { get; set; }
+    [Parameter] public EventCallback<string> OnAppend { get; set; }
+    [Parameter] public bool AutoGenerateAfterInsert { get; set; }
+    [Parameter] public EventCallback OnGenerateRequested { get; set; }
+
+    private bool _expanded;
+    private const int PreviewLength = 150;
+
+    private string CaptionPreview
+    {
+        get
+        {
+            if (Record.Caption.Length <= PreviewLength)
+                return Record.Caption;
+            return Record.Caption[..PreviewLength] + "...";
+        }
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private async Task HandleInsert()
+    {
+        if (OnInsert.HasDelegate)
+            await OnInsert.InvokeAsync(Record.Caption);
+        if (AutoGenerateAfterInsert && OnGenerateRequested.HasDelegate)
+            await OnGenerateRequested.InvokeAsync();
+    }
+
+    private async Task HandleAppend()
+    {
+        if (OnAppend.HasDelegate)
+            await OnAppend.InvokeAsync(Record.Caption);
+        if (AutoGenerateAfterInsert && OnGenerateRequested.HasDelegate)
+            await OnGenerateRequested.InvokeAsync();
+    }
+}

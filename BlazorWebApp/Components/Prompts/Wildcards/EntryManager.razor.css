@@ -1,0 +1,28 @@
+.entry-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.entry-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+}
+
+.entry-item:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.entry-item-selected {
+    background-color: var(--mud-palette-action-selected) !important;
+    border-left-color: var(--mud-palette-primary) !important;
+}
+
+.entry-item-selected:hover {
+    background-color: var(--mud-palette-action-selected) !important;
+}
+
+.preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}

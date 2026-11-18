@@ -1,5 +1,5 @@
-﻿@inject DatabaseService DB
-@inject IOService IO
+@inject IDatabaseService DB
+@inject IIOService IO
 
 <div>
     <MudCarousel @ref=Reference Class="mud-width-full" Style=@($"width: {_width}; height: {_height}; max-width: {MaxWidth}; max-height: {MaxHeight}") ShowArrows="ShowControls" ShowBullets=false TData="Image" AutoCycle=AutoCycle AutoCycleTime=AutoCycleTime SelectedIndexChanged=@(v => OnImageChanged.InvokeAsync(v))>
@@ -58,6 +58,10 @@
     private async Task HandleFavoriteChanged(bool isfavorite)
     {
         Images[Reference.SelectedIndex].Favorite = isfavorite;
+        if (isfavorite && Images[Reference.SelectedIndex].Score == 0)
+        {
+            Images[Reference.SelectedIndex].Score = 3;
+        }
         await UpdateImage();
     }
 
@@ -66,6 +70,10 @@
         foreach (var image in Images)
         {
             image.Favorite = true;
+            if (image.Score == 0)
+            {
+                image.Score = 3;
+            }
             await DB.UpdateImage(image);
         }
         await InvokeAsync(StateHasChanged);

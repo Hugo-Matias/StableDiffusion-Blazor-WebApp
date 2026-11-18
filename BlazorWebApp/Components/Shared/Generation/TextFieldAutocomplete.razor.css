@@ -1,0 +1,22 @@
+﻿.prompt-autocomplete-wrapper {
+	position: relative;
+	width: 100%;
+}
+
+.autocomplete-dropdown {
+	position: absolute;
+	z-index: 1300;
+	margin-top: 4px;
+	max-height: 400px;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.selected-suggestion {
+	background-color: var(--mud-palette-action-default-hover) !important;
+}
+
+/* Smooth scrolling for keyboard navigation */
+.autocomplete-dropdown .mud-list-item {
+	scroll-margin: 8px;
+}

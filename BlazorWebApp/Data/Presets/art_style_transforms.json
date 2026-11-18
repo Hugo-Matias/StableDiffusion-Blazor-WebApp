@@ -1,0 +1,352 @@
+[
+  {
+    "name": "Style: Renaissance Oil",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a classical Renaissance oil painting. Make it look like a master panel painting from the Italian Renaissance. Keep subject position and their pose the same as the reference. Ensure soft sfumato transitions follow Renaissance aesthetics. Make sure anatomy follows idealized classical proportions. Make skin tones look warm with golden undertones. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft directional lighting fits the style. Ensure rich oil paint texture and subtle glazing layers. Keep in focus. The result should be in a Renaissance oil painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["renaissance", "oil-painting", "classical"]
+  },
+  {
+    "name": "Style: Baroque Drama",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a dramatic Baroque painting. Make it look like a grand oil canvas with theatrical intensity. Keep subject position and their pose the same as the reference. Ensure strong chiaroscuro contrasts follow Baroque aesthetics. Make sure anatomy is dynamic and expressive. Make surfaces look richly textured with deep shadows and brilliant highlights. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic spotlight lighting fits the style. Ensure luxurious fabrics and ornate details are rendered. Keep in focus. The result should be in a Baroque dramatic painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["baroque", "dramatic", "chiaroscuro"]
+  },
+  {
+    "name": "Style: Impressionist Brushwork",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Impressionist painting. Make it look like an outdoor plein-air canvas with visible brushwork. Keep subject position and their pose the same as the reference. Ensure loose, broken brushstrokes follow Impressionist aesthetics. Make sure anatomy is suggested rather than sharply defined. Make colors look like small dabs of pure pigment side by side. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright natural daylight fits the style. Ensure atmospheric haze and vibrant color contrasts. Keep in focus. The result should be in an Impressionist painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["impressionism", "painterly", "outdoor"]
+  },
+  {
+    "name": "Style: Art Nouveau Ornament",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Art Nouveau illustration. Make it look like a decorative poster with flowing organic lines. Keep subject position and their pose the same as the reference. Ensure sinuous whiplash curves follow Art Nouveau aesthetics. Make sure forms are elegant and stylized. Make colors look like muted jewel tones with gold accents. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft diffused lighting fits the style. Ensure ornamental borders and botanical motifs frame the composition. Keep in focus. The result should be in an Art Nouveau decorative style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["art-nouveau", "decorative", "ornamental"]
+  },
+  {
+    "name": "Style: Art Deco Geometry",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Art Deco illustration. Make it look like a streamlined geometric poster from the 1920s. Keep subject position and their pose the same as the reference. Ensure bold zigzag and sunburst patterns follow Art Deco aesthetics. Make sure forms are simplified into clean geometric shapes. Make surfaces look metallic with chrome and gold leaf accents. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic stepped lighting fits the style. Ensure rich black backgrounds with vibrant accent colors. Keep in focus. The result should be in an Art Deco geometric style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["art-deco", "geometric", "streamlined"]
+  },
+  {
+    "name": "Style: Expressionist Color",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Expressionist painting. Make it look like an emotionally charged canvas with aggressive brushwork. Keep subject position and their pose the same as the reference. Ensure distorted forms and non-naturalistic colors follow Expressionist aesthetics. Make sure anatomy is exaggerated for emotional effect. Make paint application look thick and gestural with visible knife marks. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure intense contrasting lighting fits the style. Ensure jarring color clashes and raw energy. Keep in focus. The result should be in an Expressionist painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["expressionism", "emotional", "bold-color"]
+  },
+  {
+    "name": "Style: Surrealist Dream",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Surrealist painting. Make it look like a dreamlike canvas with impossible juxtapositions. Keep subject position and their pose the same as the reference. Ensure melting forms and unexpected scale shifts follow Surrealist aesthetics. Make sure anatomy is subtly distorted in uncanny ways. Make surfaces look hyper-real yet logically impossible. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure eerie dreamlike lighting fits the style. Ensure floating objects and paradoxical spaces. Keep in focus. The result should be in a Surrealist painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["surrealism", "dream", "fantasy"]
+  },
+  {
+    "name": "Style: Pop Art Screen Print",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Pop Art screen print. Make it look like a bold commercial poster with halftone patterns. Keep subject position and their pose the same as the reference. Ensure Ben-Day dots and flat color blocks follow Pop Art aesthetics. Make sure forms are simplified into graphic silhouettes. Make colors look like primary CMYK inks with hard edges. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat even lighting fits the style. Ensure comic-style outlines and repetitive patterns. Keep in focus. The result should be in a Pop Art screen print style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["pop-art", "halftone", "screen-print"]
+  },
+  {
+    "name": "Style: Ukiyo-e Woodblock",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a traditional Japanese woodblock print. Make it look like an Edo-period ukiyo-e illustration. Keep subject position and their pose the same as the reference. Ensure flat color planes and bold contour lines follow Ukiyo-e aesthetics. Make sure anatomy follows traditional Japanese stylization. Make surfaces look like hand-printed ink with visible grain texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even flat lighting fits the style. Ensure decorative wave patterns and cloud motifs. Keep in focus. The result should be in a Ukiyo-e woodblock print style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["ukiyo-e", "woodblock", "japanese"]
+  },
+  {
+    "name": "Style: Watercolor Wash",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a watercolor painting. Make it look like transparent layered washes on cold-press paper. Keep subject position and their pose the same as the reference. Ensure soft bleeding edges follow watercolor aesthetics. Make sure forms are suggested with loose wet-in-wet technique. Make colors look transparent and luminous with visible paper texture underneath. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft natural lighting fits the style. Ensure delicate color gradients and water marks. Keep in focus. The result should be in a watercolor wash painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["watercolor", "transparent", "traditional"]
+  },
+  {
+    "name": "Style: Charcoal Sketch",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a charcoal drawing on toned paper. Make it look like a dramatic graphite sketch with smudged values. Keep subject position and their pose the same as the reference. Ensure deep dark shadows follow charcoal drawing aesthetics. Make sure anatomy is rendered through value contrast rather than line. Make highlights look like white chalk over dark charcoal tones. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional side lighting fits the style. Ensure visible paper grain and smudged blending strokes. Keep in focus. The result should be in a charcoal sketch drawing style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["charcoal", "sketch", "drawing"]
+  },
+  {
+    "name": "Style: Ink Wash Painting",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a traditional East Asian ink wash painting. Make it look like sumi-e brushwork on rice paper. Keep subject position and their pose the same as the reference. Ensure varying brush pressure creates thick and thin strokes following Ink Wash aesthetics. Make sure forms are suggested with minimal economical marks. Make ink tones look like graded washes from deep black to pale gray. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even soft lighting fits the style. Ensure visible paper texture and ink pooling effects. Keep in focus. The result should be in an East Asian ink wash painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["ink-wash", "sumi-e", "asian"]
+  },
+  {
+    "name": "Style: Pastel Portrait",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a soft pastel drawing. Make it look like a portrait rendered in colored pastels on textured paper. Keep subject position and their pose the same as the reference. Ensure soft blended strokes follow Pastel aesthetics. Make sure skin tones are layered with powdery translucent marks. Make surfaces look velvety with visible pastel grain against toothed paper. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure warm diffused lighting fits the style. Ensure delicate color transitions and soft edges. Keep in focus. The result should be in a soft pastel portrait style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["pastel", "portrait", "soft"]
+  },
+  {
+    "name": "Style: Gouache Illustration",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a gouache illustration. Make it look like opaque watercolor with matte flat color areas. Keep subject position and their pose the same as the reference. Ensure clean graphic edges follow Gouache aesthetics. Make sure forms are built from solid color blocks with minimal blending. Make surfaces look matte and velvety with no gloss or shine. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even flat lighting fits the style. Ensure crisp color boundaries and limited palette. Keep in focus. The result should be in a gouache illustration style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["gouache", "illustration", "matte"]
+  },
+  {
+    "name": "Style: Acrylic Pour",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a fluid acrylic pour painting. Make it look like an abstract marbled composition with organic cells. Keep subject position and their pose the same as the reference. Ensure flowing color rivers follow Fluid Art aesthetics. Make sure forms dissolve into swirling color patterns. Make surfaces look glossy with cellular structures formed by silicone interaction. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even studio lighting fits the style. Ensure vibrant color contrasts and organic marbling. Keep in focus. The result should be in an acrylic pour fluid art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["acrylic", "abstract", "fluid-art"]
+  },
+  {
+    "name": "Style: Digital Painterly",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a digital painting with visible brushwork. Make it look like a painterly illustration created in a digital art program. Keep subject position and their pose the same as the reference. Ensure simulated oil and acrylic brush strokes follow Digital Painterly aesthetics. Make sure anatomy is rendered with artistic loose forms. Make colors look richly blended with layered opacity brushes. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic cinematic lighting fits the style. Ensure visible texture overlays and painterly detail. Keep in focus. The result should be in a digital painterly illustration style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["digital", "painterly", "illustration"]
+  },
+  {
+    "name": "Style: Pixel Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like pixel art. Make it look like a retro video game sprite rendered on a visible grid. Keep subject position and their pose the same as the reference. Ensure blocky pixelated forms follow Pixel Art aesthetics. Make sure details are simplified into minimal pixel placements. Make colors look like a limited 16-color palette with hard dithering transitions. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat even lighting fits the style. Ensure crisp pixel edges and retro game aesthetic. Keep in focus. The result should be in a pixel art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["pixel-art", "retro", "8bit"]
+  },
+  {
+    "name": "Style: Vector Flat Design",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a modern vector flat design illustration. Make it look like clean corporate iconography with geometric precision. Keep subject position and their pose the same as the reference. Ensure smooth bezier curves follow Flat Design aesthetics. Make sure forms are simplified into minimal geometric shapes. Make colors look like solid flat fills with no gradients or textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even shadowless lighting fits the style. Ensure clean white background and limited harmonious palette. Keep in focus. The result should be in a vector flat design style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["vector", "flat-design", "modern"]
+  },
+  {
+    "name": "Style: Pointillism",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Pointillist painting. Make it look like an image constructed entirely from thousands of small colored dots. Keep subject position and their pose the same as the reference. Ensure optical color mixing through dot placement follows Pointillism aesthetics. Make sure forms emerge from dense fields of individual dots. Make surfaces look like precisely placed pigment dots on canvas. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright natural lighting fits the style. Ensure vibrant complementary dot colors creating luminous blends. Keep in focus. The result should be in a Pointillist dot painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["pointillism", "dots", "optical-mixing"]
+  },
+  {
+    "name": "Style: Fauvist Color",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Fauvist painting. Make it look like a wild color canvas with non-naturalistic bold hues. Keep subject position and their pose the same as the reference. Ensure unrestrained expressive colors follow Fauvist aesthetics. Make sure forms are simplified into flat decorative planes of intense color. Make surfaces look like thick direct brushwork with no blending. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright even lighting fits the style. Ensure jarring complementary color contrasts and decorative patterns. Keep in focus. The result should be in a Fauvist wild color painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["fauvism", "wild-color", "decorative"]
+  },
+  {
+    "name": "Style: Bauhaus Geometric",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Bauhaus geometric composition. Make it look like a functionalist design poster with primary color blocks. Keep subject position and their pose the same as the reference. Ensure circles, triangles, and rectangles follow Bauhaus aesthetics. Make sure forms are reduced to essential geometric primitives. Make surfaces look flat with bold primary reds, blues, and yellows against white. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even functional lighting fits the style. Ensure clean compositional grid structure. Keep in focus. The result should be in a Bauhaus geometric design style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["bauhaus", "geometric", "modernist"]
+  },
+  {
+    "name": "Style: Psychedelic Poster",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a 1960s psychedelic concert poster. Make it look like a warped, mind-bending illustration with neon color spirals. Keep subject position and their pose the same as the reference. Ensure melting organic forms follow Psychedelic aesthetics. Make sure details dissolve into swirling patterns and hidden imagery. Make colors look like electric neons — hot pink, electric blue, acid green — in impossible gradients. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure trippy iridescent lighting fits the style. Ensure ornate decorative letterforms and fractal patterns. Keep in focus. The result should be in a psychedelic poster art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["psychedelic", "poster", "60s"]
+  },
+  {
+    "name": "Style: Stipple Hatching",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a stipple and cross-hatched ink drawing. Make it look like a pen-and-ink illustration built from dense line work. Keep subject position and their pose the same as the reference. Ensure tone is built through line density following Stipple Hatching aesthetics. Make sure shading emerges from parallel and crossed ink lines of varying spacing. Make surfaces look like fine nib strokes on smooth paper with no tonal washes. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting fits the style. Ensure crisp black ink against white paper with visible hatching angles. Keep in focus. The result should be in a stipple cross-hatched ink drawing style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["stipple", "hatching", "ink-drawing"]
+  },
+  {
+    "name": "Style: Ligne Claire",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Ligne Claire illustration. Make it look like clean comic art with uniform black outlines and flat color fills. Keep subject position and their pose the same as the reference. Ensure consistent line weight follows Ligne Claire aesthetics. Make sure forms are defined by even contour lines with no hatching or shading gradients. Make colors look like solid flat tints applied inside clean black borders. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even shadowless lighting fits the style. Ensure crisp graphic clarity and harmonious limited palette. Keep in focus. The result should be in a Ligne Claire clear line style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["ligne-claire", "comic", "clean-lines"]
+  },
+  {
+    "name": "Style: Manga Cel Shaded",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Japanese manga illustration with cel shading. Make it look like a high-quality manga chapter page with hard-edged shadows. Keep subject position and their pose the same as the reference. Ensure sharp shadow boundaries follow Manga Cel Shading aesthetics. Make sure anatomy follows stylized manga proportions with expressive eyes. Make linework look clean with varying ink weight for emphasis lines. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic key light fits the style. Ensure speed lines and screentone halftone patterns. Keep in focus. The result should be in a manga cel-shaded illustration style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["manga", "cel-shading", "anime"]
+  },
+  {
+    "name": "Style: Claymation Stop-Motion",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a claymation stop-motion puppet. Make it look like a hand-sculpted plasticine figure photographed frame by frame. Keep subject position and their pose the same as the reference. Ensure visible finger marks on surfaces follow Claymation aesthetics. Make sure forms are soft and slightly imperfect with rounded edges. Make textures look like colored modeling clay with subtle surface imperfections. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft studio lighting fits the style. Ensure miniature set backgrounds with shallow depth of field feel. Keep in focus. The result should be in a claymation stop-motion style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["claymation", "stop-motion", "textured"]
+  },
+  {
+    "name": "Style: Paper Cut Layered",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a layered paper cut illustration. Make it look like stacked die-cut paper silhouettes with depth shadows between layers. Keep subject position and their pose the same as the reference. Ensure flat color shapes follow Paper Cut aesthetics. Make sure forms are built from distinct cut-out layers separated by visible gaps. Make surfaces look like colored cardstock with clean laser-cut edges. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional side lighting fits the style. Ensure soft drop shadows between paper layers creating depth. Keep in focus. The result should be in a layered paper cut craft style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["paper-cut", "layered", "craft"]
+  },
+  {
+    "name": "Style: Embroidery Thread",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a textile embroidery artwork. Make it look like hand-stitched thread on woven fabric with visible stitch patterns. Keep subject position and their pose the same as the reference. Ensure cross-stitch and satin stitch textures follow Embroidery aesthetics. Make sure forms are built from directional thread strokes with slight irregularities. Make surfaces look like colored cotton threads with subtle sheen against a linen ground. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft even lighting fits the style. Ensure visible fabric weave and stitch direction changes. Keep in focus. The result should be in an embroidery thread textile art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["embroidery", "thread", "textile"]
+  },
+  {
+    "name": "Style: Stained Glass Window",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a stained glass window panel. Make it look like colored glass pieces held together by dark lead cames. Keep subject position and their pose the same as the reference. Ensure bold black lead lines follow Stained Glass aesthetics. Make sure forms are simplified into large color cells separated by thick outlines. Make colors look translucent and luminous as if backlit by transmitted light. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure bright backlighting fits the style. Ensure jewel-toned glass with subtle internal texture variations. Keep in focus. The result should be in a stained glass window art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["stained-glass", "lead-line", "translucent"]
+  },
+  {
+    "name": "Style: Mosaic Tile",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a mosaic tile artwork. Make it look like small tessellated tiles set in grout forming an image through fragmented color. Keep subject position and their pose the same as the reference. Ensure visible grout lines between tiles follow Mosaic aesthetics. Make sure forms are approximated by discrete colored tesserae rather than smooth gradients. Make surfaces look like individual ceramic or glass tiles with slight height variations catching light differently. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even ambient lighting fits the style. Ensure dark grout grid creating a visible tile matrix. Keep in focus. The result should be in a mosaic tile tessellation style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["mosaic", "tile", "tessellation"]
+  },
+  {
+    "name": "Style: Cubist Fragmented",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Cubist painting. Make it look like a fragmented geometric canvas showing multiple viewpoints simultaneously. Keep subject position and their pose the same as the reference. Ensure faceted planar fragments follow Cubist aesthetics. Make sure anatomy is deconstructed into overlapping angular planes viewed from different angles. Make surfaces look like muted earth tones with sharp geometric edges meeting at hard angles. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat even lighting fits the style. Ensure collapsed perspective with no single vanishing point. Keep in focus. The result should be in a Cubist fragmented painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["cubism", "fragmented", "abstract"]
+  },
+  {
+    "name": "Style: Romantic Landscape",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Romantic era painting. Make it look like a dramatic sublime canvas with heroic scale and emotional intensity. Keep subject position and their pose the same as the reference. Ensure sweeping atmospheric effects follow Romantic aesthetics. Make sure forms are rendered with passionate brushwork emphasizing mood over precision. Make surfaces look like rich oil paint with dramatic sky effects and weather atmosphere. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic golden hour or storm lighting fits the style. Ensure emotional grandeur and awe-inspiring scale. Keep in focus. The result should be in a Romantic era painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["romanticism", "landscape", "dramatic"]
+  },
+  {
+    "name": "Style: Neoclassical Drawing",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Neoclassical drawing. Make it look like a precise academic line drawing with architectural clarity. Keep subject position and their pose the same as the reference. Ensure clean measured contours follow Neoclassical aesthetics. Make sure anatomy is rendered with exact classical accuracy and idealized proportions. Make linework look like fine graphite or silverpoint on smooth paper with minimal shading. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even academic lighting fits the style. Ensure architectural elements and classical drapery folds rendered precisely. Keep in focus. The result should be in a Neoclassical line drawing style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["neoclassical", "line-drawing", "precise"]
+  },
+  {
+    "name": "Style: Arts and Crafts Movement",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Arts and Crafts Movement illustration. Make it look like a handcrafted design with natural motifs and folk patterns. Keep subject position and their pose the same as the reference. Ensure organic botanical borders follow Arts and Crafts aesthetics. Make sure forms are stylized with decorative hand-made charm rather than machine precision. Make colors look like warm earth tones — ochre, terracotta, forest green — with hand-dyed textile quality. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft natural lighting fits the style. Ensure visible hand-crafted texture and folk pattern details. Keep in focus. The result should be in an Arts and Crafts Movement design style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["arts-crafts", "folk", "handcrafted"]
+  },
+  {
+    "name": "Style: Art Brut Outsider",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Art Brut outsider artwork. Make it look like a raw untrained painting with obsessive dense detail and naive color choices. Keep subject position and their pose the same as the reference. Ensure uninhibited direct mark-making follows Art Brut aesthetics. Make sure forms are rendered with personal idiosyncratic vision unconstrained by academic rules. Make surfaces look like layered mixed media with raw energetic application and unexpected material combinations. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure uneven direct lighting fits the style. Ensure densely packed imagery filling every available space. Keep in focus. The result should be in an Art Brut outsider art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["art-brut", "outsider", "raw"]
+  },
+  {
+    "name": "Style: Vaporwave Aesthetic",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Vaporwave digital aesthetic illustration. Make it look like a retro-futuristic collage with classical sculpture fragments and grid overlays. Keep subject position and their pose the same as the reference. Ensure pastel pink and teal color grading follows Vaporwave aesthetics. Make sure forms are rendered with glitch effects and fragmented classical elements. Make surfaces look like low-resolution digital textures with CRT scanline overlays and checkerboard floors. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure neon pink and cyan gradient lighting fits the style. Ensure Japanese text fragments and retro computer UI elements. Keep in focus. The result should be in a Vaporwave digital aesthetic style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["vaporwave", "retro-digital", "pastel"]
+  },
+  {
+    "name": "Style: Low Poly 3D",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a low-polygon 3D model. Make it look like a faceted mesh rendered with flat shading and minimal geometry. Keep subject position and their pose the same as the reference. Ensure visible polygon edges follow Low Poly aesthetics. Make sure forms are approximated by large triangular facets rather than smooth curves. Make surfaces look like flat-shaded color planes with sharp edges between adjacent polygons. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure directional lighting that reveals facet boundaries fits the style. Ensure minimalist clean aesthetic with no textures or bump maps. Keep in focus. The result should be in a low-poly 3D faceted style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["low-poly", "3d", "faceted"]
+  },
+  {
+    "name": "Style: Isometric Illustration",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an isometric technical illustration. Make it look like a clean 30-degree projection diagram with precise measurements and labels. Keep subject position and their pose the same as the reference. Ensure consistent isometric grid alignment follows Isometric aesthetics. Make sure forms are rendered in strict axonometric projection with no perspective distortion. Make surfaces look like flat color fills with subtle gradient shading on each face plane. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even overhead lighting fits the style. Ensure technical annotation lines and measurement markers. Keep in focus. The result should be in an isometric technical illustration style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["isometric", "technical", "diagram"]
+  },
+  {
+    "name": "Style: Engraving Copperplate",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a copperplate engraving. Make it look like a fine burin-engraved print with intricate line work and tonal cross-hatching. Keep subject position and their pose the same as the reference. Ensure fine parallel and crossed burin lines follow Copperplate Engraving aesthetics. Make sure forms are built through meticulous line density creating smooth tonal transitions. Make surfaces look like ink on laid paper with visible plate marks and burr texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic directional lighting fits the style. Ensure exquisite fine detail and ornate decorative borders. Keep in focus. The result should be in a copperplate engraving print style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["engraving", "copperplate", "fine-line"]
+  },
+  {
+    "name": "Style: Screen Poster Silkscreen",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a silkscreen poster print. Make it look like a limited edition screen-printed poster with visible ink layer separations. Keep subject position and their pose the same as the reference. Ensure flat color layers follow Silkscreen aesthetics. Make sure forms are built from distinct registration-aligned color passes with slight misregistration charm. Make surfaces look like thick opaque ink on heavy stock paper with subtle screen mesh texture. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even flat lighting fits the style. Ensure bold graphic composition with limited 3-4 color palette. Keep in focus. The result should be in a silkscreen poster print style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["silkscreen", "poster", "printmaking"]
+  },
+  {
+    "name": "Style: Luminism Light",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an American Luminist painting. Make it look like a tranquil canvas with serene atmospheric clarity and luminous light effects. Keep subject position and their pose the same as the reference. Ensure smooth gradated tonal transitions follow Luminism aesthetics. Make sure forms are rendered with calm precision emphasizing the spiritual quality of light. Make surfaces look like finely blended oil paint with invisible brushstrokes creating glass-like atmospheres. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure soft golden hour or twilight lighting fits the style. Ensure serene stillness and luminous atmospheric haze. Keep in focus. The result should be in an American Luminist painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["luminism", "light-study", "serene"]
+  },
+  {
+    "name": "Style: Orphism Color",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Orphist abstract color painting. Make it look like a rhythmic composition of pure color circles and chromatic vibrations. Keep subject position and their pose the same as the reference. Ensure musical harmony through color relationships follows Orphism aesthetics. Make sure forms dissolve into concentric circles and arcs of pure hue. Make surfaces look like vibrant overlapping transparent color fields creating optical resonance. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even luminous lighting fits the style. Ensure rhythmic color progressions evoking musical structure. Keep in focus. The result should be in an Orphist abstract color painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["orphism", "abstract-color", "rhythmic"]
+  },
+  {
+    "name": "Style: Dada Collage",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a Dadaist collage artwork. Make it look like a mixed media composition with torn paper fragments and absurdist juxtapositions. Keep subject position and their pose the same as the reference. Ensure chaotic layered assemblies follow Dada aesthetics. Make sure forms are constructed from disparate printed materials — newspaper clippings, photographs, tickets — glued together in unexpected combinations. Make surfaces look like rough torn edges overlapping with visible glue marks and mixed paper textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure flat even lighting fits the style. Ensure provocative absurd humor and anti-art gesture. Keep in focus. The result should be in a Dadaist collage art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["dada", "collage", "mixed-media"]
+  },
+  {
+    "name": "Style: Retro Sci-Fi Cover",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a golden age pulp science fiction book cover. Make it look like a chromolithograph space adventure illustration from the 1950s. Keep subject position and their pose the same as the reference. Ensure dramatic heroic poses follow Retro Sci-Fi Cover aesthetics. Make sure forms are rendered with bold graphic shapes and exaggerated alien landscapes. Make colors look like limited-process printing — vivid oranges, electric blues, and deep purples — with halftone dot textures. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic space lighting with star fields fits the style. Ensure rocket ships and alien planets in the background. Keep in focus. The result should be in a retro pulp sci-fi book cover style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["retro-scifi", "pulp", "book-cover"]
+  },
+  {
+    "name": "Style: Naive Folk Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a naive folk art painting. Make it look like a cheerful childlike illustration with flat perspective and simple forms. Keep subject position and their pose the same as the reference. Ensure untrained direct rendering follows Naive Folk Art aesthetics. Make sure anatomy is simplified with large expressive eyes and smiling faces rendered without academic training. Make colors look like bright cheerful primary hues applied in flat unblended areas with visible brush marks. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even sunny lighting fits the style. Ensure decorative floral borders and patterned backgrounds. Keep in focus. The result should be in a naive folk art painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["naive-art", "folk", "childlike"]
+  },
+  {
+    "name": "Style: Glitch Digital Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a digital glitch art piece. Make it look like corrupted image data with pixel sorting and channel separation artifacts. Keep subject position and their pose the same as the reference. Ensure horizontal pixel displacement follows Glitch Art aesthetics. Make sure forms are disrupted by RGB channel misalignment creating chromatic aberration fringes. Make surfaces look like datamoshed blocks with compressed artifact patterns and torn scanlines. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure artificial neon lighting fits the style. Ensure digital noise and binary code overlays. Keep in focus. The result should be in a digital glitch art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["glitch", "digital-art", "datamosh"]
+  },
+  {
+    "name": "Style: Calligraphic Ink",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an expressive calligraphic ink artwork. Make it look like energetic East Asian brush lettering with dramatic ink splashes and varying stroke weight. Keep subject position and their pose the same as the reference. Ensure flowing brush strokes follow Calligraphic Ink aesthetics. Make sure forms are rendered through dynamic single-stroke gestures with dry-brush flying white effects. Make surfaces look like black ink on absorbent rice paper with visible water blooms and ink pooling at stroke ends. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even soft lighting fits the style. Ensure dramatic contrast between bold wet strokes and delicate dry brush trails. Keep in focus. The result should be in a calligraphic ink brush art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["calligraphy", "ink", "expressive"]
+  },
+  {
+    "name": "Style: Decoupage Paper Art",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a decoupage paper art composition. Make it look like layered magazine cutouts and vintage printed papers assembled into a cohesive image. Keep subject position and their pose the same as the reference. Ensure overlapping printed fragments follow Decoupage aesthetics. Make sure forms are constructed from carefully selected and trimmed printed images with visible layer edges. Make surfaces look like glossy magazine paper and matte vintage print sources sealed under clear varnish creating subtle sheen variations. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even diffused lighting fits the style. Ensure mixed typography fragments and decorative paper borders. Keep in focus. The result should be in a decoupage paper collage art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["decoupage", "collage", "vintage-paper"]
+  },
+  {
+    "name": "Style: Quilt Pattern Textile",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like a traditional patchwork quilt pattern. Make it look like a textile artwork made from geometric fabric pieces sewn together with visible stitching lines. Keep subject position and their pose the same as the reference. Ensure repeating geometric blocks follow Quilt Pattern aesthetics. Make sure forms are approximated by pieced fabric shapes — triangles, squares, diamonds — arranged in traditional quilt block layouts. Make surfaces look like cotton fabrics with subtle weave textures separated by visible quilting stitch lines with batting creating slight relief. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure even overhead lighting fits the style. Ensure warm domestic color palette with binding border edges. Keep in focus. The result should be in a patchwork quilt textile art style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["quilt", "textile", "patchwork"]
+  },
+  {
+    "name": "Style: Abstract Expressionism",
+    "prompt": "Keep pose. Keep angle. Keep eyes. Keep viewing direction. Modify any subjects' appearance to look like an Abstract Expressionist action painting. Make it look like a large-scale gestural canvas with raw emotional energy and physical paint application. Keep subject position and their pose the same as the reference. Ensure sweeping arm-wide brush gestures follow Abstract Expressionism aesthetics. Make sure forms dissolve into energetic drips, splashes, and thick impasto marks driven by bodily movement. Make surfaces look like raw canvas attacked with poured, flung, and dragged paint creating a record of physical action. Keep subject position and their pose the same as the reference. Make sure the subject is in the same position. Keep pose. Ensure dramatic uneven lighting fits the style. Ensure intense color clashes and visceral paint textures. Keep in focus. The result should be in an Abstract Expressionist action painting style.",
+    "negative_prompt": null,
+    "category": "Style Transforms",
+    "tags": ["abstract-expressionism", "gestural", "action-painting"]
+  }
+]

@@ -1,0 +1,97 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("WanOneToAllEmbedsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Reference</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_refStrength" @bind-Value:after="OnRefStrengthChanged" Min="0" Max="2" Step="0.05" Variant="Variant.Text" ValueLabel>
+            <small>Strength:</small> @_refStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="double" @bind-Value="_refStart" @bind-Value:after="OnRefStartChanged" Label="Start" Min="0" Max="1" Step="0.05" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="3">
+        <MudNumericField T="double" @bind-Value="_refEnd" @bind-Value:after="OnRefEndChanged" Label="End" Min="0" Max="1" Step="0.05" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudText Typo="Typo.overline">Pose</MudText>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_initPoseStrength" @bind-Value:after="OnInitPoseStrengthChanged" Min="0" Max="2" Step="0.05" Variant="Variant.Text" ValueLabel>
+            <small>Initial Strength:</small> @_initPoseStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_initPoseCfgScale" @bind-Value:after="OnInitPoseCfgScaleChanged" Min="0" Max="4" Step="0.01" Variant="Variant.Text" ValueLabel>
+            <small>Initial CFG:</small> @_initPoseCfgScale.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_loopPoseStrength" @bind-Value:after="OnLoopPoseStrengthChanged" Min="0" Max="2" Step="0.05" Variant="Variant.Text" ValueLabel>
+            <small>Loop Strength:</small> @_loopPoseStrength.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudSlider T="double" @bind-Value="_loopPoseCfgScale" @bind-Value:after="OnLoopPoseCfgScaleChanged" Min="0" Max="4" Step="0.01" Variant="Variant.Text" ValueLabel>
+            <small>Loop CFG:</small> @_loopPoseCfgScale.ToString("F2")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="double" @bind-Value="_poseStart" @bind-Value:after="OnPoseStartChanged" Label="Pose Start" Min="0" Max="1" Step="0.05" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+    <MudItem xs="6">
+        <MudNumericField T="double" @bind-Value="_poseEnd" @bind-Value:after="OnPoseEndChanged" Label="Pose End" Min="0" Max="1" Step="0.05" Variant="Variant.Text" Dense="true" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _refStrength = 1.0;
+    private double _refStart;
+    private double _refEnd = 1.0;
+    private double _initPoseStrength = 1.0;
+    private double _initPoseCfgScale = 1.96;
+    private double _loopPoseStrength = 1.0;
+    private double _loopPoseCfgScale = 1.5;
+    private double _poseStart;
+    private double _poseEnd = 1.0;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        _refStrength = ParameterService.GetFragmentProperty(Fragment, "ref_strength", 1.0);
+        _refStart = ParameterService.GetFragmentProperty(Fragment, "ref_start_percent", 0.0);
+        _refEnd = ParameterService.GetFragmentProperty(Fragment, "ref_end_percent", 1.0);
+        _initPoseStrength = ParameterService.GetFragmentProperty(Fragment, "init_pose_strength", 1.0);
+        _initPoseCfgScale = ParameterService.GetFragmentProperty(Fragment, "init_pose_cfg_scale", 1.96);
+        _loopPoseStrength = ParameterService.GetFragmentProperty(Fragment, "loop_pose_strength", 1.0);
+        _loopPoseCfgScale = ParameterService.GetFragmentProperty(Fragment, "loop_pose_cfg_scale", 1.5);
+        _poseStart = ParameterService.GetFragmentProperty(Fragment, "pose_start_percent", 0.0);
+        _poseEnd = ParameterService.GetFragmentProperty(Fragment, "pose_end_percent", 1.0);
+    }
+
+    private async Task SetValue(string key, double value)
+    {
+        ParameterService.SetFragmentProperty(Fragment, key, value, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task OnRefStrengthChanged() => SetValue("ref_strength", _refStrength);
+    private Task OnRefStartChanged() => SetValue("ref_start_percent", _refStart);
+    private Task OnRefEndChanged() => SetValue("ref_end_percent", _refEnd);
+    private Task OnInitPoseStrengthChanged() => SetValue("init_pose_strength", _initPoseStrength);
+    private Task OnInitPoseCfgScaleChanged() => SetValue("init_pose_cfg_scale", _initPoseCfgScale);
+    private Task OnLoopPoseStrengthChanged() => SetValue("loop_pose_strength", _loopPoseStrength);
+    private Task OnLoopPoseCfgScaleChanged() => SetValue("loop_pose_cfg_scale", _loopPoseCfgScale);
+    private Task OnPoseStartChanged() => SetValue("pose_start_percent", _poseStart);
+    private Task OnPoseEndChanged() => SetValue("pose_end_percent", _poseEnd);
+}

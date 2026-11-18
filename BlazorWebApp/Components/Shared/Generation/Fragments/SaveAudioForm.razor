@@ -1,0 +1,36 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("SaveAudioForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudSelect T="string" Label="MP3 Quality" Variant="Variant.Text" Dense="true" @bind-Value="_quality"
+                   @bind-Value:after="OnQualityChanged">
+            @foreach (var option in _qualityOptions)
+            {
+                <MudSelectItem Value="@option" />
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private string _quality = "V0";
+    private readonly string[] _qualityOptions = ["V0", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9"];
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+        _quality = ParameterService.GetFragmentProperty(Fragment, "quality", "V0");
+    }
+
+    private Task OnQualityChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "quality", _quality, notify: true);
+        return OnChanged.InvokeAsync();
+    }
+}

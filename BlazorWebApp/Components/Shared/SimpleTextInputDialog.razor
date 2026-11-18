@@ -1,0 +1,57 @@
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_inputValue"
+                      Label="@Label"
+                      Placeholder="@Placeholder"
+                      Variant="Variant.Outlined"
+                      Immediate
+                      AutoFocus />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="string.IsNullOrWhiteSpace(_inputValue)">
+            OK
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string Title { get; set; } = "Input";
+
+    [Parameter]
+    public string Label { get; set; } = "Value";
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Enter value...";
+
+    [Parameter]
+    public string InitialValue { get; set; } = string.Empty;
+
+    private string _inputValue = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _inputValue = InitialValue;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+    
+    private void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(_inputValue))
+        {
+            MudDialog.Close(DialogResult.Ok(_inputValue));
+        }
+    }
+}

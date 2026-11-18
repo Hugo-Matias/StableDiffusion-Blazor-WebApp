@@ -1,0 +1,102 @@
+.civitai-model-spec {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.civitai-model-spec__action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.civitai-model-spec__file-select,
+.civitai-model-spec__type-select,
+.civitai-model-spec__subtype {
+  width: 100%;
+}
+
+.civitai-model-spec__primary-actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.civitai-model-spec__download {
+  flex: 1 1 auto;
+  text-transform: none !important;
+}
+
+.civitai-model-spec__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.civitai-model-spec__meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.civitai-model-spec__meta-label {
+  opacity: 0.4;
+  font-size: 0.7rem;
+}
+
+.civitai-model-spec__hashes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.civitai-model-spec__hash-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.civitai-model-spec__hash-label {
+  flex: 0 0 64px;
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+
+.civitai-model-spec__hash-btn {
+  text-transform: none !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.civitai-model-spec__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.civitai-model-spec__chips {
+  max-height: 10vh;
+  overflow-y: auto;
+}
+
+/* Tags rail with 2-row clamp + expander. Two-row visual cap is approximated
+   with a max-height matching ~2 chip rows; the +N more affordance toggles to
+   an expanded state that removes the cap. */
+.civitai-model-spec__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.civitai-model-spec__tags--clamped {
+  max-height: 64px;
+  overflow: hidden;
+}
+
+.civitai-model-spec__tags--expanded {
+  max-height: 240px;
+  overflow-y: auto;
+}

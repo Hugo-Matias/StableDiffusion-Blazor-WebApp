@@ -1,0 +1,487 @@
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Events
+@using BlazorWebApp.Services.PresetForge
+@using BlazorWebApp.Services.PresetForge.Models
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject IPresetForgeService Forge
+@inject IDatabaseService DB
+@inject IStateService State
+@inject IEventService Events
+@inject ISnackbar Snackbar
+
+<div class="preset-forge-page">
+    <MudStack Spacing="3">
+        <LLMToolPageDescription Title="Preset Forge" Icon="@Icons.Material.Filled.AutoFixHigh"
+                                Description="Generate structured prompt-preset packs or expand an existing category with compatible sibling presets." />
+
+        <MudToggleGroup T="PresetForgeOperation" Value="_operation" ValueChanged="SelectOperation"
+                        SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary">
+            <MudToggleItem Value="PresetForgeOperation.Generate">Generate</MudToggleItem>
+            <MudToggleItem Value="PresetForgeOperation.Expand">Expand</MudToggleItem>
+        </MudToggleGroup>
+
+        @if (_operation == PresetForgeOperation.Generate)
+        {
+            <MudToggleGroup T="string" @bind-Value="_mode" SelectionMode="SelectionMode.SingleSelection"
+                            Color="Color.Primary">
+                <MudToggleItem Value="@("simple")">Simple</MudToggleItem>
+                <MudToggleItem Value="@("advanced")">Advanced (wizard)</MudToggleItem>
+            </MudToggleGroup>
+
+            @if (_mode == "advanced")
+            {
+                <PresetForgeAdvancedWizard @ref="_wizard" />
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_isRunning" OnClick="RunAdvancedAsync"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">Generate pack</MudButton>
+            }
+            else
+            {
+                @SimpleGeneratePanel()
+            }
+        }
+        else
+        {
+            @ExpandPanel()
+        }
+
+        @if (_draft != null)
+        {
+            @DraftReview()
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+
+    private PresetForgeOperation _operation = PresetForgeOperation.Generate;
+    private PresetForgeKind _kind = PresetForgeKind.BuildingBlock;
+    private PresetPreservationPolicy _preservationPolicy = PresetPreservationPolicy.Full;
+    private string _mode = "simple";
+    private string _theme = string.Empty;
+    private string _category = string.Empty;
+    private string _facet = "Expression";
+    private string _expansionDirection = string.Empty;
+    private string _referenceSearch = string.Empty;
+    private string _bulkCategory = string.Empty;
+    private string _bulkTags = string.Empty;
+    private int _count = 12;
+    private bool _isRunning;
+    private bool _isSaving;
+    private List<Prompt> _prompts = [];
+    private List<string> _categories = [];
+    private HashSet<int> _selectedReferenceIds = [];
+    private PresetForgeDraft? _draft;
+    private PresetForgeAdvancedWizard? _wizard;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var saved = State.State.Prompts.LLM.PresetForge;
+        _mode = string.IsNullOrWhiteSpace(saved.Mode) ? "simple" : saved.Mode;
+        _theme = saved.Theme;
+        _category = saved.Category;
+        _count = saved.Count is >= 1 and <= 24 ? saved.Count : 12;
+        _draft = saved.CurrentDraft;
+        if (Enum.TryParse(saved.Operation, out PresetForgeOperation operation))
+            _operation = operation;
+        if (Enum.TryParse(saved.Kind, out PresetForgeKind kind))
+            _kind = kind;
+
+        _prompts = await DB.GetPrompts();
+        _categories = _prompts
+            .Select(prompt => prompt.Category)
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Select(category => category!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(category => category)
+            .ToList();
+    }
+
+    private RenderFragment SimpleGeneratePanel() => __builder =>
+    {
+        <MudPaper Outlined="true" Class="pa-3">
+            <MudStack Spacing="2">
+                <MudTextField T="string" @bind-Value="_theme" Label="Pack theme" Lines="3" Variant="Variant.Text" />
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="PresetForgeKind" @bind-Value="_kind" Label="Preset type" Variant="Variant.Text"
+                                   Dense="true">
+                            <MudSelectItem Value="PresetForgeKind.FullPrompt">T2I full prompt</MudSelectItem>
+                            <MudSelectItem Value="PresetForgeKind.BuildingBlock">T2I building block</MudSelectItem>
+                            <MudSelectItem Value="PresetForgeKind.EditInstruction">I2I targeted edit</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string" @bind-Value="_category" Label="Category" Variant="Variant.Text" Dense="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudNumericField T="int" @bind-Value="_count" Label="Count" Min="1" Max="24" Variant="Variant.Text"
+                                         Dense="true" />
+                    </MudItem>
+                </MudGrid>
+                @if (_kind == PresetForgeKind.BuildingBlock)
+                {
+                    <MudTextField T="string" @bind-Value="_facet" Label="Composable facet" Variant="Variant.Text"
+                                  HelperText="For example expression, clothing, lighting, or camera." />
+                }
+                else if (_kind == PresetForgeKind.EditInstruction)
+                {
+                    <MudSelect T="PresetPreservationPolicy" @bind-Value="_preservationPolicy" Label="Preservation policy"
+                               Variant="Variant.Text" Dense="true">
+                        <MudSelectItem Value="PresetPreservationPolicy.Full">Full preservation</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.Body">Body preservation</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.PartialBody">Partial body modification</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.IdentityAndComposition">Identity and composition
+                        </MudSelectItem>
+                    </MudSelect>
+                }
+                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="@(_isRunning || string.IsNullOrWhiteSpace(_theme))" OnClick="RunSimpleAsync"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">Generate pack</MudButton>
+            </MudStack>
+        </MudPaper>
+    };
+
+    private RenderFragment ExpandPanel() => __builder =>
+    {
+        <MudPaper Outlined="true" Class="pa-3">
+            <MudStack Spacing="2">
+                <MudSelect T="string" Value="_category" ValueChanged="SelectCategory" Label="Category" Variant="Variant.Text"
+                           Dense="true">
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem Value="@category">@category</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField T="string" @bind-Value="_referenceSearch" Label="Search reference presets" Variant="Variant.Text"
+                              Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudStack Spacing="1">
+                    @foreach (var prompt in FilteredReferences().Take(30))
+                    {
+                        <MudCheckBox T="bool" Value="@_selectedReferenceIds.Contains(prompt.Id)"
+                                     ValueChanged="@(selected => ToggleReference(prompt.Id, selected))" Label="@prompt.Title" Dense="true" />
+                    }
+                </MudStack>
+                <MudSelect T="PresetForgeKind" @bind-Value="_kind" Label="Preset type" Variant="Variant.Text" Dense="true">
+                    <MudSelectItem Value="PresetForgeKind.FullPrompt">T2I full prompt</MudSelectItem>
+                    <MudSelectItem Value="PresetForgeKind.BuildingBlock">T2I building block</MudSelectItem>
+                    <MudSelectItem Value="PresetForgeKind.EditInstruction">I2I targeted edit</MudSelectItem>
+                </MudSelect>
+                @if (_kind == PresetForgeKind.EditInstruction)
+                {
+                    <MudSelect T="PresetPreservationPolicy" @bind-Value="_preservationPolicy" Label="Preservation policy"
+                               Variant="Variant.Text" Dense="true">
+                        <MudSelectItem Value="PresetPreservationPolicy.Full">Full preservation</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.Body">Body preservation</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.PartialBody">Partial body modification</MudSelectItem>
+                        <MudSelectItem Value="PresetPreservationPolicy.IdentityAndComposition">Identity and composition
+                        </MudSelectItem>
+                    </MudSelect>
+                }
+                <MudTextField T="string" @bind-Value="_expansionDirection" Label="Expansion direction" Lines="2"
+                              Variant="Variant.Text" HelperText="Optional: describe unexplored directions for the new sibling presets." />
+                <MudNumericField T="int" @bind-Value="_count" Label="New presets" Min="1" Max="24" Variant="Variant.Text"
+                                 Dense="true" />
+                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="@(_isRunning || _selectedReferenceIds.Count == 0)" OnClick="RunExpandAsync"
+                           StartIcon="@Icons.Material.Filled.AddCircleOutline">Expand category</MudButton>
+            </MudStack>
+        </MudPaper>
+    };
+
+    private RenderFragment DraftReview() => __builder =>
+    {
+        <MudDivider />
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.h6">Draft (@_draft!.Entries.Count presets)</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">@_draft.Kind</MudChip>
+                <MudSpacer />
+                <div class="send-to-section">
+                    <div class="send-to-buttons">
+                        <button type="button" class="send-to-btn" @onclick="AcceptAll">
+                            <MudIcon Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" /><span>Accept valid</span>
+                        </button>
+                        <button type="button" class="send-to-btn" @onclick="RejectAll">
+                            <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small" /><span>Reject all</span>
+                        </button>
+                    </div>
+                </div>
+            </MudStack>
+
+            <MudTextField T="string" Value="@_draft.RawResponse" Label="Raw Ollama response" Lines="12" ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          HelperText="Exact response content received before JSON extraction and validation." />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="5">
+                    <MudTextField T="string" @bind-Value="_bulkCategory" Label="Batch category" Variant="Variant.Text"
+                                  Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <MudTextField T="string" @bind-Value="_bulkTags" Label="Add batch tags" Variant="Variant.Text"
+                                  Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <button type="button" class="send-to-btn" @onclick="ApplyBulkMetadata">
+                        <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Small" /><span>Apply</span>
+                    </button>
+                </MudItem>
+            </MudGrid>
+
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var entry in _draft.Entries)
+                {
+                    <MudExpansionPanel Text="@entry.Name" IsInitiallyExpanded="@(!entry.IsValid)">
+                        <MudStack Spacing="2">
+                            <MudCheckBox T="bool" @bind-Value="entry.Accepted" Label="Include when saving"
+                                         Disabled="@(!entry.IsValid)" />
+                            @if (entry.ValidationErrors.Count > 0)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">@string.Join(" ", entry.ValidationErrors)</MudAlert>
+                            }
+                            <MudTextField T="string" Value="@entry.Name" ValueChanged="@(value => SetName(entry, value))"
+                                          Label="Name" Variant="Variant.Text" Dense="true" />
+                            <MudTextField T="string" Value="@entry.Prompt" ValueChanged="@(value => SetPrompt(entry, value))"
+                                          Label="Prompt" Lines="5" Variant="Variant.Text" />
+                            <MudTextField T="string" @bind-Value="entry.NegativePrompt" Label="Negative prompt" Lines="2"
+                                          Variant="Variant.Text" />
+                            <MudTextField T="string" Value="@entry.Category" ValueChanged="@(value => SetCategory(entry, value))"
+                                          Label="Category" Variant="Variant.Text" Dense="true" />
+                            <MudTextField T="string" Value="@string.Join(", ", entry.Tags)"
+                                          ValueChanged="@(value => SetTags(entry, value))" Label="Tags" Variant="Variant.Text" Dense="true" />
+                        </MudStack>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(_isSaving || !_draft.Entries.Any(entry => entry.Accepted && entry.IsValid))" OnClick="SaveAsync"
+                       StartIcon="@Icons.Material.Filled.Save">Save accepted presets</MudButton>
+        </MudStack>
+    };
+
+    private async Task SelectOperation(PresetForgeOperation operation)
+    {
+        _operation = operation;
+        await PersistStateAsync();
+    }
+
+    private async Task SelectCategory(string category)
+    {
+        _category = category;
+        _selectedReferenceIds.Clear();
+        await PersistStateAsync();
+    }
+
+    private void ToggleReference(int id, bool selected)
+    {
+        if (selected && _selectedReferenceIds.Count < 8)
+            _selectedReferenceIds.Add(id);
+        else if (!selected)
+            _selectedReferenceIds.Remove(id);
+
+        var references = _prompts.Where(prompt => _selectedReferenceIds.Contains(prompt.Id)).ToList();
+        if (references.Count > 0)
+        {
+            _kind = InferKind(references);
+            _preservationPolicy = InferPreservationPolicy(references);
+        }
+    }
+
+    private IEnumerable<Prompt> FilteredReferences() => _prompts.Where(prompt =>
+        string.Equals(prompt.Category, _category, StringComparison.OrdinalIgnoreCase) &&
+        (string.IsNullOrWhiteSpace(_referenceSearch) || prompt.Title.Contains(_referenceSearch,
+StringComparison.OrdinalIgnoreCase)));
+
+    private Task RunSimpleAsync() => ExecuteAsync(new PresetForgeRequest
+    {
+        Operation = PresetForgeOperation.Generate,
+        Kind = _kind,
+        PreservationPolicy = _kind == PresetForgeKind.EditInstruction ? _preservationPolicy : PresetPreservationPolicy.None,
+        Theme = _theme.Trim(),
+        Category = _category.Trim(),
+        Facet = _kind == PresetForgeKind.BuildingBlock ? _facet.Trim() : string.Empty,
+        Count = _count
+    });
+
+    private async Task RunAdvancedAsync()
+    {
+        if (_wizard == null)
+            return;
+        await ExecuteAsync(_wizard.BuildRequest());
+    }
+
+    private Task RunExpandAsync()
+    {
+        var references = _prompts.Where(prompt => _selectedReferenceIds.Contains(prompt.Id)).ToList();
+        return ExecuteAsync(new PresetForgeRequest
+        {
+            Operation = PresetForgeOperation.Expand,
+            Kind = _kind,
+            PreservationPolicy = _kind == PresetForgeKind.EditInstruction
+                ? _preservationPolicy
+                : PresetPreservationPolicy.None,
+            Category = _category,
+            ExpansionDirection = _expansionDirection.Trim(),
+            Count = _count,
+            ReferencePresets = references
+        });
+    }
+
+    private async Task ExecuteAsync(PresetForgeRequest request)
+    {
+        _isRunning = true;
+        try
+        {
+            _draft = await Forge.RunAsync(request, SelectedModel);
+            _kind = request.Kind;
+            _theme = request.Theme;
+            _category = request.Category;
+            await PersistStateAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Preset Forge failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_draft == null)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var ids = await Forge.SaveDraftAsync(_draft);
+            Snackbar.Add($"Saved {ids.Count} presets.", Severity.Success);
+            Events.Publish(new StylesChangedEventArgs { ChangeType = "PromptsUpdated" });
+            _prompts = await DB.GetPrompts();
+            _draft = null;
+            await PersistStateAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void AcceptAll()
+    {
+        if (_draft == null) return;
+        foreach (var entry in _draft.Entries) entry.Accepted = entry.IsValid;
+    }
+
+    private void RejectAll()
+    {
+        if (_draft == null) return;
+        foreach (var entry in _draft.Entries) entry.Accepted = false;
+    }
+
+    private void ApplyBulkMetadata()
+    {
+        if (_draft == null) return;
+        var tags = SplitTags(_bulkTags);
+        foreach (var entry in _draft.Entries.Where(entry => entry.Accepted))
+        {
+            if (!string.IsNullOrWhiteSpace(_bulkCategory)) entry.Category = _bulkCategory.Trim();
+            entry.Tags = entry.Tags.Concat(tags).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        RevalidateDraft();
+    }
+
+    private static void SetTags(PresetForgeDraftEntry entry, string value) => entry.Tags = SplitTags(value);
+
+    private void SetName(PresetForgeDraftEntry entry, string value)
+    {
+        entry.Name = value;
+        RevalidateDraft();
+    }
+
+    private void SetPrompt(PresetForgeDraftEntry entry, string value)
+    {
+        entry.Prompt = value;
+        RevalidateDraft();
+    }
+
+    private void SetCategory(PresetForgeDraftEntry entry, string value)
+    {
+        entry.Category = value;
+        RevalidateDraft();
+    }
+
+    private void RevalidateDraft()
+    {
+        if (_draft == null) return;
+
+        var existingNames = _prompts.Select(prompt => Normalize(prompt.Title)).ToHashSet(StringComparer.Ordinal);
+        var existingPrompts = _prompts.Select(prompt => Normalize(prompt.Positive)).ToHashSet(StringComparer.Ordinal);
+        var draftNames = new HashSet<string>(StringComparer.Ordinal);
+        var draftPrompts = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var entry in _draft.Entries)
+        {
+            entry.ValidationErrors.Clear();
+            if (string.IsNullOrWhiteSpace(entry.Name)) entry.ValidationErrors.Add("Name is required.");
+            if (string.IsNullOrWhiteSpace(entry.Prompt)) entry.ValidationErrors.Add("Prompt is required.");
+            if (string.IsNullOrWhiteSpace(entry.Category)) entry.ValidationErrors.Add("Category is required.");
+
+            var name = Normalize(entry.Name);
+            var prompt = Normalize(entry.Prompt);
+            entry.IsDuplicate = name.Length > 0 && (!draftNames.Add(name) || existingNames.Contains(name));
+            entry.IsDuplicate |= prompt.Length > 0 && (!draftPrompts.Add(prompt) || existingPrompts.Contains(prompt));
+            if (entry.IsDuplicate) entry.ValidationErrors.Add("Duplicates an existing or generated preset.");
+            if (!entry.IsValid) entry.Accepted = false;
+        }
+    }
+
+    private static string Normalize(string? value) => string.Join(
+        ' ',
+        (value ?? string.Empty).Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static List<string> SplitTags(string value) => value
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(tag => tag.ToLowerInvariant().Replace(' ', '-'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private static PresetForgeKind InferKind(IReadOnlyCollection<Prompt> references)
+    {
+        var tags = references.SelectMany(prompt => prompt.Tags ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (tags.Contains("targeted-edit") || tags.Contains("i2i")) return PresetForgeKind.EditInstruction;
+        if (tags.Contains("full-prompt")) return PresetForgeKind.FullPrompt;
+        return PresetForgeKind.BuildingBlock;
+    }
+
+    private static PresetPreservationPolicy InferPreservationPolicy(IReadOnlyCollection<Prompt> references)
+    {
+        var tags = references.SelectMany(prompt => prompt.Tags ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (tags.Contains("preserve-full")) return PresetPreservationPolicy.Full;
+        if (tags.Contains("preserve-body")) return PresetPreservationPolicy.Body;
+        if (tags.Contains("preserve-partial-body")) return PresetPreservationPolicy.PartialBody;
+        if (tags.Contains("preserve-identity")) return PresetPreservationPolicy.IdentityAndComposition;
+        return PresetPreservationPolicy.Full;
+    }
+
+    private async Task PersistStateAsync()
+    {
+        var saved = State.State.Prompts.LLM.PresetForge;
+        saved.Mode = _mode;
+        saved.Operation = _operation.ToString();
+        saved.Kind = _kind.ToString();
+        saved.Theme = _theme;
+        saved.Category = _category;
+        saved.Count = _count;
+        saved.CurrentDraft = _draft;
+        await State.SaveState();
+    }
+}

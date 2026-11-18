@@ -1,0 +1,96 @@
+@using BlazorWebApp.Attributes
+@using BlazorWebApp.Models
+@attribute [FragmentComponent("FluxKleinGridRefSettingsForm")]
+@inject IGenerationParameterService ParameterService
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double" @bind-Value="_localGridTileMegapixels" @bind-Value:after="OnGridTileMegapixelsChanged"
+               Min="_gridTileMegapixelsMin" Max="_gridTileMegapixelsMax" Step="_gridTileMegapixelsStep"
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Grid Tile MP:</small> @_localGridTileMegapixels.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double" @bind-Value="_localGridMegapixels" @bind-Value:after="OnGridMegapixelsChanged"
+               Min="_gridMegapixelsMin" Max="_gridMegapixelsMax" Step="_gridMegapixelsStep"
+                   Variant="Variant.Filled" ValueLabel>
+            <small>Grid MP:</small> @_localGridMegapixels.ToString("F1")
+        </MudSlider>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSlider T="double" @bind-Value="_localBaseMegapixels" @bind-Value:after="OnBaseMegapixelsChanged"
+                   Min="_baseMegapixelsMin" Max="_baseMegapixelsMax" Step="_baseMegapixelsStep" Variant="Variant.Filled"
+                   ValueLabel>
+            <small>Base Image MP:</small> @_localBaseMegapixels.ToString("F1")
+        </MudSlider>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public FragmentReference? Fragment { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private double _localGridTileMegapixels;
+    private double _localGridMegapixels;
+    private double _localBaseMegapixels;
+
+    private double _gridTileMegapixelsMin = 0.1, _gridTileMegapixelsMax = 4.0, _gridTileMegapixelsStep = 0.1;
+    private double _gridMegapixelsMin = 0.1, _gridMegapixelsMax = 8.0, _gridMegapixelsStep = 0.1;
+    private double _baseMegapixelsMin = 0.1, _baseMegapixelsMax = 4.0, _baseMegapixelsStep = 0.1;
+
+    protected override void OnParametersSet()
+    {
+        if (Fragment == null) return;
+
+        LoadConstraintsFromSchema();
+
+        _localGridTileMegapixels = ParameterService.GetFragmentProperty(Fragment, "grid_tile_megapixels", 1.0);
+        _localGridMegapixels = ParameterService.GetFragmentProperty(Fragment, "grid_megapixels", 4.0);
+        _localBaseMegapixels = ParameterService.GetFragmentProperty(Fragment, "base_megapixels", 1.0);
+    }
+
+    private void LoadConstraintsFromSchema()
+    {
+        if (Fragment?.Schema?.Parameters == null) return;
+
+        if (Fragment.Schema.Parameters.TryGetValue("grid_tile_megapixels", out var gridTileConstraints))
+        {
+            _gridTileMegapixelsMin = gridTileConstraints.GetMin(0.1);
+            _gridTileMegapixelsMax = gridTileConstraints.GetMax(4.0);
+            _gridTileMegapixelsStep = gridTileConstraints.GetStep(0.1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("grid_megapixels", out var gridConstraints))
+        {
+            _gridMegapixelsMin = gridConstraints.GetMin(0.1);
+            _gridMegapixelsMax = gridConstraints.GetMax(8.0);
+            _gridMegapixelsStep = gridConstraints.GetStep(0.1);
+        }
+
+        if (Fragment.Schema.Parameters.TryGetValue("base_megapixels", out var baseConstraints))
+        {
+            _baseMegapixelsMin = baseConstraints.GetMin(0.1);
+            _baseMegapixelsMax = baseConstraints.GetMax(4.0);
+            _baseMegapixelsStep = baseConstraints.GetStep(0.1);
+        }
+    }
+
+    private async Task OnGridTileMegapixelsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "grid_tile_megapixels", _localGridTileMegapixels, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnGridMegapixelsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "grid_megapixels", _localGridMegapixels, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task OnBaseMegapixelsChanged()
+    {
+        ParameterService.SetFragmentProperty(Fragment, "base_megapixels", _localBaseMegapixels, notify: true);
+        await OnChanged.InvokeAsync();
+    }
+}

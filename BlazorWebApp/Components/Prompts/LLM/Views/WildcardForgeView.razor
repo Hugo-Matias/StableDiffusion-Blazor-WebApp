@@ -1,0 +1,426 @@
+@* Phase 10 - Wildcard Forge: AI-assisted authoring view for wildcard collections. *@
+@using BlazorWebApp.Data.Dtos.Ollama
+@using BlazorWebApp.Data.Entities
+@using BlazorWebApp.Services.WildcardForge
+@using BlazorWebApp.Services.WildcardForge.Models
+@using BlazorWebApp.Components.Prompts.LLM.Shared
+@inject IWildcardForgeService Forge
+@inject WildcardForgeKnowledge Knowledge
+@inject IDatabaseService DB
+@inject IStateService State
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="wildcard-forge-page">
+    <MudStack Spacing="4">
+        <LLMToolPageDescription Title="Wildcard Forge" Icon="@GetPageIcon()"
+                                Description="AI-powered authoring assistant for wildcard collections. Generate new collections from a theme, or enhance, clean up, convert, and describe existing ones using your configured LLM model.">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@GetPageDescription()</MudText>
+        </LLMToolPageDescription>
+
+        @* Operation pills *@
+        <MudButtonGroup OverrideStyles="false" Variant="Variant.Outlined" Color="Color.Primary">
+            @foreach (var op in _operations)
+            {
+                <MudButton Variant="@(op == _selectedOp ? Variant.Filled : Variant.Outlined)" Color="Color.Primary"
+                           StartIcon="@OpIcon(op)" OnClick="@(() => SelectOp(op))">
+                    @op.ToString()
+                </MudButton>
+            }
+        </MudButtonGroup>
+
+        @* Mode toggle (Generate-only) *@
+        @if (_selectedOp == ForgeOperation.Generate)
+        {
+            <MudToggleGroup T="string" @bind-Value="_mode" SelectionMode="SelectionMode.SingleSelection"
+                            Color="Color.Primary">
+                <MudToggleItem Value="@("simple")">Simple</MudToggleItem>
+                <MudToggleItem Value="@("advanced")">Advanced (wizard)</MudToggleItem>
+            </MudToggleGroup>
+        }
+
+        @* Input panels per op *@
+        @switch (_selectedOp)
+        {
+            case ForgeOperation.Generate when _mode == "simple":
+                @SimpleGenerateInput()
+                break;
+            case ForgeOperation.Generate when _mode == "advanced":
+                <ForgeAdvancedWizard @ref="_wizard" Knowledge="Knowledge" />
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_isRunning" OnClick="RunAdvancedAsync"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">
+                    @if (_isRunning)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Run
+                </MudButton>
+                break;
+            case ForgeOperation.Expand:
+            case ForgeOperation.Refine:
+            case ForgeOperation.Convert:
+                @CollectionTargetInput()
+                break;
+        }
+
+        @* Review panel *@
+        @if (_currentDraft != null && _currentDraft.Entries.Count > 0)
+        {
+            <MudDivider />
+            <MudStack Spacing="2">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">Draft (@_currentDraft.Entries.Count entries)</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Tertiary">@_currentDraft.Operation</MudChip>
+                    <MudSpacer />
+                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.DoneAll" OnClick="AcceptAll">Accept All
+                    </MudButton>
+                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="RejectAll">Reject All
+                    </MudButton>
+                    <MudButton Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Save" OnClick="OpenSaveDialog">Save...</MudButton>
+                </MudStack>
+
+                <MudPaper Outlined="true" Class="pa-2">
+                    <MudStack Spacing="1">
+                        @foreach (var (entry, index) in _currentDraft.Entries.Select((e, i) => (e, i)))
+                        {
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                <MudCheckBox T="bool" @bind-Value="entry.Accepted" Dense="true" />
+                                @if (!string.IsNullOrEmpty(entry.OriginalValue) && entry.Status == "Modified")
+                                {
+                                    <MudTextField T="string" Value="@entry.OriginalValue" ReadOnly="true" Variant="Variant.Text"
+                                                  Class="flex-grow-1" Adornment="Adornment.End"
+                                                  AdornmentIcon="@Icons.Material.Filled.ArrowForward" />
+                                }
+                                <MudTextField T="string" @bind-Value="entry.Value" Variant="Variant.Text" Class="flex-grow-1" />
+                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(entry.Status)">@entry.Status</MudChip>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               OnClick="@(() => RemoveEntry(index))" />
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string SelectedModel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSendToProcess { get; set; }
+    [Parameter] public EventCallback<string> OnSendToWorkshop { get; set; }
+
+    private static readonly ForgeOperation[] _operations =
+        { ForgeOperation.Generate, ForgeOperation.Expand, ForgeOperation.Refine, ForgeOperation.Convert
+};
+
+    private ForgeOperation _selectedOp = ForgeOperation.Generate;
+    private string _mode = "simple";
+    private bool _isRunning;
+    private ForgeAdvancedWizard? _wizard;
+
+    // Simple-mode inputs
+    private string _theme = string.Empty;
+    private int _count = 20;
+    private string _verbosity = "balanced";
+
+    // Target-collection inputs (Expand/Refine/Convert/Describe)
+    private List<WildcardCollection> _collections = new();
+    private int? _targetCollectionId;
+
+    // Draft
+    private ForgeDraftDto? _currentDraft;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var s = State.State.Prompts.LLM.WildcardForge;
+        _mode = string.IsNullOrEmpty(s.Mode) ? "simple" : s.Mode;
+        if (Enum.TryParse<ForgeOperation>(s.Operation, out var op)) _selectedOp = op;
+        _theme = s.LastTheme;
+        _count = s.Count <= 0 ? 20 : s.Count;
+        _verbosity = string.IsNullOrEmpty(s.Verbosity) ? "balanced" : s.Verbosity;
+        _targetCollectionId = s.TargetCollectionId;
+        _currentDraft = s.CurrentDraft;
+
+        _collections = await DB.GetAllWildcardCollections();
+    }
+
+    private void SelectOp(ForgeOperation op)
+    {
+        _selectedOp = op;
+        State.State.Prompts.LLM.WildcardForge.Operation = op.ToString();
+    }
+
+    private string GetPageIcon() => _selectedOp switch
+    {
+        ForgeOperation.Generate => Icons.Material.Filled.AutoAwesomeMosaic,
+        ForgeOperation.Expand => Icons.Material.Filled.AddCircleOutline,
+        ForgeOperation.Refine => Icons.Material.Filled.Tune,
+        ForgeOperation.Convert => Icons.Material.Filled.SwapHoriz,
+        ForgeOperation.Describe => Icons.Material.Filled.Notes,
+        _ => Icons.Material.Filled.AutoAwesomeMosaic,
+    };
+
+    private string GetPageDescription() => (_selectedOp, _mode) switch
+    {
+        (ForgeOperation.Generate, "advanced") =>
+            "Step-by-step wizard to fine-tune style, tone, entry count, and structure before the AI generates your collection.",
+        (ForgeOperation.Generate, _) =>
+            "Describe a theme and let the AI generate a ready-to-use wildcard collection. Set verbosity and entry count, then hit Generate.",
+        (ForgeOperation.Expand, _) =>
+            "Add more entries to an existing collection. The AI continues in the same style and vocabulary already established.",
+        (ForgeOperation.Refine, _) =>
+            "Review and clean up an existing collection: normalize formatting, remove duplicates, and improve weak or inconsistent entries.",
+        (ForgeOperation.Convert, _) =>
+            "Transform an existing collection into a different verbosity or phrasing style — e.g., from single keywords to descriptive phrases.",
+        (ForgeOperation.Describe, _) =>
+            "Generate a concise natural-language summary of what an existing wildcard collection represents and how it can be used.",
+        _ => "AI-assisted authoring for wildcard collections.",
+    };
+
+    private RenderFragment SimpleGenerateInput() => __builder =>
+    {
+        <MudCard Elevation="0" Outlined="true" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudTextField T="string" @bind-Value="_theme" Label="Describe the collection theme" Lines="3"
+                              Variant="Variant.Text" HelperText="e.g. dramatic cinematic lighting" />
+
+                <MudStack Row Spacing="3" AlignItems="AlignItems.Center">
+                    <MudNumericField T="int" @bind-Value="_count" Label="Count" Min="5" Max="50" Variant="Variant.Text"
+                                     Style="max-width: 120px;" />
+                    <MudSelect T="string" @bind-Value="_verbosity" Label="Verbosity" Variant="Variant.Text"
+                               Style="max-width: 200px;">
+                        @foreach (var v in Knowledge.VerbosityLevels)
+                        {
+                            <MudSelectItem T="string" Value="@v.Key">@v.Label - @v.WordRange</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
+
+                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="_isRunning || string.IsNullOrWhiteSpace(_theme)" OnClick="RunSimpleAsync"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">
+                    @if (_isRunning)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Generate
+                </MudButton>
+            </MudStack>
+        </MudCard>
+    };
+
+    private RenderFragment CollectionTargetInput() => __builder =>
+    {
+        <MudCard Elevation="0" Outlined="true" Class="pa-4">
+            <MudStack Spacing="3">
+                <MudSelect T="int?" @bind-Value="_targetCollectionId" Label="Target collection" Variant="Variant.Text">
+                    @foreach (var c in _collections)
+                    {
+                        <MudSelectItem T="int?" Value="@c.Id">@c.Name (@c.Category)</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (_selectedOp == ForgeOperation.Expand)
+                {
+                    <MudStack Row Spacing="3">
+                        <MudTextField T="string" @bind-Value="_theme" Label="Theme refinement (optional)" Variant="Variant.Text" />
+                        <MudNumericField T="int" @bind-Value="_count" Label="Add count" Min="5" Max="50" Variant="Variant.Text"
+                                         Style="max-width: 120px;" />
+                    </MudStack>
+                }
+
+                @if (_selectedOp == ForgeOperation.Convert)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
+                        Convert rewrites every existing entry to match the target verbosity below.
+                        Meaning is preserved; phrasing/length changes. Up to 25 entries per call (auto-chunks larger).
+                    </MudAlert>
+                    <MudSelect T="string" @bind-Value="_verbosity" Label="Target verbosity" Variant="Variant.Text"
+                               Style="max-width: 260px;" HelperText="minimal -> tags, verbose -> cinematic phrasing">
+                        @foreach (var v in Knowledge.VerbosityLevels)
+                        {
+                            <MudSelectItem T="string" Value="@v.Key">@v.Label - @v.WordRange</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_isRunning || _targetCollectionId == null"
+                           OnClick="RunOnExistingAsync" StartIcon="@Icons.Material.Filled.PlayArrow">
+                    @if (_isRunning)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Run @_selectedOp.ToString()
+                </MudButton>
+            </MudStack>
+        </MudCard>
+    };
+
+    private async Task RunSimpleAsync()
+    {
+        if (!ValidateModel()) return;
+
+        var classified = Knowledge.ClassifyByKeywords(_theme, top: 1);
+        var category = classified.Count > 0 ? classified[0] : null;
+
+        var request = new ForgeRequest
+        {
+            Operation = ForgeOperation.Generate,
+            Theme = _theme.Trim(),
+            Count = _count,
+            Verbosity = _verbosity,
+            CategoryId = category?.Id.ToString(),
+            ResolvedCategory = category,
+        };
+
+        await ExecuteAsync(request);
+    }
+
+    private async Task RunAdvancedAsync()
+    {
+        if (!ValidateModel() || _wizard == null) return;
+        var request = _wizard.BuildRequest();
+        request.Operation = ForgeOperation.Generate;
+        await ExecuteAsync(request);
+    }
+
+    private async Task RunOnExistingAsync()
+    {
+        if (!ValidateModel() || _targetCollectionId == null) return;
+        var collection = await DB.GetWildcardCollectionById(_targetCollectionId.Value);
+        if (collection == null)
+        {
+            Snackbar.Add("Target collection not found.", Severity.Error);
+            return;
+        }
+        var entries = await DB.GetEntriesByCollectionId(collection.Id);
+
+        var request = new ForgeRequest
+        {
+            Operation = _selectedOp,
+            Theme = string.IsNullOrWhiteSpace(_theme) ? collection.Name : _theme,
+            Count = _count,
+            Verbosity = _verbosity,
+            CategoryId = collection.Category,
+            TargetCollection = collection,
+            ExistingEntries = entries,
+        };
+
+        await ExecuteAsync(request);
+    }
+
+    private async Task ExecuteAsync(ForgeRequest request)
+    {
+        _isRunning = true;
+        StateHasChanged();
+        try
+        {
+            _currentDraft = await Forge.RunAsync(request, SelectedModel);
+            if (_currentDraft.Entries.Count == 0)
+            {
+                Snackbar.Add("No entries returned. Try a different theme or model.", Severity.Warning);
+            }
+            PersistState();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Forge failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isRunning = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidateModel()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedModel))
+        {
+            Snackbar.Add("Select an LLM model first.", Severity.Warning);
+            return false;
+        }
+        return true;
+    }
+
+    private void PersistState()
+    {
+        var s = State.State.Prompts.LLM.WildcardForge;
+        s.Mode = _mode;
+        s.Operation = _selectedOp.ToString();
+        s.LastTheme = _theme;
+        s.Count = _count;
+        s.Verbosity = _verbosity;
+        s.TargetCollectionId = _targetCollectionId;
+        s.CurrentDraft = _currentDraft;
+        _ = State.SaveState();
+    }
+
+    private void AcceptAll()
+    {
+        if (_currentDraft == null) return;
+        foreach (var e in _currentDraft.Entries) e.Accepted = true;
+        PersistState();
+    }
+
+    private void RejectAll()
+    {
+        if (_currentDraft == null) return;
+        foreach (var e in _currentDraft.Entries) e.Accepted = false;
+        PersistState();
+    }
+
+    private void RemoveEntry(int index)
+    {
+        if (_currentDraft == null || index < 0 || index >= _currentDraft.Entries.Count) return;
+        _currentDraft.Entries.RemoveAt(index);
+        PersistState();
+    }
+
+    private async Task OpenSaveDialog()
+    {
+        if (_currentDraft == null || _currentDraft.Entries.Count(e => e.Accepted) == 0)
+        {
+            Snackbar.Add("No accepted entries to save.", Severity.Warning);
+            return;
+        }
+        var parameters = new DialogParameters
+        {
+            ["Draft"] = _currentDraft,
+            ["Collections"] = _collections,
+            ["ModelName"] = SelectedModel,
+        };
+        var dlg = await DialogService.ShowAsync<ForgeSaveDialog>("Save wildcard collection", parameters);
+        var result = await dlg.Result;
+        if (result == null || result.Canceled) return;
+
+        if (result.Data is int newId)
+        {
+            Snackbar.Add($"Saved. Collection id {newId}.", Severity.Success);
+            _collections = await DB.GetAllWildcardCollections();
+            // Clear current draft after a successful save.
+            _currentDraft = null;
+            PersistState();
+        }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "New" => Color.Success,
+        "Modified" => Color.Warning,
+        "Kept" => Color.Default,
+        "Rejected" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string OpIcon(ForgeOperation op) => op switch
+    {
+        ForgeOperation.Generate => Icons.Material.Filled.AutoAwesome,
+        ForgeOperation.Expand => Icons.Material.Filled.UnfoldMore,
+        ForgeOperation.Refine => Icons.Material.Filled.AutoFixHigh,
+        ForgeOperation.Convert => Icons.Material.Filled.Transform,
+        ForgeOperation.Describe => Icons.Material.Filled.Description,
+        _ => Icons.Material.Filled.PlayArrow
+    };
+}

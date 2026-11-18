@@ -1,0 +1,21 @@
+/* TabbedPageShell - outer shell for tabbed pages.
+   Applies outer page gutter, max-width clamp, and the inner gutter
+   between the tab header and the tab panel content.
+   All values come from tokens in wwwroot/site.css :root. */
+
+.app-tabbed-shell {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--app-shell-max-width);
+    margin: 0 auto;
+    padding: var(--app-gutter-outer);
+}
+
+/* Gap between the MudTabs header and the panel content = inner gutter.
+   Targets the internal panels container via ::deep because MudTabs
+   renders its own DOM we do not control directly. Setting this here
+   (inside the shell component) rather than via PanelClass keeps the
+   "no PanelClass on tabbed pages" rule clean for consumers. */
+::deep .mud-tabs-panels {
+    padding-top: var(--app-gutter-inner);
+}
